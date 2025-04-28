@@ -1,9 +1,11 @@
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
 namespace ChatUitReact.Server.Controllers
 {
     [ApiController]
-    [Route("[controller]")]
+    [Route("api/[controller]")]
+    [Authorize(Policy = "DefaultAuth")]
     public class WeatherForecastController : ControllerBase
     {
         private static readonly string[] Summaries = new[]
@@ -21,6 +23,19 @@ namespace ChatUitReact.Server.Controllers
         [HttpGet(Name = "GetWeatherForecast")]
         public IEnumerable<WeatherForecast> Get()
         {
+            // Log who's accessing the API
+            var isApiClient = User.HasClaim("ApiClient", "true");
+            var username = User.Identity?.Name;
+
+            if (isApiClient)
+            {
+                _logger.LogInformation("API client accessed weather forecast");
+            }
+            else
+            {
+                _logger.LogInformation("User {Username} requested weather forecast", username);
+            }
+
             return Enumerable.Range(1, 5).Select(index => new WeatherForecast
             {
                 Date = DateOnly.FromDateTime(DateTime.Now.AddDays(index)),

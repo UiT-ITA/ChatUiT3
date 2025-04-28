@@ -17,3 +17,7 @@ export const msalConfig = {
 export const loginRequest = {
     scopes: ["User.Read", "openid", "profile"]
 };
+
+export const apiRequest = {
+    scopes: ["api://ec50c71e-1910-45bf-ba2a-eb463d80c024/access_as_user"]
+};

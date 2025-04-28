@@ -1,5 +1,7 @@
 import { useEffect, useState } from 'react';
 import './App.css';
+import { useAuth } from './contexts/AuthContext';
+import WelcomePage from './pages/WelcomePage';
 
 interface Forecast {
     date: string;
@@ -10,10 +12,13 @@ interface Forecast {
 
 function App() {
     const [forecasts, setForecasts] = useState<Forecast[]>();
+    const { isAuthenticated, isInitializing, logout, getAccessToken } = useAuth();
 
     useEffect(() => {
-        populateWeatherData();
-    }, []);
+        if (isAuthenticated) {
+            populateWeatherData();
+        }
+    }, [isAuthenticated]);
 
     const contents = forecasts === undefined
         ? <p><em>Loading... Please refresh once the ASP.NET backend has started. See <a href="https://aka.ms/jspsintegrationreact">https://aka.ms/jspsintegrationreact</a> for more details.</em></p>
@@ -38,19 +43,48 @@ function App() {
             </tbody>
         </table>;
 
+    if (isInitializing) {
+        return <div className="loading-container">Loading...</div>;
+    }
+
+    if (!isAuthenticated) {
+        return <WelcomePage />;
+    }
+
     return (
-        <div>
-            <h1 id="tableLabel">Weather forecast</h1>
+        <div className="app-container">
+            <header className="app-header">
+                <h1 id="tableLabel">Weather forecast</h1>
+                <button className="logout-button" onClick={logout}>Logout</button>
+            </header>
             <p>This component demonstrates fetching data from the server.</p>
             {contents}
         </div>
     );
 
     async function populateWeatherData() {
-        const response = await fetch('weatherforecast');
-        if (response.ok) {
-            const data = await response.json();
-            setForecasts(data);
+        try {
+            const token = await getAccessToken();
+
+            if (!token) {
+                console.error('No access token available. Please log in again.');
+                return;
+            }
+
+            const response = await fetch('api/weatherforecast', {
+                headers: {
+                    'Authorization': `Bearer ${token}`
+                }
+            });
+
+            if (response.ok) {
+                const data = await response.json() as Forecast[];
+                setForecasts(data);
+            } else {
+                console.error("API request failed:", response.status, response.statusText);
+            }
+        } catch (error) {
+            console.error('Error fetching weather data:', error);
         }
     }
 }
