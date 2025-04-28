@@ -1,0 +1,6 @@
+@ChatUitReact.Server_HostAddress = http://localhost:5157
+
+GET {{ChatUitReact.Server_HostAddress}}/weatherforecast/
+Accept: application/json
+
+###
