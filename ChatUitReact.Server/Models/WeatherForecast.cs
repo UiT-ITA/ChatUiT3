@@ -1,4 +1,4 @@
-namespace ChatUitReact.Server
+namespace ChatUitReact.Server.Models
 {
     public class WeatherForecast
     {

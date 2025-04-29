@@ -1,3 +1,4 @@
+using ChatUitReact.Server.Models;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 

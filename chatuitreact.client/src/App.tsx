@@ -70,8 +70,10 @@ function App() {
                 console.error('No access token available. Please log in again.');
                 return;
             }
-
-            const response = await fetch('api/weatherforecast', {
+            
+            // Ensure we use the correct API path with leading slash
+            // This helps avoid issues with relative path resolution
+            const response = await fetch('/api/weatherforecast', {
                 headers: {
                     'Authorization': `Bearer ${token}`
                 }
@@ -82,6 +84,8 @@ function App() {
                 setForecasts(data);
             } else {
                 console.error("API request failed:", response.status, response.statusText);
+                const errorText = await response.text();
+                console.error("Error details:", errorText.substring(0, 200));
             }
         } catch (error) {
             console.error('Error fetching weather data:', error);

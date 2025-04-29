@@ -1,4 +1,6 @@
 using ChatUitReact.Server.Authentication;
+using ChatUitReact.Server.Services;
+using ChatUitReact.Server.Services.Mapping;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.Identity.Web;
 using Microsoft.IdentityModel.Logging;
@@ -97,6 +99,11 @@ builder.Services.AddAuthorization(options =>
     });
 });
 
+builder.Services.AddSingleton<DummyService>();
+builder.Services.AddSingleton<ChatService>();
+builder.Services.AddSingleton<UserService>();
+builder.Services.AddSingleton<MapperService>();
+
 var app = builder.Build();
 
 app.UseDefaultFiles();
@@ -106,6 +113,12 @@ app.MapStaticAssets();
 if (app.Environment.IsDevelopment())
 {
     app.MapOpenApi();
+
+    app.UseSwaggerUI(options =>
+    {
+        options.SwaggerEndpoint("/openapi/v1.json", "OpenAPI V1");
+    });
+
     app.UseCors("AllowReactApp");
 }
 
