@@ -25,6 +25,7 @@ public class ChatsController : ControllerBase
     public ActionResult<IEnumerable<AiChatSummaryDto>> GetChats()
     {
         var userId = _userService.GetCurrentUserId(User);
+        Console.WriteLine($"User ID: {userId}");
         var chats = _dummyService.GetChatSummaries(userId);
         return Ok(chats);
     }

@@ -1,96 +1,59 @@
-import { useEffect, useState } from 'react';
+import React from 'react';
+import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
+import { AuthProvider, useAuth } from './contexts/AuthContext';
+import MainLayout from './components/layout/MainLayout';
+import Weather from './pages/Weather';
+import Test from './pages/TestPage';
+import Profile from './pages/Profile';
 import './App.css';
-import { useAuth } from './contexts/AuthContext';
-import WelcomePage from './pages/WelcomePage';
 
-interface Forecast {
-    date: string;
-    temperatureC: number;
-    temperatureF: number;
-    summary: string;
-}
-
-function App() {
-    const [forecasts, setForecasts] = useState<Forecast[]>();
-    const { isAuthenticated, isInitializing, logout, getAccessToken } = useAuth();
-
-    useEffect(() => {
-        if (isAuthenticated) {
-            populateWeatherData();
-        }
-    }, [isAuthenticated]);
-
-    const contents = forecasts === undefined
-        ? <p><em>Loading... Please refresh once the ASP.NET backend has started. See <a href="https://aka.ms/jspsintegrationreact">https://aka.ms/jspsintegrationreact</a> for more details.</em></p>
-        : <table className="table table-striped" aria-labelledby="tableLabel">
-            <thead>
-                <tr>
-                    <th>Date</th>
-                    <th>Temp. (C)</th>
-                    <th>Temp. (F)</th>
-                    <th>Summary</th>
-                </tr>
-            </thead>
-            <tbody>
-                {forecasts.map(forecast =>
-                    <tr key={forecast.date}>
-                        <td>{forecast.date}</td>
-                        <td>{forecast.temperatureC}</td>
-                        <td>{forecast.temperatureF}</td>
-                        <td>{forecast.summary}</td>
-                    </tr>
-                )}
-            </tbody>
-        </table>;
-
-    if (isInitializing) {
-        return <div className="loading-container">Loading...</div>;
-    }
-
-    if (!isAuthenticated) {
-        return <WelcomePage />;
-    }
-
+// Home content component
+const Home = () => {
+  const { isAuthenticated, isInitializing, account } = useAuth();
+  
+  if (isInitializing) {
+    return <div className="loading-container">Loading...</div>;
+  }
+  
+  if (isAuthenticated) {
     return (
-        <div className="app-container">
-            <header className="app-header">
-                <h1 id="tableLabel">Weather forecast</h1>
-                <button className="logout-button" onClick={logout}>Logout</button>
-            </header>
-            <p>This component demonstrates fetching data from the server.</p>
-            {contents}
-        </div>
+      <div className="authenticated-content">
+        <h2>Welcome, {account?.name || 'User'}</h2>
+        <p>You are signed in. Select an option from the sidebar to continue.</p>
+      </div>
     );
+  } else {
+    return (
+      <div className="unauthenticated-content">
+        <h2>Welcome</h2>
+        <p>Please use the Sign In button in the top bar to access all features.</p>
+      </div>
+    );
+  }
+};
 
-    async function populateWeatherData() {
-        try {
-            const token = await getAccessToken();
-
-            if (!token) {
-                console.error('No access token available. Please log in again.');
-                return;
-            }
+const App: React.FC = () => {
+  return (
+    <AuthProvider>
+      <BrowserRouter>
+        <Routes>
+          {/* All routes use MainLayout as their parent */}
+          <Route element={<MainLayout />}>
+            {/* Home route */}
+            <Route path="/" element={<Home />} />
             
-            // Ensure we use the correct API path with leading slash
-            // This helps avoid issues with relative path resolution
-            const response = await fetch('/api/weatherforecast', {
-                headers: {
-                    'Authorization': `Bearer ${token}`
-                }
-            });
-
-            if (response.ok) {
-                const data = await response.json() as Forecast[];
-                setForecasts(data);
-            } else {
-                console.error("API request failed:", response.status, response.statusText);
-                const errorText = await response.text();
-                console.error("Error details:", errorText.substring(0, 200));
-            }
-        } catch (error) {
-            console.error('Error fetching weather data:', error);
-        }
-    }
-}
+            {/* Feature routes */}
+            <Route path="/weather" element={<Weather />} />
+            <Route path="/test" element={<Test />} />
+            <Route path="/profile" element={<Profile />} />
+            
+            {/* Catch all other routes and redirect to home */}
+            <Route path="*" element={<Navigate to="/" replace />} />
+          </Route>
+        </Routes>
+      </BrowserRouter>
+    </AuthProvider>
+  );
+};
 
 export default App;

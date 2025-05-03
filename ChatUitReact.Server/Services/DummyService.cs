@@ -472,7 +472,7 @@ public class DummyService
     private void InitializeChats()
     {
         // Sample user IDs
-        var userIds = new[] { "user-1", "user-2" };
+        var userIds = new[] { "otv001@uit.no", "user-2" };
 
         // Create some sample conversations for each user
         foreach (var userId in userIds)
