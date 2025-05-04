@@ -1,4 +1,3 @@
-using ChatUitReact.Server.Models;
 using ChatUitReact.Server.Models.DTOs;
 using ChatUitReact.Server.Services;
 using Microsoft.AspNetCore.Authorization;
@@ -8,25 +7,33 @@ namespace ChatUitReact.Server.Controllers;
 
 [ApiController]
 [Route("api/[controller]")]
-[Authorize("DefaultAuth")]
+[Authorize]
 public class ChatsController : ControllerBase
 {
-    private readonly DummyService _dummyService;
+    private readonly DatabaseService _databaseService;
     private readonly UserService _userService;
+    private readonly ChatNotificationService _notificationService;
 
-    public ChatsController(DummyService dummyService, UserService userService)
+    public ChatsController(
+        DatabaseService mockDbService, 
+        UserService userService,
+        ChatNotificationService notificationService)
     {
-        _dummyService = dummyService;
+        _databaseService = mockDbService;
         _userService = userService;
+        _notificationService = notificationService;
     }
 
     // GET api/chats
     [HttpGet]
-    public ActionResult<IEnumerable<AiChatSummaryDto>> GetChats()
+    public async Task<ActionResult<IEnumerable<AiChatSummaryDto>>> GetChats()
     {
         var userId = _userService.GetCurrentUserId(User);
-        Console.WriteLine($"User ID: {userId}");
-        var chats = _dummyService.GetChatSummaries(userId);
+        var chats = _databaseService.GetChatSummaries(userId);
+        
+        // Notify all connected clients (helps sync across devices)
+        await _notificationService.NotifyChatsListUpdated(userId, chats);
+        
         return Ok(chats);
     }
 
@@ -35,7 +42,7 @@ public class ChatsController : ControllerBase
     public ActionResult<AiChatDto> GetChat(string id)
     {
         var userId = _userService.GetCurrentUserId(User);
-        var chat = _dummyService.GetChat(id, userId);
+        var chat = _databaseService.GetChat(id, userId);
         
         if (chat == null)
             return NotFound();
@@ -45,25 +52,39 @@ public class ChatsController : ControllerBase
 
     // POST api/chats
     [HttpPost]
-    public ActionResult<AiChatDto> CreateChat(AiChatCreateDto createDto)
+    public async Task<ActionResult<AiChatDto>> CreateChat(AiChatCreateDto createDto)
     {
         var userId = _userService.GetCurrentUserId(User);
-        var chat = _dummyService.CreateChat(userId, createDto);
+        var chat = _databaseService.CreateChat(userId, createDto);
+        
+        // Notify about the newly created chat
+        var chatSummary = new AiChatSummaryDto
+        {
+            Id = chat.Id,
+            Name = chat.Name,
+            AssistantName = chat.Assistant.Name,
+            CreatedAt = chat.CreatedAt,
+            UpdatedAt = chat.UpdatedAt
+        };
+        await _notificationService.NotifyChatCreated(userId, chatSummary);
+        
         return CreatedAtAction(nameof(GetChat), new { id = chat.Id }, chat);
     }
 
     // DELETE api/chats/{id}
     [HttpDelete("{id}")]
-    public IActionResult DeleteChat(string id)
+    public async Task<IActionResult> DeleteChat(string id)
     {
         var userId = _userService.GetCurrentUserId(User);
+        var success = _databaseService.DeleteChat(id, userId);
         
-        // This would need to be implemented in DummyService
-        // var success = _dummyService.DeleteChat(id, userId);
-        
-        // if (!success)
-        //     return NotFound();
+        if (!success)
+            return NotFound();
+
+        // Notify about the deleted chat
+        await _notificationService.NotifyChatDeleted(userId, id);
             
         return NoContent();
     }
 }
+
