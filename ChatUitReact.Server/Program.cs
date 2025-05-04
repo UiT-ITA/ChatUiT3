@@ -34,7 +34,6 @@ var authBuilder = builder.Services.AddAuthentication(options =>
     options.DefaultChallengeScheme = JwtBearerDefaults.AuthenticationScheme;
     options.DefaultScheme = JwtBearerDefaults.AuthenticationScheme;
 });
-
 // Add Microsoft Identity Web API (EntraID) authentication
 authBuilder.AddMicrosoftIdentityWebApi(
     jwtBearerOptions => {
@@ -59,8 +58,6 @@ authBuilder.AddMicrosoftIdentityWebApi(
     microsoftIdentityOptions => {
         builder.Configuration.GetSection("AzureAd").Bind(microsoftIdentityOptions);
     });
-
-
 // Add API Key authentication as a separate scheme
 authBuilder.AddScheme<ApiKeyAuthenticationOptions, ApiKeyAuthenticationHandler>(
     ApiKeyAuthenticationOptions.DefaultScheme,
@@ -103,6 +100,10 @@ builder.Services.AddSingleton<DummyService>();
 builder.Services.AddSingleton<ChatService>();
 builder.Services.AddSingleton<UserService>();
 builder.Services.AddSingleton<MapperService>();
+
+//builder.Services
+//       .AddSignalR(o => o.EnableDetailedErrors = false)
+//       .AddMessagePackProtocol();        // smaller frames
 
 var app = builder.Build();
 
