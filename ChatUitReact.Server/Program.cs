@@ -1,16 +1,14 @@
-using ChatUitReact.Server.Authentication;
+using ChatUitReact.Server.Hubs;
 using ChatUitReact.Server.Services;
-using ChatUitReact.Server.Services.Mapping;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.Identity.Web;
 using Microsoft.IdentityModel.Logging;
 
 var builder = WebApplication.CreateBuilder(args);
 
-
 if (builder.Environment.IsDevelopment())
 {
-    IdentityModelEventSource.ShowPII = true; // Show PII for debugging purposes
+    IdentityModelEventSource.ShowPII = true;
 }
 
 
@@ -19,91 +17,54 @@ builder.Services.AddCors(options =>
 {
     options.AddPolicy("AllowReactApp", policy =>
     {
-        string[] allowedOrigins = builder.Configuration.GetSection("AllowedOrigins").Get<string[]>() ?? Array.Empty<string>();
+        string[] allowedOrigins = builder.Configuration.GetSection("AllowedOrigins").Get<string[]>() 
+            ?? new[] { "https://localhost:54979" };
+            
         policy.WithOrigins(allowedOrigins)
             .AllowAnyHeader()
-            .AllowAnyMethod();
+            .AllowAnyMethod()
+            .AllowCredentials(); // This is critical for SignalR
     });
 });
 
+// Authentication and Authorization
+builder.Services.AddAuthorization();
+builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
+    .AddMicrosoftIdentityWebApi(builder.Configuration.GetSection("AzureAd"));
 
-var authBuilder = builder.Services.AddAuthentication(options =>
+builder.Services.Configure<JwtBearerOptions>(JwtBearerDefaults.AuthenticationScheme, options =>
 {
-    // Set the default scheme to JwtBearer
-    options.DefaultAuthenticateScheme = JwtBearerDefaults.AuthenticationScheme;
-    options.DefaultChallengeScheme = JwtBearerDefaults.AuthenticationScheme;
-    options.DefaultScheme = JwtBearerDefaults.AuthenticationScheme;
-});
-// Add Microsoft Identity Web API (EntraID) authentication
-authBuilder.AddMicrosoftIdentityWebApi(
-    jwtBearerOptions => {
-        builder.Configuration.GetSection("AzureAd").Bind(jwtBearerOptions);
-
-        // Explicitly set token validation parameters
-        jwtBearerOptions.TokenValidationParameters.ValidateIssuer = true;
-        jwtBearerOptions.TokenValidationParameters.ValidateAudience = true;
-        jwtBearerOptions.TokenValidationParameters.ValidAudience = builder.Configuration["AzureAd:Audience"];
-
-        // Use the Authority from configuration OR construct it properly
-        jwtBearerOptions.Authority = builder.Configuration["AzureAd:Authority"] ??
-            $"{builder.Configuration["AzureAd:Instance"]}{builder.Configuration["AzureAd:TenantId"]}";
-
-        // Explicitly set token validation parameters for issuer
-        jwtBearerOptions.TokenValidationParameters.ValidIssuer = builder.Configuration["AzureAd:Authority"] ??
-            $"{builder.Configuration["AzureAd:Instance"]}{builder.Configuration["AzureAd:TenantId"]}/v2.0";
-
-        // Enable metadata-based configuration (vital for key discovery)
-        jwtBearerOptions.MetadataAddress = $"{jwtBearerOptions.Authority}/.well-known/openid-configuration";
-    },
-    microsoftIdentityOptions => {
-        builder.Configuration.GetSection("AzureAd").Bind(microsoftIdentityOptions);
-    });
-// Add API Key authentication as a separate scheme
-authBuilder.AddScheme<ApiKeyAuthenticationOptions, ApiKeyAuthenticationHandler>(
-    ApiKeyAuthenticationOptions.DefaultScheme,
-    options =>
+    // Store the token for WebSockets to use after the initial HTTP handshake
+    options.Events = new JwtBearerEvents
     {
-        options.HeaderName = builder.Configuration["ApiKey:HeaderName"] ?? "X-Api-Key";
-        options.ValidKeys = builder.Configuration.GetSection("ApiKey:ValidKeys").Get<string[]>() ?? Array.Empty<string>();
-    });
+        OnMessageReceived = context =>
+        {
+            // Extract token from the query string for SignalR
+            var accessToken = context.Request.Query["access_token"];
+
+            // If the request is for a hub...
+            var path = context.HttpContext.Request.Path;
+            if (!string.IsNullOrEmpty(accessToken) &&
+                (path.StartsWithSegments("/testHub") || path.StartsWithSegments("/testAuthHub") || path.StartsWithSegments("/chatHub")))
+            {
+                // Set the token for authentication
+                context.Token = accessToken;
+            }
+            return Task.CompletedTask;
+        }
+    };
+});
+
 
 builder.Services.AddControllers();
-// Learn more about configuring OpenAPI at https://aka.ms/aspnet/openapi
 builder.Services.AddOpenApi();
 
-// Add authorization policies
-builder.Services.AddAuthorization(options =>
-{
-    // Default policy - requires either valid JWT or API Key
-    options.AddPolicy("DefaultAuth", policy =>
-    {
-        policy.RequireAuthenticatedUser();
-        policy.AddAuthenticationSchemes(JwtBearerDefaults.AuthenticationScheme, ApiKeyAuthenticationOptions.DefaultScheme);
-    });
+builder.Services.AddSignalR();
 
-    // Policy for endpoints that should only allow JWT auth
-    options.AddPolicy("JwtOnly", policy =>
-    {
-        policy.RequireAuthenticatedUser();
-        policy.AddAuthenticationSchemes(JwtBearerDefaults.AuthenticationScheme);
-    });
-
-    // Policy for endpoints that should only allow API key auth
-    options.AddPolicy("ApiKeyOnly", policy =>
-    {
-        policy.RequireAuthenticatedUser();
-        policy.AddAuthenticationSchemes(ApiKeyAuthenticationOptions.DefaultScheme);
-    });
-});
-
-builder.Services.AddSingleton<DummyService>();
-builder.Services.AddSingleton<ChatService>();
-builder.Services.AddSingleton<UserService>();
-builder.Services.AddSingleton<MapperService>();
-
-//builder.Services
-//       .AddSignalR(o => o.EnableDetailedErrors = false)
-//       .AddMessagePackProtocol();        // smaller frames
+// Register services
+builder.Services.AddSingleton<DatabaseService>();
+builder.Services.AddScoped<UserService>();
+builder.Services.AddScoped<ChatNotificationService>();
 
 var app = builder.Build();
 
@@ -114,22 +75,22 @@ app.MapStaticAssets();
 if (app.Environment.IsDevelopment())
 {
     app.MapOpenApi();
-
     app.UseSwaggerUI(options =>
     {
         options.SwaggerEndpoint("/openapi/v1.json", "OpenAPI V1");
     });
-
     app.UseCors("AllowReactApp");
 }
 
+//app.UseRouting();
 app.UseHttpsRedirection();
-
 app.UseAuthentication();
 app.UseAuthorization();
 
 app.MapControllers();
-
+app.MapHub<ChatHub>("/chatHub");
+app.MapHub<TestHub>("/testHub");
+app.MapHub<TestAuthHub>("/testAuthHub");
 app.MapFallbackToFile("/index.html");
 
 app.Run();

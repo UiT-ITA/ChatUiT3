@@ -12,6 +12,7 @@
   "dependencies": {
     "@azure/msal-browser": "^4.11.0",
     "@azure/msal-react": "^3.0.10",
+    "@microsoft/signalr": "^8.0.7",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
     "react-router-dom": "^7.5.3"

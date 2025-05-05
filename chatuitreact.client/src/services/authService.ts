@@ -82,7 +82,8 @@ class AuthService {
             // Try to get token silently
             const response = await this.msalInstance.acquireTokenSilent({
                 ...apiRequest,
-                account: account
+                account: account,
+                forceRefresh: true
             });
             return response.accessToken;
         } catch (error) {
