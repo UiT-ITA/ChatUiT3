@@ -2,7 +2,7 @@ namespace ChatUitReact.Server.Models;
 
 public class UserPreferences
 {
-    public string UserId { get; set; } = string.Empty;
+    public string Username { get; set; } = string.Empty;
     public NotificationSettings Notifications { get; set; } = new NotificationSettings();
     public DisplaySettings Display { get; set; } = new DisplaySettings();
 }

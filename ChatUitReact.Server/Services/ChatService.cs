@@ -63,8 +63,8 @@ namespace ChatUitReact.Server.Services
             string username,
             string message)
         {
-            // Get the chat from database
-            var chat = await _databaseService.GetChatAsync(chatId, userId, username);
+        // Get the chat from database
+            var chat = await _databaseService.GetChatAsync(chatId, username);
             if (chat == null)
             {
                 throw new ArgumentException($"Chat not found: {chatId}");
@@ -120,7 +120,7 @@ namespace ChatUitReact.Server.Services
             CancellationToken cancellationToken = default)
         {
             // Get the chat from database
-            var chat = await _databaseService.GetChatAsync(chatId, userId, username);
+            var chat = await _databaseService.GetChatAsync(chatId, username);
             if (chat == null)
             {
                 throw new ArgumentException($"Chat not found: {chatId}");
@@ -197,7 +197,7 @@ namespace ChatUitReact.Server.Services
             string message)
         {
             // Get the chat from database
-            var chat = await _databaseService.GetChatAsync(chatId, userId, username);
+            var chat = await _databaseService.GetChatAsync(chatId, username);
             if (chat == null)
             {
                 throw new ArgumentException($"Chat not found: {chatId}");
@@ -246,15 +246,15 @@ namespace ChatUitReact.Server.Services
         }
 
         // Get chats for a user
-        public async Task<List<AiChat>> GetUserChatsAsync(string userId, string username)
+        public async Task<List<AiChat>> GetUserChatsAsync(string username)
         {
-            return await _databaseService.GetUserChatsAsync(userId, username);
+            return await _databaseService.GetUserChatsAsync(username);
         }
 
         // Get a specific chat
-        public async Task<AiChat> GetChatAsync(string chatId, string userId, string username)
+        public async Task<AiChat> GetChatAsync(string chatId, string username)
         {
-            return await _databaseService.GetChatAsync(chatId, userId, username);
+            return await _databaseService.GetChatAsync(chatId, username);
         }
 
         // Delete a chat
@@ -271,7 +271,7 @@ namespace ChatUitReact.Server.Services
         }
         
         // Attach a file to a chat
-        public async Task<AiChatFile> AttachFileToChatAsync(string chatId, string userId, string username, string fileId)
+        public async Task<AiChatFile> AttachFileToChatAsync(string chatId, string username, string fileId)
         {
             return await _databaseService.AttachFileToChatAsync(chatId, username, fileId);
         }

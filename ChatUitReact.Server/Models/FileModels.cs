@@ -12,11 +12,11 @@ namespace ChatUitReact.Server.Models
         public long Size { get; set; } = 0;
         public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
         
+        // Text or base64 content - all files stored as strings
+        public string Content { get; set; } = string.Empty;
+        
         // The extracted content chunks (text paragraphs, images, etc.)
         public List<FileContentChunk> ContentChunks { get; set; } = new List<FileContentChunk>();
-        
-        // Raw content when needed (not persisted directly)
-        public byte[] RawContent { get; set; }
     }
 
     public class FileContentChunk

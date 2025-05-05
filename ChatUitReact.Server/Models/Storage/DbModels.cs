@@ -37,7 +37,11 @@ namespace ChatUitReact.Server.Models.Storage
         public long Size { get; set; } = 0;
         public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
         public string ProcessedText { get; set; } = string.Empty;  // For searchable files
-        public int BinaryChunkCount { get; set; } = 0;
+        
+        // Store content directly in the metadata document for small files
+        // or in separate file content document for larger files
+        public string Content { get; set; } = string.Empty;  // Text or base64 for images
+        public bool HasSeparateContent { get; set; } = false;  // If true, content is in FileContent collection
     }
 
     // Database model for content chunks (text/images)
@@ -51,16 +55,13 @@ namespace ChatUitReact.Server.Models.Storage
         public int Order { get; set; }
     }
 
-    // Database model for binary chunks (for raw file storage)
-    public class DbFileBinaryChunk
+    // Database model for larger file content
+    public class DbFileContent
     {
         public string Id { get; set; } = Guid.NewGuid().ToString();
         public string FileId { get; set; } = string.Empty;
         public string Username { get; set; } = string.Empty;  // For sharding
-        public int ChunkNumber { get; set; }
-        public int TotalChunks { get; set; }
-        public string Content { get; set; } = string.Empty;  // Base64 encoded chunk
-        public int ChunkSize { get; set; }
+        public string Content { get; set; } = string.Empty;  // Text or base64 for entire file
     }
 
     // Database model for assistants

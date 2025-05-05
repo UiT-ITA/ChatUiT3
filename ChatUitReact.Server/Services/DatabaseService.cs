@@ -23,7 +23,7 @@ namespace ChatUitReact.Server.Services
         private readonly IMongoCollection<DbChatMessage> _messageCollection;
         private readonly IMongoCollection<DbFileMetadata> _fileMetadataCollection;
         private readonly IMongoCollection<DbFileChunk> _fileChunkCollection;
-        private readonly IMongoCollection<DbFileBinaryChunk> _fileBinaryChunkCollection;
+        private readonly IMongoCollection<DbFileContent> _fileContentCollection;
 
         // Config Database Collections
         private readonly IMongoCollection<DbModel> _modelCollection;
@@ -50,122 +50,13 @@ namespace ChatUitReact.Server.Services
             _messageCollection = _userDatabase.GetCollection<DbChatMessage>("Messages");
             _fileMetadataCollection = _userDatabase.GetCollection<DbFileMetadata>("Files");
             _fileChunkCollection = _userDatabase.GetCollection<DbFileChunk>("FileChunks");
-            _fileBinaryChunkCollection = _userDatabase.GetCollection<DbFileBinaryChunk>("FileBinaryChunks");
+            _fileContentCollection = _userDatabase.GetCollection<DbFileContent>("FileContents");
 
             // Initialize config database collections
             _modelCollection = _configDatabase.GetCollection<DbModel>("Models");
             _assistantCollection = _configDatabase.GetCollection<DbAssistant>("Assistants");
             _endpointCollection = _configDatabase.GetCollection<DbModelEndpoint>("Endpoints");
             _toolCollection = _configDatabase.GetCollection<DbChatTool>("Tools");
-            
-            // Create indexes for better performance
-            CreateIndexesAsync().GetAwaiter().GetResult();
-        }
-        
-        private async Task CreateIndexesAsync()
-        {
-            try
-            {
-                // Index for User collection
-                var userIndexes = await _userCollection.Indexes.ListAsync();
-                var userIndexNames = await userIndexes.ToListAsync();
-                if (!userIndexNames.Any(i => i["name"] == "UserId_1"))
-                {
-                    var userIndexModel = new CreateIndexModel<UserPreferences>(
-                        Builders<UserPreferences>.IndexKeys.Ascending(u => u.UserId),
-                        new CreateIndexOptions { Name = "UserId_1", Unique = true });
-                    await _userCollection.Indexes.CreateOneAsync(userIndexModel);
-                }
-                
-                // Indexes for Chat collection (sharded by Username)
-                var chatIndexes = await _chatCollection.Indexes.ListAsync();
-                var chatIndexNames = await chatIndexes.ToListAsync();
-                if (!chatIndexNames.Any(i => i["name"] == "Username_1"))
-                {
-                    var chatIndexModel = new CreateIndexModel<DbChat>(
-                        Builders<DbChat>.IndexKeys.Ascending(c => c.Username),
-                        new CreateIndexOptions { Name = "Username_1" });
-                    await _chatCollection.Indexes.CreateOneAsync(chatIndexModel);
-                }
-                
-                // Indexes for Message collection
-                var messageIndexes = await _messageCollection.Indexes.ListAsync();
-                var messageIndexNames = await messageIndexes.ToListAsync();
-                if (!messageIndexNames.Any(i => i["name"] == "ChatId_1"))
-                {
-                    var messageIndexModel = new CreateIndexModel<DbChatMessage>(
-                        Builders<DbChatMessage>.IndexKeys.Ascending(m => m.ChatId),
-                        new CreateIndexOptions { Name = "ChatId_1" });
-                    await _messageCollection.Indexes.CreateOneAsync(messageIndexModel);
-                }
-                
-                if (!messageIndexNames.Any(i => i["name"] == "Username_1"))
-                {
-                    var usernameIndexModel = new CreateIndexModel<DbChatMessage>(
-                        Builders<DbChatMessage>.IndexKeys.Ascending(m => m.Username),
-                        new CreateIndexOptions { Name = "Username_1" });
-                    await _messageCollection.Indexes.CreateOneAsync(usernameIndexModel);
-                }
-                
-                // Indexes for FileMetadata collection
-                var fileIndexes = await _fileMetadataCollection.Indexes.ListAsync();
-                var fileIndexNames = await fileIndexes.ToListAsync();
-                if (!fileIndexNames.Any(i => i["name"] == "Username_1"))
-                {
-                    var fileIndexModel = new CreateIndexModel<DbFileMetadata>(
-                        Builders<DbFileMetadata>.IndexKeys.Ascending(f => f.Username),
-                        new CreateIndexOptions { Name = "Username_1" });
-                    await _fileMetadataCollection.Indexes.CreateOneAsync(fileIndexModel);
-                }
-                
-                // Indexes for FileChunks collection
-                var fileChunkIndexes = await _fileChunkCollection.Indexes.ListAsync();
-                var fileChunkNames = await fileChunkIndexes.ToListAsync();
-                if (!fileChunkNames.Any(i => i["name"] == "FileId_1_Order_1"))
-                {
-                    var fileChunkModel = new CreateIndexModel<DbFileChunk>(
-                        Builders<DbFileChunk>.IndexKeys
-                            .Ascending(f => f.FileId)
-                            .Ascending(f => f.Order),
-                        new CreateIndexOptions { Name = "FileId_1_Order_1" });
-                    await _fileChunkCollection.Indexes.CreateOneAsync(fileChunkModel);
-                }
-                
-                if (!fileChunkNames.Any(i => i["name"] == "Username_1"))
-                {
-                    var usernameIndexModel = new CreateIndexModel<DbFileChunk>(
-                        Builders<DbFileChunk>.IndexKeys.Ascending(f => f.Username),
-                        new CreateIndexOptions { Name = "Username_1" });
-                    await _fileChunkCollection.Indexes.CreateOneAsync(usernameIndexModel);
-                }
-                
-                // Indexes for FileBinaryChunks collection
-                var fileBinaryChunkIndexes = await _fileBinaryChunkCollection.Indexes.ListAsync();
-                var fileBinaryChunkNames = await fileBinaryChunkIndexes.ToListAsync();
-                if (!fileBinaryChunkNames.Any(i => i["name"] == "FileId_1_ChunkNumber_1"))
-                {
-                    var fileBinaryChunkModel = new CreateIndexModel<DbFileBinaryChunk>(
-                        Builders<DbFileBinaryChunk>.IndexKeys
-                            .Ascending(f => f.FileId)
-                            .Ascending(f => f.ChunkNumber),
-                        new CreateIndexOptions { Name = "FileId_1_ChunkNumber_1" });
-                    await _fileBinaryChunkCollection.Indexes.CreateOneAsync(fileBinaryChunkModel);
-                }
-                
-                if (!fileBinaryChunkNames.Any(i => i["name"] == "Username_1"))
-                {
-                    var usernameIndexModel = new CreateIndexModel<DbFileBinaryChunk>(
-                        Builders<DbFileBinaryChunk>.IndexKeys.Ascending(f => f.Username),
-                        new CreateIndexOptions { Name = "Username_1" });
-                    await _fileBinaryChunkCollection.Indexes.CreateOneAsync(usernameIndexModel);
-                }
-                
-                Console.WriteLine("Database indexes created successfully.");
-            }
-            catch (Exception ex)
-            {
-                Console.WriteLine($"Error creating indexes: {ex.Message}");
-            }
         }
 
         #region Connection Testing
@@ -192,15 +83,15 @@ namespace ChatUitReact.Server.Services
 
         #region User Preferences
 
-        public async Task<UserPreferences> GetUserPreferencesAsync(string userId)
+        public async Task<UserPreferences> GetUserPreferencesAsync(string username)
         {
-            var filter = Builders<UserPreferences>.Filter.Eq(u => u.UserId, userId);
+            var filter = Builders<UserPreferences>.Filter.Eq(u => u.Username, username);
             var userPrefs = await _userCollection.Find(filter).FirstOrDefaultAsync();
             
             if (userPrefs == null)
             {
                 // Create default preferences if not found
-                userPrefs = new UserPreferences { UserId = userId };
+                userPrefs = new UserPreferences { Username = username };
                 await _userCollection.InsertOneAsync(userPrefs);
             }
             
@@ -209,7 +100,7 @@ namespace ChatUitReact.Server.Services
 
         public async Task UpdateUserPreferencesAsync(UserPreferences preferences)
         {
-            var filter = Builders<UserPreferences>.Filter.Eq(u => u.UserId, preferences.UserId);
+            var filter = Builders<UserPreferences>.Filter.Eq(u => u.Username, preferences.Username);
             await _userCollection.ReplaceOneAsync(filter, preferences, new ReplaceOptions { IsUpsert = true });
         }
 
@@ -218,7 +109,7 @@ namespace ChatUitReact.Server.Services
         #region Chats
 
         // Get list of chats for a user (without messages)
-        public async Task<List<AiChat>> GetUserChatsAsync(string userId, string username)
+        public async Task<List<AiChat>> GetUserChatsAsync(string username)
         {
             // In database operations we need username for sharding
             var filter = Builders<DbChat>.Filter.Eq(c => c.Username, username);
@@ -255,7 +146,7 @@ namespace ChatUitReact.Server.Services
         }
 
         // Get a complete chat with messages when opened
-        public async Task<AiChat> GetChatAsync(string chatId, string userId, string username)
+        public async Task<AiChat> GetChatAsync(string chatId, string username)
         {
             // Get the chat from database
             var chatFilter = Builders<DbChat>.Filter.And(
@@ -459,6 +350,7 @@ namespace ChatUitReact.Server.Services
                 ContentType = dbFile.ContentType,
                 Size = dbFile.Size,
                 CreatedAt = dbFile.CreatedAt,
+                Content = dbFile.Content,  // Set content directly from metadata
                 ContentChunks = contentChunks ?? new List<FileContentChunk>()
             };
             
@@ -476,7 +368,9 @@ namespace ChatUitReact.Server.Services
                 Size = file.Size,
                 CreatedAt = file.CreatedAt,
                 ProcessedText = string.Empty,
-                BinaryChunkCount = 0
+                // Default to storing in the metadata, will set HasSeparateContent if needed
+                Content = file.Content,
+                HasSeparateContent = false
             };
             
             return dbFile;
@@ -518,57 +412,37 @@ namespace ChatUitReact.Server.Services
                 CreatedAt = DateTime.UtcNow
             };
             
+            // Read the file content as string (base64 for images)
+            using var memoryStream = new MemoryStream();
+            await fileStream.CopyToAsync(memoryStream);
+            byte[] bytes = memoryStream.ToArray();
+            aiFile.Content = Convert.ToBase64String(bytes);
+            
             // Convert to database model
             var dbFileMetadata = ConvertToDbFileMetadata(aiFile, username);
             
-            // Save file metadata
-            await _fileMetadataCollection.InsertOneAsync(dbFileMetadata);
+            // Check if file content is too large for a single document (e.g., > 10MB)
+            const int maxInlineSize = 10 * 1024 * 1024; // 10MB
+            bool isLargeFile = fileStream.Length > maxInlineSize;
             
-            // Read the full content into memory
-            using var memoryStream = new MemoryStream();
-            await fileStream.CopyToAsync(memoryStream);
-            aiFile.RawContent = memoryStream.ToArray();
-            
-            // Process file in binary chunks for database storage
-            const int chunkSize = 1024 * 1024; // 1MB
-            int totalChunks = (int)Math.Ceiling((double)fileStream.Length / chunkSize);
-            dbFileMetadata.BinaryChunkCount = totalChunks;
-            
-            // Save binary chunks
-            memoryStream.Position = 0;
-            byte[] buffer = new byte[chunkSize];
-            
-            for (int chunkNumber = 1; chunkNumber <= totalChunks; chunkNumber++)
+            if (isLargeFile)
             {
-                int bytesRead = await memoryStream.ReadAsync(buffer, 0, chunkSize);
-                byte[] chunkData = buffer;
+                // For large files, store content separately
+                dbFileMetadata.HasSeparateContent = true;
+                dbFileMetadata.Content = string.Empty; // Clear content from metadata
                 
-                if (bytesRead < chunkSize)
-                {
-                    // Trim buffer for last chunk if needed
-                    chunkData = new byte[bytesRead];
-                    Array.Copy(buffer, chunkData, bytesRead);
-                }
-                
-                // Create binary chunk
-                var binaryChunk = new DbFileBinaryChunk
+                var fileContent = new DbFileContent
                 {
                     FileId = dbFileMetadata.Id,
                     Username = username,
-                    ChunkNumber = chunkNumber,
-                    TotalChunks = totalChunks,
-                    Content = Convert.ToBase64String(chunkData),
-                    ChunkSize = bytesRead
+                    Content = aiFile.Content // Store the base64 content
                 };
                 
-                // Save binary chunk
-                await _fileBinaryChunkCollection.InsertOneAsync(binaryChunk);
+                await _fileContentCollection.InsertOneAsync(fileContent);
             }
             
-            // Update metadata with chunk count
-            var updateFilter = Builders<DbFileMetadata>.Filter.Eq(f => f.Id, dbFileMetadata.Id);
-            var update = Builders<DbFileMetadata>.Update.Set(f => f.BinaryChunkCount, totalChunks);
-            await _fileMetadataCollection.UpdateOneAsync(updateFilter, update);
+            // Save file metadata
+            await _fileMetadataCollection.InsertOneAsync(dbFileMetadata);
             
             return aiFile;
         }
@@ -589,47 +463,22 @@ namespace ChatUitReact.Server.Services
             var contentChunks = await GetFileContentChunksAsync(fileId, username);
             var aiFile = ConvertToAiFile(dbFile, contentChunks);
             
-            // Load binary content if requested
-            if (includeContent)
+            // Load content if requested and not already in metadata
+            if (includeContent && dbFile.HasSeparateContent)
             {
-                aiFile.RawContent = await GetFileBinaryContentAsync(fileId, username);
+                var contentFilter = Builders<DbFileContent>.Filter.And(
+                    Builders<DbFileContent>.Filter.Eq(c => c.FileId, fileId),
+                    Builders<DbFileContent>.Filter.Eq(c => c.Username, username)
+                );
+                
+                var fileContent = await _fileContentCollection.Find(contentFilter).FirstOrDefaultAsync();
+                if (fileContent != null)
+                {
+                    aiFile.Content = fileContent.Content;
+                }
             }
             
             return aiFile;
-        }
-
-        // Get file binary content
-        private async Task<byte[]> GetFileBinaryContentAsync(string fileId, string username)
-        {
-            // Get file metadata
-            var metadataFilter = Builders<DbFileMetadata>.Filter.And(
-                Builders<DbFileMetadata>.Filter.Eq(f => f.Id, fileId),
-                Builders<DbFileMetadata>.Filter.Eq(f => f.Username, username)
-            );
-            
-            var dbFile = await _fileMetadataCollection.Find(metadataFilter).FirstOrDefaultAsync();
-            if (dbFile == null) return null;
-            
-            // Get all binary chunks
-            var chunksFilter = Builders<DbFileBinaryChunk>.Filter.And(
-                Builders<DbFileBinaryChunk>.Filter.Eq(c => c.FileId, fileId),
-                Builders<DbFileBinaryChunk>.Filter.Eq(c => c.Username, username)
-            );
-            
-            var binaryChunks = await _fileBinaryChunkCollection
-                .Find(chunksFilter)
-                .SortBy(c => c.ChunkNumber)
-                .ToListAsync();
-            
-            // Combine chunks
-            using var memoryStream = new MemoryStream((int)dbFile.Size);
-            foreach (var chunk in binaryChunks)
-            {
-                byte[] chunkData = Convert.FromBase64String(chunk.Content);
-                await memoryStream.WriteAsync(chunkData, 0, chunkData.Length);
-            }
-            
-            return memoryStream.ToArray();
         }
 
         // Save file content chunks
@@ -662,13 +511,24 @@ namespace ChatUitReact.Server.Services
         // Delete a file and all associated data
         public async Task DeleteFileAsync(string fileId, string username)
         {
-            // Delete binary chunks
-            var binaryChunksFilter = Builders<DbFileBinaryChunk>.Filter.And(
-                Builders<DbFileBinaryChunk>.Filter.Eq(c => c.FileId, fileId),
-                Builders<DbFileBinaryChunk>.Filter.Eq(c => c.Username, username)
+            // Get file metadata first to check if it has separate content
+            var metadataFilter = Builders<DbFileMetadata>.Filter.And(
+                Builders<DbFileMetadata>.Filter.Eq(f => f.Id, fileId),
+                Builders<DbFileMetadata>.Filter.Eq(f => f.Username, username)
             );
             
-            await _fileBinaryChunkCollection.DeleteManyAsync(binaryChunksFilter);
+            var fileMetadata = await _fileMetadataCollection.Find(metadataFilter).FirstOrDefaultAsync();
+            
+            if (fileMetadata != null && fileMetadata.HasSeparateContent)
+            {
+                // Delete separate content if exists
+                var contentFilter = Builders<DbFileContent>.Filter.And(
+                    Builders<DbFileContent>.Filter.Eq(c => c.FileId, fileId),
+                    Builders<DbFileContent>.Filter.Eq(c => c.Username, username)
+                );
+                
+                await _fileContentCollection.DeleteManyAsync(contentFilter);
+            }
             
             // Delete content chunks
             var contentChunksFilter = Builders<DbFileChunk>.Filter.And(
@@ -679,12 +539,7 @@ namespace ChatUitReact.Server.Services
             await _fileChunkCollection.DeleteManyAsync(contentChunksFilter);
             
             // Delete file metadata
-            var fileFilter = Builders<DbFileMetadata>.Filter.And(
-                Builders<DbFileMetadata>.Filter.Eq(f => f.Id, fileId),
-                Builders<DbFileMetadata>.Filter.Eq(f => f.Username, username)
-            );
-            
-            await _fileMetadataCollection.DeleteOneAsync(fileFilter);
+            await _fileMetadataCollection.DeleteOneAsync(metadataFilter);
         }
         
         // Attach a file to a chat
@@ -715,7 +570,7 @@ namespace ChatUitReact.Server.Services
             
             // Since we don't have direct access to add files in the database,
             // we'll need to get the full chat, add the file, and update it
-            var chat = await GetChatAsync(chatId, username, username);
+            var chat = await GetChatAsync(chatId, username);
             chat.Files.Add(chatFile);
             
             return chatFile;
