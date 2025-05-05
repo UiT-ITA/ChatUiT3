@@ -665,6 +665,20 @@ namespace ChatUitReact.Server.Services
             return assistants;
         }
         
+        // Get all assistants regardless of owner (for admin use)
+        public async Task<List<AiAssistant>> GetAllAssistantsAsync()
+        {
+            var dbAssistants = await _assistantCollection.Find(_ => true).ToListAsync();
+            
+            var assistants = new List<AiAssistant>();
+            foreach (var dbAssistant in dbAssistants)
+            {
+                assistants.Add(await ConvertToAiAssistant(dbAssistant));
+            }
+            
+            return assistants;
+        }
+        
         // Create a new assistant
         public async Task<AiAssistant> CreateAssistantAsync(AiAssistant assistant, string userId)
         {
@@ -854,6 +868,13 @@ namespace ChatUitReact.Server.Services
                 return new AiModelEndpoint();
                 
             return ConvertToAiModelEndpoint(dbEndpoint);
+        }
+        
+        // Get all endpoints
+        public async Task<List<AiModelEndpoint>> GetEndpointsAsync()
+        {
+            var dbEndpoints = await _endpointCollection.Find(_ => true).ToListAsync();
+            return dbEndpoints.Select(e => ConvertToAiModelEndpoint(e)).ToList();
         }
         
         // Create a new endpoint

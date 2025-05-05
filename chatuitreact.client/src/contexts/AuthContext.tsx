@@ -7,6 +7,8 @@ interface AuthContextType {
   isAuthenticated: boolean;
   isInitializing: boolean;
   account: AccountInfo | null;
+  roles: string[];
+  isAdmin: boolean;
   login: () => void;
   logout: () => void;
   getAccessToken: () => Promise<string | null>;
@@ -25,12 +27,14 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const [isAuthenticated, setIsAuthenticated] = useState<boolean>(false);
   const [isInitializing, setIsInitializing] = useState<boolean>(true);
   const [account, setAccount] = useState<AccountInfo | null>(null);
+  const [roles, setRoles] = useState<string[]>([]);
+  const [isAdmin, setIsAdmin] = useState<boolean>(false);
 
   useEffect(() => {
     const initializeAuth = async () => {
       try {
         // Handle redirect from Microsoft login
-          const result = await authService.initialize();
+        const result = await authService.initialize();
         
         // Check if we have a user account
         const currentAccount = authService.getAccount();
@@ -38,6 +42,29 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         if (currentAccount) {
           setAccount(currentAccount);
           setIsAuthenticated(true);
+          
+          // Extract roles from the account claims
+          const userRoles: string[] = [];
+          
+          // In Azure AD, roles are present in the idTokenClaims
+          if (currentAccount.idTokenClaims && 
+              currentAccount.idTokenClaims.roles && 
+              Array.isArray(currentAccount.idTokenClaims.roles)) {
+            userRoles.push(...currentAccount.idTokenClaims.roles);
+          }
+          
+          setRoles(userRoles);
+          
+          // Check if the user has admin role
+          const hasAdminRole = userRoles.some(role => 
+            role.toLowerCase() === 'admin' || 
+            role.toLowerCase() === 'administrator'
+          );
+          
+          setIsAdmin(hasAdminRole);
+          
+          // For development testing, you can uncomment this to always be admin
+          // setIsAdmin(true);
         }
       } catch (error) {
         console.error('Authentication initialization error:', error);
@@ -54,6 +81,8 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     isAuthenticated,
     isInitializing,
     account,
+    roles,
+    isAdmin,
     login: () => authService.login(),
     logout: () => authService.logout(),
     getAccessToken: () => authService.getAccessToken(),
@@ -74,4 +103,3 @@ export const useAuth = (): AuthContextType => {
   }
   return context;
 };
-

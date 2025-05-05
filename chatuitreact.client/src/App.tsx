@@ -1,11 +1,36 @@
 import React from 'react';
-import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
+import { BrowserRouter, Routes, Route, Navigate, Outlet } from 'react-router-dom';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 import MainLayout from './components/layout/MainLayout';
 import Weather from './pages/Weather';
 import Test from './pages/TestPage';
 import Profile from './pages/Profile';
+import Admin from './pages/Admin';
 import './App.css';
+
+// Protected route component that requires admin role
+const AdminRoute = () => {
+  const { isAuthenticated, isAdmin, isInitializing } = useAuth();
+  
+  if (isInitializing) {
+    return <div className="loading-container">Loading...</div>;
+  }
+  
+  if (!isAuthenticated) {
+    return <Navigate to="/" replace />;
+  }
+  
+  if (!isAdmin) {
+    return (
+      <div className="unauthorized-content">
+        <h2>Access Denied</h2>
+        <p>You do not have permission to access this page.</p>
+      </div>
+    );
+  }
+  
+  return <Outlet />;
+};
 
 // Home content component
 const Home = () => {
@@ -46,6 +71,11 @@ const App: React.FC = () => {
             <Route path="/weather" element={<Weather />} />
             <Route path="/test" element={<Test />} />
             <Route path="/profile" element={<Profile />} />
+            
+            {/* Admin routes - protected by admin role */}
+            <Route path="/admin" element={<AdminRoute />}>
+              <Route index element={<Admin />} />
+            </Route>
             
             {/* Catch all other routes and redirect to home */}
             <Route path="*" element={<Navigate to="/" replace />} />
