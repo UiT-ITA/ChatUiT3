@@ -37,31 +37,18 @@ namespace ChatUitReact.Server.Models.Storage
         public long Size { get; set; } = 0;
         public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
         public string ProcessedText { get; set; } = string.Empty;  // For searchable files
-        
-        // Store content directly in the metadata document for small files
-        // or in separate file content document for larger files
-        public string Content { get; set; } = string.Empty;  // Text or base64 for images
-        public bool HasSeparateContent { get; set; } = false;  // If true, content is in FileContent collection
     }
 
-    // Database model for content chunks (text/images)
+    // Database model for file chunks (text/images)
     public class DbFileChunk
     {
         public string Id { get; set; } = Guid.NewGuid().ToString();
-        public string FileId { get; set; } = string.Empty;
+        public string FileId { get; set; } = string.Empty;  // Reference to the parent file
         public string Username { get; set; } = string.Empty;  // For sharding
         public ChunkType Type { get; set; } = ChunkType.Text;
         public string Content { get; set; } = string.Empty;  // Text or base64 for images
-        public int Order { get; set; }
-    }
-
-    // Database model for larger file content
-    public class DbFileContent
-    {
-        public string Id { get; set; } = Guid.NewGuid().ToString();
-        public string FileId { get; set; } = string.Empty;
-        public string Username { get; set; } = string.Empty;  // For sharding
-        public string Content { get; set; } = string.Empty;  // Text or base64 for entire file
+        public int ParentChunkIndex { get; set; }  // Index of the original logical chunk
+        public int Order { get; set; }  // Order within split chunks
     }
 
     // Database model for assistants

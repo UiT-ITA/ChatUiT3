@@ -12,19 +12,16 @@ namespace ChatUitReact.Server.Models
         public long Size { get; set; } = 0;
         public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
         
-        // Text or base64 content - all files stored as strings
-        public string Content { get; set; } = string.Empty;
-        
-        // The extracted content chunks (text paragraphs, images, etc.)
+        // The file content is represented as chunks of text or base64 for images
         public List<FileContentChunk> ContentChunks { get; set; } = new List<FileContentChunk>();
     }
 
     public class FileContentChunk
     {
-        public string Id { get; set; } = Guid.NewGuid().ToString();
+        // No Id needed for in-memory model - the list maintains the chunks
         public ChunkType Type { get; set; } = ChunkType.Text;
         public string Content { get; set; } = string.Empty;  // Text or base64 for images
-        public int Order { get; set; }  // Position in the document
+        // Order is implied by the list order - no need for Order property
     }
 
     public enum ChunkType

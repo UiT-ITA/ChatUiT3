@@ -23,7 +23,6 @@ namespace ChatUitReact.Server.Services
         private readonly IMongoCollection<DbChatMessage> _messageCollection;
         private readonly IMongoCollection<DbFileMetadata> _fileMetadataCollection;
         private readonly IMongoCollection<DbFileChunk> _fileChunkCollection;
-        private readonly IMongoCollection<DbFileContent> _fileContentCollection;
 
         // Config Database Collections
         private readonly IMongoCollection<DbModel> _modelCollection;
@@ -50,7 +49,6 @@ namespace ChatUitReact.Server.Services
             _messageCollection = _userDatabase.GetCollection<DbChatMessage>("Messages");
             _fileMetadataCollection = _userDatabase.GetCollection<DbFileMetadata>("Files");
             _fileChunkCollection = _userDatabase.GetCollection<DbFileChunk>("FileChunks");
-            _fileContentCollection = _userDatabase.GetCollection<DbFileContent>("FileContents");
 
             // Initialize config database collections
             _modelCollection = _configDatabase.GetCollection<DbModel>("Models");
@@ -350,7 +348,6 @@ namespace ChatUitReact.Server.Services
                 ContentType = dbFile.ContentType,
                 Size = dbFile.Size,
                 CreatedAt = dbFile.CreatedAt,
-                Content = dbFile.Content,  // Set content directly from metadata
                 ContentChunks = contentChunks ?? new List<FileContentChunk>()
             };
             
@@ -367,16 +364,13 @@ namespace ChatUitReact.Server.Services
                 ContentType = file.ContentType,
                 Size = file.Size,
                 CreatedAt = file.CreatedAt,
-                ProcessedText = string.Empty,
-                // Default to storing in the metadata, will set HasSeparateContent if needed
-                Content = file.Content,
-                HasSeparateContent = false
+                ProcessedText = string.Empty
             };
             
             return dbFile;
         }
         
-        // Get file content chunks
+        // Get file content chunks - properly merging split chunks
         private async Task<List<FileContentChunk>> GetFileContentChunksAsync(string fileId, string username)
         {
             var filter = Builders<DbFileChunk>.Filter.And(
@@ -384,67 +378,49 @@ namespace ChatUitReact.Server.Services
                 Builders<DbFileChunk>.Filter.Eq(c => c.Username, username)
             );
             
+            // Get all chunks ordered first by ParentChunkIndex, then by Order
             var dbChunks = await _fileChunkCollection
                 .Find(filter)
-                .SortBy(c => c.Order)
+                .SortBy(c => c.ParentChunkIndex)
+                .ThenBy(c => c.Order)
                 .ToListAsync();
             
-            var contentChunks = dbChunks.Select(c => new FileContentChunk
+            // Group chunks by ParentChunkIndex to reassemble split chunks
+            var groupedChunks = dbChunks.GroupBy(c => c.ParentChunkIndex);
+            var contentChunks = new List<FileContentChunk>();
+            
+            foreach (var group in groupedChunks)
             {
-                Id = c.Id,
-                Type = c.Type,
-                Content = c.Content,
-                Order = c.Order
-            }).ToList();
+                // Get chunk type from first chunk (all chunks in group have same type)
+                var chunkType = group.First().Type;
+                
+                // Merge content from all chunks in the group
+                var fullContent = string.Concat(group.OrderBy(c => c.Order).Select(c => c.Content));
+                
+                // Add as a single logical chunk to in-memory model
+                contentChunks.Add(new FileContentChunk
+                {
+                    Type = chunkType,
+                    Content = fullContent
+                });
+            }
             
             return contentChunks;
         }
 
-        // Upload a file
-        public async Task<AiFile> UploadFileAsync(Stream fileStream, string fileName, string contentType, string username)
+        // Save a file, handling large chunks as needed
+        public async Task<AiFile> SaveFileAsync(AiFile file, string username)
         {
-            // Create a new AiFile object
-            var aiFile = new AiFile
-            {
-                FileName = fileName,
-                ContentType = contentType,
-                Size = fileStream.Length,
-                CreatedAt = DateTime.UtcNow
-            };
-            
-            // Read the file content as string (base64 for images)
-            using var memoryStream = new MemoryStream();
-            await fileStream.CopyToAsync(memoryStream);
-            byte[] bytes = memoryStream.ToArray();
-            aiFile.Content = Convert.ToBase64String(bytes);
-            
             // Convert to database model
-            var dbFileMetadata = ConvertToDbFileMetadata(aiFile, username);
-            
-            // Check if file content is too large for a single document (e.g., > 10MB)
-            const int maxInlineSize = 10 * 1024 * 1024; // 10MB
-            bool isLargeFile = fileStream.Length > maxInlineSize;
-            
-            if (isLargeFile)
-            {
-                // For large files, store content separately
-                dbFileMetadata.HasSeparateContent = true;
-                dbFileMetadata.Content = string.Empty; // Clear content from metadata
-                
-                var fileContent = new DbFileContent
-                {
-                    FileId = dbFileMetadata.Id,
-                    Username = username,
-                    Content = aiFile.Content // Store the base64 content
-                };
-                
-                await _fileContentCollection.InsertOneAsync(fileContent);
-            }
+            var dbFileMetadata = ConvertToDbFileMetadata(file, username);
             
             // Save file metadata
             await _fileMetadataCollection.InsertOneAsync(dbFileMetadata);
             
-            return aiFile;
+            // Save all chunks, letting SaveFileContentChunksAsync handle splitting large chunks
+            await SaveFileContentChunksAsync(file.Id, username, file.ContentChunks);
+            
+            return file;
         }
         
         // Get file metadata
@@ -456,32 +432,22 @@ namespace ChatUitReact.Server.Services
                 Builders<DbFileMetadata>.Filter.Eq(f => f.Username, username)
             );
             
+            
             var dbFile = await _fileMetadataCollection.Find(filter).FirstOrDefaultAsync();
             if (dbFile == null) return null;
             
-            // Get content chunks
-            var contentChunks = await GetFileContentChunksAsync(fileId, username);
-            var aiFile = ConvertToAiFile(dbFile, contentChunks);
-            
-            // Load content if requested and not already in metadata
-            if (includeContent && dbFile.HasSeparateContent)
+            // Get content chunks if requested
+            List<FileContentChunk> contentChunks = null;
+            if (includeContent)
             {
-                var contentFilter = Builders<DbFileContent>.Filter.And(
-                    Builders<DbFileContent>.Filter.Eq(c => c.FileId, fileId),
-                    Builders<DbFileContent>.Filter.Eq(c => c.Username, username)
-                );
-                
-                var fileContent = await _fileContentCollection.Find(contentFilter).FirstOrDefaultAsync();
-                if (fileContent != null)
-                {
-                    aiFile.Content = fileContent.Content;
-                }
+                contentChunks = await GetFileContentChunksAsync(fileId, username);
             }
             
+            var aiFile = ConvertToAiFile(dbFile, contentChunks);
             return aiFile;
         }
 
-        // Save file content chunks
+        // Save file content chunks - splitting large chunks as needed
         public async Task SaveFileContentChunksAsync(string fileId, string username, List<FileContentChunk> contentChunks)
         {
             // Delete existing chunks first
@@ -492,54 +458,74 @@ namespace ChatUitReact.Server.Services
             
             await _fileChunkCollection.DeleteManyAsync(deleteFilter);
             
-            // Save new chunks
-            foreach (var chunk in contentChunks)
+            const int maxChunkSize = 1024 * 1024; // 1MB
+            
+            // Save new chunks, splitting large ones if needed
+            for (int parentChunkIndex = 0; parentChunkIndex < contentChunks.Count; parentChunkIndex++)
             {
-                var dbChunk = new DbFileChunk
-                {
-                    FileId = fileId,
-                    Username = username,
-                    Type = chunk.Type,
-                    Content = chunk.Content,
-                    Order = chunk.Order
-                };
+                var chunk = contentChunks[parentChunkIndex];
                 
-                await _fileChunkCollection.InsertOneAsync(dbChunk);
+                // Check if this individual chunk is too large for a single database chunk
+                if (chunk.Content.Length > maxChunkSize)
+                {
+                    // Split this large chunk into multiple database chunks
+                    int subChunksCount = (int)Math.Ceiling((double)chunk.Content.Length / maxChunkSize);
+                    
+                    for (int subChunkIndex = 0; subChunkIndex < subChunksCount; subChunkIndex++)
+                    {
+                        int startIndex = subChunkIndex * maxChunkSize;
+                        int length = Math.Min(maxChunkSize, chunk.Content.Length - startIndex);
+                        string chunkContent = chunk.Content.Substring(startIndex, length);
+                        
+                        var dbChunk = new DbFileChunk
+                        {
+                            FileId = fileId,
+                            Username = username,
+                            Type = chunk.Type,
+                            Content = chunkContent,
+                            ParentChunkIndex = parentChunkIndex,  // To identify which logical chunk this is part of
+                            Order = subChunkIndex  // To maintain order within split chunks
+                        };
+                        
+                        await _fileChunkCollection.InsertOneAsync(dbChunk);
+                    }
+                }
+                else
+                {
+                    // This chunk is small enough to save as-is
+                    var dbChunk = new DbFileChunk
+                    {
+                        FileId = fileId,
+                        Username = username,
+                        Type = chunk.Type,
+                        Content = chunk.Content,
+                        ParentChunkIndex = parentChunkIndex,
+                        Order = 0  // Only one chunk, so order is 0
+                    };
+                    
+                    await _fileChunkCollection.InsertOneAsync(dbChunk);
+                }
             }
         }
 
         // Delete a file and all associated data
         public async Task DeleteFileAsync(string fileId, string username)
         {
-            // Get file metadata first to check if it has separate content
-            var metadataFilter = Builders<DbFileMetadata>.Filter.And(
-                Builders<DbFileMetadata>.Filter.Eq(f => f.Id, fileId),
-                Builders<DbFileMetadata>.Filter.Eq(f => f.Username, username)
-            );
-            
-            var fileMetadata = await _fileMetadataCollection.Find(metadataFilter).FirstOrDefaultAsync();
-            
-            if (fileMetadata != null && fileMetadata.HasSeparateContent)
-            {
-                // Delete separate content if exists
-                var contentFilter = Builders<DbFileContent>.Filter.And(
-                    Builders<DbFileContent>.Filter.Eq(c => c.FileId, fileId),
-                    Builders<DbFileContent>.Filter.Eq(c => c.Username, username)
-                );
-                
-                await _fileContentCollection.DeleteManyAsync(contentFilter);
-            }
-            
-            // Delete content chunks
-            var contentChunksFilter = Builders<DbFileChunk>.Filter.And(
+            // Delete all content chunks
+            var chunksFilter = Builders<DbFileChunk>.Filter.And(
                 Builders<DbFileChunk>.Filter.Eq(c => c.FileId, fileId),
                 Builders<DbFileChunk>.Filter.Eq(c => c.Username, username)
             );
             
-            await _fileChunkCollection.DeleteManyAsync(contentChunksFilter);
+            await _fileChunkCollection.DeleteManyAsync(chunksFilter);
             
             // Delete file metadata
-            await _fileMetadataCollection.DeleteOneAsync(metadataFilter);
+            var fileFilter = Builders<DbFileMetadata>.Filter.And(
+                Builders<DbFileMetadata>.Filter.Eq(f => f.Id, fileId),
+                Builders<DbFileMetadata>.Filter.Eq(f => f.Username, username)
+            );
+            
+            await _fileMetadataCollection.DeleteOneAsync(fileFilter);
         }
         
         // Attach a file to a chat
@@ -851,7 +837,7 @@ namespace ChatUitReact.Server.Services
             {
                 Id = endpoint.Id,
                 Url = endpoint.Url,
-                ApiKey = endpoint.ApiKey  // In a real app, this should be encrypted
+                ApiKey = endpoint.ApiKey
             };
         }
         
