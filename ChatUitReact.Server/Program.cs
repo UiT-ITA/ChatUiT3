@@ -64,6 +64,8 @@ builder.Services.AddSignalR();
 // Register services
 builder.Services.AddScoped<UserService>();
 
+builder.Services.AddSingleton<DatabaseService>();
+
 var app = builder.Build();
 
 app.UseDefaultFiles();
