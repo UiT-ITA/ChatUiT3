@@ -44,10 +44,7 @@ builder.Services.AddAuthorization(options =>
 builder.Services.AddControllers();
 builder.Services.AddOpenApi();
 
-// IMPORTANT: Configure SignalR properly
-builder.Services.AddSignalR(hubOptions => {
-    hubOptions.EnableDetailedErrors = true; // Enable detailed errors for debugging
-});
+builder.Services.AddSignalR();
 
 // Register services
 builder.Services.AddSingleton<DatabaseService>();
@@ -77,6 +74,7 @@ app.UseAuthorization();
 
 app.MapControllers();
 app.MapHub<ChatHub>("/chatHub");
+app.MapHub<TestHub>("/testHub");
 app.MapFallbackToFile("/index.html");
 
 app.Run();
