@@ -62,9 +62,9 @@ builder.Services.AddOpenApi();
 builder.Services.AddSignalR();
 
 // Register services
-builder.Services.AddSingleton<DatabaseService>();
 builder.Services.AddScoped<UserService>();
-builder.Services.AddScoped<ChatNotificationService>();
+
+builder.Services.AddSingleton<DatabaseService>();
 
 var app = builder.Build();
 
