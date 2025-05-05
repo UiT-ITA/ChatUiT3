@@ -50,7 +50,21 @@ export default defineConfig({
             '^/api': {
                 target,
                 secure: false
-            }
+            },
+            '^/testHub': {
+                target,
+                secure: false,
+                ws: true,
+                changeOrigin: true,
+                rewrite: (path) => path
+            },
+            '^/testAuthHub': {
+                target,
+                secure: false,
+                ws: true,
+                changeOrigin: true,
+                rewrite: (path) => path
+            },
         },
         port: 54979,
         https: {

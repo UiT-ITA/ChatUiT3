@@ -10,7 +10,7 @@ public class ApiKeyAuthenticationOptions : AuthenticationSchemeOptions
     public const string DefaultScheme = "ApiKey";
     public string HeaderName { get; set; } = "X-Api-Key";
     public string[] ValidKeys { get; set; } = Array.Empty<string>();
-    public TimeProvider TimeProvider { get; set; } = TimeProvider.System;
+    //public TimeProvider TimeProvider { get; set; } = TimeProvider.System;
 }
 
 public class ApiKeyAuthenticationHandler : AuthenticationHandler<ApiKeyAuthenticationOptions>

@@ -6,11 +6,11 @@ using Microsoft.IdentityModel.Logging;
 
 var builder = WebApplication.CreateBuilder(args);
 
-// Enable PII visibility in development for better debugging
 if (builder.Environment.IsDevelopment())
 {
     IdentityModelEventSource.ShowPII = true;
 }
+
 
 // CORS
 builder.Services.AddCors(options =>
@@ -27,19 +27,34 @@ builder.Services.AddCors(options =>
     });
 });
 
-// Simple authentication setup for Microsoft Entra ID (Azure AD) only
+// Authentication and Authorization
+builder.Services.AddAuthorization();
 builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
     .AddMicrosoftIdentityWebApi(builder.Configuration.GetSection("AzureAd"));
 
-// Add authorization with DefaultAuth policy
-builder.Services.AddAuthorization(options =>
+builder.Services.Configure<JwtBearerOptions>(JwtBearerDefaults.AuthenticationScheme, options =>
 {
-    options.AddPolicy("DefaultAuth", policy =>
+    // Store the token for WebSockets to use after the initial HTTP handshake
+    options.Events = new JwtBearerEvents
     {
-        policy.RequireAuthenticatedUser();
-        policy.AddAuthenticationSchemes(JwtBearerDefaults.AuthenticationScheme);
-    });
+        OnMessageReceived = context =>
+        {
+            // Extract token from the query string for SignalR
+            var accessToken = context.Request.Query["access_token"];
+
+            // If the request is for a hub...
+            var path = context.HttpContext.Request.Path;
+            if (!string.IsNullOrEmpty(accessToken) &&
+                (path.StartsWithSegments("/testHub") || path.StartsWithSegments("/testAuthHub") || path.StartsWithSegments("/chatHub")))
+            {
+                // Set the token for authentication
+                context.Token = accessToken;
+            }
+            return Task.CompletedTask;
+        }
+    };
 });
+
 
 builder.Services.AddControllers();
 builder.Services.AddOpenApi();
@@ -67,7 +82,7 @@ if (app.Environment.IsDevelopment())
     app.UseCors("AllowReactApp");
 }
 
-app.UseRouting();
+//app.UseRouting();
 app.UseHttpsRedirection();
 app.UseAuthentication();
 app.UseAuthorization();
@@ -75,6 +90,7 @@ app.UseAuthorization();
 app.MapControllers();
 app.MapHub<ChatHub>("/chatHub");
 app.MapHub<TestHub>("/testHub");
+app.MapHub<TestAuthHub>("/testAuthHub");
 app.MapFallbackToFile("/index.html");
 
 app.Run();

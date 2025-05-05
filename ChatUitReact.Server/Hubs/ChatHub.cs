@@ -1,11 +1,16 @@
 using Microsoft.AspNetCore.SignalR;
 using System.Threading.Tasks;
 using ChatUitReact.Server.Services;
+using Microsoft.AspNetCore.Authorization;
+
+public interface IChatHubClient
+{
+    
+}
 
 namespace ChatUitReact.Server.Hubs
 {
-    // Allow anonymous connections for development
-    // [Authorize]  // Comment out for now to test basic connectivity
+    [Authorize]
     public class ChatHub : Hub
     {
         private readonly UserService _userService;
@@ -26,7 +31,7 @@ namespace ChatUitReact.Server.Hubs
 
                 try
                 {
-                    if (Context.User.Identity?.IsAuthenticated == true)
+                    if (Context.User?.Identity?.IsAuthenticated == true)
                     {
                         userId = _userService.GetCurrentUserId(Context.User);
                     }
@@ -51,13 +56,13 @@ namespace ChatUitReact.Server.Hubs
             }
         }
 
-        public override async Task OnDisconnectedAsync(Exception exception)
+        public override async Task OnDisconnectedAsync(Exception? exception)
         {
             string userId = "anonymous";
 
             try
             {
-                if (Context.User.Identity?.IsAuthenticated == true)
+                if (Context.User?.Identity?.IsAuthenticated == true)
                 {
                     userId = _userService.GetCurrentUserId(Context.User);
                 }
@@ -73,13 +78,6 @@ namespace ChatUitReact.Server.Hubs
             // Remove from user-specific group
             await Groups.RemoveFromGroupAsync(Context.ConnectionId, userId);
             await base.OnDisconnectedAsync(exception);
-        }
-
-        // Test method to verify hub connectivity
-        public async Task<string> Echo(string message)
-        {
-            _logger.LogInformation("Echo method called with: {Message}", message);
-            return $"Server received: {message}";
         }
     }
 }

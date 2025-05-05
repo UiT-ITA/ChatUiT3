@@ -1,227 +1,305 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback, useRef } from 'react';
+import { HubConnectionBuilder, LogLevel, HubConnection } from '@microsoft/signalr';
 import { useAuth } from '../contexts/AuthContext';
 
-interface ChatSummary {
-  id: string;
-  name: string;
-}
-
-interface ChatDetail {
-  id: string;
-  name: string;
-  // add other properties as needed for the detailed view
-}
-
-interface ChatCreate {
-  name: string;
-}
+type HubType = 'public' | 'authenticated';
 
 function TestPage() {
-  const [chats, setChats] = useState<ChatSummary[]>([]);
-  const [selectedChat, setSelectedChat] = useState<ChatDetail | null>(null);
-  const [newChatName, setNewChatName] = useState('');
-  const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-  const { isAuthenticated, getAccessToken } = useAuth();
+    const [messages, setMessages] = useState<string[]>([]);
+    const [status, setStatus] = useState("Disconnected");
+    const [error, setError] = useState<string | null>(null);
+    const [message, setMessage] = useState("");
+    const [activeHub, setActiveHub] = useState<HubType>('public');
+    const { getAccessToken, isAuthenticated } = useAuth();
 
-  useEffect(() => {
-    if (isAuthenticated) {
-      fetchChats();
-    }
-  }, [isAuthenticated]);
+    // Use ref to store the connection to prevent issues with stale closures
+    const connectionRef = useRef<HubConnection | null>(null);
 
-  async function fetchChats() {
-    try {
-      setIsLoading(true);
-      const token = await getAccessToken();
+    // Add a flag to track if a connection is already active
+    const isConnectingRef = useRef<boolean>(false);
 
-      if (!token) {
-        setError('No access token available. Please log in again.');
-        return;
-      }
+    // Track if handlers have been registered to avoid duplicates
+    const handlersRegisteredRef = useRef<boolean>(false);
 
-      const response = await fetch('/api/chats', {
-        headers: {
-          'Authorization': `Bearer ${token}`
+    // Connect to the selected hub
+    const connectToHub = useCallback(async (hubType: HubType) => {
+        // Prevent multiple concurrent connection attempts
+        if (isConnectingRef.current) {
+            setError("Connection attempt already in progress");
+            return;
         }
-      });
 
-      if (response.ok) {
-        const data = await response.json() as ChatSummary[];
-        setChats(data);
-        setError(null);
-      } else {
-        setError(`Failed to fetch chats: ${response.status} ${response.statusText}`);
-        console.error("API request failed:", response.status, response.statusText);
-      }
-    } catch (error) {
-      setError(`Error fetching chats: ${error instanceof Error ? error.message : 'Unknown error'}`);
-      console.error('Error fetching chats:', error);
-    } finally {
-      setIsLoading(false);
-    }
-  }
+        isConnectingRef.current = true;
 
-  async function fetchLastChatDetail() {
-    if (chats.length === 0) {
-      setError('No chat available.');
-      return;
-    }
-
-    const lastChat = chats[chats.length - 1];
-
-    try {
-      const token = await getAccessToken();
-
-      if (!token) {
-        setError('No access token available. Please log in again.');
-        return;
-      }
-
-      const response = await fetch(`/api/chats/${lastChat.id}`, {
-        headers: {
-          'Authorization': `Bearer ${token}`
+        // Properly disconnect existing connection
+        if (connectionRef.current) {
+            try {
+                // Remove event listeners BEFORE stopping the connection
+                if (handlersRegisteredRef.current) {
+                    connectionRef.current.off("ReceiveMessage");
+                    handlersRegisteredRef.current = false;
+                }
+                await connectionRef.current.stop();
+                connectionRef.current = null;
+            } catch (err) {
+                setError("Error disconnecting from hub");
+            }
         }
-      });
 
-      if (response.ok) {
-        const data = await response.json() as ChatDetail;
-        setSelectedChat(data);
+        setStatus("Connecting...");
         setError(null);
-      } else if (response.status === 404) {
-        setSelectedChat(null);
-        setError('Chat not found.');
-      } else {
-        setError(`Failed to fetch chat: ${response.status} ${response.statusText}`);
-        console.error("API request failed:", response.status, response.statusText);
-      }
-    } catch (error) {
-      setError(`Error fetching chat: ${error instanceof Error ? error.message : 'Unknown error'}`);
-      console.error('Error fetching chat:', error);
-    }
-  }
 
-  async function createChat() {
-    try {
-      const token = await getAccessToken();
+        try {
+            let newConnection;
 
-      if (!token) {
-        setError('No access token available. Please log in again.');
-        return;
-      }
+            if (hubType === 'authenticated') {
+                const token = await getAccessToken();
 
-      const chatCreate: ChatCreate = { name: newChatName };
-      const response = await fetch('/api/chats', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
-        },
-        body: JSON.stringify(chatCreate)
-      });
+                if (!token) {
+                    setError("Authentication required to connect to authenticated hub");
+                    setStatus("Disconnected");
+                    isConnectingRef.current = false;
+                    return;
+                }
 
-      if (response.ok || response.status === 201) {
-        const data = await response.json() as ChatDetail;
-        setChats(prev => [...prev, { id: data.id, name: data.name }]);
-        setSelectedChat(data);
-        setNewChatName('');
-        setError(null);
-      } else {
-        setError(`Failed to create chat: ${response.status} ${response.statusText}`);
-        console.error("API request failed:", response.status, response.statusText);
-      }
-    } catch (error) {
-      setError(`Error creating chat: ${error instanceof Error ? error.message : 'Unknown error'}`);
-      console.error('Error creating chat:', error);
-    }
-  }
+                newConnection = new HubConnectionBuilder()
+                    .withUrl('/testAuthHub', {
+                        accessTokenFactory: () => token
+                    })
+                    .configureLogging(LogLevel.Error)
+                    .withAutomaticReconnect({
+                        nextRetryDelayInMilliseconds: retryContext => {
+                            if (retryContext.previousRetryCount === 0) {
+                                return 0; // First retry immediately
+                            }
+                            const delay = Math.min(1000 * Math.pow(2, retryContext.previousRetryCount), 30000);
+                            return delay;
+                        }
+                    })
+                    .build();
+            } else {
+                newConnection = new HubConnectionBuilder()
+                    .withUrl('/testHub')
+                    .configureLogging(LogLevel.Error)
+                    .withAutomaticReconnect()
+                    .build();
+            }
 
-  async function deleteChat(chatId: string) {
-    try {
-      const token = await getAccessToken();
+            // Set up message handler - make sure it's only added once
+            if (!handlersRegisteredRef.current) {
+                newConnection.on('ReceiveMessage', (message) => {
+                    setMessages(prev => [...prev, message]);
+                });
+                handlersRegisteredRef.current = true;
+            }
 
-      if (!token) {
-        setError('No access token available. Please log in again.');
-        return;
-      }
+            // Set up reconnection handlers
+            newConnection.onreconnecting(error => {
+                setStatus("Reconnecting...");
+                setError(`Connection lost. Reconnecting: ${error ? error.message : 'Unknown error'}`);
+            });
 
-      const response = await fetch(`/api/chats/${chatId}`, {
-        method: 'DELETE',
-        headers: {
-          'Authorization': `Bearer ${token}`
+            newConnection.onreconnected(connectionId => {
+                setStatus("Connected");
+                setError(null);
+                setMessages(prev => [...prev, `Reconnected with ID: ${connectionId}`]);
+            });
+
+            newConnection.onclose(error => {
+                setStatus("Disconnected");
+                if (error) {
+                    setError(`Connection closed with error: ${error.message}`);
+                }
+            });
+
+            // Start the connection
+            await newConnection.start();
+            connectionRef.current = newConnection;
+            setStatus("Connected");
+            setActiveHub(hubType);
+            setMessages([`Connected to ${hubType} hub`]); // Clear messages and add connection info
+
+        } catch (err) {
+            setStatus("Disconnected");
+            setError(`Connection failed: ${err instanceof Error ? err.message : String(err)}`);
+        } finally {
+            isConnectingRef.current = false;
         }
-      });
+    }, [getAccessToken]);
 
-      if (response.status === 204) {
-        setChats(prev => prev.filter(chat => chat.id !== chatId));
-        if (selectedChat && selectedChat.id === chatId) {
-          setSelectedChat(null);
+    // Initial connection on component mount - use a proper boolean ref to ensure it only runs once
+    const mountedRef = useRef(false);
+
+    useEffect(() => {
+        // Only run once on mount, not on every render
+        if (!mountedRef.current) {
+            mountedRef.current = true;
+            connectToHub('public');
         }
-        setError(null);
-      } else {
-        setError(`Failed to delete chat: ${response.status} ${response.statusText}`);
-        console.error("API request failed:", response.status, response.statusText);
-      }
-    } catch (error) {
-      setError(`Error deleting chat: ${error instanceof Error ? error.message : 'Unknown error'}`);
-      console.error('Error deleting chat:', error);
-    }
-  }
 
-  return (
-    <div className="test-page">
-      <h1>Chat List</h1>
+        // Cleanup on unmount
+        return () => {
+            const connection = connectionRef.current;
+            if (connection) {
+                try {
+                    // First remove event listeners, then stop the connection
+                    connection.off("ReceiveMessage");
+                    handlersRegisteredRef.current = false;
+                    connection.stop();
+                } catch (err) {
+                    // Silently handle error on unmount
+                }
+            }
+        };
+    }, [connectToHub]);
 
-      {isLoading && <p>Loading chats...</p>}
-      {error && <p className="error">{error}</p>}
+    // Send a message
+    const sendMessage = async () => {
+        if (!message.trim()) return;
 
-      {!isLoading && !error && (
-        <div>
-          {chats.length === 0 ? (
-            <p>No chats found.</p>
-          ) : (
-            <ul>
-              {chats.map(chat => (
-                <li key={chat.id}>
-                  {chat.name}
-                  <button onClick={() => deleteChat(chat.id)}>Delete</button>
-                </li>
-              ))}
-            </ul>
-          )}
+        try {
+            setError(null);
+            const token = await getAccessToken();
+
+            if (!token) {
+                setError("Authentication required to send messages");
+                return;
+            }
+
+            // Use different endpoints depending on hub type
+            const endpoint = activeHub === 'authenticated' ? '/api/test/testAuth' : '/api/test/test';
+
+            const response = await fetch(endpoint, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${token}`
+                },
+                body: JSON.stringify(message)
+            });
+
+            if (!response.ok) {
+                throw new Error(`HTTP error: ${response.status}`);
+            }
+
+            setMessage("");
+        } catch (err) {
+            setError(`Failed to send message: ${err instanceof Error ? err.message : String(err)}`);
+        }
+    };
+
+    return (
+        <div style={{ padding: '20px', maxWidth: '600px', margin: '0 auto', textAlign: 'center' }}>
+            <h2>SignalR Hub Test</h2>
+
+            <div style={{ marginBottom: '20px' }}>
+                <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '20px' }}>
+                    <button
+                        onClick={() => connectToHub('public')}
+                        style={{
+                            padding: '8px 16px',
+                            marginRight: '10px',
+                            backgroundColor: activeHub === 'public' ? '#4CAF50' : '#f0f0f0',
+                            color: activeHub === 'public' ? 'white' : 'black',
+                            border: '1px solid #ddd',
+                            borderRadius: '4px'
+                        }}
+                        disabled={isConnectingRef.current}
+                    >
+                        Public Hub
+                    </button>
+                    <button
+                        onClick={() => connectToHub('authenticated')}
+                        disabled={!isAuthenticated || isConnectingRef.current}
+                        style={{
+                            padding: '8px 16px',
+                            backgroundColor: activeHub === 'authenticated' ? '#4CAF50' : '#f0f0f0',
+                            color: activeHub === 'authenticated' ? 'white' : 'black',
+                            border: '1px solid #ddd',
+                            borderRadius: '4px',
+                            opacity: (!isAuthenticated || isConnectingRef.current) ? 0.5 : 1,
+                            cursor: (!isAuthenticated || isConnectingRef.current) ? 'not-allowed' : 'pointer'
+                        }}
+                    >
+                        Authenticated Hub
+                    </button>
+                </div>
+
+                <div>
+                    <strong>Current Hub: </strong>
+                    <span style={{ fontWeight: 'bold' }}>
+                        {activeHub === 'public' ? 'Public' : 'Authenticated'}
+                    </span>
+                </div>
+
+                <div style={{ marginTop: '8px' }}>
+                    <strong>Status: </strong>
+                    <span style={{
+                        color: status === 'Connected' ? 'green' :
+                            status === 'Reconnecting...' ? 'orange' : 'red',
+                        fontWeight: 'bold'
+                    }}>
+                        {status}
+                    </span>
+                </div>
+
+                {error && <p style={{ color: 'red', margin: '10px 0' }}>{error}</p>}
+            </div>
+
+            <div style={{ marginBottom: '20px' }}>
+                <input
+                    type="text"
+                    value={message}
+                    onChange={(e) => setMessage(e.target.value)}
+                    placeholder="Type a message..."
+                    style={{ padding: '8px', width: '70%', marginRight: '10px' }}
+                    onKeyDown={(e) => e.key === 'Enter' && sendMessage()}
+                />
+                <button
+                    onClick={sendMessage}
+                    disabled={!isAuthenticated || status !== 'Connected'}
+                    style={{ padding: '8px 16px' }}
+                >
+                    Send
+                </button>
+            </div>
+
+            {!isAuthenticated && (
+                <div style={{ marginBottom: '20px', color: 'orange' }}>
+                    <strong>Note:</strong> You need to be logged in to send messages and use the authenticated hub.
+                </div>
+            )}
+
+            <div>
+                <h3>Messages:</h3>
+                <div style={{
+                    border: '1px solid #ddd',
+                    borderRadius: '5px',
+                    padding: '10px',
+                    height: '300px',
+                    overflowY: 'auto',
+                    textAlign: 'left'
+                }}>
+                    {messages.length === 0 ? (
+                        <p style={{ color: '#999', textAlign: 'center' }}>No messages yet</p>
+                    ) : (
+                        <ul style={{ listStyleType: 'none', padding: 0 }}>
+                            {messages.map((msg, i) => (
+                                <li key={i} style={{
+                                    padding: '8px',
+                                    margin: '5px 0',
+                                    backgroundColor: '#f5f5f5',
+                                    borderRadius: '4px'
+                                }}>
+                                    {msg}
+                                </li>
+                            ))}
+                        </ul>
+                    )}
+                </div>
+            </div>
         </div>
-      )}
-
-      <hr />
-
-      <div>
-        <h2>Create a New Chat</h2>
-        <input
-          type="text"
-          placeholder="Chat name"
-          value={newChatName}
-          onChange={e => setNewChatName(e.target.value)}
-        />
-        <button onClick={createChat}>Create Chat</button>
-      </div>
-
-      <hr />
-
-      <div>
-        <h2>Get Last Chat Detail</h2>
-        <button onClick={fetchLastChatDetail} disabled={chats.length === 0}>
-          Fetch Last Chat Detail
-        </button>
-        {selectedChat && (
-          <div>
-            <h3>Chat Detail</h3>
-            <p>ID: {selectedChat.id}</p>
-            <p>Name: {selectedChat.name}</p>
-          </div>
-        )}
-      </div>
-    </div>
-  );
+    );
 }
 
 export default TestPage;
