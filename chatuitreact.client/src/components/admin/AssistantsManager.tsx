@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { adminService, AiAssistant } from '../../services/adminService';
 import authService from '../../services/authService';
-import { AiModel } from '../../types/aiModels';
+import { AiModel, AiModelType } from '../../types/aiModels';
 import './AdminComponents.css';
 
 const AssistantsManager: React.FC = () => {
@@ -20,7 +20,7 @@ const AssistantsManager: React.FC = () => {
       name: '',
       description: '',
       modelId: '',
-      modelType: 'OpenAI',
+      modelType: AiModelType.OpenAI,
       endpoint: { id: '', url: '', apiKey: '' },
       capabilities: {
         supportsVision: false,
@@ -133,7 +133,7 @@ const AssistantsManager: React.FC = () => {
         name: '',
         description: '',
         modelId: '',
-        modelType: 'OpenAI',
+        modelType: AiModelType.OpenAI,
         endpoint: { id: '', url: '', apiKey: '' },
         capabilities: {
           supportsVision: false,
@@ -200,7 +200,40 @@ const AssistantsManager: React.FC = () => {
       // Process assistant data for submission
       
       if (isEditing) {
-        await adminService.updateAssistant(assistantToSubmit.id, assistantToSubmit);
+        // For updating, we need to convert reasoningEffort to a number directly
+        // Create a custom request for the update
+        const updateRequestBody = {
+          id: assistantToSubmit.id,
+          name: assistantToSubmit.name,
+          description: assistantToSubmit.description,
+          systemPrompt: assistantToSubmit.systemPrompt,
+          modelId: assistantToSubmit.model.id,
+          modelSettings: {
+            temperature: assistantToSubmit.modelSettings.temperature,
+            maxTokens: assistantToSubmit.modelSettings.maxTokens,
+            topP: assistantToSubmit.modelSettings.topP,
+            frequencyPenalty: assistantToSubmit.modelSettings.frequencyPenalty,
+            presencePenalty: assistantToSubmit.modelSettings.presencePenalty,
+            reasoningEffort: parseInt(assistantToSubmit.modelSettings.reasoningEffort as string) // Convert to integer
+          },
+          toolIds: [],
+          sharedWithUserIds: assistantToSubmit.sharedWithUserIds,
+          preloadedDocumentIds: assistantToSubmit.preloadedDocumentIds
+        };
+        
+        const response = await fetch(`/api/admin/assistants/${assistantToSubmit.id}`, {
+          method: 'PUT',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${await authService.getAccessToken()}`
+          },
+          body: JSON.stringify(updateRequestBody)
+        });
+        
+        if (!response.ok) {
+          const errorText = await response.text();
+          throw new Error(`Server error: ${response.status} - ${errorText}`);
+        }
       } else {
         try {
           // Match C# property naming conventions (Pascal case)

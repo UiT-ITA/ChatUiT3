@@ -467,6 +467,8 @@ const toUpdateAssistantDto = (assistant: AiAssistant): UpdateAssistantDto => {
     reasoningEffort: 'None'
   };
   
+    // We'll create a new object to send to the backend, but keep the modelSettings as is
+  // in the frontend for type safety
   return {
     id: assistant.id,
     name: assistant.name,
