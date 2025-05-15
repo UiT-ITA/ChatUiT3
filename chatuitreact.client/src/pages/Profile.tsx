@@ -3,8 +3,7 @@ import { useAuth } from '../contexts/AuthContext';
 import './Profile.css';
 
 const Profile: React.FC = () => {
-  const { account, isAuthenticated, isAdmin, roles } = useAuth();
-  const [accessToken, setAccessToken] = useState<string | null>(null);
+  const { account, isAuthenticated, isAdmin, roles, getAccessToken } = useAuth();
   const [tokenClaims, setTokenClaims] = useState<Record<string, any>>({});
 
   // Function to parse a JWT token and extract claims
@@ -30,8 +29,7 @@ const Profile: React.FC = () => {
     const fetchToken = async () => {
       try {
         // Get the access token from auth service
-        const token = await useAuth().getAccessToken();
-        setAccessToken(token);
+        const token = await getAccessToken();
         
         // Parse the token to get claims
         if (token) {
@@ -46,7 +44,7 @@ const Profile: React.FC = () => {
     if (isAuthenticated) {
       fetchToken();
     }
-  }, [isAuthenticated]);
+  }, [isAuthenticated, getAccessToken]);
 
   if (!isAuthenticated) {
     return (

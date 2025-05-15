@@ -1,0 +1,129 @@
+.icon-button {
+    background: none;
+    border: none;
+    color: #797979;
+    cursor: pointer;
+    width: 32px;
+    height: 32px;
+    border-radius: 4px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0;
+    transition: background-color 0.2s;
+}
+
+    .icon-button:hover {
+        color: #175ddc;
+    }
+
+/* Sidebar styles */
+.sidebar {
+    background-color: #0a0a0a;
+    flex-shrink: 0;
+    transition: width 0.3s ease;
+    border-right: 1px solid #3b3b3f;
+    position: relative;
+    display: flex;
+    flex-direction: column;
+}
+
+    .sidebar.wide {
+        width: 200px;
+    }
+
+    .sidebar.narrow {
+        width: 48px;
+    }
+
+.sidebar-top {
+    height: 48px;
+    padding: 8px;
+    display: flex;
+    min-width: 100px;
+    overflow: hidden;
+    gap: 4px;
+}
+
+.sidebar.narrow .sidebar-top {
+    flex-direction: column;
+    justify-content: flex-start;
+    height: auto;
+}
+
+.sidebar-divider {
+    height: 1px;
+    background-color: #3b3b3f;
+    margin: 0 8px;
+}
+
+.sidebar-spacer {
+    flex-grow: 1;
+}
+
+.sidebar.narrow .sidebar-spacer {
+    display: none;
+}
+
+.sidebar-content {
+    flex-grow: 1;
+    overflow-y: auto;
+    overflow-x: hidden;
+    padding: 8px;
+}
+
+.sidebar.narrow .sidebar-nav {
+    display: none;
+}
+
+.sidebar-bottom {
+    position: relative;
+    width: 100%;
+    padding-bottom: 8px;
+    padding-top: 8px;
+    min-width: 200px;
+    overflow: hidden;
+    display: flex;
+    flex-shrink: 1;
+    flex-direction: column;
+    gap: 4px;
+}
+
+/* Navigation styles */
+.nav-section {
+    margin-bottom: 8px;
+}
+
+.section-title {
+    font-size: 11px;
+    color: #8e8ea0;
+    margin: 4px 0;
+    padding: 0 8px;
+    font-weight: 500;
+}
+
+.sidebar-nav ul {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+}
+
+.sidebar-nav li {
+    margin: 1px 0;
+}
+
+.chat-link {
+    color: #ececf1;
+    text-decoration: none;
+    display: block;
+    padding: 4px 8px;
+    border-radius: 6px;
+    font-size: 14px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+    .chat-link:hover {
+        background-color: #2d2d33;
+    }

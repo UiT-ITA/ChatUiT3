@@ -1,0 +1,45 @@
+/* SidebarButton styles */
+.sidebar-button {
+    display: flex;
+    align-items: center;
+    justify-content: flex-start;
+    background: none;
+    border: none;
+    color: #797979;
+    cursor: pointer;
+    height: 32px;
+    border-radius: 4px;
+    transition: background-color 0.2s;
+    width: 100%;
+    padding: 8px;
+}
+
+
+    .sidebar-button:hover {
+        color: #175ddc;
+    }
+
+.icon-container {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    height: 32px;
+    width: 32px;
+}
+
+.button-text {
+    padding-left: 4px;
+    padding-bottom: 4px;
+    font-size: 20px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.sidebar.narrow .sidebar-button .button-text {
+    display: none;
+}
+
+.sidebar.narrow .sidebar-button {
+    width: 48px;
+}

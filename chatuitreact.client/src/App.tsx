@@ -6,7 +6,8 @@ import Weather from './pages/Weather';
 import Test from './pages/TestPage';
 import Profile from './pages/Profile';
 import Admin from './pages/Admin';
-import './App.css';
+import Help from './pages/Help';
+import './App.tsx.css';
 
 // Protected route component that requires admin role
 const AdminRoute = () => {
@@ -71,6 +72,7 @@ const App: React.FC = () => {
             <Route path="/weather" element={<Weather />} />
             <Route path="/test" element={<Test />} />
             <Route path="/profile" element={<Profile />} />
+            <Route path="/help" element={<Help />} />
             
             {/* Admin routes - protected by admin role */}
             <Route path="/admin" element={<AdminRoute />}>

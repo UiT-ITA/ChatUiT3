@@ -10,11 +10,13 @@ interface Forecast {
 
 const Weather: React.FC = () => {
     const [forecasts, setForecasts] = useState<Forecast[]>();
-    const { getAccessToken } = useAuth();
+    const { getAccessToken, isInitializing } = useAuth();
 
     useEffect(() => {
-        populateWeatherData();
-    }, []);
+        if (!isInitializing) {
+            populateWeatherData();
+        }
+    }, [isInitializing]);
 
     const contents = forecasts === undefined
         ? <p><em>Loading... Please refresh once the ASP.NET backend has started. See <a href="https://aka.ms/jspsintegrationreact">https://aka.ms/jspsintegrationreact</a> for more details.</em></p>
