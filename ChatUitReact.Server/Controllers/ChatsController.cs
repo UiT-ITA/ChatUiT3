@@ -99,7 +99,7 @@ public class ChatsController : ControllerBase
     }
 
     /// <summary>
-    /// Create a new chat
+    /// Create a new chat with required messages
     /// </summary>
     [HttpPost]
     public async Task<ActionResult<ChatDto>> CreateChat(CreateChatDto createChatDto)
@@ -107,24 +107,75 @@ public class ChatsController : ControllerBase
         try
         {
             string userId = GetCurrentUserId();
+            
+            // Validate that at least one message exists
+            if (createChatDto.Messages == null || !createChatDto.Messages.Any() ||
+                createChatDto.Messages.Any(m => m.Chunks == null || !m.Chunks.Any() || 
+                                            string.IsNullOrEmpty(m.Chunks.First().Content)))
+            {
+                return BadRequest("At least one valid message is required to create a chat");
+            }
+            
             // Create default settings
             var settings = new AiModelSettings();
             
-            // Use an appropriate initial message
-            var initialMessage = "Hello! I'm starting a new conversation.";
+            // Create the chat first
+            var chat = await _chatService.CreateChatAsync(userId, createChatDto.Title, settings);
             
-            var chat = await _chatService.CreateChatAsync(userId, initialMessage, settings);
-            
-            // Map to DTO
-            var chatDto = new ChatDto
+            // Set assistant if specified
+            if (!string.IsNullOrEmpty(createChatDto.AssistantId))
             {
-                Id = chat.Id,
-                Title = chat.Name,
-                CreatedAt = chat.CreatedAt,
-                LastUpdated = chat.UpdatedAt,
-                AssistantId = chat.Assistant?.Id,
-                Messages = chat.Messages.Select(msg => msg.ToMessageDto()).ToList()
-            };
+                chat.Assistant = new AiAssistant { Id = createChatDto.AssistantId };
+            }
+            
+    // Process all messages in the collection
+    foreach (var messageDto in createChatDto.Messages)
+    {
+        // Convert chunks to model format
+        var messageChunks = messageDto.Chunks.Select(c => new MessageChunk
+        {
+            Type = Enum.Parse<AiMessageChunkType>(c.Type, true),
+            Content = c.Content
+        }).ToList();
+        
+        // Create the message
+        var message = new AiChatMessage
+        {
+            Role = AiChatRole.User,  // Default to user, could be extended to support other roles
+            Content = messageChunks,
+            Timestamp = DateTime.UtcNow,
+            Filename = messageDto.Filename
+        };
+        
+        // Add the message to the chat
+        await _chatService.AddMessageAsync(userId, chat.Id, message);
+    }
+    
+    // Get the first user message and trigger a streaming response for it
+    if (createChatDto.Messages.Any() && chat.Messages.Any(m => m.Role == AiChatRole.User))
+    {
+        // Take the first user message that was already added and start a streaming response
+        var userMessage = chat.Messages.First(m => m.Role == AiChatRole.User);
+        
+        // Start streaming response asynchronously
+        _ = Task.Run(async () => 
+        {
+            try 
+            {
+                await _chatService.StartStreamingResponseAsync(userId, chat.Id, userMessage);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error during streaming response for chat {ChatId}", chat.Id);
+            }
+        });
+    }
+            
+            // Get the updated chat with all messages
+            chat = await _chatService.GetChatByIdAsync(userId, chat.Id) ?? chat;
+            
+            // Map to DTO using the extension method
+            var chatDto = chat.ToChatDto();
             
             return CreatedAtAction(nameof(GetChat), new { id = chat.Id }, chatDto);
         }
@@ -223,6 +274,13 @@ public class ChatsController : ControllerBase
         {
             string userId = GetCurrentUserId();
             
+            // Make sure we have content in our chunks
+            if (createMessageDto.Chunks == null || !createMessageDto.Chunks.Any() || 
+                string.IsNullOrEmpty(createMessageDto.Chunks.First().Content))
+            {
+                return BadRequest("Message content cannot be empty");
+            }
+            
             // Convert chunks from DTO to model
             var chunks = createMessageDto.Chunks.Select(c => new MessageChunk
             {
@@ -234,12 +292,14 @@ public class ChatsController : ControllerBase
             // Create a message with the chunks
             var userMessage = new AiChatMessage
             {
+                Id = Guid.NewGuid().ToString(),
                 Role = AiChatRole.User,
                 Content = chunks,
-                Filename = createMessageDto.Filename
+                Filename = createMessageDto.Filename,
+                Timestamp = DateTime.UtcNow
             };
             
-            // Add the user message and get a placeholder for the assistant
+            // Add the user message to the chat
             await _chatService.AddMessageAsync(userId, createMessageDto.ChatId, userMessage);
             
             // Create empty assistant message placeholder
@@ -250,11 +310,6 @@ public class ChatsController : ControllerBase
                 Content = new List<MessageChunk>(),
                 Timestamp = DateTime.UtcNow
             };
-            
-            if (assistantMessage == null)
-            {
-                return NotFound($"Chat with ID {createMessageDto.ChatId} not found");
-            }
             
             // Map to DTO for the placeholder response using extension method
             var messageDto = assistantMessage.ToMessageDto();
@@ -320,6 +375,6 @@ public class ChatsController : ControllerBase
         {
             return _userService.GetCurrentUserId(User);
         }
-        return "anonymous";
+        throw new UnauthorizedAccessException("User must be authenticated to access this resource");
     }
 }

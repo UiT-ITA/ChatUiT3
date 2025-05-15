@@ -74,7 +74,7 @@ public class MockChatService : IChatService
                 CurrentSettings = new AiModelSettings { Temperature = 0.5f },
                 CreatedAt = DateTime.UtcNow.AddMinutes(-30)
             },
-            ["guid-markdown-test"] = new AiChat
+            ["guid-markdown-test"] = new AiChat // ABSOLUTELY NO ONE IS ALLOWEED TO TOUCH THIS CHAT!!!!
             {
                 Id = "guid-markdown-test",
                 Name = "Advanced Markdown Examples",
@@ -465,7 +465,7 @@ Note: Some Markdown processors may have limitations on what HTML is allowed, and
         return Task.FromResult<AiChat?>(null);
     }
     
-    public async Task<AiChat> CreateChatAsync(string userId, string initialMessage, AiModelSettings settings)
+    public async Task<AiChat> CreateChatAsync(string userId, string title, AiModelSettings settings)
     {
         userId = string.IsNullOrEmpty(userId) ? "anonymous" : userId;
         
@@ -477,7 +477,7 @@ Note: Some Markdown processors may have limitations on what HTML is allowed, and
         var chat = new AiChat
         {
             Id = Guid.NewGuid().ToString(),
-            Name = $"Chat about {GetChatNameFromInitialMessage(initialMessage)}",
+            Name = title,
             CreatedAt = DateTime.UtcNow,
             CurrentSettings = settings,
             Messages = new List<AiChatMessage>()
@@ -485,11 +485,34 @@ Note: Some Markdown processors may have limitations on what HTML is allowed, and
         
         _userChats[userId][chat.Id] = chat;
         
-        // Add initial user message
-        await AddMessageAsync(userId, chat.Id, initialMessage);
+        // No auto-messages - just create the empty chat
         
         // Notify clients about the new chat
         await NotifyChatListUpdatedAsync(userId);
+        
+        return chat;
+    }
+    
+    public async Task<AiChat> CreateChatWithMessageAsync(string userId, string title, AiChatMessage initialMessage, AiModelSettings settings)
+    {
+        // First create the chat
+        var chat = await CreateChatAsync(userId, title, settings);
+        
+        // Then add the first message
+        await AddMessageAsync(userId, chat.Id, initialMessage);
+        
+        // Start a streaming response for the initial message
+        _ = Task.Run(async () => 
+        {
+            try
+            {
+                await StartStreamingResponseAsync(userId, chat.Id, initialMessage);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error generating streaming response for initial message in chat {ChatId}", chat.Id);
+            }
+        });
         
         return chat;
     }
@@ -565,11 +588,8 @@ Note: Some Markdown processors may have limitations on what HTML is allowed, and
         // Send the user message via SignalR
         await SendMessageNotificationAsync(userId, chatId, message);
         
-        // Auto-generate AI response if this is a user message
-        if (message.Role == AiChatRole.User)
-        {
-            await GetAiResponseAsync(userId, chatId, message);
-        }
+        // We're removing the auto-generation of AI responses here
+        // The streaming response should be the only AI response
         
         return message;
     }
@@ -732,6 +752,16 @@ Note: Some Markdown processors may have limitations on what HTML is allowed, and
         StringBuilder accumulatedText = new StringBuilder();
         string[] words = fullResponse.Split(' ');
         
+        // First send an initial empty message to all clients in the group
+        await _hubContext.Clients.Group(userId).ReceiveMessage(chatId, new MessageDto 
+        {
+            Id = messageId,
+            Sender = "assistant",
+            Timestamp = DateTime.UtcNow,
+            Chunks = new List<MessageChunkDto>(),
+            ContentType = "text"
+        });
+        
         // Stream each word or small group of words with a delay
         for (int i = 0; i < words.Length; i++)
         {
@@ -754,13 +784,16 @@ Note: Some Markdown processors may have limitations on what HTML is allowed, and
             
             try
             {
-                // Send the chunk via proper message chunk method
+                // Send the chunk via proper message chunk method to ALL clients in the user's group
                 await _hubContext.Clients.Group(userId).ReceiveMessageChunk(
                     chatId,
                     messageId,
                     chunk,
                     isComplete
                 );
+                
+                // Add small delay to let the SignalR connection send the message
+                await Task.Delay(10);
             }
             catch (Exception ex)
             {
@@ -829,7 +862,8 @@ Note: Some Markdown processors may have limitations on what HTML is allowed, and
     {
         if (string.IsNullOrEmpty(userId))
         {
-            userId = "anonymous";
+            _logger.LogWarning("NotifyChatListUpdatedAsync called with empty userId");
+            return; // No anonymous users allowed - exit early if userId is empty
         }
         
         try
@@ -843,19 +877,39 @@ Note: Some Markdown processors may have limitations on what HTML is allowed, and
                 AssistantId = chat.Assistant?.Id
             }).ToList();
             
-            // Notify specific user group
+            // Notify all clients in the user's group about the updated chat list
             await _hubContext.Clients.Group(userId).ChatListUpdated(chatListDtos);
             
-            // For anonymous users, also notify the anonymous group
-            if (userId == "anonymous")
+            _logger.LogInformation("Notified user {UserId} about chat list update with {ChatCount} chats", 
+                userId, chatListDtos.Count);
+            
+            // For reliability, implement a retry mechanism for critical broadcasts
+            var retryCount = 0;
+            const int maxRetries = 2;
+            
+            while (retryCount < maxRetries)
             {
-                _logger.LogInformation("Notified anonymous group about chat list update with {ChatCount} chats", 
-                    chatListDtos.Count);
-            }
-            else
-            {
-                _logger.LogInformation("Notified user {UserId} about chat list update with {ChatCount} chats", 
-                    userId, chatListDtos.Count);
+                try
+                {
+                    // Small delay to allow any network issues to resolve
+                    await Task.Delay(50 * (retryCount + 1));
+                    
+                    // Additional broadcast to ensure delivery to all clients
+                    await _hubContext.Clients.Group(userId).ChatListUpdated(chatListDtos);
+                    
+                    break; // Success, exit retry loop
+                }
+                catch (Exception retryEx)
+                {
+                    retryCount++;
+                    _logger.LogWarning(retryEx, "Retry {RetryCount}/{MaxRetries} failed for chat list update to user {UserId}", 
+                        retryCount, maxRetries, userId);
+                    
+                    if (retryCount >= maxRetries)
+                    {
+                        throw; // Re-throw after max retries
+                    }
+                }
             }
         }
         catch (Exception ex)
@@ -871,7 +925,39 @@ Note: Some Markdown processors may have limitations on what HTML is allowed, and
             // Convert the message to DTO using the extension method
             var messageDto = message.ToMessageDto();
             
+            // Send to all clients in the user's group
             await _hubContext.Clients.Group(userId).ReceiveMessage(chatId, messageDto);
+            
+            _logger.LogInformation("Message notification sent to all clients in group {UserId} for chat {ChatId}, message ID {MessageId}", 
+                userId, chatId, message.Id);
+                
+            // For critical messages, implement a retry mechanism
+            var retryCount = 0;
+            const int maxRetries = 1;
+            
+            while (retryCount < maxRetries)
+            {
+                try
+                {
+                    // Small delay to allow any network issues to resolve
+                    await Task.Delay(100);
+                    
+                    // Additional broadcast to ensure delivery to all clients
+                    await _hubContext.Clients.Group(userId).ReceiveMessage(chatId, messageDto);
+                    break; // Success, exit retry loop
+                }
+                catch (Exception retryEx)
+                {
+                    retryCount++;
+                    _logger.LogWarning(retryEx, "Retry {RetryCount}/{MaxRetries} failed for message notification to user {UserId}", 
+                        retryCount, maxRetries, userId);
+                    
+                    if (retryCount >= maxRetries)
+                    {
+                        throw; // Re-throw after max retries
+                    }
+                }
+            }
         }
         catch (Exception ex)
         {

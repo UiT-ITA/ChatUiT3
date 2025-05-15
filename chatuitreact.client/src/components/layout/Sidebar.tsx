@@ -229,9 +229,10 @@ const Sidebar = ({ onToggleSidebar, isNarrow, className }: SidebarProps) => {
                                 const tokenResponse = await getAccessToken();
                                 const token = tokenResponse || undefined;
                                 
-                                // Create a predefined test chat
+                                // Create a predefined test chat with an initial message
                                 const result = await chatService.createChat(
                                     "Test Chat " + new Date().toLocaleTimeString(),
+                                    "This is a test message created at " + new Date().toLocaleTimeString(),
                                     token
                                 );
                                 

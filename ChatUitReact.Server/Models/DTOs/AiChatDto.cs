@@ -83,4 +83,23 @@ public class CreateChatDto
 {
     public string Title { get; set; } = string.Empty;
     public string? AssistantId { get; set; }
+    public List<CreateMessageDto> Messages { get; set; } = new List<CreateMessageDto>();
+    
+    /// <summary>
+    /// Shorthand method to add a single text message
+    /// </summary>
+    public void AddTextMessage(string content, string sender = "user")
+    {
+        Messages.Add(new CreateMessageDto
+        {
+            Chunks = new List<MessageChunkDto>
+            {
+                new MessageChunkDto
+                {
+                    Type = "text",
+                    Content = content
+                }
+            }
+        });
+    }
 }

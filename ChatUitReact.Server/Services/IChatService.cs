@@ -7,7 +7,8 @@ public interface IChatService
     // Chat Management
     Task<List<AiChat>> GetChatsAsync(string userId);
     Task<AiChat?> GetChatByIdAsync(string userId, string chatId);
-    Task<AiChat> CreateChatAsync(string userId, string initialMessage, AiModelSettings settings);
+    Task<AiChat> CreateChatAsync(string userId, string title, AiModelSettings settings);
+    Task<AiChat> CreateChatWithMessageAsync(string userId, string title, AiChatMessage initialMessage, AiModelSettings settings);
     Task<AiChat?> RenameChatAsync(string userId, string chatId, string newTitle);
     Task<bool> DeleteChatAsync(string userId, string chatId);
     

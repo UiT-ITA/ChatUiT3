@@ -318,17 +318,33 @@ class ChatService {
         return this.chatCache.has(chatId);
     }
 
-    public async createChat(title: string, token?: string, assistantId?: string): Promise<Chat | undefined> {
-        if (!token) {
+    public async createChat(title: string, initialMessage: string, token?: string, assistantId?: string): Promise<Chat | undefined> {
+        if (!token || !initialMessage.trim()) {
             return undefined;
         }
 
         try {
+            // Create the request with required message
+            const createChatRequest = {
+                title,
+                assistantId,
+                messages: [
+                    {
+                        chunks: [
+                            {
+                                type: "text",
+                                content: initialMessage
+                            }
+                        ]
+                    }
+                ]
+            };
+            
             // Try SignalR first
             try {
                 const connected = await this.ensureConnected(token);
                 if (connected && this.connection) {
-                    const chat = await this.connection.invoke("CreateChat", { title, assistantId });
+                    const chat = await this.connection.invoke("CreateChat", createChatRequest);
                     return {
                         ...chat,
                         messages: chat.messages.map((msg: any) => ({
@@ -338,7 +354,7 @@ class ChatService {
                     };
                 }
             } catch (hubError) {
-                console.warn("Using REST API fallback for chat creation");
+                console.warn("Using REST API fallback for chat creation:", hubError);
             }
             
             // REST API fallback
@@ -348,7 +364,7 @@ class ChatService {
                     "Content-Type": "application/json",
                     "Authorization": `Bearer ${token}`
                 },
-                body: JSON.stringify({ title, assistantId })
+                body: JSON.stringify(createChatRequest)
             });
             
             if (!response.ok) {
@@ -367,6 +383,31 @@ class ChatService {
             };
         } catch (error) {
             console.error("Error creating chat:", error);
+            return undefined;
+        }
+    }
+
+    /**
+     * Creates a new chat and immediately sends the first message
+     * This ensures we never have empty chats
+     * 
+     * @deprecated Use createChat with initialMessage instead
+     */
+    public async createChatWithMessage(
+        title: string, 
+        firstMessageText: string, 
+        token?: string, 
+        assistantId?: string
+    ): Promise<Chat | undefined> {
+        if (!token || !firstMessageText.trim()) {
+            return undefined;
+        }
+
+        try {
+            // Use the new method that includes the message directly
+            return await this.createChat(title, firstMessageText, token, assistantId);
+        } catch (error) {
+            console.error("Error in createChatWithMessage:", error);
             return undefined;
         }
     }
@@ -418,7 +459,17 @@ class ChatService {
             try {
                 const connected = await this.ensureConnected(token);
                 if (connected && this.connection) {
-                    const response = await this.connection.invoke("SendMessage", { chatId, text });
+                    // Format the request properly with chunks for SignalR
+                    const request = {
+                        chatId,
+                        chunks: [
+                            {
+                                type: "text",
+                                content: text
+                            }
+                        ]
+                    };
+                    const response = await this.connection.invoke("SendMessage", request);
                     return {
                         ...response,
                         timestamp: new Date(response.timestamp)
@@ -429,13 +480,24 @@ class ChatService {
             }
             
             // REST API fallback
+            // Format the request properly with chunks
+            const requestData = {
+                chatId: chatId,
+                chunks: [
+                    {
+                        type: "text",
+                        content: text
+                    }
+                ]
+            };
+            
             const response = await fetch("/api/chats/messages", {
                 method: "POST",
                 headers: {
                     "Content-Type": "application/json",
                     "Authorization": `Bearer ${token}`
                 },
-                body: JSON.stringify({ chatId, text })
+                body: JSON.stringify(requestData)
             });
             
             if (!response.ok) {
@@ -467,13 +529,26 @@ class ChatService {
                 throw new Error("SignalR connection not established");
             }
             
+            // Format the request properly with chunks
+            const requestData = {
+                chatId: chatId,
+                chunks: [
+                    {
+                        type: "text",
+                        content: text
+                    }
+                ]
+            };
+            
+            console.log("Sending streaming message:", requestData);
+            
             const response = await fetch("/api/chats/messages/stream", {
                 method: "POST",
                 headers: {
                     "Content-Type": "application/json",
                     "Authorization": `Bearer ${token}`
                 },
-                body: JSON.stringify({ chatId, text })
+                body: JSON.stringify(requestData)
             });
             
             if (!response.ok) {

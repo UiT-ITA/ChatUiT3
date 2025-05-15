@@ -9,32 +9,35 @@ using Microsoft.Extensions.Logging;
 using ChatUitReact.Server.Models;
 using ChatUitReact.Server.Extentions;
 
-public interface IChatHubClient
-{
-    /// <summary>
-    /// Receive an updated list of chats for the sidebar
-    /// </summary>
-    Task ChatListUpdated(List<ChatListItemDto> chats);
-    
-    /// <summary>
-    /// Receive a new message for a specific chat
-    /// </summary>
-    Task ReceiveMessage(string chatId, MessageDto message);
-    
-    /// <summary>
-    /// Receive a chunk of a message for streaming
-    /// </summary>
-    Task ReceiveMessageChunk(string chatId, string messageId, string chunk, bool isComplete);
-}
-
 namespace ChatUitReact.Server.Hubs
 {
+    public interface IChatHubClient
+    {
+        /// <summary>
+        /// Receive an updated list of chats for the sidebar
+        /// </summary>
+        Task ChatListUpdated(List<ChatListItemDto> chats);
+        
+        /// <summary>
+        /// Receive a new message for a specific chat
+        /// </summary>
+        Task ReceiveMessage(string chatId, MessageDto message);
+        
+        /// <summary>
+        /// Receive a chunk of a message for streaming
+        /// </summary>
+        Task ReceiveMessageChunk(string chatId, string messageId, string chunk, bool isComplete);
+    }
+    
     [Authorize]
     public class ChatHub : Hub<IChatHubClient>
     {
     private readonly UserService _userService;
     private readonly ILogger<ChatHub> _logger;
     private readonly IChatService _chatService;
+    
+    // Track active connections for user
+    private static readonly Dictionary<string, string> _connections = new Dictionary<string, string>();
 
     public ChatHub(
         UserService userService, 
@@ -57,13 +60,13 @@ namespace ChatUitReact.Server.Hubs
                 {
                     return _userService.GetCurrentUserId(Context.User);
                 }
+                throw new UnauthorizedAccessException("User must be authenticated");
             }
             catch (Exception ex)
             {
-                _logger.LogWarning(ex, "Error getting user ID, using anonymous");
+                _logger.LogError(ex, "Error getting user ID from authenticated context");
+                throw;
             }
-            
-            return "anonymous";
         }
 
         public override async Task OnConnectedAsync()
@@ -88,8 +91,12 @@ namespace ChatUitReact.Server.Hubs
                     AssistantId = chat.Assistant?.Id
                 }).ToList();
                 
+                // Send initial chat list for sidebar rendering
                 await Clients.Caller.ChatListUpdated(chatDtos);
-
+                
+                // Add connection tracking
+                _connections.Add(Context.ConnectionId, userId);
+                
                 await base.OnConnectedAsync();
             }
             catch (Exception ex)
@@ -108,7 +115,48 @@ namespace ChatUitReact.Server.Hubs
 
             // Remove from user-specific group
             await Groups.RemoveFromGroupAsync(Context.ConnectionId, userId);
+            
+            // Clean up connection tracking
+            if (_connections.ContainsKey(Context.ConnectionId))
+            {
+                _connections.Remove(Context.ConnectionId);
+                _logger.LogInformation("Connection {ConnectionId} removed from tracking", Context.ConnectionId);
+            }
+            
             await base.OnDisconnectedAsync(exception);
+        }
+        
+        /// <summary>
+        /// Join a specific chat to receive all messages including any in-progress streaming ones
+        /// </summary>
+        public async Task JoinChatAsync(string chatId)
+        {
+            try
+            {
+                string userId = GetCurrentUserId();
+                
+                _logger.LogInformation("Client {ConnectionId} joining chat {ChatId}", Context.ConnectionId, chatId);
+                
+                // Get the chat to download latest state
+                var chat = await _chatService.GetChatByIdAsync(userId, chatId);
+                if (chat == null)
+                {
+                    _logger.LogWarning("Client tried to join non-existent chat: {ChatId}", chatId);
+                    return;
+                }
+                
+                // Map to DTO and send the full chat to the client immediately
+                // This enables a client to catch up with all messages including in-progress ones
+                var chatDto = chat.ToChatDto();
+                await Clients.Caller.ReceiveMessage(chatId, 
+                    chatDto.Messages.LastOrDefault(m => m.Sender == "assistant"));
+                
+                _logger.LogInformation("Client {ConnectionId} successfully joined chat {ChatId}", Context.ConnectionId, chatId);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error during chat join for {ConnectionId}", Context.ConnectionId);
+            }
         }
         
         public async Task<List<ChatListItemDto>> GetChats()
@@ -130,34 +178,93 @@ namespace ChatUitReact.Server.Hubs
         {
             string userId = GetCurrentUserId();
             
+            // Validate that at least one message exists
+            if (createChatDto.Messages == null || !createChatDto.Messages.Any() ||
+                createChatDto.Messages.Any(m => m.Chunks == null || !m.Chunks.Any() || 
+                                            string.IsNullOrEmpty(m.Chunks.First().Content)))
+            {
+                throw new HubException("At least one valid message is required to create a chat");
+            }
+            
             // Create default settings
             var settings = new AiModelSettings();
             
-            // Use an appropriate initial message
-            var initialMessage = "Hello! I'm starting a new conversation.";
+            // Create the chat first
+            var chat = await _chatService.CreateChatAsync(userId, createChatDto.Title, settings);
             
-            var chat = await _chatService.CreateChatAsync(userId, initialMessage, settings);
-            
-            // Map to DTO
-            return new ChatDto
+            // Set assistant if specified
+            if (!string.IsNullOrEmpty(createChatDto.AssistantId))
             {
-                Id = chat.Id,
-                Title = chat.Name,
-                CreatedAt = chat.CreatedAt,
-                LastUpdated = chat.UpdatedAt,
-                AssistantId = chat.Assistant?.Id,
-                Messages = chat.Messages.Select(m => m.ToMessageDto()).ToList()
-            };
+                chat.Assistant = new AiAssistant { Id = createChatDto.AssistantId };
+            }
+            
+            // Process all messages in the collection
+            foreach (var messageDto in createChatDto.Messages)
+            {
+                // Convert chunks to model format
+                var messageChunks = messageDto.Chunks.Select(c => new MessageChunk
+                {
+                    Type = Enum.Parse<AiMessageChunkType>(c.Type, true),
+                    Content = c.Content
+                }).ToList();
+                
+                // Create the message
+                var message = new AiChatMessage
+                {
+                    Role = AiChatRole.User,  // Default to user, could be extended to support other roles
+                    Content = messageChunks,
+                    Timestamp = DateTime.UtcNow,
+                    Filename = messageDto.Filename
+                };
+                
+                // Add the message to the chat
+                await _chatService.AddMessageAsync(userId, chat.Id, message);
+            }
+            
+            // Get the first user message and trigger a streaming response for it
+            if (createChatDto.Messages.Any() && chat.Messages.Any(m => m.Role == AiChatRole.User))
+            {
+                // Take the first user message that was already added to avoid duplication
+                var userMessage = chat.Messages.First(m => m.Role == AiChatRole.User);
+                
+                // Start streaming response asynchronously
+                _ = Task.Run(async () => 
+                {
+                    try 
+                    {
+                        await _chatService.StartStreamingResponseAsync(userId, chat.Id, userMessage);
+                    }
+                    catch (Exception ex)
+                    {
+                        _logger.LogError(ex, "Error during streaming response for chat {ChatId}", chat.Id);
+                    }
+                });
+            }
+            
+            // Get the updated chat with all messages
+            chat = await _chatService.GetChatByIdAsync(userId, chat.Id) ?? chat;
+            
+            // Map to DTO using the extension method
+            return chat.ToChatDto();
         }
         
         public async Task<MessageDto?> SendMessage(CreateMessageDto createMessageDto)
         {
             string userId = GetCurrentUserId();
             
+            // Validate message content
+            if (createMessageDto.Chunks == null || !createMessageDto.Chunks.Any() || 
+                string.IsNullOrEmpty(createMessageDto.Chunks.First().Content))
+            {
+                throw new HubException("Message content cannot be empty");
+            }
+            
             // Create text message with single chunk
             var message = new AiChatMessage
             {
+                Id = Guid.NewGuid().ToString(),
                 Role = AiChatRole.User,
+                Timestamp = DateTime.UtcNow,
                 Content = new List<MessageChunk>
                 {
                     new MessageChunk

@@ -239,33 +239,45 @@ const ChatPage = () => {
       // For existing chats, we'll receive messages via SignalR
       let userMessage: Message | null = null;
       
-      // If this is the first message in a new chat, create an entry in chatService
+      // Create a proper user message object with chunks
+      userMessage = {
+        id: Date.now().toString(),
+        chunks: [{ type: MessageChunkType.Text, content: text }],
+        sender: MessageRole.User,
+        timestamp: new Date(),
+        contentType: ContentType.Text
+      };
+      
+      // If this is the first message in a new chat
       if (!currentChatId) {
         const newChatTitle = text.substring(0, 30) + (text.length > 30 ? "..." : "");
-        const newChat = await chatService.createChat(newChatTitle, accessToken, initialAssistantId);
         
-        if (newChat) {
-          setCurrentChatId(newChat.id);
+        // Show the message immediately for better UX
+        setMessages([userMessage]);
+        
+        try {
+          // Create chat with the initial message included 
+          const newChat = await chatService.createChat(
+            newChatTitle, 
+            text,
+            accessToken, 
+            initialAssistantId
+          );
           
-          // Mark this new chat as active
-          chatService.setActiveChatStatus(newChat.id, true);
-          
-          // Update URL without full page reload
-          navigate(`/c/${newChat.id}`, { replace: true });
-          
-          // For new chats, add a temporary message until the server responds
-          userMessage = {
-            id: Date.now().toString(),
-            chunks: [{ type: MessageChunkType.Text, content: text }],
-            sender: MessageRole.User,
-            timestamp: new Date(),
-            contentType: ContentType.Text
-          };
-          
-          setMessages([userMessage]);
-          
-          // Send the message to this new chat
-          await chatService.sendStreamingMessage(newChat.id, text, accessToken);
+          if (newChat) {
+            setCurrentChatId(newChat.id);
+            
+            // Mark this chat as active
+            chatService.setActiveChatStatus(newChat.id, true);
+            
+            // Update URL without full page reload
+            navigate(`/c/${newChat.id}`, { replace: true });
+          } else {
+            throw new Error("Failed to create chat");
+          }
+        } catch (chatError) {
+          console.error("Error creating chat with first message:", chatError);
+          throw chatError; // Re-throw to be caught by outer catch
         }
       } else {
         // For existing chats, don't add local messages, just show loading state
