@@ -1,0 +1,145 @@
+.assistant-selector-container {
+  position: relative;
+  display: inline-block;
+}
+
+.assistant-selector-button {
+  display: flex;
+  align-items: center;
+  background: transparent;
+  border: none;
+  color: #797979;
+  cursor: pointer;
+  padding: 6px 10px;
+  transition: color 0.2s;
+  white-space: nowrap;
+  gap: 4px;
+}
+
+
+.assistant-name {
+  max-width: 150px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  font-size: 1.0rem;
+  font-weight: 500;
+  color: #959595;
+  transition: color 0.2s;
+}
+
+.assistant-selector-button:hover,
+.assistant-selector-button:hover .assistant-name {
+  color: #175ddc;
+}
+
+/* Dropdown styling */
+.assistant-dropdown {
+  position: absolute;
+  bottom: 100%;
+  left: 0;
+  margin-bottom: 8px;
+  background-color: #2a2a2a;
+  min-width: 240px;
+  border-radius: 8px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+  z-index: 10;
+}
+
+.assistant-option {
+  padding: 10px 12px;
+  color: #ececf1;
+  cursor: pointer;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  transition: background-color 0.2s;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  background-color: transparent;
+}
+
+.assistant-option:first-child {
+  border-top-left-radius: 8px;
+  border-top-right-radius: 8px;
+}
+
+.assistant-option:last-child {
+  border-bottom: none;
+  border-bottom-left-radius: 8px;
+  border-bottom-right-radius: 8px;
+}
+
+.assistant-option:hover {
+  background-color: rgba(255, 255, 255, 0.05);
+}
+
+.assistant-option.selected {
+  background-color: rgba(23, 93, 220, 0.3);
+}
+
+.assistant-info {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.assistant-option-name {
+  font-size: 0.9rem;
+}
+
+.assistant-capabilities {
+  display: flex;
+  gap: 6px;
+  color: rgba(255, 255, 255, 0.7);
+}
+
+.capability-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* Info tooltip */
+.info-tooltip-container {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+}
+
+.info-icon {
+  color: rgba(255, 255, 255, 0.6);
+  cursor: help;
+}
+
+.info-tooltip {
+  visibility: hidden;
+  position: fixed;
+  width: 200px;
+  background-color: #333;
+  color: #ececf1;
+  text-align: center;
+  border-radius: 6px;
+  padding: 8px;
+  z-index: 1000;
+  font-size: 0.8rem;
+  line-height: 1.4;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.2);
+  opacity: 0;
+  transition: opacity 0.3s;
+  pointer-events: none;
+  margin-left: 10px;
+}
+
+.info-tooltip::after {
+  content: "";
+  position: absolute;
+  top: 10px;
+  right: 100%;
+  border-width: 5px;
+  border-style: solid;
+  border-color: transparent #333 transparent transparent;
+}
+
+.info-tooltip-container:hover .info-tooltip {
+  visibility: visible;
+  opacity: 1;
+}

@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { useAuth } from '../contexts/AuthContext';
-import './Profile.css';
+import './ProfilePage.css';
 
 const Profile: React.FC = () => {
   const { account, isAuthenticated, isAdmin, roles, getAccessToken } = useAuth();

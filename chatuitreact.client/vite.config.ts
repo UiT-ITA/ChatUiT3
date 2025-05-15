@@ -78,6 +78,13 @@ export default defineConfig({
                 changeOrigin: true,
                 rewrite: (path) => path
             },
+            '^/chatHub': {
+                target,
+                secure: false,
+                ws: true,
+                changeOrigin: true,
+                rewrite: (path) => path
+            },
         },
         port: 54979,
         https: {

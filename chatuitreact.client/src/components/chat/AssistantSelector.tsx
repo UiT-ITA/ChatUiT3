@@ -1,0 +1,128 @@
+import React, { useState, useRef, useEffect } from 'react';
+import { MdExpandMore, MdExpandLess, MdInfo, MdImage, MdPublic, MdPsychology } from 'react-icons/md';
+import type { Assistant, AssistantCapability } from '../../services/mockAssistantService';
+import './AssistantSelector.css';
+
+interface AssistantSelectorProps {
+  assistants: Assistant[];
+  selectedAssistantId: string | undefined;
+  onSelectAssistant: (assistantId: string) => void;
+}
+
+const AssistantSelector: React.FC<AssistantSelectorProps> = ({
+  assistants,
+  selectedAssistantId,
+  onSelectAssistant
+}) => {
+  const [isOpen, setIsOpen] = useState(false);
+  const selectorRef = useRef<HTMLDivElement>(null);
+  
+  // Find the currently selected assistant
+  const selectedAssistant = selectedAssistantId 
+    ? assistants.find(a => a.id === selectedAssistantId) 
+    : assistants[0];
+
+  // Close dropdown when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (selectorRef.current && !selectorRef.current.contains(event.target as Node)) {
+        setIsOpen(false);
+      }
+    };
+
+    if (isOpen) {
+      document.addEventListener('mousedown', handleClickOutside);
+    } else {
+      document.removeEventListener('mousedown', handleClickOutside);
+    }
+
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, [isOpen]);
+
+  const toggleDropdown = () => {
+    setIsOpen(!isOpen);
+  };
+
+  const handleSelectAssistant = (assistantId: string) => {
+    onSelectAssistant(assistantId);
+    setIsOpen(false);
+  };
+
+  // Render capability icon based on type
+  const renderCapabilityIcon = (capability: AssistantCapability) => {
+    switch (capability) {
+      case 'vision':
+        return <MdImage size="16px" title="Vision capability" />;
+      case 'internet':
+        return <MdPublic size="16px" title="Internet access" />;
+      case 'reasoning':
+        return <MdPsychology size="16px" title="Advanced reasoning" />;
+      default:
+        return null;
+    }
+  };
+
+  return (
+    <div className="assistant-selector-container" ref={selectorRef}>
+      <button 
+        className="assistant-selector-button"
+        onClick={toggleDropdown}
+        title="Select AI assistant"
+      >
+        {selectedAssistant ? (
+          <>
+            <span className="assistant-name">{selectedAssistant.name}</span>
+            {isOpen ? <MdExpandLess size="20px" /> : <MdExpandMore size="20px" />}
+          </>
+        ) : (
+          <>
+            <span className="assistant-name">Select Assistant</span>
+            {isOpen ? <MdExpandLess size="20px" /> : <MdExpandMore size="20px" />}
+          </>
+        )}
+      </button>
+
+      {isOpen && (
+        <div className="assistant-dropdown">
+          {assistants.map((assistant) => (
+            <div 
+              key={assistant.id}
+              className={`assistant-option ${selectedAssistantId === assistant.id ? 'selected' : ''}`}
+              onClick={() => handleSelectAssistant(assistant.id)}
+            >
+              <div className="assistant-info">
+                <span className="assistant-option-name">{assistant.name}</span>
+                <div className="info-tooltip-container">
+                  <MdInfo 
+                    size="16px" 
+                    className="info-icon" 
+                    onMouseEnter={(e) => {
+                      const tooltip = e.currentTarget.nextElementSibling as HTMLElement;
+                      if (tooltip) {
+                        const rect = e.currentTarget.getBoundingClientRect();
+                        tooltip.style.top = `${rect.top - 5}px`;
+                        tooltip.style.left = `${rect.right + 5}px`;
+                      }
+                    }}
+                  />
+                  <div className="info-tooltip">{assistant.description}</div>
+                </div>
+              </div>
+              <div className="assistant-capabilities">
+                {assistant.capabilities.map((capability, index) => (
+                  <span key={index} className="capability-icon">
+                    {renderCapabilityIcon(capability)}
+                  </span>
+                ))}
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+};
+
+export default AssistantSelector;

@@ -66,12 +66,19 @@ builder.Services.AddScoped<UserService>();
 
 builder.Services.AddSingleton<DatabaseService>();
 
+// Register MockChatService as the implementation of IChatService
+// This allows controllers to depend on the interface while we use the mock implementation
+builder.Services.AddSingleton<IChatService, MockChatService>();
+
 var app = builder.Build();
 
 app.UseDefaultFiles();
 app.MapStaticAssets();
 
 // Configure the HTTP request pipeline.
+// Always apply CORS for SignalR to work properly
+app.UseCors("AllowReactApp");
+
 if (app.Environment.IsDevelopment())
 {
     app.MapOpenApi();
@@ -79,7 +86,6 @@ if (app.Environment.IsDevelopment())
     {
         options.SwaggerEndpoint("/openapi/v1.json", "OpenAPI V1");
     });
-    app.UseCors("AllowReactApp");
 }
 
 //app.UseRouting();

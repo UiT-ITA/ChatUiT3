@@ -29,6 +29,10 @@ namespace ChatUitReact.Server.Models
         public string Id { get; set; } = Guid.NewGuid().ToString();
         public AiChatRole Role { get; set; } = AiChatRole.User;
         public DateTime Timestamp { get; set; } = DateTime.UtcNow;
+
+
+
+        
         public string Content { get; set; } = string.Empty;
         public List<string> FileIds { get; set; } = new List<string>();
     }
@@ -52,6 +56,8 @@ namespace ChatUitReact.Server.Models
     {
         User,
         Assistant,
-        System
+        System,
+        Tool,
+        File
     }
 }

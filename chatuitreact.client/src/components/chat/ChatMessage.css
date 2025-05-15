@@ -1,0 +1,290 @@
+/* Base message styling */
+.chat-message {
+  width: 100%;
+  /* padding: 0.5rem 1rem; */
+  margin: 0.5rem 0;
+  position: relative;
+  border-radius: 0.5rem;
+}
+
+/* User message styling */
+.chat-message.user-message {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+}
+
+.user-message .message-content {
+  background-color: #222831; /* User-specified background color */
+  color: white;
+  border-radius: 16px;
+  padding: 0.75rem 1rem;
+  max-width: fit-content;
+  word-break: break-word;
+  line-height: 1.5;
+  font-size: 16px;
+}
+
+/* AI message styling */
+.chat-message.assistant-message {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+}
+
+.assistant-message .message-content {
+  color: #ececf1;
+  width: 100%;
+  padding: 0.5rem 0;
+  word-break: break-word;
+  line-height: 1.5;
+  font-size: 16px;
+}
+
+/* Toolbar styling - hidden by default, shows on hover */
+.message-toolbar {
+  display: flex;
+  align-items: center;
+  margin-top: 0.5rem;
+  opacity: 0; /* Hidden by default */
+  transition: opacity 0.2s ease;
+  gap: 10px;
+  width: 100%;
+}
+
+.chat-message:hover .message-toolbar {
+  opacity: 1; /* Show on hover */
+}
+
+/* Message timestamp styling */
+.message-time {
+  font-size: 0.7rem;
+  color: #8e8ea0;
+}
+
+/* Message actions container */
+.message-actions {
+  display: flex;
+  gap: 8px;
+}
+
+/* Toolbar alignment for user messages */
+.user-message .message-toolbar {
+  justify-content: flex-end; /* Right-aligned for user messages */
+}
+
+/* Toolbar alignment for AI messages */
+.assistant-message .message-toolbar {
+  justify-content: flex-start; /* Left-aligned for AI messages */
+}
+
+/* Icon button styling */
+.message-action-button {
+  background: none;
+  border: none;
+  color: #797979;
+  cursor: pointer;
+  width: 28px;
+  height: 28px;
+  border-radius: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  transition: color 0.2s, background-color 0.2s;
+}
+
+.message-action-button:hover {
+  color: #175ddc;
+  /* background-color: rgba(23, 93, 220, 0.1); */
+}
+
+/* Styles for code blocks within messages */
+.message-content .code-block-wrapper {
+  background-color: #1e1e1e; /* Darker background for the whole code block area */
+  border: 1px solid #555555; /* Added border for better visibility */
+  border-radius: 8px;
+  margin: 10px 0;
+  overflow: hidden; /* Ensures child elements like header don't break border radius */
+  position: relative; /* For positioning copy button or other elements if needed */
+}
+
+.message-content .code-block-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background-color: #333333; /* Slightly lighter than code bg, for contrast */
+  padding: 6px 12px;
+  color: #cccccc;
+  font-size: 0.85em;
+  border-bottom: 1px solid #444444;
+}
+
+.message-content .language-name {
+  font-family: monospace;
+  text-transform: lowercase;
+}
+
+.message-content .copy-code-button {
+  background-color: #4a4a4a;
+  color: #ffffff;
+  border: none;
+  border-radius: 4px;
+  padding: 4px 8px;
+  cursor: pointer;
+  font-size: 0.8em;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  transition: background-color 0.2s ease;
+}
+
+.message-content .copy-code-button:hover {
+  background-color: #5a5a5a;
+}
+
+.message-content .copy-code-button:active {
+  background-color: #6a6a6a;
+}
+
+/* Ensure SyntaxHighlighter's PreTag (div) has no default margin/padding that conflicts */
+.message-content .code-block-wrapper div[class*="syntax-highlighter"] {
+  margin: 0 !important;
+  padding: 1em !important; /* Default padding for atomDark style, adjust if needed */
+  border-radius: 0 0 8px 8px !important; /* Match bottom radius of wrapper */
+  overflow-x: auto; /* Add horizontal scroll for long lines */
+}
+
+/* Styles for tables within messages */
+.message-content table {
+  border-collapse: collapse;
+  margin: 1em 0;
+  width: auto; /* Or 100% if you want full width tables */
+  font-size: 0.9em;
+  border: 1px solid #555555;
+}
+
+/* Control paragraph spacing in markdown content */
+.message-content p {
+  margin-top: 0;
+  margin-bottom: 0.75rem; 
+  line-height: 1.7; /* Increased line height for better readability */
+}
+
+/* Add minimal spacing between paragraphs if needed */
+.message-content p + p {
+  margin-top: 0.4rem; /* Added spacing between paragraphs */
+}
+
+/* Negative margins to keep bubbles compact while allowing internal spacing */
+.message-content > *:first-child {
+  margin-top: -0.35rem;
+}
+
+.message-content > *:last-child {
+  margin-bottom: -0.35rem;
+}
+
+/* Streaming indicator styling */
+.streaming-indicator {
+  display: inline-block;
+  font-size: 1.2em;
+  margin-left: 2px;
+  color: #175ddc;
+  font-weight: bold;
+  animation: blink 1s infinite;
+  vertical-align: middle;
+}
+
+@keyframes blink {
+  0% { opacity: 1; }
+  50% { opacity: 0.2; }
+  100% { opacity: 1; }
+}
+
+.chat-message.streaming .message-content {
+  border-left: 3px solid #175ddc;
+  padding-left: 10px;
+}
+
+/* Make sure images fit within the container and scale proportionally */
+.message-content img {
+  max-width: 100%;
+  height: auto;
+  display: block;
+  border-radius: 4px;
+  margin: 0.5rem 0;
+}
+
+/* Horizontal rule styling */
+.message-content hr {
+  border: 0;
+  height: 1px;
+  background-color: #444;
+  margin: 1.5rem 0;
+}
+
+/* List styling */
+.message-content ul,
+.message-content ol {
+  padding-left: 1.5rem; /* Reduce default padding */
+  margin: 0 0 0.75rem 0; /* Match paragraph bottom margin */
+}
+
+.message-content li {
+  margin-bottom: 0.4rem; /* Slightly increased space between list items */
+  line-height: 1.7; /* Increased line height for better readability, matching paragraphs */
+}
+
+/* Nested list styling */
+.message-content li > ul,
+.message-content li > ol {
+  margin: 0.4rem 0 0 0; /* Better spacing for nested lists */
+  padding-left: 1.25rem; /* Slightly tighter indent for nested lists */
+}
+
+/* Accessibility: Support for forced colors mode (replacing -ms-high-contrast) */
+@media (forced-colors: active) {
+  /* Keep button outlines visible in high contrast mode */
+  .message-action-button,
+  .copy-code-button {
+    border: 1px solid ButtonText;
+    forced-color-adjust: none;
+  }
+  
+  /* Ensure text remains readable */
+  .message-content,
+  .user-message .message-content,
+  .assistant-message .message-content {
+    color: CanvasText;
+    background-color: Canvas;
+  }
+  
+  /* Make code blocks distinguishable */
+  .message-content .code-block-wrapper {
+    border: 1px solid ButtonText;
+  }
+  
+  /* Ensure streaming indicator remains visible */
+  .streaming-indicator {
+    color: LinkText;
+  }
+}
+
+.message-content th,
+.message-content td {
+  border: 1px solid #555555;
+  padding: 8px 12px;
+  text-align: left;
+}
+
+.message-content th {
+  background-color: #333333;
+  color: #cccccc;
+  font-weight: bold;
+}
+
+.message-content tr:nth-child(even) {
+  /* Optional: for striped rows, if desired */
+  background-color: #2c2c2c;
+}

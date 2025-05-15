@@ -1,0 +1,22 @@
+.chat-page {
+  display: flex;
+  flex-direction: column;
+  /* max-width: 1000px; */
+  height: 100vh;
+  width: 100%;
+  overflow: hidden;
+}
+
+.chat-history {
+  flex: 1;
+  overflow-y: auto;
+  width: 100%;
+  scrollbar-gutter: stable;
+  padding-left: 1rem;
+}
+
+.chat-history > div {
+  max-width: 1000px;
+  margin: 0 auto;
+  padding-right: var(--scrollbar-width, 0px); /* Dynamically adjust for scrollbar width */
+}

@@ -1,0 +1,87 @@
+.new-chat-welcome {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  height: 100%;
+  padding: 2rem;
+}
+
+.welcome-content {
+  background-color: rgba(42, 42, 42, 0.7);
+  border-radius: 12px;
+  padding: 2rem;
+  max-width: 600px;
+  width: 100%;
+  text-align: center;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.2);
+}
+
+.welcome-content h2 {
+  font-size: 1.8rem;
+  margin-bottom: 0.5rem;
+  color: #fff;
+}
+
+.welcome-content p {
+  color: #ececf1;
+  margin-bottom: 2rem;
+  font-size: 1rem;
+}
+
+.welcome-assistant-selector {
+  display: flex;
+  justify-content: center;
+  margin: 2rem 0;
+}
+
+/* Override some assistant selector styles for the welcome component */
+.welcome-assistant-selector .assistant-dropdown {
+  bottom: auto;
+  top: 100%;
+  margin-top: 8px;
+  margin-bottom: 0;
+}
+
+.welcome-features {
+  display: flex;
+  justify-content: space-between;
+  margin-top: 3rem;
+  flex-wrap: wrap;
+}
+
+.feature-item {
+  flex: 1;
+  min-width: 150px;
+  padding: 1rem;
+  margin: 0.5rem;
+  background-color: rgba(65, 65, 65, 0.5);
+  border-radius: 8px;
+  transition: all 0.2s;
+}
+
+.feature-item:hover {
+  background-color: rgba(85, 85, 85, 0.5);
+  transform: translateY(-2px);
+}
+
+.feature-item h3 {
+  font-size: 1rem;
+  margin-bottom: 0.5rem;
+  color: #fff;
+}
+
+.feature-item p {
+  font-size: 0.85rem;
+  color: #d0d0d0;
+  margin-bottom: 0;
+}
+
+@media (max-width: 600px) {
+  .welcome-features {
+    flex-direction: column;
+  }
+  
+  .feature-item {
+    margin: 0.5rem 0;
+  }
+}

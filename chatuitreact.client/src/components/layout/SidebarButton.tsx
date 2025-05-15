@@ -1,5 +1,5 @@
 import React from 'react';
-import './SidebarButton.tsx.css';
+import './SidebarButton.css';
 
 interface SidebarButtonProps {
     icon: React.ReactNode;

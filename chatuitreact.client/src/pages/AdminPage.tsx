@@ -2,9 +2,9 @@ import React, { useState } from 'react';
 import EndpointsManager from '../components/admin/EndpointsManager';
 import ModelsManager from '../components/admin/ModelsManager';
 import AssistantsManager from '../components/admin/AssistantsManager';
-import './Admin.css';
+import './AdminPage.css';
 
-const Admin: React.FC = () => {
+const AdminPage: React.FC = () => {
   const [activeTab, setActiveTab] = useState<string>('endpoints');
 
   const handleTabChange = (tab: string) => {
@@ -47,4 +47,4 @@ const Admin: React.FC = () => {
   );
 };
 
-export default Admin;
+export default AdminPage;

@@ -1,0 +1,268 @@
+.chat-input-outer-container {
+  max-width: 1000px;
+  width: 100%;
+  margin: 0 auto;
+  padding: 1rem 1rem;
+  position: sticky;
+  bottom: 0;
+  margin: 0 auto;  
+  flex-shrink: 0;
+}
+
+
+.chat-input-inner-container {
+  display: flex;
+  flex-direction: column;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  /* border-radius: 0.75rem; */
+  border-radius: 8px;
+  background-color: #292929;
+  padding: 4px;
+  box-shadow: 0 0 15px rgba(0, 0, 0, 0.2);
+}
+
+.chat-input {
+  display: flex;
+  width: 100%;
+}
+
+.chat-input textarea {
+  flex: 1;
+  resize: none;
+  border: none;
+  background: transparent;
+  color: #ececf1;
+  font-size: 1rem;
+  font-family: inherit;
+  line-height: 1.5;
+  min-height: 24px;
+  max-height: 200px;
+  padding: 0;
+  transition: width 0.2s;
+  /* padding-top: 4px; */
+  margin-top: 4px;
+  padding: 0 8px;
+}
+
+.chat-input textarea.full-width {
+  width: 100%;
+  margin-right: 0;
+}
+
+.chat-input textarea::placeholder {
+  color: #8e8ea0;
+}
+
+.chat-input textarea:focus {
+  outline: none;
+}
+
+.chat-input-button {
+  background: none;
+  border: none;
+  color: #797979;
+  cursor: pointer;
+  width: 32px;
+  height: 32px;
+  border-radius: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  transition: all 0.2s;
+  flex-shrink: 0;
+}
+
+.chat-input-button:not(:disabled):hover {
+  color: #175ddc;
+}
+
+.chat-input-button:disabled {
+  opacity: 0.3;
+  cursor: not-allowed;
+}
+
+.chat-input-footer {
+  font-size: 0.75rem;
+  color: #8e8ea0;
+  text-align: center;
+  margin-top: 0.5rem;
+}
+
+.chat-input-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-top: 0.5rem;
+  padding-top: 0.5rem;
+  border-top: 1px solid rgba(255, 255, 255, 0.1);
+  width: 100%;
+  padding-bottom: 4px;
+}
+
+.toolbar-tools {
+  display: flex;
+  gap: 8px;
+  flex: 1;
+  margin: 0 12px;
+}
+
+/* Toolbar tool styles moved to ToolbarTool.css */
+
+.send-button-toolbar {
+  margin-left: 8px;
+}
+
+.toolbar-expanded .chat-input {
+  margin-bottom: 4px;
+}
+
+.toolbar-expanded textarea {
+  width: 100%;
+}
+
+/* Temperature slider styling moved to ToolbarTool.css */
+
+/* File thumbnails preview */
+.file-thumbnails {
+  display: flex;
+  flex-wrap: nowrap;
+  gap: 8px;
+  overflow-x: auto;
+  margin-bottom: 8px;
+  padding: 4px;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(255,255,255,0.4) transparent;
+}
+.file-thumbnails::-webkit-scrollbar {
+  height: 6px;
+}
+.file-thumbnails::-webkit-scrollbar-track {
+  background: transparent;
+}
+.file-thumbnails::-webkit-scrollbar-thumb {
+  background-color: rgba(255,255,255,0.4);
+  border-radius: 3px;
+}
+
+.thumbnail {
+  position: relative;
+  overflow: hidden;
+  height: 60px;
+  flex-shrink: 0;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 4px;
+  background-color: #3a3a3a;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.thumbnail.image {
+  flex: 0 0 60px;
+  min-width: 60px;
+  max-width: 60px;
+}
+
+.thumbnail.text {
+  flex: 0 0 120px;
+  min-width: 120px;
+  max-width: 120px;
+  justify-content: flex-start;
+  padding: 0 4px;
+}
+.thumbnail.text .file-icon {
+  width: 100%;
+}
+
+.thumbnail img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.remove-btn {
+  position: absolute;
+  top: 2px;
+  right: 2px;
+  background: rgba(0, 0, 0, 0.5);
+  border: none;
+  color: #fff;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  font-size: 12px;
+  line-height: 1;
+  opacity: 0;
+  transition: opacity 0.2s;
+}
+
+.thumbnail:hover .remove-btn {
+  opacity: 1;
+}
+
+.file-icon {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  padding: 4px;
+  overflow: hidden;
+}
+
+.file-icon .file-name {
+  display: block;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  width: 100%;
+  font-size: 0.6rem;
+  text-align: left;
+  padding: 0 4px;
+  box-sizing: border-box;
+}
+
+.file-icon .file-type {
+  font-size: 0.6rem;
+  color: #ccc;
+}
+
+/* Different widths for image vs text thumbnails */
+.thumbnail.image {
+  width: 60px;
+  flex: 0 0 60px;
+}
+.thumbnail.text {
+  width: 120px;
+  flex: 0 0 120px;
+}
+
+/* Accessibility: Support for forced colors mode (replacing -ms-high-contrast) */
+@media (forced-colors: active) {
+  .chat-input-inner-container {
+    border-color: ButtonText;
+  }
+  
+  .chat-input-button {
+    border: 1px solid ButtonText;
+    forced-color-adjust: none;
+  }
+  
+  .chat-input textarea {
+    color: CanvasText;
+  }
+  
+  .toolbar-tool {
+    border: 1px solid ButtonText;
+    background-color: Canvas;
+    color: ButtonText;
+  }
+  
+  .toolbar-tool.active {
+    background-color: Highlight;
+    color: HighlightText;
+  }
+}

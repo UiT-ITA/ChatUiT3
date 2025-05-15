@@ -2,12 +2,13 @@ import React from 'react';
 import { BrowserRouter, Routes, Route, Navigate, Outlet } from 'react-router-dom';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 import MainLayout from './components/layout/MainLayout';
-import Weather from './pages/Weather';
+import Weather from './pages/WeatherPage';
 import Test from './pages/TestPage';
-import Profile from './pages/Profile';
-import Admin from './pages/Admin';
-import Help from './pages/Help';
-import './App.tsx.css';
+import Profile from './pages/ProfilePage';
+import AdminPage from './pages/AdminPage';
+import Help from './pages/HelpPage';
+import ChatPage from './pages/ChatPage';
+import './App.css';
 
 // Protected route component that requires admin role
 const AdminRoute = () => {
@@ -73,10 +74,13 @@ const App: React.FC = () => {
             <Route path="/test" element={<Test />} />
             <Route path="/profile" element={<Profile />} />
             <Route path="/help" element={<Help />} />
+
+            <Route path="/c/new" element={<ChatPage />} /> 
+            <Route path="/c/:chatId" element={<ChatPage />} />
             
             {/* Admin routes - protected by admin role */}
             <Route path="/admin" element={<AdminRoute />}>
-              <Route index element={<Admin />} />
+              <Route index element={<AdminPage />} />
             </Route>
             
             {/* Catch all other routes and redirect to home */}
