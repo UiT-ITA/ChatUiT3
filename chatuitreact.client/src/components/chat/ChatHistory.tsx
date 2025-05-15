@@ -1,7 +1,7 @@
 import { useEffect, useRef } from 'react';
 import ChatMessage from './ChatMessage';
 import './ChatHistory.css';
-import type { Message } from '../../services/chatService';
+import type { Message } from '../../types/chatModels';
 
 
 interface ChatHistoryProps {

@@ -4,7 +4,6 @@ using System.Linq;
 
 namespace ChatUitReact.Server.Models
 {
-    // Clean in-memory model for chat
     public class AiChat
     {
         public string Id { get; set; } = Guid.NewGuid().ToString();
@@ -12,44 +11,53 @@ namespace ChatUitReact.Server.Models
         public AiAssistant Assistant { get; set; } = new AiAssistant();
         public AiModelSettings CurrentSettings { get; set; } = new AiModelSettings();
         public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
-        public DateTime UpdatedAt { 
-            get {
+        public DateTime UpdatedAt
+        {
+            get
+            {
                 if (Messages.Count == 0)
                     return CreatedAt;
-                return Messages.Max(m => m.Timestamp); 
-            } 
+                return Messages.Max(m => m.Timestamp);
+            }
         }
         public List<AiChatMessage> Messages { get; set; } = new List<AiChatMessage>();
-        public List<AiChatFile> Files { get; set; } = new List<AiChatFile>();
+        // public List<AiChatFile> Files { get; set; } = new List<AiChatFile>();
     }
 
-    // Clean in-memory model for chat message
     public class AiChatMessage
     {
         public string Id { get; set; } = Guid.NewGuid().ToString();
         public AiChatRole Role { get; set; } = AiChatRole.User;
         public DateTime Timestamp { get; set; } = DateTime.UtcNow;
 
+        public List<MessageChunk> Content { get; set; } = new List<MessageChunk>();
 
+        public string Filename { get; set; } = string.Empty;
 
-        
-        public string Content { get; set; } = string.Empty;
-        public List<string> FileIds { get; set; } = new List<string>();
+        public ContentType ContentType {
+            get {
+                if (Content.Count == 0)
+                    return ContentType.Text;
+                if (Content.All(c => c.Type == AiMessageChunkType.Text))
+                    return ContentType.Text;
+                if (Content.All(c => c.Type == AiMessageChunkType.Image))
+                    return ContentType.Image;
+                return ContentType.Mixed;
+            }
+        }
     }
 
-    // Clean in-memory model for chat file
-    public class AiChatFile
+    public class MessageChunk
     {
-        public string Id { get; set; } = Guid.NewGuid().ToString();
+        public AiMessageChunkType Type { get; set; } = AiMessageChunkType.Text;
+        public string Content { get; set; } = string.Empty;
+    }
+
+    public class FileMetadata
+    {
         public string FileName { get; set; } = string.Empty;
         public string ContentType { get; set; } = string.Empty;
         public long Size { get; set; } = 0;
-        
-        // The extracted content chunks (text paragraphs, images, etc.)
-        public List<FileContentChunk> ContentChunks { get; set; } = new List<FileContentChunk>();
-        
-        // For internal use by DatabaseService only - not exposed to application code
-        internal string StorageFileId { get; set; } = string.Empty;
     }
 
     public enum AiChatRole
@@ -59,5 +67,18 @@ namespace ChatUitReact.Server.Models
         System,
         Tool,
         File
+    }
+
+    public enum AiMessageChunkType
+    {
+        Text,
+        Image,
+    }
+    
+    public enum ContentType
+    {
+        Text,
+        Image,
+        Mixed,
     }
 }

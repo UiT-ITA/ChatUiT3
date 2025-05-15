@@ -45,7 +45,7 @@ namespace ChatUitReact.Server.Models.Storage
         public string Id { get; set; } = Guid.NewGuid().ToString();
         public string FileId { get; set; } = string.Empty;  // Reference to the parent file
         public string Username { get; set; } = string.Empty;  // For sharding
-        public ChunkType Type { get; set; } = ChunkType.Text;
+        //public ChunkType Type { get; set; } = ChunkType.Text;
         public string Content { get; set; } = string.Empty;  // Text or base64 for images
         public int ParentChunkIndex { get; set; }  // Index of the original logical chunk
         public int Order { get; set; }  // Order within split chunks

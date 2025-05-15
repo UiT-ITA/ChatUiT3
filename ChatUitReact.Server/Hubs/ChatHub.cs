@@ -7,6 +7,7 @@ using Microsoft.AspNetCore.Authorization;
 using ChatUitReact.Server.Models.DTOs;
 using Microsoft.Extensions.Logging;
 using ChatUitReact.Server.Models;
+using ChatUitReact.Server.Extentions;
 
 public interface IChatHubClient
 {
@@ -78,7 +79,7 @@ namespace ChatUitReact.Server.Hubs
                 await Groups.AddToGroupAsync(Context.ConnectionId, userId);
                 
                 // Send the current chat list to the connected client
-                var chats = await _chatService.GetChatsForUserAsync(userId);
+                var chats = await _chatService.GetChatsAsync(userId);
                 var chatDtos = chats.Select(chat => new ChatListItemDto 
                 {
                     Id = chat.Id,
@@ -113,7 +114,7 @@ namespace ChatUitReact.Server.Hubs
         public async Task<List<ChatListItemDto>> GetChats()
         {
             string userId = GetCurrentUserId();
-            var chats = await _chatService.GetChatsForUserAsync(userId);
+            var chats = await _chatService.GetChatsAsync(userId);
             
             // Map domain models to DTOs for client
             return chats.Select(chat => new ChatListItemDto
@@ -128,7 +129,14 @@ namespace ChatUitReact.Server.Hubs
         public async Task<ChatDto> CreateChat(CreateChatDto createChatDto)
         {
             string userId = GetCurrentUserId();
-            var chat = await _chatService.CreateChatAsync(userId, createChatDto.Title, createChatDto.AssistantId);
+            
+            // Create default settings
+            var settings = new AiModelSettings();
+            
+            // Use an appropriate initial message
+            var initialMessage = "Hello! I'm starting a new conversation.";
+            
+            var chat = await _chatService.CreateChatAsync(userId, initialMessage, settings);
             
             // Map to DTO
             return new ChatDto
@@ -138,23 +146,38 @@ namespace ChatUitReact.Server.Hubs
                 CreatedAt = chat.CreatedAt,
                 LastUpdated = chat.UpdatedAt,
                 AssistantId = chat.Assistant?.Id,
-                Messages = chat.Messages.Select(MapMessageToDto).ToList()
+                Messages = chat.Messages.Select(m => m.ToMessageDto()).ToList()
             };
         }
         
         public async Task<MessageDto?> SendMessage(CreateMessageDto createMessageDto)
         {
             string userId = GetCurrentUserId();
-            var message = await _chatService.AddMessageAsync(userId, createMessageDto.ChatId, createMessageDto.Text);
             
-            // Map to DTO
-            return MapMessageToDto(message);
+            // Create text message with single chunk
+            var message = new AiChatMessage
+            {
+                Role = AiChatRole.User,
+                Content = new List<MessageChunk>
+                {
+                    new MessageChunk
+                    {
+                        Type = AiMessageChunkType.Text,
+                        Content = createMessageDto.Chunks.First().Content
+                    }
+                }
+            };
+            
+            var result = await _chatService.AddMessageAsync(userId, createMessageDto.ChatId, message);
+            
+            // Map to DTO using extension method
+            return result.ToMessageDto();
         }
         
         public async Task<ChatListItemDto?> UpdateChatTitle(string chatId, string newTitle)
         {
             string userId = GetCurrentUserId();
-            var chat = await _chatService.UpdateChatTitleAsync(userId, chatId, newTitle);
+            var chat = await _chatService.RenameChatAsync(userId, chatId, newTitle);
             
             if (chat == null) return null;
             
@@ -174,15 +197,6 @@ namespace ChatUitReact.Server.Hubs
             return await _chatService.DeleteChatAsync(userId, chatId);
         }
         
-        private MessageDto MapMessageToDto(AiChatMessage message)
-        {
-            return new MessageDto
-            {
-                Id = message.Id,
-                Text = message.Content,
-                Sender = message.Role.ToString().ToLower(),
-                Timestamp = message.Timestamp
-            };
-        }
+        // Using ToMessageDto extension method now
     }
 }

@@ -9,7 +9,8 @@ import { TbMessageCircleSearch } from "react-icons/tb";
 import { MdOutlineVpnKey } from "react-icons/md";
 
 import { useAuth } from '../../contexts/AuthContext';
-import chatService, { ChatListItem, ChatUpdateStatus } from '../../services/chatService'; // Import the real chat service
+import chatService from '../../services/chatService'; // Import the real chat service
+import { ChatListItem, ChatUpdateStatus } from '../../types/chatModels';
 
 
 interface SidebarProps {

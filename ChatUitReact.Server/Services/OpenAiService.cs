@@ -148,15 +148,15 @@ public class OpenAiService
         {
             switch (message.Role)
             {
-                case AiChatRole.User:
-                    result.Add(new UserChatMessage(message.Content));
-                    break;
-                case AiChatRole.Assistant:
-                    result.Add(new AssistantChatMessage(message.Content));
-                    break;
-                case AiChatRole.System:
-                    result.Add(new SystemChatMessage(message.Content));
-                    break;
+                //case AiChatRole.User:
+                //    result.Add(new UserChatMessage(message.Content));
+                //    break;
+                //case AiChatRole.Assistant:
+                //    result.Add(new AssistantChatMessage(message.Content));
+                //    break;
+                //case AiChatRole.System:
+                //    result.Add(new SystemChatMessage(message.Content));
+                //    break;
             }
         }
         
@@ -185,7 +185,7 @@ public class OpenAiService
         return new AiChatMessage
         {
             Role = AiChatRole.Assistant,
-            Content = completion.Content?[0]?.Text ?? string.Empty
+            //Content = completion.Content?[0]?.Text ?? string.Empty
         };
     }
 

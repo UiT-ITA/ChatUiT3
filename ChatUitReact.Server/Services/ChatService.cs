@@ -46,7 +46,7 @@ namespace ChatUitReact.Server.Services
                 chat.Messages.Add(new AiChatMessage
                 {
                     Role = AiChatRole.System,
-                    Content = assistant.SystemPrompt
+                    //Content = assistant.SystemPrompt
                 });
             }
 
@@ -74,7 +74,7 @@ namespace ChatUitReact.Server.Services
             var userMessage = new AiChatMessage
             {
                 Role = AiChatRole.User,
-                Content = message
+                //Content = message
             };
             
             chat.Messages.Add(userMessage);
@@ -130,7 +130,7 @@ namespace ChatUitReact.Server.Services
             var userMessage = new AiChatMessage
             {
                 Role = AiChatRole.User,
-                Content = message
+                //Content = message
             };
             
             chat.Messages.Add(userMessage);
@@ -147,7 +147,7 @@ namespace ChatUitReact.Server.Services
                 var assistantMessage = new AiChatMessage
                 {
                     Role = AiChatRole.Assistant,
-                    Content = string.Empty
+                    //Content = string.Empty
                 };
                 
                 chat.Messages.Add(assistantMessage);
@@ -172,7 +172,7 @@ namespace ChatUitReact.Server.Services
                 }
                 
                 // Final update with complete message
-                assistantMessage.Content = fullResponse.ToString();
+                //assistantMessage.Content = fullResponse.ToString();
                 
                 // Save the complete assistant message to database
                 await _databaseService.AddMessageAsync(assistantMessage, chatId, username);
@@ -207,7 +207,7 @@ namespace ChatUitReact.Server.Services
             var userMessage = new AiChatMessage
             {
                 Role = AiChatRole.User,
-                Content = message
+                //Content = message
             };
             
             chat.Messages.Add(userMessage);
@@ -271,9 +271,9 @@ namespace ChatUitReact.Server.Services
         }
         
         // Attach a file to a chat
-        public async Task<AiChatFile> AttachFileToChatAsync(string chatId, string username, string fileId)
-        {
-            return await _databaseService.AttachFileToChatAsync(chatId, username, fileId);
-        }
+        //public async Task<AiChatFile> AttachFileToChatAsync(string chatId, string username, string fileId)
+        //{
+        //    return await _databaseService.AttachFileToChatAsync(chatId, username, fileId);
+        //}
     }
 }

@@ -30,9 +30,31 @@ public class ChatDto
 public class MessageDto
 {
     public string Id { get; set; } = string.Empty;
-    public string Text { get; set; } = string.Empty;
-    public string Sender { get; set; } = "user"; // "user", "assistant", or "system"
+    public string Sender { get; set; } = "user"; // "user", "assistant", "system", "tool", "file"
     public DateTime Timestamp { get; set; } = DateTime.UtcNow;
+    public List<MessageChunkDto> Chunks { get; set; } = new List<MessageChunkDto>();
+    public string ContentType { get; set; } = "text"; // "text", "image", "mixed"
+    public string? Filename { get; set; }  // Only for file messages
+    
+    // For backward compatibility
+    public string Text 
+    { 
+        get
+        {
+            return string.Join("\n", Chunks
+                .Where(c => c.Type == "text")
+                .Select(c => c.Content));
+        }
+    }
+}
+
+/// <summary>
+/// DTO for message content chunk
+/// </summary>
+public class MessageChunkDto
+{
+    public string Type { get; set; } = "text"; // "text" or "image"
+    public string Content { get; set; } = string.Empty;
 }
 
 /// <summary>
@@ -41,7 +63,17 @@ public class MessageDto
 public class CreateMessageDto
 {
     public string ChatId { get; set; } = string.Empty;
-    public string Text { get; set; } = string.Empty;
+    public List<MessageChunkDto> Chunks { get; set; } = new List<MessageChunkDto>();
+    public string? Filename { get; set; }
+    
+    // For backward compatibility
+    public string Text
+    {
+        get
+        {
+            return Chunks.FirstOrDefault()?.Content ?? string.Empty;
+        }
+    }
 }
 
 /// <summary>
@@ -52,4 +84,3 @@ public class CreateChatDto
     public string Title { get; set; } = string.Empty;
     public string? AssistantId { get; set; }
 }
-

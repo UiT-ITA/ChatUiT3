@@ -179,34 +179,34 @@ namespace ChatUitReact.Server.Services
                     Id = dbMessage.Id,
                     Role = (AiChatRole)Enum.Parse(typeof(AiChatRole), dbMessage.Role),
                     Timestamp = dbMessage.Timestamp,
-                    Content = dbMessage.Content,
-                    FileIds = dbMessage.FileIds
+                    //Content = dbMessage.Content,
+                    //FileIds = dbMessage.FileIds
                 };
                 
                 chat.Messages.Add(message);
             }
             
             // Get files for this chat
-            var fileIds = chat.Messages.SelectMany(m => m.FileIds).Distinct().ToList();
-            if (fileIds.Any())
-            {
-                foreach (var fileId in fileIds)
-                {
-                    var file = await GetFileAsync(fileId, username, false);
-                    if (file != null)
-                    {
-                        chat.Files.Add(new AiChatFile
-                        {
-                            Id = file.Id,
-                            FileName = file.FileName,
-                            ContentType = file.ContentType,
-                            Size = file.Size,
-                            ContentChunks = file.ContentChunks,
-                            StorageFileId = file.Id
-                        });
-                    }
-                }
-            }
+            //var fileIds = chat.Messages.SelectMany(m => m.FileIds).Distinct().ToList();
+            //if (fileIds.Any())
+            //{
+            //    foreach (var fileId in fileIds)
+            //    {
+            //        var file = await GetFileAsync(fileId, username, false);
+            //        if (file != null)
+            //        {
+            //            chat.Files.Add(new AiChatFile
+            //            {
+            //                Id = file.Id,
+            //                FileName = file.FileName,
+            //                ContentType = file.ContentType,
+            //                Size = file.Size,
+            //                ContentChunks = file.ContentChunks,
+            //                StorageFileId = file.Id
+            //            });
+            //        }
+            //    }
+            //}
             
             return chat;
         }
@@ -289,8 +289,8 @@ namespace ChatUitReact.Server.Services
                 Username = username,
                 Role = message.Role.ToString(),
                 Timestamp = message.Timestamp,
-                Content = message.Content,
-                FileIds = message.FileIds
+                //Content = message.Content,
+                //FileIds = message.FileIds
             };
             
             // Insert into database
@@ -324,8 +324,8 @@ namespace ChatUitReact.Server.Services
                     Id = dbMessage.Id,
                     Role = (AiChatRole)Enum.Parse(typeof(AiChatRole), dbMessage.Role),
                     Timestamp = dbMessage.Timestamp,
-                    Content = dbMessage.Content,
-                    FileIds = dbMessage.FileIds
+                    //Content = dbMessage.Content,
+                    //FileIds = dbMessage.FileIds
                 };
                 
                 messages.Add(message);
@@ -339,174 +339,174 @@ namespace ChatUitReact.Server.Services
         #region Files
         
         // Convert between in-memory and database models
-        private AiFile ConvertToAiFile(DbFileMetadata dbFile, List<FileContentChunk> contentChunks = null)
-        {
-            var aiFile = new AiFile
-            {
-                Id = dbFile.Id,
-                FileName = dbFile.FileName,
-                ContentType = dbFile.ContentType,
-                Size = dbFile.Size,
-                CreatedAt = dbFile.CreatedAt,
-                ContentChunks = contentChunks ?? new List<FileContentChunk>()
-            };
+        //private AiFile ConvertToAiFile(DbFileMetadata dbFile, List<FileContentChunk> contentChunks = null)
+        //{
+        //    var aiFile = new AiFile
+        //    {
+        //        Id = dbFile.Id,
+        //        FileName = dbFile.FileName,
+        //        ContentType = dbFile.ContentType,
+        //        Size = dbFile.Size,
+        //        CreatedAt = dbFile.CreatedAt,
+        //        ContentChunks = contentChunks ?? new List<FileContentChunk>()
+        //    };
             
-            return aiFile;
-        }
+        //    return aiFile;
+        //}
         
-        private DbFileMetadata ConvertToDbFileMetadata(AiFile file, string username)
-        {
-            var dbFile = new DbFileMetadata
-            {
-                Id = file.Id,
-                Username = username,
-                FileName = file.FileName,
-                ContentType = file.ContentType,
-                Size = file.Size,
-                CreatedAt = file.CreatedAt,
-                ProcessedText = string.Empty
-            };
+        //private DbFileMetadata ConvertToDbFileMetadata(AiFile file, string username)
+        //{
+        //    var dbFile = new DbFileMetadata
+        //    {
+        //        Id = file.Id,
+        //        Username = username,
+        //        FileName = file.FileName,
+        //        ContentType = file.ContentType,
+        //        Size = file.Size,
+        //        CreatedAt = file.CreatedAt,
+        //        ProcessedText = string.Empty
+        //    };
             
-            return dbFile;
-        }
+        //    return dbFile;
+        //}
         
         // Get file content chunks - properly merging split chunks
-        private async Task<List<FileContentChunk>> GetFileContentChunksAsync(string fileId, string username)
-        {
-            var filter = Builders<DbFileChunk>.Filter.And(
-                Builders<DbFileChunk>.Filter.Eq(c => c.FileId, fileId),
-                Builders<DbFileChunk>.Filter.Eq(c => c.Username, username)
-            );
+        //private async Task<List<FileContentChunk>> GetFileContentChunksAsync(string fileId, string username)
+        //{
+        //    var filter = Builders<DbFileChunk>.Filter.And(
+        //        Builders<DbFileChunk>.Filter.Eq(c => c.FileId, fileId),
+        //        Builders<DbFileChunk>.Filter.Eq(c => c.Username, username)
+        //    );
             
-            // Get all chunks ordered first by ParentChunkIndex, then by Order
-            var dbChunks = await _fileChunkCollection
-                .Find(filter)
-                .SortBy(c => c.ParentChunkIndex)
-                .ThenBy(c => c.Order)
-                .ToListAsync();
+        //    // Get all chunks ordered first by ParentChunkIndex, then by Order
+        //    var dbChunks = await _fileChunkCollection
+        //        .Find(filter)
+        //        .SortBy(c => c.ParentChunkIndex)
+        //        .ThenBy(c => c.Order)
+        //        .ToListAsync();
             
-            // Group chunks by ParentChunkIndex to reassemble split chunks
-            var groupedChunks = dbChunks.GroupBy(c => c.ParentChunkIndex);
-            var contentChunks = new List<FileContentChunk>();
+        //    // Group chunks by ParentChunkIndex to reassemble split chunks
+        //    var groupedChunks = dbChunks.GroupBy(c => c.ParentChunkIndex);
+        //    var contentChunks = new List<FileContentChunk>();
             
-            foreach (var group in groupedChunks)
-            {
-                // Get chunk type from first chunk (all chunks in group have same type)
-                var chunkType = group.First().Type;
+        //    foreach (var group in groupedChunks)
+        //    {
+        //        // Get chunk type from first chunk (all chunks in group have same type)
+        //        var chunkType = group.First().Type;
                 
-                // Merge content from all chunks in the group
-                var fullContent = string.Concat(group.OrderBy(c => c.Order).Select(c => c.Content));
+        //        // Merge content from all chunks in the group
+        //        var fullContent = string.Concat(group.OrderBy(c => c.Order).Select(c => c.Content));
                 
-                // Add as a single logical chunk to in-memory model
-                contentChunks.Add(new FileContentChunk
-                {
-                    Type = chunkType,
-                    Content = fullContent
-                });
-            }
+        //        // Add as a single logical chunk to in-memory model
+        //        contentChunks.Add(new FileContentChunk
+        //        {
+        //            Type = chunkType,
+        //            Content = fullContent
+        //        });
+        //    }
             
-            return contentChunks;
-        }
+        //    return contentChunks;
+        //}
 
         // Save a file, handling large chunks as needed
-        public async Task<AiFile> SaveFileAsync(AiFile file, string username)
-        {
-            // Convert to database model
-            var dbFileMetadata = ConvertToDbFileMetadata(file, username);
+        //public async Task<AiFile> SaveFileAsync(AiFile file, string username)
+        //{
+        //    // Convert to database model
+        //    var dbFileMetadata = ConvertToDbFileMetadata(file, username);
             
-            // Save file metadata
-            await _fileMetadataCollection.InsertOneAsync(dbFileMetadata);
+        //    // Save file metadata
+        //    await _fileMetadataCollection.InsertOneAsync(dbFileMetadata);
             
-            // Save all chunks, letting SaveFileContentChunksAsync handle splitting large chunks
-            await SaveFileContentChunksAsync(file.Id, username, file.ContentChunks);
+        //    // Save all chunks, letting SaveFileContentChunksAsync handle splitting large chunks
+        //    await SaveFileContentChunksAsync(file.Id, username, file.ContentChunks);
             
-            return file;
-        }
+        //    return file;
+        //}
         
-        // Get file metadata
-        public async Task<AiFile> GetFileAsync(string fileId, string username, bool includeContent = false)
-        {
-            // Get file metadata
-            var filter = Builders<DbFileMetadata>.Filter.And(
-                Builders<DbFileMetadata>.Filter.Eq(f => f.Id, fileId),
-                Builders<DbFileMetadata>.Filter.Eq(f => f.Username, username)
-            );
+        //// Get file metadata
+        //public async Task<AiFile> GetFileAsync(string fileId, string username, bool includeContent = false)
+        //{
+        //    // Get file metadata
+        //    var filter = Builders<DbFileMetadata>.Filter.And(
+        //        Builders<DbFileMetadata>.Filter.Eq(f => f.Id, fileId),
+        //        Builders<DbFileMetadata>.Filter.Eq(f => f.Username, username)
+        //    );
             
             
-            var dbFile = await _fileMetadataCollection.Find(filter).FirstOrDefaultAsync();
-            if (dbFile == null) return null;
+        //    var dbFile = await _fileMetadataCollection.Find(filter).FirstOrDefaultAsync();
+        //    if (dbFile == null) return null;
             
-            // Get content chunks if requested
-            List<FileContentChunk> contentChunks = null;
-            if (includeContent)
-            {
-                contentChunks = await GetFileContentChunksAsync(fileId, username);
-            }
+        //    // Get content chunks if requested
+        //    List<FileContentChunk> contentChunks = null;
+        //    if (includeContent)
+        //    {
+        //        contentChunks = await GetFileContentChunksAsync(fileId, username);
+        //    }
             
-            var aiFile = ConvertToAiFile(dbFile, contentChunks);
-            return aiFile;
-        }
+        //    var aiFile = ConvertToAiFile(dbFile, contentChunks);
+        //    return aiFile;
+        //}
 
-        // Save file content chunks - splitting large chunks as needed
-        public async Task SaveFileContentChunksAsync(string fileId, string username, List<FileContentChunk> contentChunks)
-        {
-            // Delete existing chunks first
-            var deleteFilter = Builders<DbFileChunk>.Filter.And(
-                Builders<DbFileChunk>.Filter.Eq(c => c.FileId, fileId),
-                Builders<DbFileChunk>.Filter.Eq(c => c.Username, username)
-            );
+        //// Save file content chunks - splitting large chunks as needed
+        //public async Task SaveFileContentChunksAsync(string fileId, string username, List<FileContentChunk> contentChunks)
+        //{
+        //    // Delete existing chunks first
+        //    var deleteFilter = Builders<DbFileChunk>.Filter.And(
+        //        Builders<DbFileChunk>.Filter.Eq(c => c.FileId, fileId),
+        //        Builders<DbFileChunk>.Filter.Eq(c => c.Username, username)
+        //    );
             
-            await _fileChunkCollection.DeleteManyAsync(deleteFilter);
+        //    await _fileChunkCollection.DeleteManyAsync(deleteFilter);
             
-            const int maxChunkSize = 1024 * 1024; // 1MB
+        //    const int maxChunkSize = 1024 * 1024; // 1MB
             
-            // Save new chunks, splitting large ones if needed
-            for (int parentChunkIndex = 0; parentChunkIndex < contentChunks.Count; parentChunkIndex++)
-            {
-                var chunk = contentChunks[parentChunkIndex];
+        //    // Save new chunks, splitting large ones if needed
+        //    for (int parentChunkIndex = 0; parentChunkIndex < contentChunks.Count; parentChunkIndex++)
+        //    {
+        //        var chunk = contentChunks[parentChunkIndex];
                 
-                // Check if this individual chunk is too large for a single database chunk
-                if (chunk.Content.Length > maxChunkSize)
-                {
-                    // Split this large chunk into multiple database chunks
-                    int subChunksCount = (int)Math.Ceiling((double)chunk.Content.Length / maxChunkSize);
+        //        // Check if this individual chunk is too large for a single database chunk
+        //        if (chunk.Content.Length > maxChunkSize)
+        //        {
+        //            // Split this large chunk into multiple database chunks
+        //            int subChunksCount = (int)Math.Ceiling((double)chunk.Content.Length / maxChunkSize);
                     
-                    for (int subChunkIndex = 0; subChunkIndex < subChunksCount; subChunkIndex++)
-                    {
-                        int startIndex = subChunkIndex * maxChunkSize;
-                        int length = Math.Min(maxChunkSize, chunk.Content.Length - startIndex);
-                        string chunkContent = chunk.Content.Substring(startIndex, length);
+        //            for (int subChunkIndex = 0; subChunkIndex < subChunksCount; subChunkIndex++)
+        //            {
+        //                int startIndex = subChunkIndex * maxChunkSize;
+        //                int length = Math.Min(maxChunkSize, chunk.Content.Length - startIndex);
+        //                string chunkContent = chunk.Content.Substring(startIndex, length);
                         
-                        var dbChunk = new DbFileChunk
-                        {
-                            FileId = fileId,
-                            Username = username,
-                            Type = chunk.Type,
-                            Content = chunkContent,
-                            ParentChunkIndex = parentChunkIndex,  // To identify which logical chunk this is part of
-                            Order = subChunkIndex  // To maintain order within split chunks
-                        };
+        //                var dbChunk = new DbFileChunk
+        //                {
+        //                    FileId = fileId,
+        //                    Username = username,
+        //                    Type = chunk.Type,
+        //                    Content = chunkContent,
+        //                    ParentChunkIndex = parentChunkIndex,  // To identify which logical chunk this is part of
+        //                    Order = subChunkIndex  // To maintain order within split chunks
+        //                };
                         
-                        await _fileChunkCollection.InsertOneAsync(dbChunk);
-                    }
-                }
-                else
-                {
-                    // This chunk is small enough to save as-is
-                    var dbChunk = new DbFileChunk
-                    {
-                        FileId = fileId,
-                        Username = username,
-                        Type = chunk.Type,
-                        Content = chunk.Content,
-                        ParentChunkIndex = parentChunkIndex,
-                        Order = 0  // Only one chunk, so order is 0
-                    };
+        //                await _fileChunkCollection.InsertOneAsync(dbChunk);
+        //            }
+        //        }
+        //        else
+        //        {
+        //            // This chunk is small enough to save as-is
+        //            var dbChunk = new DbFileChunk
+        //            {
+        //                FileId = fileId,
+        //                Username = username,
+        //                Type = chunk.Type,
+        //                Content = chunk.Content,
+        //                ParentChunkIndex = parentChunkIndex,
+        //                Order = 0  // Only one chunk, so order is 0
+        //            };
                     
-                    await _fileChunkCollection.InsertOneAsync(dbChunk);
-                }
-            }
-        }
+        //            await _fileChunkCollection.InsertOneAsync(dbChunk);
+        //        }
+        //    }
+        //}
 
         // Delete a file and all associated data
         public async Task DeleteFileAsync(string fileId, string username)
@@ -529,38 +529,38 @@ namespace ChatUitReact.Server.Services
         }
         
         // Attach a file to a chat
-        public async Task<AiChatFile> AttachFileToChatAsync(string chatId, string username, string fileId)
-        {
-            // Get file metadata
-            var file = await GetFileAsync(fileId, username);
-            if (file == null) return null;
+        //public async Task<AiChatFile> AttachFileToChatAsync(string chatId, string username, string fileId)
+        //{
+        //    // Get file metadata
+        //    var file = await GetFileAsync(fileId, username);
+        //    if (file == null) return null;
             
-            // Create a chat file reference
-            var chatFile = new AiChatFile
-            {
-                FileName = file.FileName,
-                ContentType = file.ContentType,
-                Size = file.Size,
-                ContentChunks = file.ContentChunks,
-                StorageFileId = file.Id
-            };
+        //    // Create a chat file reference
+        //    var chatFile = new AiChatFile
+        //    {
+        //        FileName = file.FileName,
+        //        ContentType = file.ContentType,
+        //        Size = file.Size,
+        //        ContentChunks = file.ContentChunks,
+        //        StorageFileId = file.Id
+        //    };
             
-            // Get the chat
-            var filter = Builders<DbChat>.Filter.And(
-                Builders<DbChat>.Filter.Eq(c => c.Id, chatId),
-                Builders<DbChat>.Filter.Eq(c => c.Username, username)
-            );
+        //    // Get the chat
+        //    var filter = Builders<DbChat>.Filter.And(
+        //        Builders<DbChat>.Filter.Eq(c => c.Id, chatId),
+        //        Builders<DbChat>.Filter.Eq(c => c.Username, username)
+        //    );
             
-            var dbChat = await _chatCollection.Find(filter).FirstOrDefaultAsync();
-            if (dbChat == null) return null;
+        //    var dbChat = await _chatCollection.Find(filter).FirstOrDefaultAsync();
+        //    if (dbChat == null) return null;
             
-            // Since we don't have direct access to add files in the database,
-            // we'll need to get the full chat, add the file, and update it
-            var chat = await GetChatAsync(chatId, username);
-            chat.Files.Add(chatFile);
+        //    // Since we don't have direct access to add files in the database,
+        //    // we'll need to get the full chat, add the file, and update it
+        //    var chat = await GetChatAsync(chatId, username);
+        //    chat.Files.Add(chatFile);
             
-            return chatFile;
-        }
+        //    return chatFile;
+        //}
 
         #endregion
 

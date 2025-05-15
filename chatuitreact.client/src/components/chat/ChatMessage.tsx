@@ -9,8 +9,8 @@ import { atomDark } from 'react-syntax-highlighter/dist/esm/styles/prism'; // Or
 
 import 'katex/dist/katex.min.css'; // KaTeX CSS
 
-// Import Message type from the service to keep it consistent
-import type { Message } from '../../services/chatService';
+// Import Message type from our models
+import { Message, MessageChunkType } from '../../types/chatModels';
 
 interface ChatMessageProps {
   message: Message;
@@ -19,6 +19,7 @@ interface ChatMessageProps {
 const ChatMessage = ({ message }: ChatMessageProps) => {
   const isUser = message.sender === 'user';
   const isStreaming = message.isStreaming === true;
+  const isFileMessage = message.sender === 'file';
 
   const handleCopyCode = (code: string) => {
     navigator.clipboard.writeText(code).then(() => {
@@ -62,17 +63,48 @@ const ChatMessage = ({ message }: ChatMessageProps) => {
     },
   };
 
-  return (
-    <div className={`chat-message ${isUser ? 'user-message' : 'assistant-message'} ${isStreaming ? 'streaming' : ''}`}>
-      <div className="message-content">
-        <ReactMarkdown
-          remarkPlugins={[remarkGfm, remarkMath]}
-          rehypePlugins={[rehypeKatex]}
-          components={markdownComponents}
-        >
-          {message.text}
-        </ReactMarkdown>
+  const renderChunks = () => {
+    return (
+      <>
+        {message.chunks.map((chunk, index) => {
+          if (chunk.type === MessageChunkType.Text) {
+            return (
+              <ReactMarkdown
+                key={`chunk-${index}`}
+                remarkPlugins={[remarkGfm, remarkMath]}
+                rehypePlugins={[rehypeKatex]}
+                components={markdownComponents}
+              >
+                {chunk.content}
+              </ReactMarkdown>
+            );
+          } else if (chunk.type === MessageChunkType.Image) {
+            return (
+              <div key={`chunk-${index}`} className="message-image-container">
+                <img 
+                  src={chunk.content} 
+                  alt="Message attachment" 
+                  className="message-image"
+                />
+              </div>
+            );
+          }
+          return null;
+        })}
         {isStreaming && <span className="streaming-indicator">▋</span>}
+      </>
+    );
+  };
+
+  return (
+    <div className={`chat-message ${isUser ? 'user-message' : isFileMessage ? 'file-message' : 'assistant-message'} ${isStreaming ? 'streaming' : ''}`}>
+      {isFileMessage && message.filename && (
+        <div className="file-header">
+          <span className="file-name">{message.filename}</span>
+        </div>
+      )}
+      <div className="message-content">
+        {renderChunks()}
       </div>
       
       <div className="message-toolbar">
@@ -99,12 +131,16 @@ const ChatMessage = ({ message }: ChatMessageProps) => {
               <button className="message-action-button" title="Copy">
                 <MdContentCopy size="20px" />
               </button>
-              <button className="message-action-button" title="Branch">
-                <MdCallSplit size="20px" />
-              </button>
-              <button className="message-action-button" title="Retry">
-                <MdRefresh size="20px" />
-              </button>
+              {!isFileMessage && (
+                <>
+                  <button className="message-action-button" title="Branch">
+                    <MdCallSplit size="20px" />
+                  </button>
+                  <button className="message-action-button" title="Retry">
+                    <MdRefresh size="20px" />
+                  </button>
+                </>
+              )}
             </div>
             <span className="message-time">
               {message.timestamp.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}

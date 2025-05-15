@@ -3,17 +3,25 @@ using Microsoft.AspNetCore.SignalR;
 using ChatUitReact.Server.Hubs;
 using ChatUitReact.Server.Models.DTOs;
 using System.Text;
+using ChatUitReact.Server.Extentions;
+using static ChatUitReact.Server.Extentions.MessageFactoryExtensions;
 
 namespace ChatUitReact.Server.Services;
 
-/// <summary>
-/// Implementation of IChatService that provides in-memory chat functionality
-/// </summary>
 public class MockChatService : IChatService
 {
     private readonly IHubContext<ChatHub, IChatHubClient> _hubContext;
     private readonly ILogger<MockChatService> _logger;
     private readonly Dictionary<string, Dictionary<string, AiChat>> _userChats = new();
+    
+    // Helper method to create a message with a specific ID and timestamp
+    private AiChatMessage CreateMessageWithId(string id, string content, AiChatRole role, DateTime timestamp)
+    {
+        var message = TextMessage(content, role);
+        message.Id = id;
+        message.Timestamp = timestamp;
+        return message;
+    }
 
     public MockChatService(
         IHubContext<ChatHub, IChatHubClient> hubContext,
@@ -26,7 +34,7 @@ public class MockChatService : IChatService
 
     private void InitializeMockData()
     {
-        // Initialize with mock data
+        // Initialize with mock data using factory methods
         var anonymousChats = new Dictionary<string, AiChat>
         {
             ["guid-123-abc"] = new AiChat
@@ -35,11 +43,11 @@ public class MockChatService : IChatService
                 Name = "React Hooks Discussion",
                 Messages = new List<AiChatMessage>
                 {
-                    new AiChatMessage { Id = "c1m1", Content = "Hello from chat 123-abc!", Role = AiChatRole.Assistant, Timestamp = DateTime.UtcNow.AddHours(-2) },
-                    new AiChatMessage { Id = "c1m2", Content = "This is a specific, existing chat about React Hooks.", Role = AiChatRole.User, Timestamp = DateTime.UtcNow.AddHours(-2).AddMinutes(2) },
-                    new AiChatMessage { Id = "c1m3", Content = "Indeed it is. How can I assist you further in this context?", Role = AiChatRole.Assistant, Timestamp = DateTime.UtcNow.AddHours(-2).AddMinutes(3) },
+                    CreateMessageWithId("c1m1", "Hello from chat 123-abc!", AiChatRole.Assistant, DateTime.UtcNow.AddHours(-2)),
+                    CreateMessageWithId("c1m2", "This is a specific, existing chat about React Hooks.", AiChatRole.User, DateTime.UtcNow.AddHours(-2).AddMinutes(2)),
+                    CreateMessageWithId("c1m3", "Indeed it is. How can I assist you further in this context?", AiChatRole.Assistant, DateTime.UtcNow.AddHours(-2).AddMinutes(3))
                 },
-                Assistant = new AiAssistant { Id = "gpt-3.5-turbo", Name = "GPT-3.5 Turbo" },
+                CurrentSettings = new AiModelSettings { Temperature = 0.7f },
                 CreatedAt = DateTime.UtcNow.AddHours(-2)
             },
             ["guid-456-def"] = new AiChat
@@ -48,10 +56,10 @@ public class MockChatService : IChatService
                 Name = "Project Ideas",
                 Messages = new List<AiChatMessage>
                 {
-                    new AiChatMessage { Id = "c2m1", Content = "Welcome to chat 456-def, let's brainstorm some project ideas.", Role = AiChatRole.Assistant, Timestamp = DateTime.UtcNow.AddHours(-1) },
-                    new AiChatMessage { Id = "c2m2", Content = "I have a query about this particular chat session regarding project planning.", Role = AiChatRole.User, Timestamp = DateTime.UtcNow.AddHours(-1).AddMinutes(2) },
+                    CreateMessageWithId("c2m1", "Welcome to chat 456-def, let's brainstorm some project ideas.", AiChatRole.Assistant, DateTime.UtcNow.AddHours(-1)),
+                    CreateMessageWithId("c2m2", "I have a query about this particular chat session regarding project planning.", AiChatRole.User, DateTime.UtcNow.AddHours(-1).AddMinutes(2))
                 },
-                Assistant = new AiAssistant { Id = "claude-2", Name = "Claude 2" },
+                CurrentSettings = new AiModelSettings { Temperature = 0.8f },
                 CreatedAt = DateTime.UtcNow.AddHours(-1)
             },
             ["guid-789-ghi"] = new AiChat
@@ -60,69 +68,378 @@ public class MockChatService : IChatService
                 Name = "CSS Styling Help",
                 Messages = new List<AiChatMessage>
                 {
-                    new AiChatMessage { Id = "c3m1", Content = "Having some trouble with CSS flexbox.", Role = AiChatRole.User, Timestamp = DateTime.UtcNow.AddMinutes(-30) },
-                    new AiChatMessage { Id = "c3m2", Content = "Flexbox can be tricky! What specifically are you trying to achieve?", Role = AiChatRole.Assistant, Timestamp = DateTime.UtcNow.AddMinutes(-28) },
+                    CreateMessageWithId("c3m1", "Having some trouble with CSS flexbox.", AiChatRole.User, DateTime.UtcNow.AddMinutes(-30)),
+                    CreateMessageWithId("c3m2", "Flexbox can be tricky! What specifically are you trying to achieve?", AiChatRole.Assistant, DateTime.UtcNow.AddMinutes(-28))
                 },
+                CurrentSettings = new AiModelSettings { Temperature = 0.5f },
                 CreatedAt = DateTime.UtcNow.AddMinutes(-30)
             },
-            ["guid-long-chat"] = new AiChat
+            ["guid-markdown-test"] = new AiChat
             {
-                Id = "guid-long-chat",
-                Name = "In-Depth AI Ethics & Future",
+                Id = "guid-markdown-test",
+                Name = "Advanced Markdown Examples",
                 Messages = new List<AiChatMessage>
                 {
-                    new AiChatMessage {
-                        Id = "lc1",
-                        Content = "I'd like to explore the ethical landscape of advanced AI, particularly as we approach models with more general problem-solving capabilities. What do you consider the most pressing ethical challenges we need to address proactively in the development and deployment of such systems? For instance, how do we ensure alignment with human values when these values themselves can be diverse and sometimes conflicting?",
-                        Role = AiChatRole.User,
-                        Timestamp = DateTime.UtcNow.AddDays(-3)
-                    },
-                    new AiChatMessage {
-                        Id = "lc2",
-                        Content = "That's a profoundly important question. One of the foremost challenges is indeed \"value alignment.\" Ensuring that AI systems, especially highly autonomous ones, operate in ways that are beneficial to humanity is non-trivial. This involves several sub-problems: first, how do we formally specify complex human values? Values like \"fairness,\" \"safety,\" or \"well-being\" are abstract and context-dependent. Second, as you pointed out, whose values do we align to? Different cultures and individuals have varying ethical frameworks. A potential approach involves techniques like \"inverse reinforcement learning\" to infer values from observed human behavior, combined with robust deliberative processes involving diverse stakeholders to define acceptable operational boundaries. Furthermore, developing \"corrigibility\" – ensuring AI systems remain amenable to correction even if their initial objectives are misspecified – is crucial. This also ties into transparency and interpretability, allowing us to understand an AI's decision-making process and identify potential misalignments before they cause harm.",
-                        Role = AiChatRole.Assistant,
-                        Timestamp = DateTime.UtcNow.AddDays(-3).AddMinutes(2)
-                    },
-                    new AiChatMessage {
-                        Id = "lc3",
-                        Content = "The concept of corrigibility is fascinating. Could you elaborate on how that might be technically implemented or fostered in an AI's architecture? It seems to run counter to the idea of an AI optimizing strongly for a given objective. Also, regarding transparency, with models becoming increasingly complex (billions or trillions of parameters), is true interpretability a realistic goal, or are we looking at forms of high-level explanation rather than a granular understanding of every connection?",
-                        Role = AiChatRole.User,
-                        Timestamp = DateTime.UtcNow.AddDays(-3).AddMinutes(4)
-                    }
+                    CreateMessageWithId("md1", "Hi, I need examples of advanced markdown formatting for my documentation. Can you show me various features like tables, code blocks, math equations, etc.?", AiChatRole.User, DateTime.UtcNow.AddHours(-5)),
+                    
+                    CreateMessageWithId("md2", @"# Markdown Showcase
+
+Certainly! I'd be happy to demonstrate various markdown formatting options.
+
+## Basic Formatting
+
+You can use **bold text** or *italic text* or even ***bold and italic***. 
+
+### Lists
+
+Here's an ordered list:
+1. First item
+2. Second item
+   1. Sub-item 1
+   2. Sub-item 2
+3. Third item
+
+And an unordered list:
+- Apples
+  - Honeycrisp
+  - Granny Smith
+- Oranges
+- Bananas
+
+## Tables
+
+Here's a comparison table of programming languages:
+
+| Language | Paradigm | Typing | Year |
+|----------|----------|--------|------|
+| Python   | Multi-paradigm | Dynamic | 1991 |
+| JavaScript | Multi-paradigm | Dynamic | 1995 |
+| C++      | Multi-paradigm | Static | 1985 |
+| Rust     | Multi-paradigm | Static | 2010 |
+| Haskell  | Functional | Static | 1990 |
+
+## Code Blocks
+
+Here's a Python example:
+
+```python
+def fibonacci(n):
+    if n <= 1:
+        return n
+    else:
+        return fibonacci(n-1) + fibonacci(n-2)
+        
+# Print first 10 Fibonacci numbers
+for i in range(10):
+    print(fibonacci(i))
+```
+
+", AiChatRole.Assistant, DateTime.UtcNow.AddHours(-5).AddMinutes(2)),
+                    
+                    CreateMessageWithId("md3", "That's great! Can you show me more examples, particularly with math equations and diagrams? Also, can you show code examples in other languages?", AiChatRole.User, DateTime.UtcNow.AddHours(-5).AddMinutes(5)),
+                    
+                    CreateMessageWithId("md4", @"## Math Equations
+
+Markdown supports LaTeX-style math equations. Here are some examples:
+
+Inline equation: $E = mc^2$
+
+Block equation:
+$$\frac{d}{dx}(x^n) = nx^{n-1}$$
+
+Complex equation:
+$$
+\begin{align}
+\nabla \times \vec{\mathbf{B}} -\, \frac1c\, \frac{\partial\vec{\mathbf{E}}}{\partial t} & = \frac{4\pi}{c}\vec{\mathbf{j}} \\
+\nabla \cdot \vec{\mathbf{E}} & = 4 \pi \rho \\
+\nabla \times \vec{\mathbf{E}}\, +\, \frac1c\, \frac{\partial\vec{\mathbf{B}}}{\partial t} & = \vec{\mathbf{0}} \\
+\nabla \cdot \vec{\mathbf{B}} & = 0
+\end{align}
+$$
+
+## More Code Examples
+
+### JavaScript
+```javascript
+class Person {
+  constructor(name, age) {
+    this.name = name;
+    this.age = age;
+  }
+  
+  greet() {
+    return `Hello, my name is ${this.name} and I am ${this.age} years old.`;
+  }
+}
+
+const alice = new Person('Alice', 28);
+console.log(alice.greet());
+```
+
+### C#
+```csharp
+using System;
+
+public class Program
+{
+    public static void Main()
+    {
+        Console.WriteLine(""Hello, World!"");
+        
+        // LINQ example
+        var numbers = new List<int> { 1, 2, 3, 4, 5, 6, 7, 8, 9, 10 };
+        var evenNumbers = numbers.Where(n => n % 2 == 0).ToList();
+        
+        Console.WriteLine(string.Join("", "", evenNumbers));
+    }
+}
+```
+
+### SQL
+```sql
+SELECT 
+    Customers.CustomerName, 
+    Orders.OrderID, 
+    Products.ProductName, 
+    OrderDetails.Quantity
+FROM Customers
+JOIN Orders ON Customers.CustomerID = Orders.CustomerID
+JOIN OrderDetails ON Orders.OrderID = OrderDetails.OrderID
+JOIN Products ON OrderDetails.ProductID = Products.ProductID
+WHERE Orders.OrderDate > '2023-01-01'
+ORDER BY Customers.CustomerName, Orders.OrderID;
+```
+", AiChatRole.Assistant, DateTime.UtcNow.AddHours(-5).AddMinutes(7)),
+                    
+                    CreateMessageWithId("md5", "This is incredibly helpful! Can you also show me how to add quotes, horizontal rules, and maybe some advanced link formatting? Also, are there any markdown extensions for diagrams?", AiChatRole.User, DateTime.UtcNow.AddHours(-5).AddMinutes(10)),
+                    
+                    CreateMessageWithId("md6", @"## Quotes and Horizontal Rules
+
+> This is a simple blockquote.
+
+> This is a multi-line blockquote.
+> 
+> It can contain multiple paragraphs.
+> 
+> > And even nested blockquotes!
+
+Horizontal rules:
+
+---
+
+Or:
+
+***
+
+## Advanced Links
+
+[Basic link](https://example.com)
+
+[Link with title](https://example.com ""Example Website"")
+
+Reference style links: [Click here][ref1] for more information.
+
+[ref1]: https://example.com ""Reference Link""
+
+## Images
+
+![Alt text for an image](https://th.bing.com/th/id/R.48e64026b142ed723730c32b3090821c?rik=d%2bOBq%2bgPO5A3dw&pid=ImgRaw&r=0 ""Image Title"")
+
+## Task Lists
+
+- [x] Task 1 (completed)
+- [ ] Task 2 (not completed)
+- [x] Task 3 (completed)
+
+## Diagrams (with Mermaid)
+
+Markdown-based diagram tools like Mermaid allow for creating flowcharts, sequence diagrams, etc.:
+
+```mermaid
+graph TD
+    A[Start] --> B{Is it working?}
+    B -->|Yes| C[Great!]
+    B -->|No| D[Debug]
+    D --> B
+```
+
+Sequence diagram:
+
+```mermaid
+sequenceDiagram
+    participant Alice
+    participant Bob
+    Alice->>John: Hello John, how are you?
+    loop Healthcheck
+        John->>John: Fight against hypochondria
+    end
+    Note right of John: Rational thoughts <br/>prevail!
+    John-->>Alice: Great!
+    John->>Bob: How about you?
+    Bob-->>John: Jolly good!
+```
+
+Class diagram:
+
+```mermaid
+classDiagram
+    Animal <|-- Duck
+    Animal <|-- Fish
+    Animal <|-- Zebra
+    Animal : +int age
+    Animal : +String gender
+    Animal: +isMammal()
+    Animal: +mate()
+    class Duck{
+        +String beakColor
+        +swim()
+        +quack()
+    }
+    class Fish{
+        -int sizeInFeet
+        -canEat()
+    }
+    class Zebra{
+        +bool is_wild
+        +run()
+    }
+```
+
+## Footnotes
+
+Here's a sentence with a footnote[^1].
+
+[^1]: This is the footnote content.
+
+## Definition Lists
+
+Term
+: Definition for the term
+
+Another Term
+: Definition for another term
+: A second definition for another term
+
+## Syntax Highlighting with Diff
+
+```diff
+- const oldCode = 'to be removed';
++ const newCode = 'to be added';
+```
+
+I hope these examples cover what you're looking for!
+", AiChatRole.Assistant, DateTime.UtcNow.AddHours(-5).AddMinutes(12)),
+
+                    CreateMessageWithId("md7", "This is an outstanding reference! One last thing - could you show me examples of embedding HTML directly in markdown? I heard that's possible too.", AiChatRole.User, DateTime.UtcNow.AddHours(-5).AddMinutes(14)),
+                    
+                    CreateMessageWithId("md8", @"## HTML in Markdown
+
+Yes, most Markdown parsers allow embedding HTML directly. Here are some examples:
+
+### Basic HTML Elements
+
+<div style=""padding: 15px; background-color: #f0f0f0; border-radius: 5px;"">
+  <h3 style=""color: #333;"">This is a custom styled div</h3>
+  <p>You can use <span style=""color: red;"">inline styles</span> to customize the appearance.</p>
+</div>
+
+### Tables with Custom Styling
+
+<table style=""border-collapse: collapse; width: 100%;"">
+  <thead>
+    <tr style=""background-color: #4CAF50; color: white;"">
+      <th style=""border: 1px solid #ddd; padding: 8px;"">Name</th>
+      <th style=""border: 1px solid #ddd; padding: 8px;"">Email</th>
+      <th style=""border: 1px solid #ddd; padding: 8px;"">Phone</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr style=""background-color: #f2f2f2;"">
+      <td style=""border: 1px solid #ddd; padding: 8px;"">John Doe</td>
+      <td style=""border: 1px solid #ddd; padding: 8px;"">john@example.com</td>
+      <td style=""border: 1px solid #ddd; padding: 8px;"">(123) 456-7890</td>
+    </tr>
+    <tr>
+      <td style=""border: 1px solid #ddd; padding: 8px;"">Jane Smith</td>
+      <td style=""border: 1px solid #ddd; padding: 8px;"">jane@example.com</td>
+      <td style=""border: 1px solid #ddd; padding: 8px;"">(123) 456-7891</td>
+    </tr>
+  </tbody>
+</table>
+
+### Custom Details/Summary Elements
+
+<details>
+  <summary>Click to reveal hidden content</summary>
+  
+  This content is hidden by default and will be shown when the user clicks on the summary.
+  
+  You can include **markdown** within HTML elements too.
+</details>
+
+### Embedding Media
+
+<audio controls>
+  <source src=""https://example.com/audio.mp3"" type=""audio/mpeg"">
+  Your browser does not support the audio element.
+</audio>
+
+<iframe width=""560"" height=""315"" src=""https://www.youtube.com/embed/dQw4w9WgXcQ"" frameborder=""0"" allowfullscreen></iframe>
+
+### Progress Bars
+
+<progress value=""70"" max=""100"">70%</progress>
+
+<meter value=""0.6"">60%</meter>
+
+### Custom Layout Elements
+
+<div style=""display: flex; justify-content: space-between;"">
+  <div style=""flex: 1; padding: 10px; background-color: #e6f7ff; margin-right: 10px;"">
+    <h4>Section 1</h4>
+    <p>This is the content for section 1.</p>
+  </div>
+  <div style=""flex: 1; padding: 10px; background-color: #fff7e6; margin-right: 10px;"">
+    <h4>Section 2</h4>
+    <p>This is the content for section 2.</p>
+  </div>
+  <div style=""flex: 1; padding: 10px; background-color: #f6ffed;"">
+    <h4>Section 3</h4>
+    <p>This is the content for section 3.</p>
+  </div>
+</div>
+
+### Combining Markdown and HTML
+
+<div style=""border: 1px solid #ccc; padding: 10px; border-radius: 5px;"">
+  <h3>Mixing HTML and Markdown</h3>
+  
+  Within this HTML div, you can still use **bold** and *italic* markdown formatting.
+  
+  - List item 1
+  - List item 2
+  
+  ```javascript
+  // Code blocks work too
+  function sayHello() {
+    console.log('Hello!');
+  }
+  ```
+</div>
+
+Note: Some Markdown processors may have limitations on what HTML is allowed, and some environments may sanitize HTML for security reasons. Always check the specific platform's documentation.
+", AiChatRole.Assistant, DateTime.UtcNow.AddHours(-5).AddMinutes(17))
                 },
-                Assistant = new AiAssistant { Id = "gpt-4", Name = "GPT-4" },
-                CreatedAt = DateTime.UtcNow.AddDays(-3)
-            },
-            ["guid-markdown-chat"] = new AiChat
-            {
-                Id = "guid-markdown-chat",
-                Name = "Comprehensive Markdown Test",
-                Messages = new List<AiChatMessage>
-                {
-                    new AiChatMessage {
-                        Id = "md1",
-                        Content = "Please provide a comprehensive demonstration of various Markdown features.",
-                        Role = AiChatRole.User,
-                        Timestamp = DateTime.UtcNow.AddDays(-1)
-                    },
-                    new AiChatMessage {
-                        Id = "md2",
-                        Content = "Okay, here's a thorough rundown of Markdown syntax:\n\n# Heading 1\n## Heading 2\n### Heading 3\n#### Heading 4\n##### Heading 5\n###### Heading 6\n\n---\n\nThis is a paragraph with **bold text**, *italic text*, and ~~strikethrough text~~.\nYou can also combine them: ***bold and italic***.\n\n> This is a blockquote.\n> It can span multiple lines.\n>> And can be nested.\n\n---\n\n**Ordered List:**\n1. First item\n2. Second item\n   1. Sub-item A\n   2. Sub-item B\n3. Third item\n\n**Unordered List:**\n* Bullet item\n  * Nested bullet\n    * Deeper nested bullet\n- Another bullet item\n+ Yet another bullet item\n\n---\n\n**Inline Code:**\nUse `inline code` for short snippets like `variableName` or `function()`.\n\n**Fenced Code Blocks:**\n```javascript\n// Javascript code example\nfunction greet(name) {\n  console.log(`Hello, ${name}!`);\n}\ngreet(\"Markdown User\");\n```\n\n```python\n# Python code example\ndef add(a, b):\n  return a + b\n\nresult = add(5, 3)\nprint(f\"The result is {result}\")\n```\n\n```html\n<!-- HTML code example -->\n<div>\n  <h1>Hello World</h1>\n  <p>This is a paragraph.</p>\n</div>\n```\n\n---\n\n**Links:**\nThis is an [inline link to Google](https://www.google.com).\nThis is a [link with a title](https://www.openai.com \"OpenAI Website\").\n\nReference-style links:\nYou can find more information at [OpenAI][1].\nAnother great resource is the [Mozilla Developer Network][MDN].\n\n[1]: https://www.openai.com\n[MDN]: https://developer.mozilla.org/\n\n---\n\n**Images:**\n(Note: Actual image rendering depends on the Markdown parser and environment)\n![Alt text for an image](https://photographylife.com/wp-content/uploads/2023/05/Nikon-Z8-Official-Samples-00002.jpg \"Sample Image Title\")\n\n---\n\n**Tables:**\n| Header 1 | Header 2 | Header 3 |\n| :------- | :------: | -------: |\n| Left     | Center   | Right    |\n| Cell A1  | Cell A2  | Cell A3  |\n| Cell B1  | Cell B2  | Cell B3  |\n\n---\nThis should cover most of the common Markdown features! Let me know if you need more examples.",
-                        Role = AiChatRole.Assistant,
-                        Timestamp = DateTime.UtcNow.AddDays(-1).AddMinutes(1)
-                    }
-                },
-                CreatedAt = DateTime.UtcNow.AddDays(-1)
+                CurrentSettings = new AiModelSettings { Temperature = 0.7f },
+                CreatedAt = DateTime.UtcNow.AddHours(-5)
             }
         };
 
         _userChats["anonymous"] = anonymousChats;
     }
 
-    /// <summary>
-    /// Get all chats for a user
-    /// </summary>
-    public async Task<List<AiChat>> GetChatsForUserAsync(string userId)
+    // Chat Management
+    public Task<List<AiChat>> GetChatsAsync(string userId)
     {
         userId = string.IsNullOrEmpty(userId) ? "anonymous" : userId;
         if (!_userChats.ContainsKey(userId))
@@ -132,28 +449,23 @@ public class MockChatService : IChatService
                 kvp => CloneChat(kvp.Value));
         }
         
-        return _userChats[userId].Values.OrderByDescending(c => c.UpdatedAt).ToList();
+        var result = _userChats[userId].Values.OrderByDescending(c => c.UpdatedAt).ToList();
+        return Task.FromResult(result);
     }
-
-    /// <summary>
-    /// Get a specific chat with all its messages
-    /// </summary>
-    public async Task<AiChat?> GetChatByIdAsync(string userId, string chatId)
+    
+    public Task<AiChat?> GetChatByIdAsync(string userId, string chatId)
     {
         userId = string.IsNullOrEmpty(userId) ? "anonymous" : userId;
         
         if (_userChats.TryGetValue(userId, out var chats) && chats.TryGetValue(chatId, out var chat))
         {
-            return chat;
+            return Task.FromResult<AiChat?>(chat);
         }
         
-        return null;
+        return Task.FromResult<AiChat?>(null);
     }
-
-    /// <summary>
-    /// Create a new chat
-    /// </summary>
-    public async Task<AiChat> CreateChatAsync(string userId, string title, string? assistantId = null)
+    
+    public async Task<AiChat> CreateChatAsync(string userId, string initialMessage, AiModelSettings settings)
     {
         userId = string.IsNullOrEmpty(userId) ? "anonymous" : userId;
         
@@ -162,31 +474,81 @@ public class MockChatService : IChatService
             _userChats[userId] = new Dictionary<string, AiChat>();
         }
         
-        var assistant = !string.IsNullOrEmpty(assistantId) 
-            ? new AiAssistant { Id = assistantId, Name = assistantId }
-            : null;
-        
         var chat = new AiChat
         {
             Id = Guid.NewGuid().ToString(),
-            Name = title,
+            Name = $"Chat about {GetChatNameFromInitialMessage(initialMessage)}",
             CreatedAt = DateTime.UtcNow,
-            Assistant = assistant,
+            CurrentSettings = settings,
             Messages = new List<AiChatMessage>()
         };
         
         _userChats[userId][chat.Id] = chat;
+        
+        // Add initial user message
+        await AddMessageAsync(userId, chat.Id, initialMessage);
         
         // Notify clients about the new chat
         await NotifyChatListUpdatedAsync(userId);
         
         return chat;
     }
-
-    /// <summary>
-    /// Add a user message to a chat and prepare a placeholder for assistant response
-    /// </summary>
-    public async Task<(AiChatMessage UserMessage, AiChatMessage AssistantMessage)> PrepareUserMessageAsync(string userId, string chatId, string text)
+    
+    private string GetChatNameFromInitialMessage(string initialMessage)
+    {
+        // Generate a title based on the initial message
+        if (string.IsNullOrWhiteSpace(initialMessage))
+            return "New Chat";
+            
+        // Take the first 30 characters or the first sentence, whichever is shorter
+        int endIndex = Math.Min(30, initialMessage.Length);
+        int firstPeriod = initialMessage.IndexOf('.');
+        if (firstPeriod > 0 && firstPeriod < endIndex)
+            endIndex = firstPeriod;
+            
+        string title = initialMessage.Substring(0, endIndex).Trim();
+        if (initialMessage.Length > endIndex)
+            title += "...";
+            
+        return title;
+    }
+    
+    public async Task<AiChat?> RenameChatAsync(string userId, string chatId, string newTitle)
+    {
+        userId = string.IsNullOrEmpty(userId) ? "anonymous" : userId;
+        
+        if (!_userChats.TryGetValue(userId, out var chats) || !chats.TryGetValue(chatId, out var chat))
+        {
+            return null;
+        }
+        
+        chat.Name = newTitle;
+        
+        // Notify about the update
+        await NotifyChatListUpdatedAsync(userId);
+        
+        return chat;
+    }
+    
+    public async Task<bool> DeleteChatAsync(string userId, string chatId)
+    {
+        userId = string.IsNullOrEmpty(userId) ? "anonymous" : userId;
+        
+        if (!_userChats.TryGetValue(userId, out var chats) || !chats.ContainsKey(chatId))
+        {
+            return false;
+        }
+        
+        chats.Remove(chatId);
+        
+        // Notify about the update
+        await NotifyChatListUpdatedAsync(userId);
+        
+        return true;
+    }
+    
+    // Message Operations
+    public async Task<AiChatMessage> AddMessageAsync(string userId, string chatId, AiChatMessage message)
     {
         userId = string.IsNullOrEmpty(userId) ? "anonymous" : userId;
         
@@ -195,41 +557,31 @@ public class MockChatService : IChatService
             throw new ArgumentException($"Chat with ID {chatId} not found");
         }
         
-        // Add the user message
-        var userMessage = new AiChatMessage
-        {
-            Id = Guid.NewGuid().ToString(),
-            Content = text,
-            Role = AiChatRole.User,
-            Timestamp = DateTime.UtcNow
-        };
-        
-        chat.Messages.Add(userMessage);
-        
-        // Create an empty assistant message placeholder
-        var assistantMessage = new AiChatMessage
-        {
-            Id = Guid.NewGuid().ToString(),
-            Content = "", // Empty content to start with
-            Role = AiChatRole.Assistant,
-            Timestamp = DateTime.UtcNow.AddSeconds(1)
-        };
-        
-        chat.Messages.Add(assistantMessage);
+        chat.Messages.Add(message);
         
         // Notify about chat list update (to show new activity)
         await NotifyChatListUpdatedAsync(userId);
         
         // Send the user message via SignalR
-        await SendMessageNotificationAsync(userId, chatId, userMessage);
+        await SendMessageNotificationAsync(userId, chatId, message);
         
-        return (userMessage, assistantMessage);
+        // Auto-generate AI response if this is a user message
+        if (message.Role == AiChatRole.User)
+        {
+            await GetAiResponseAsync(userId, chatId, message);
+        }
+        
+        return message;
     }
     
-    /// <summary>
-    /// Update a message with final content
-    /// </summary>
-    public async Task<bool> UpdateMessageAsync(string userId, string chatId, string messageId, string finalContent)
+    public async Task<AiChatMessage> AddMessageAsync(string userId, string chatId, string textContent)
+    {
+        // Create a text message and add it
+        var message = TextMessage(textContent, AiChatRole.User);
+        return await AddMessageAsync(userId, chatId, message);
+    }
+    
+    public async Task<bool> UpdateMessageAsync(string userId, string chatId, string messageId, AiChatMessage updatedMessage)
     {
         userId = string.IsNullOrEmpty(userId) ? "anonymous" : userId;
         
@@ -238,52 +590,126 @@ public class MockChatService : IChatService
             return false;
         }
         
-        var message = chat.Messages.FirstOrDefault(m => m.Id == messageId);
-        if (message == null)
+        var messageIndex = chat.Messages.FindIndex(m => m.Id == messageId);
+        if (messageIndex < 0)
         {
             return false;
         }
         
-        message.Content = finalContent;
-        message.Timestamp = DateTime.UtcNow; // Update timestamp
+        // Preserve the original ID and update the message
+        updatedMessage.Id = messageId;
+        chat.Messages[messageIndex] = updatedMessage;
         
         await NotifyChatListUpdatedAsync(userId);
+        await SendMessageNotificationAsync(userId, chatId, updatedMessage);
+        
         return true;
     }
     
-    /// <summary>
-    /// Stream a response using SignalR
-    /// </summary>
-    public async Task StreamResponseAsync(string userId, string chatId, string messageId)
+    // AI Response
+    public async Task<AiChatMessage> GetAiResponseAsync(string userId, string chatId, AiChatMessage userMessage)
     {
         userId = string.IsNullOrEmpty(userId) ? "anonymous" : userId;
         
         if (!_userChats.TryGetValue(userId, out var chats) || !chats.TryGetValue(chatId, out var chat))
         {
-            return;
+            throw new ArgumentException($"Chat with ID {chatId} not found");
         }
         
-        var message = chat.Messages.FirstOrDefault(m => m.Id == messageId);
-        if (message == null)
-        {
-            return;
-        }
+        // Generate mock response based on the text chunks in the user message
+        string userText = GetTextFromMessage(userMessage);
+        string responseText = GenerateResponse(userText);
         
-        // Find the previous user message to respond to
-        var userMessage = chat.Messages
-            .Where(m => m.Role == AiChatRole.User)
-            .OrderByDescending(m => m.Timestamp)
-            .FirstOrDefault();
+        // Create assistant message
+        var assistantMessage = TextMessage(responseText, AiChatRole.Assistant);
+        
+        chat.Messages.Add(assistantMessage);
+        
+        // Notify about the message
+        await SendMessageNotificationAsync(userId, chatId, assistantMessage);
+        
+        return assistantMessage;
+    }
+    
+    private string GetTextFromMessage(AiChatMessage message)
+    {
+        // Extract text from message chunks
+        var textChunks = message.Content
+            .Where(c => c.Type == AiMessageChunkType.Text)
+            .Select(c => c.Content);
             
-        if (userMessage == null)
+        return string.Join("\n", textChunks);
+    }
+    
+    private string GenerateResponse(string userInput)
+    {
+        // Simple mock response generator
+        string[] responses = {
+            $"Thank you for your message: \"{userInput}\". This is a mock response from the AI assistant.",
+            $"I understand you're asking about \"{userInput}\". In a real implementation, this would be processed by an AI model.",
+            $"Your input about \"{userInput}\" has been received. This is a simulated response from the service."
+        };
+        
+        return responses[Math.Abs(userInput.GetHashCode()) % responses.Length];
+    }
+    
+    public async Task<AiChatMessage> GetAiResponseAsync(string userId, string chatId, string textContent)
+    {
+        // Create a user message with the text content
+        var userMessage = TextMessage(textContent, AiChatRole.User);
+        
+        // Add the user message to the chat
+        if (!_userChats.TryGetValue(userId, out var chats) || !chats.TryGetValue(chatId, out var chat))
         {
-            message.Content = "I couldn't find your previous message to respond to.";
-            await SendMessageNotificationAsync(userId, chatId, message);
-            return;
+            throw new ArgumentException($"Chat with ID {chatId} not found");
         }
         
-        // Generate response based on user message
-        await StreamSimulatedResponseAsync(userId, chatId, messageId, userMessage.Content);
+        chat.Messages.Add(userMessage);
+        await SendMessageNotificationAsync(userId, chatId, userMessage);
+        
+        // Get the AI response
+        return await GetAiResponseAsync(userId, chatId, userMessage);
+    }
+    
+    // Streaming AI Response
+    public async Task StartStreamingResponseAsync(string userId, string chatId, AiChatMessage userMessage)
+    {
+        userId = string.IsNullOrEmpty(userId) ? "anonymous" : userId;
+        
+        if (!_userChats.TryGetValue(userId, out var chats) || !chats.TryGetValue(chatId, out var chat))
+        {
+            throw new ArgumentException($"Chat with ID {chatId} not found");
+        }
+        
+        // Add the user message to chat if it's not already there
+        if (!chat.Messages.Any(m => m.Id == userMessage.Id))
+        {
+            chat.Messages.Add(userMessage);
+            await SendMessageNotificationAsync(userId, chatId, userMessage);
+        }
+        
+        // Create empty assistant message placeholder
+        var assistantMessage = new AiChatMessage
+        {
+            Id = Guid.NewGuid().ToString(),
+            Content = new List<MessageChunk>(),
+            Role = AiChatRole.Assistant,
+            Timestamp = DateTime.UtcNow
+        };
+        
+        chat.Messages.Add(assistantMessage);
+        
+        // Start streaming the response
+        await StreamSimulatedResponseAsync(userId, chatId, assistantMessage.Id, GetTextFromMessage(userMessage));
+    }
+    
+    public async Task StartStreamingResponseAsync(string userId, string chatId, string textContent)
+    {
+        // Create a user message with the text content
+        var userMessage = TextMessage(textContent, AiChatRole.User);
+        
+        // Start streaming response
+        await StartStreamingResponseAsync(userId, chatId, userMessage);
     }
     
     /// <summary>
@@ -345,74 +771,30 @@ public class MockChatService : IChatService
             await Task.Delay(Random.Shared.Next(100, 401));
         }
         
-        // Update the message in the database with final content
-        await UpdateMessageAsync(userId, chatId, messageId, accumulatedText.ToString());
-        
-        // Send a final complete message notification
-        try {
-            if (_userChats.TryGetValue(userId, out var chats) && 
-                chats.TryGetValue(chatId, out var chat))
+        // Update the message with the complete content
+        if (_userChats.TryGetValue(userId, out var chats) && 
+            chats.TryGetValue(chatId, out var chat))
+        {
+            var message = chat.Messages.FirstOrDefault(m => m.Id == messageId);
+            if (message != null)
             {
-                var message = chat.Messages.FirstOrDefault(m => m.Id == messageId);
-                if (message != null)
+                message.Content = new List<MessageChunk>
                 {
-                    await SendMessageDtoToClientAsync(userId, chatId, messageId, message.Content, "assistant");
-                }
+                    new MessageChunk
+                    {
+                        Type = AiMessageChunkType.Text,
+                        Content = accumulatedText.ToString()
+                    }
+                };
+                
+                // Send a complete message
+                await SendMessageNotificationAsync(userId, chatId, message);
             }
-        }
-        catch (Exception ex) {
-            _logger.LogError(ex, "Error sending final message");
         }
     }
     
-    /// <summary>
-    /// Regular method to add a message (non-streaming)
-    /// </summary>
-    public async Task<AiChatMessage> AddMessageAsync(string userId, string chatId, string text)
-    {
-        userId = string.IsNullOrEmpty(userId) ? "anonymous" : userId;
-        
-        if (!_userChats.TryGetValue(userId, out var chats) || !chats.TryGetValue(chatId, out var chat))
-        {
-            throw new ArgumentException($"Chat with ID {chatId} not found");
-        }
-        
-        var userMessage = new AiChatMessage
-        {
-            Id = Guid.NewGuid().ToString(),
-            Content = text,
-            Role = AiChatRole.User,
-            Timestamp = DateTime.UtcNow
-        };
-        
-        chat.Messages.Add(userMessage);
-        
-        // Auto-respond with a mock assistant message
-        var assistantMessage = new AiChatMessage
-        {
-            Id = Guid.NewGuid().ToString(),
-            Content = $"This is a response to: {text}",
-            Role = AiChatRole.Assistant,
-            Timestamp = DateTime.UtcNow.AddSeconds(1)
-        };
-        
-        chat.Messages.Add(assistantMessage);
-        
-        // Notify clients about updates
-        await NotifyChatListUpdatedAsync(userId);
-        
-        // Notify about the messages
-        await SendMessageNotificationAsync(userId, chatId, userMessage);
-        await SendMessageNotificationAsync(userId, chatId, assistantMessage);
-        
-        // Return the user message
-        return userMessage;
-    }
-
-    /// <summary>
-    /// Update a chat's title
-    /// </summary>
-    public async Task<AiChat?> UpdateChatTitleAsync(string userId, string chatId, string newTitle)
+    // Settings
+    public async Task<AiChat?> UpdateChatSettingsAsync(string userId, string chatId, AiModelSettings settings)
     {
         userId = string.IsNullOrEmpty(userId) ? "anonymous" : userId;
         
@@ -421,37 +803,28 @@ public class MockChatService : IChatService
             return null;
         }
         
-        chat.Name = newTitle;
+        chat.CurrentSettings = settings;
         
         // Notify about the update
         await NotifyChatListUpdatedAsync(userId);
         
         return chat;
     }
-
-    /// <summary>
-    /// Delete a chat
-    /// </summary>
-    public async Task<bool> DeleteChatAsync(string userId, string chatId)
+    
+    // Get Messages
+    public Task<List<AiChatMessage>> GetMessagesAsync(string userId, string chatId)
     {
         userId = string.IsNullOrEmpty(userId) ? "anonymous" : userId;
         
-        if (!_userChats.TryGetValue(userId, out var chats) || !chats.ContainsKey(chatId))
+        if (_userChats.TryGetValue(userId, out var chats) && chats.TryGetValue(chatId, out var chat))
         {
-            return false;
+            return Task.FromResult(chat.Messages.ToList());
         }
         
-        chats.Remove(chatId);
-        
-        // Notify about the update
-        await NotifyChatListUpdatedAsync(userId);
-        
-        return true;
+        throw new ArgumentException($"Chat with ID {chatId} not found");
     }
-
-    /// <summary>
-    /// Notify all connected clients for this user about chat list updates
-    /// </summary>
+    
+    // Helper Methods
     private async Task NotifyChatListUpdatedAsync(string userId)
     {
         if (string.IsNullOrEmpty(userId))
@@ -461,7 +834,7 @@ public class MockChatService : IChatService
         
         try
         {
-            var chats = await GetChatsForUserAsync(userId);
+            var chats = await GetChatsAsync(userId);
             var chatListDtos = chats.Select(chat => new ChatListItemDto
             {
                 Id = chat.Id,
@@ -490,21 +863,13 @@ public class MockChatService : IChatService
             _logger.LogError(ex, "Error notifying clients about chat list update for user {UserId}", userId);
         }
     }
-
-    /// <summary>
-    /// Send a message notification to clients
-    /// </summary>
+    
     private async Task SendMessageNotificationAsync(string userId, string chatId, AiChatMessage message)
     {
         try
         {
-            var messageDto = new MessageDto
-            {
-                Id = message.Id,
-                Text = message.Content,
-                Sender = message.Role.ToString().ToLower(),
-                Timestamp = message.Timestamp
-            };
+            // Convert the message to DTO using the extension method
+            var messageDto = message.ToMessageDto();
             
             await _hubContext.Clients.Group(userId).ReceiveMessage(chatId, messageDto);
         }
@@ -514,33 +879,6 @@ public class MockChatService : IChatService
         }
     }
     
-    /// <summary>
-    /// Send a message DTO directly to client
-    /// </summary>
-    private async Task SendMessageDtoToClientAsync(string userId, string chatId, string messageId, string content, string sender)
-    {
-        try
-        {
-            await _hubContext.Clients.Group(userId).ReceiveMessage(
-                chatId,
-                new MessageDto
-                {
-                    Id = messageId,
-                    Text = content,
-                    Sender = sender,
-                    Timestamp = DateTime.UtcNow
-                }
-            );
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Error sending message DTO to client");
-        }
-    }
-
-    /// <summary>
-    /// Clone a chat for a new user
-    /// </summary>
     private AiChat CloneChat(AiChat original)
     {
         return new AiChat
@@ -550,11 +888,20 @@ public class MockChatService : IChatService
             Messages = original.Messages.Select(m => new AiChatMessage
             {
                 Id = m.Id,
-                Content = m.Content,
+                Content = m.Content.ToList(), // Clone the content list
                 Role = m.Role,
                 Timestamp = m.Timestamp,
-                FileIds = m.FileIds.ToList()
+                Filename = m.Filename
             }).ToList(),
+            CurrentSettings = original.CurrentSettings != null ? new AiModelSettings
+            {
+                Temperature = original.CurrentSettings.Temperature,
+                MaxTokens = original.CurrentSettings.MaxTokens,
+                TopP = original.CurrentSettings.TopP,
+                FrequencyPenalty = original.CurrentSettings.FrequencyPenalty,
+                PresencePenalty = original.CurrentSettings.PresencePenalty,
+                ReasoningEffort = original.CurrentSettings.ReasoningEffort
+            } : new AiModelSettings(),
             Assistant = original.Assistant != null ? new AiAssistant
             {
                 Id = original.Assistant.Id,
@@ -563,116 +910,4 @@ public class MockChatService : IChatService
             CreatedAt = original.CreatedAt
         };
     }
-
-    #region New Implementation Methods
-
-    /// <summary>
-    /// Get all messages for a particular chat
-    /// </summary>
-    public async Task<List<AiChatMessage>> GetMessagesAsync(string userId, string chatId)
-    {
-        userId = string.IsNullOrEmpty(userId) ? "anonymous" : userId;
-        
-        if (_userChats.TryGetValue(userId, out var chats) && chats.TryGetValue(chatId, out var chat))
-        {
-            return chat.Messages.ToList();
-        }
-        
-        throw new ArgumentException($"Chat with ID {chatId} not found");
-    }
-
-    #region File Handling Methods
-
-    /// <summary>
-    /// Upload a file to a chat and process it - Not Implemented
-    /// </summary>
-    public async Task<AiChatFile> UploadFileAsync(string userId, string chatId, string fileName, string contentType, byte[] fileData)
-    {
-        _logger.LogWarning("UploadFileAsync not implemented in MockChatService");
-        throw new NotImplementedException("File upload functionality is not implemented in this mock service");
-    }
-    
-    /// <summary>
-    /// Attach an existing file to a message - Not Implemented
-    /// </summary>
-    public async Task<bool> AttachFileToMessageAsync(string userId, string chatId, string messageId, string fileId)
-    {
-        _logger.LogWarning("AttachFileToMessageAsync not implemented in MockChatService");
-        throw new NotImplementedException("File attachment functionality is not implemented in this mock service");
-    }
-    
-    /// <summary>
-    /// Get a file by its ID - Not Implemented
-    /// </summary>
-    public async Task<AiChatFile?> GetFileAsync(string userId, string chatId, string fileId)
-    {
-        _logger.LogWarning("GetFileAsync not implemented in MockChatService");
-        throw new NotImplementedException("File retrieval functionality is not implemented in this mock service");
-    }
-    
-    /// <summary>
-    /// Download file content - Not Implemented
-    /// </summary>
-    public async Task<byte[]?> DownloadFileAsync(string userId, string chatId, string fileId)
-    {
-        _logger.LogWarning("DownloadFileAsync not implemented in MockChatService");
-        throw new NotImplementedException("File download functionality is not implemented in this mock service");
-    }
-    
-    /// <summary>
-    /// Delete a file from a chat - Not Implemented
-    /// </summary>
-    public async Task<bool> DeleteFileAsync(string userId, string chatId, string fileId)
-    {
-        _logger.LogWarning("DeleteFileAsync not implemented in MockChatService");
-        throw new NotImplementedException("File deletion functionality is not implemented in this mock service");
-    }
-    
-    #endregion
-
-    #region Model Settings Methods
-    
-    /// <summary>
-    /// Update model settings for a chat - Not Implemented
-    /// </summary>
-    public async Task<AiChat?> UpdateModelSettingsAsync(string userId, string chatId, AiModelSettings settings)
-    {
-        _logger.LogWarning("UpdateModelSettingsAsync not implemented in MockChatService");
-        throw new NotImplementedException("Model settings update functionality is not implemented in this mock service");
-    }
-    
-    /// <summary>
-    /// Get available models for chat - Not Implemented
-    /// </summary>
-    public async Task<List<AiModel>> GetAvailableModelsAsync()
-    {
-        _logger.LogWarning("GetAvailableModelsAsync not implemented in MockChatService");
-        throw new NotImplementedException("Model retrieval functionality is not implemented in this mock service");
-    }
-    
-    #endregion
-    
-    #region Tool Methods
-    
-    /// <summary>
-    /// Execute a tool function within a chat - Not Implemented
-    /// </summary>
-    public async Task<AiChatMessage> ExecuteToolAsync(string userId, string chatId, string messageId, string toolId, string arguments)
-    {
-        _logger.LogWarning("ExecuteToolAsync not implemented in MockChatService");
-        throw new NotImplementedException("Tool execution functionality is not implemented in this mock service");
-    }
-    
-    /// <summary>
-    /// Get available tools for an assistant - Not Implemented
-    /// </summary>
-    public async Task<List<AiChatTool>> GetAvailableToolsAsync(string assistantId)
-    {
-        _logger.LogWarning("GetAvailableToolsAsync not implemented in MockChatService");
-        throw new NotImplementedException("Tool retrieval functionality is not implemented in this mock service");
-    }
-    
-    #endregion
-
-    #endregion
 }

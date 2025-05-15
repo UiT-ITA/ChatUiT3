@@ -1,49 +1,5 @@
 import * as signalR from "@microsoft/signalr";
-
-export type Message = {
-    id: string;
-    text: string;
-    sender: 'user' | 'assistant' | 'system';
-    timestamp: Date;
-    isStreaming?: boolean;
-};
-
-export type Chat = {
-    id: string;
-    title: string;
-    messages: Message[];
-    assistantId?: string;
-    lastUpdated?: Date;
-};
-
-export type ChatListItem = {
-    id: string;
-    title: string;
-    lastUpdated: Date;
-    assistantId?: string;
-    isUpdating?: boolean;
-};
-
-export type CreateChatRequest = {
-    title: string;
-    assistantId?: string;
-};
-
-export type CreateMessageRequest = {
-    chatId: string;
-    text: string;
-};
-
-// Event type for streaming message chunks
-export type MessageChunkEvent = {
-    chatId: string;
-    messageId: string;
-    chunk: string;
-    isComplete: boolean;
-};
-
-// Chat update status
-export type ChatUpdateStatus = 'idle' | 'updating';
+import { Chat, ChatListItem, ChatUpdateStatus, Message, MessageChunkEvent } from "../types/chatModels";
 
 class ChatService {
     private connection: signalR.HubConnection | null = null;

@@ -5,6 +5,7 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.SignalR;
 using ChatUitReact.Server.Hubs;
 using ChatUitReact.Server.Models;
+using ChatUitReact.Server.Extentions;
 
 namespace ChatUitReact.Server.Controllers;
 
@@ -41,7 +42,7 @@ public class ChatsController : ControllerBase
             string userId = GetCurrentUserId();
             _logger.LogInformation("Retrieving chats for user: {UserId}", userId);
             
-            var chats = await _chatService.GetChatsForUserAsync(userId);
+            var chats = await _chatService.GetChatsAsync(userId);
             
             // Map to DTOs
             var chatDtos = chats.Select(chat => new ChatListItemDto 
@@ -85,13 +86,7 @@ public class ChatsController : ControllerBase
                 CreatedAt = chat.CreatedAt,
                 LastUpdated = chat.UpdatedAt,
                 AssistantId = chat.Assistant?.Id,
-                Messages = chat.Messages.Select(msg => new MessageDto
-                {
-                    Id = msg.Id,
-                    Text = msg.Content,
-                    Sender = msg.Role.ToString().ToLower(),
-                    Timestamp = msg.Timestamp
-                }).ToList()
+                Messages = chat.Messages.Select(msg => msg.ToMessageDto()).ToList()
             };
             
             return Ok(chatDto);
@@ -112,7 +107,13 @@ public class ChatsController : ControllerBase
         try
         {
             string userId = GetCurrentUserId();
-            var chat = await _chatService.CreateChatAsync(userId, createChatDto.Title, createChatDto.AssistantId);
+            // Create default settings
+            var settings = new AiModelSettings();
+            
+            // Use an appropriate initial message
+            var initialMessage = "Hello! I'm starting a new conversation.";
+            
+            var chat = await _chatService.CreateChatAsync(userId, initialMessage, settings);
             
             // Map to DTO
             var chatDto = new ChatDto
@@ -122,13 +123,7 @@ public class ChatsController : ControllerBase
                 CreatedAt = chat.CreatedAt,
                 LastUpdated = chat.UpdatedAt,
                 AssistantId = chat.Assistant?.Id,
-                Messages = chat.Messages.Select(msg => new MessageDto
-                {
-                    Id = msg.Id,
-                    Text = msg.Content,
-                    Sender = msg.Role.ToString().ToLower(),
-                    Timestamp = msg.Timestamp
-                }).ToList()
+                Messages = chat.Messages.Select(msg => msg.ToMessageDto()).ToList()
             };
             
             return CreatedAtAction(nameof(GetChat), new { id = chat.Id }, chatDto);
@@ -149,7 +144,7 @@ public class ChatsController : ControllerBase
         try
         {
             string userId = GetCurrentUserId();
-            var updatedChat = await _chatService.UpdateChatTitleAsync(userId, id, newTitle);
+            var updatedChat = await _chatService.RenameChatAsync(userId, id, newTitle);
             
             if (updatedChat == null)
             {
@@ -183,16 +178,26 @@ public class ChatsController : ControllerBase
         try
         {
             string userId = GetCurrentUserId();
-            var message = await _chatService.AddMessageAsync(userId, createMessageDto.ChatId, createMessageDto.Text);
             
-            // Map to DTO
-            var messageDto = new MessageDto
+            // Convert chunks from DTO to model 
+            var chunks = createMessageDto.Chunks.Select(c => new MessageChunk
             {
-                Id = message.Id,
-                Text = message.Content,
-                Sender = message.Role.ToString().ToLower(),
-                Timestamp = message.Timestamp
+                Type = Enum.Parse<AiMessageChunkType>(c.Type, true),
+                Content = c.Content
+            }).ToList();
+            
+            // Create a message with the chunks
+            var message = new AiChatMessage
+            {
+                Role = AiChatRole.User,
+                Content = chunks,
+                Filename = createMessageDto.Filename
             };
+            
+            var result = await _chatService.AddMessageAsync(userId, createMessageDto.ChatId, message);
+            
+            // Map to DTO using extension method
+            var messageDto = message.ToMessageDto();
             
             return Ok(messageDto);
         }
@@ -218,33 +223,48 @@ public class ChatsController : ControllerBase
         {
             string userId = GetCurrentUserId();
             
+            // Convert chunks from DTO to model
+            var chunks = createMessageDto.Chunks.Select(c => new MessageChunk
+            {
+                Type = Enum.Parse<AiMessageChunkType>(c.Type, true),
+                Content = c.Content
+            }).ToList();
+            
             // First prepare the message and get a placeholder
-            var (_, assistantMessage) = await _chatService.PrepareUserMessageAsync(
-                userId, 
-                createMessageDto.ChatId, 
-                createMessageDto.Text
-            );
+            // Create a message with the chunks
+            var userMessage = new AiChatMessage
+            {
+                Role = AiChatRole.User,
+                Content = chunks,
+                Filename = createMessageDto.Filename
+            };
+            
+            // Add the user message and get a placeholder for the assistant
+            await _chatService.AddMessageAsync(userId, createMessageDto.ChatId, userMessage);
+            
+            // Create empty assistant message placeholder
+            var assistantMessage = new AiChatMessage
+            {
+                Id = Guid.NewGuid().ToString(),
+                Role = AiChatRole.Assistant,
+                Content = new List<MessageChunk>(),
+                Timestamp = DateTime.UtcNow
+            };
             
             if (assistantMessage == null)
             {
                 return NotFound($"Chat with ID {createMessageDto.ChatId} not found");
             }
             
-            // Map to DTO for the placeholder response
-            var messageDto = new MessageDto
-            {
-                Id = assistantMessage.Id,
-                Text = assistantMessage.Content,
-                Sender = "assistant",
-                Timestamp = assistantMessage.Timestamp
-            };
+            // Map to DTO for the placeholder response using extension method
+            var messageDto = assistantMessage.ToMessageDto();
             
             // Start streaming asynchronously (fire and forget)
             _ = Task.Run(async () => 
             {
                 try 
                 {
-                    await _chatService.StreamResponseAsync(userId, createMessageDto.ChatId, assistantMessage.Id);
+                    await _chatService.StartStreamingResponseAsync(userId, createMessageDto.ChatId, userMessage);
                 }
                 catch (Exception ex)
                 {

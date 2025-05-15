@@ -4,7 +4,8 @@ import ChatHistory from '../components/chat/ChatHistory';
 import ChatInput from '../components/chat/ChatInput';
 import NewChatWelcome from '../components/chat/NewChatWelcome';
 import './ChatPage.css';
-import chatService, { type Message, type MessageChunkEvent } from '../services/chatService';
+import chatService from '../services/chatService';
+import { ContentType, Message, MessageChunkEvent, MessageChunkType, MessageRole } from '../types/chatModels';
 import { getAssistantById } from '../services/mockAssistantService';
 import { useAuth } from '../contexts/AuthContext';
 
@@ -44,21 +45,22 @@ const ChatPage = () => {
           const messageIndex = updatedMessages.findIndex(m => m.id === messageId);
           
           if (messageIndex >= 0) {
-            // Update existing message
-            updatedMessages[messageIndex] = {
-              ...updatedMessages[messageIndex],
-              text: updatedText,
-              isStreaming: !isComplete
-            };
-          } else {
-            // Add new message if not found
-            updatedMessages.push({
-              id: messageId,
-              text: updatedText,
-              sender: 'assistant',
-              timestamp: new Date(),
-              isStreaming: !isComplete
-            });
+              // Update existing message
+              updatedMessages[messageIndex] = {
+                ...updatedMessages[messageIndex],
+                chunks: [{ type: MessageChunkType.Text, content: updatedText }],
+                isStreaming: !isComplete
+              };
+            } else {
+              // Add new message if not found
+              updatedMessages.push({
+                id: messageId,
+                chunks: [{ type: MessageChunkType.Text, content: updatedText }],
+                sender: MessageRole.Assistant,
+                timestamp: new Date(),
+                contentType: ContentType.Text,
+                isStreaming: !isComplete
+              });
           }
           
           return updatedMessages;
@@ -162,9 +164,10 @@ const ChatPage = () => {
           if (queryParamQ) {
             const userMessage: Message = {
               id: Date.now().toString(),
-              text: queryParamQ,
-              sender: 'user',
+              chunks: [{ type: MessageChunkType.Text, content: queryParamQ }],
+              sender: MessageRole.User,
               timestamp: new Date(),
+              contentType: ContentType.Text
             };
             loadedMessages.push(userMessage);
             // If provided with a query, create a new chat and send the message
@@ -253,9 +256,10 @@ const ChatPage = () => {
           // For new chats, add a temporary message until the server responds
           userMessage = {
             id: Date.now().toString(),
-            text,
-            sender: 'user',
+            chunks: [{ type: MessageChunkType.Text, content: text }],
+            sender: MessageRole.User,
             timestamp: new Date(),
+            contentType: ContentType.Text
           };
           
           setMessages([userMessage]);
@@ -275,9 +279,10 @@ const ChatPage = () => {
         ...prevMessages, 
         {
           id: 'error-' + Date.now(),
-          text: "Sorry, there was an error sending your message. Please try again.",
-          sender: 'system',
-          timestamp: new Date()
+          chunks: [{ type: MessageChunkType.Text, content: "Sorry, there was an error sending your message. Please try again." }],
+          sender: MessageRole.System,
+          timestamp: new Date(),
+          contentType: ContentType.Text
         }
       ]);
     } finally {
