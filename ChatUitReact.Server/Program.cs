@@ -39,17 +39,30 @@ builder.Services.Configure<JwtBearerOptions>(JwtBearerDefaults.AuthenticationSch
     {
         OnMessageReceived = context =>
         {
-            // Extract token from the query string for SignalR
+            // Extract token from the query string for SignalR and EventSource
             var accessToken = context.Request.Query["access_token"];
-
-            // If the request is for a hub...
-            var path = context.HttpContext.Request.Path;
-            if (!string.IsNullOrEmpty(accessToken) &&
-                (path.StartsWithSegments("/testHub") || path.StartsWithSegments("/testAuthHub") || path.StartsWithSegments("/chatHub")))
+            
+            if (!string.IsNullOrEmpty(accessToken))
             {
-                // Set the token for authentication
-                context.Token = accessToken;
+                var path = context.HttpContext.Request.Path;
+                
+                // If the request is for a hub...
+                if (path.StartsWithSegments("/testHub") || 
+                    path.StartsWithSegments("/testAuthHub") || 
+                    path.StartsWithSegments("/chatHub"))
+                {
+                    // Set the token for authentication
+                    context.Token = accessToken;
+                }
+                
+                // Also handle streaming endpoints
+                if (path.StartsWithSegments("/api/chats") && path.Value.Contains("/stream"))
+                {
+                    // Set the token for authentication for EventSource requests
+                    context.Token = accessToken;
+                }
             }
+            
             return Task.CompletedTask;
         }
     };

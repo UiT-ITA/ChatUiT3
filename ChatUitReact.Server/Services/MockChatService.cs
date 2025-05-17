@@ -14,6 +14,42 @@ public class MockChatService : IChatService
     private readonly ILogger<MockChatService> _logger;
     private readonly Dictionary<string, Dictionary<string, AiChat>> _userChats = new();
     
+    // Track which clients are currently viewing which chats (for status notifications)
+    private readonly Dictionary<string, HashSet<string>> _activeViewers = new();
+    
+    // Track both in-progress and recently completed streaming messages
+    private readonly Dictionary<string, Dictionary<string, InternalStreamingState>> _streamingMessages = new();
+    
+    // Track completion times to clean up completed messages after a while
+    private readonly Dictionary<string, Dictionary<string, DateTime>> _streamingCompletionTimes = new();
+    
+    // Define a timeout after which completed messages are removed from the state cache
+    private readonly TimeSpan _completedMessageRetentionPeriod = TimeSpan.FromMinutes(30);
+    
+    // Internal class to track streaming message state
+    private class InternalStreamingState
+    {
+        public StringBuilder AccumulatedContent { get; } = new StringBuilder();
+        public List<string> Chunks { get; } = new List<string>(); // Store individual chunks for replay
+        public bool IsComplete { get; set; } = false;
+        public DateTime LastUpdated { get; set; } = DateTime.UtcNow;
+        
+        public StreamingMessageInfo ToStreamingMessageInfo(string messageId)
+        {
+            return new StreamingMessageInfo
+            {
+                MessageId = messageId,
+                Content = AccumulatedContent.ToString(),
+                Chunks = Chunks, // Pass the chunks list to StreamingMessageInfo
+                IsComplete = IsComplete,
+                LastUpdated = LastUpdated
+            };
+        }
+    }
+    
+    // Cleanup timer
+    private Timer _cleanupTimer;
+    
     // Helper method to create a message with a specific ID and timestamp
     private AiChatMessage CreateMessageWithId(string id, string content, AiChatRole role, DateTime timestamp)
     {
@@ -30,6 +66,95 @@ public class MockChatService : IChatService
         _hubContext = hubContext;
         _logger = logger;
         InitializeMockData();
+        
+        // Initialize cleanup timer to run every 5 minutes
+        _cleanupTimer = new Timer(CleanupExpiredMessages, null, TimeSpan.FromMinutes(5), TimeSpan.FromMinutes(5));
+    }
+    
+    private void CleanupExpiredMessages(object state)
+    {
+        try
+        {
+            var now = DateTime.UtcNow;
+            var chatsToRemove = new List<string>();
+            
+            foreach (var chatKvp in _streamingCompletionTimes)
+            {
+                var chatId = chatKvp.Key;
+                var messagesToRemove = new List<string>();
+                
+                foreach (var messageKvp in chatKvp.Value)
+                {
+                    var messageId = messageKvp.Key;
+                    var completionTime = messageKvp.Value;
+                    
+                    // If message was completed more than the retention period ago, mark for removal
+                    if (now - completionTime > _completedMessageRetentionPeriod)
+                    {
+                        messagesToRemove.Add(messageId);
+                    }
+                }
+                
+                // Remove expired messages
+                foreach (var messageId in messagesToRemove)
+                {
+                    _streamingCompletionTimes[chatId].Remove(messageId);
+                    if (_streamingMessages.ContainsKey(chatId) && _streamingMessages[chatId].ContainsKey(messageId))
+                    {
+                        _streamingMessages[chatId].Remove(messageId);
+                    }
+                }
+                
+                // If chat has no more messages, mark for removal
+                if (_streamingCompletionTimes[chatId].Count == 0)
+                {
+                    chatsToRemove.Add(chatId);
+                }
+            }
+            
+            // Remove empty chats
+            foreach (var chatId in chatsToRemove)
+            {
+                _streamingCompletionTimes.Remove(chatId);
+                if (_streamingMessages.ContainsKey(chatId))
+                {
+                    _streamingMessages.Remove(chatId);
+                }
+            }
+            
+            _logger.LogInformation("Cleaned up expired streaming messages from {ChatCount} chats", 
+                chatsToRemove.Count);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error cleaning up expired streaming messages");
+        }
+    }
+    
+    // Implement the streaming message state methods from the interface
+    public StreamingMessageInfo GetActiveStreamingMessage(string userId, string chatId)
+    {
+        if (_streamingMessages.TryGetValue(chatId, out var messages) && messages.Any())
+        {
+            var mostRecent = messages
+                .OrderByDescending(m => m.Value.LastUpdated)
+                .FirstOrDefault();
+                
+            if (!mostRecent.Equals(default(KeyValuePair<string, InternalStreamingState>)))
+            {
+                return mostRecent.Value.ToStreamingMessageInfo(mostRecent.Key);
+            }
+        }
+        return null;
+    }
+    
+    public IEnumerable<StreamingMessageInfo> GetAllStreamingMessages(string userId, string chatId)
+    {
+        if (_streamingMessages.TryGetValue(chatId, out var messages))
+        {
+            return messages.Select(m => m.Value.ToStreamingMessageInfo(m.Key));
+        }
+        return Enumerable.Empty<StreamingMessageInfo>();
     }
 
     private void InitializeMockData()
@@ -732,6 +857,26 @@ Note: Some Markdown processors may have limitations on what HTML is allowed, and
         await StartStreamingResponseAsync(userId, chatId, userMessage);
     }
     
+    // Notify chat status change (streaming, updated, idle)
+    private async Task NotifyChatStatusAsync(string userId, string chatId, string status)
+    {
+        // Skip if userId is empty
+        if (string.IsNullOrEmpty(userId))
+        {
+            return;
+        }
+        
+        try
+        {
+            // Notify all clients in the user's group about the chat status
+            await _hubContext.Clients.Group(userId).ChatStatusUpdated(chatId, status);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error sending chat status notification");
+        }
+    }
+    
     /// <summary>
     /// Stream a simulated response using chunks
     /// </summary>
@@ -748,9 +893,22 @@ Note: Some Markdown processors may have limitations on what HTML is allowed, and
         
         string fullResponse = responses[Math.Abs(userPrompt.GetHashCode()) % responses.Length];
         
+        // Notify that this chat is now streaming
+        await NotifyChatStatusAsync(userId, chatId, ChatHub.ChatStatusStreaming);
+        
         // Break the response into chunks by words for more natural streaming
-        StringBuilder accumulatedText = new StringBuilder();
         string[] words = fullResponse.Split(' ');
+        
+        // Initialize tracking for this streaming message
+        if (!_streamingMessages.ContainsKey(chatId))
+        {
+            _streamingMessages[chatId] = new Dictionary<string, InternalStreamingState>();
+        }
+        
+        if (!_streamingMessages[chatId].ContainsKey(messageId))
+        {
+            _streamingMessages[chatId][messageId] = new InternalStreamingState();
+        }
         
         // First send an initial empty message to all clients in the group
         await _hubContext.Clients.Group(userId).ReceiveMessage(chatId, new MessageDto 
@@ -762,47 +920,51 @@ Note: Some Markdown processors may have limitations on what HTML is allowed, and
             ContentType = "text"
         });
         
-        // Stream each word or small group of words with a delay
-        for (int i = 0; i < words.Length; i++)
-        {
-            // Sometimes group 1-3 words together
-            int wordsToTake = Random.Shared.Next(1, 4);
-            wordsToTake = Math.Min(wordsToTake, words.Length - i);
-            
-            // Build the chunk from the words
-            string chunk = string.Join(' ', words.Skip(i).Take(wordsToTake));
-            if (i > 0) chunk = " " + chunk; // Add space except for first word
-            
-            // Advance the counter (minus 1 because the loop will increment)
-            i += wordsToTake - 1;
-            
-            // Is this the last chunk?
-            bool isComplete = (i >= words.Length - 1);
-            
-            // Add chunk to accumulated text
-            accumulatedText.Append(chunk);
-            
-            try
+            // Stream each word or small group of words with a delay
+            for (int i = 0; i < words.Length; i++)
             {
-                // Send the chunk via proper message chunk method to ALL clients in the user's group
-                await _hubContext.Clients.Group(userId).ReceiveMessageChunk(
-                    chatId,
-                    messageId,
-                    chunk,
-                    isComplete
-                );
+                // Sometimes group 1-3 words together
+                int wordsToTake = Random.Shared.Next(1, 4);
+                wordsToTake = Math.Min(wordsToTake, words.Length - i);
                 
-                // Add small delay to let the SignalR connection send the message
-                await Task.Delay(10);
+                // Build the chunk from the words
+                string chunk = string.Join(' ', words.Skip(i).Take(wordsToTake));
+                if (i > 0) chunk = " " + chunk; // Add space except for first word
+                
+                // Advance the counter (minus 1 because the loop will increment)
+                i += wordsToTake - 1;
+                
+                // Is this the last chunk?
+                bool isComplete = (i >= words.Length - 1);
+                
+                // Add chunk to our streaming state tracker
+                _streamingMessages[chatId][messageId].AccumulatedContent.Append(chunk);
+                _streamingMessages[chatId][messageId].LastUpdated = DateTime.UtcNow;
+                
+                // CRITICAL: Store each chunk individually for replay to clients that join mid-stream
+                _streamingMessages[chatId][messageId].Chunks.Add(chunk);
+                
+                try
+                {
+                    // Send the chunk via proper message chunk method to ALL clients in the user's group
+                    await _hubContext.Clients.Group(userId).ReceiveMessageChunk(
+                        chatId,
+                        messageId,
+                        chunk,
+                        isComplete
+                    );
+                    
+                    // Add small delay to let the SignalR connection send the message
+                    await Task.Delay(10);
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex, "Error sending message chunk to client");
+                }
+                
+                // Artificial delay between chunks (100-400ms to simulate typing)
+                await Task.Delay(Random.Shared.Next(100, 401));
             }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Error sending message chunk to client");
-            }
-            
-            // Artificial delay between chunks (100-400ms to simulate typing)
-            await Task.Delay(Random.Shared.Next(100, 401));
-        }
         
         // Update the message with the complete content
         if (_userChats.TryGetValue(userId, out var chats) && 
@@ -816,9 +978,19 @@ Note: Some Markdown processors may have limitations on what HTML is allowed, and
                     new MessageChunk
                     {
                         Type = AiMessageChunkType.Text,
-                        Content = accumulatedText.ToString()
+                        Content = _streamingMessages[chatId][messageId].AccumulatedContent.ToString()
                     }
                 };
+                
+                // Mark message as complete in our tracking system
+                _streamingMessages[chatId][messageId].IsComplete = true;
+                
+                // Store completion time for cleanup
+                if (!_streamingCompletionTimes.ContainsKey(chatId))
+                {
+                    _streamingCompletionTimes[chatId] = new Dictionary<string, DateTime>();
+                }
+                _streamingCompletionTimes[chatId][messageId] = DateTime.UtcNow;
                 
                 // Send a complete message
                 await SendMessageNotificationAsync(userId, chatId, message);

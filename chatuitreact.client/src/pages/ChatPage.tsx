@@ -5,7 +5,17 @@ import ChatInput from '../components/chat/ChatInput';
 import NewChatWelcome from '../components/chat/NewChatWelcome';
 import './ChatPage.css';
 import chatService from '../services/chatService';
-import { ContentType, Message, MessageChunkEvent, MessageChunkType, MessageRole } from '../types/chatModels';
+import { ContentType, Message, MessageChunk, MessageChunkEvent, MessageChunkType, MessageRole } from '../types/chatModels';
+
+// Helper function to determine content type based on chunks
+const determineContentType = (chunks: MessageChunk[]): ContentType => {
+  const hasText = chunks.some(chunk => chunk.type === MessageChunkType.Text);
+  const hasImage = chunks.some(chunk => chunk.type === MessageChunkType.Image);
+  
+  if (hasText && hasImage) return ContentType.Mixed;
+  if (hasImage) return ContentType.Image;
+  return ContentType.Text;
+};
 import { getAssistantById } from '../services/mockAssistantService';
 import { useAuth } from '../contexts/AuthContext';
 
@@ -18,58 +28,77 @@ const ChatPage = () => {
   const [initialAssistantId, setInitialAssistantId] = useState<string | undefined>();
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [accessToken, setAccessToken] = useState<string | null>(null);
-  const streamingMessagesMap = useRef<Map<string, string>>(new Map());
   const previousChatId = useRef<string | undefined>(undefined);
   const auth = useAuth();
 
   // Set up message chunk handler for streaming responses
   useEffect(() => {
     const handleMessageChunk = (event: MessageChunkEvent) => {
-      const { chatId: eventChatId, messageId, chunk, isComplete } = event;
-      
-      // Always process chunks to update the cache, even for non-active chats
-      // But only update UI for current chat
-      const isCurrentChat = currentChatId === eventChatId;
-      
-      // Get the current accumulated text or start with empty string
-      const currentText = streamingMessagesMap.current.get(messageId) || '';
-      const updatedText = currentText + chunk;
-      
-      streamingMessagesMap.current.set(messageId, updatedText);
+      const { chatId: eventChatId, messageId, chunkType, chunkIndex, chunk, isComplete } = event;
       
       // Only update UI if this is for our current chat
+      const isCurrentChat = currentChatId === eventChatId;
       if (isCurrentChat) {
-        // Update the message in our state
+        // Update the UI state
         setMessages(prevMessages => {
           const updatedMessages = [...prevMessages];
           const messageIndex = updatedMessages.findIndex(m => m.id === messageId);
           
           if (messageIndex >= 0) {
-              // Update existing message
-              updatedMessages[messageIndex] = {
-                ...updatedMessages[messageIndex],
-                chunks: [{ type: MessageChunkType.Text, content: updatedText }],
-                isStreaming: !isComplete
+            // Message exists - we need to update the specific chunk
+            const existingMessage = updatedMessages[messageIndex];
+            
+            // Clone the chunks array
+            const updatedChunks = [...existingMessage.chunks];
+            
+            // If the chunk at specified index exists, update it
+            if (updatedChunks.length > chunkIndex) {
+              // Update existing chunk
+              const currentContent = updatedChunks[chunkIndex]?.content || '';
+              updatedChunks[chunkIndex] = {
+                type: chunkType,
+                content: currentContent + chunk
               };
             } else {
-              // Add new message if not found
-              updatedMessages.push({
-                id: messageId,
-                chunks: [{ type: MessageChunkType.Text, content: updatedText }],
-                sender: MessageRole.Assistant,
-                timestamp: new Date(),
-                contentType: ContentType.Text,
-                isStreaming: !isComplete
+              // Add new chunk at the specified index
+              while (updatedChunks.length < chunkIndex) {
+                // Fill any gaps with empty chunks
+                updatedChunks.push({
+                  type: MessageChunkType.Text,
+                  content: ''
+                });
+              }
+              // Add the new chunk
+              updatedChunks.push({
+                type: chunkType,
+                content: chunk
               });
+            }
+            
+            // Update the message with new chunks array
+            updatedMessages[messageIndex] = {
+              ...existingMessage,
+              chunks: updatedChunks,
+              contentType: determineContentType(updatedChunks),
+              isStreaming: !isComplete
+            };
+          } else {
+            // Message doesn't exist - create a new one
+            updatedMessages.push({
+              id: messageId,
+              sender: MessageRole.Assistant,
+              timestamp: new Date(),
+              chunks: [{ 
+                type: MessageChunkType.Text, 
+                content: chunk 
+              }],
+              contentType: ContentType.Text,
+              isStreaming: !isComplete
+            });
           }
           
           return updatedMessages;
         });
-      }
-      
-      if (isComplete) {
-        // Clean up the map when streaming is complete
-        streamingMessagesMap.current.delete(messageId);
       }
     };
     
@@ -124,17 +153,42 @@ const ChatPage = () => {
       setIsLoading(true);
 
       try {
+        // If we're on the new chat page, don't try to load a specific chat
+        if (activeChatId === 'new') {
+          setCurrentChatId(undefined);
+          setMessages([]);
+          setIsLoading(false);
+          
+          // Handle query parameters for new chat
+          if (queryParamQ) {
+            const userMessage: Message = {
+              id: Date.now().toString(),
+              chunks: [{ type: MessageChunkType.Text, content: queryParamQ }],
+              sender: MessageRole.User,
+              timestamp: new Date(),
+              contentType: ContentType.Text
+            };
+            loadedMessages.push(userMessage);
+            setMessages(loadedMessages);
+          }
+          if (queryParamA && getAssistantById(queryParamA)) {
+            setInitialAssistantId(queryParamA);
+          }
+          return;
+        }
+        
         if (activeChatId && activeChatId !== 'new' && accessToken) {
           try {
             // Check if chat is already in the cache first
             const isCached = chatService.isChatCached(activeChatId);
             
-            // Only fetch from server if not cached, otherwise just get from cache
+            // Get chat
             const existingChat = await chatService.getChatById(
               activeChatId, 
               accessToken,
               !isCached // force refresh only if not cached
             );
+            
             if (existingChat) {
               loadedMessages = existingChat.messages;
               setCurrentChatId(existingChat.id);
@@ -143,6 +197,10 @@ const ChatPage = () => {
               }
               // Mark this chat as active
               chatService.setActiveChatStatus(existingChat.id, true);
+              
+              // Open direct HTTP stream for this chat (which will send content in chunks uniformly)
+              // This ensures we get all content for streaming messages
+              chatService.openChatStream(existingChat.id, accessToken);
             } else {
               console.warn(`Chat with ID "${activeChatId}" not found. Redirecting to new chat.`);
               // Explicitly redirect to the new chat page
@@ -174,7 +232,7 @@ const ChatPage = () => {
             if (accessToken) {
               try {
                 const chatTitle = queryParamQ.substring(0, 30) + (queryParamQ.length > 30 ? "..." : "");
-                const newChat = await chatService.createChat(chatTitle, accessToken, queryParamA || undefined);
+                const newChat = await chatService.createChat(chatTitle, queryParamQ, accessToken, queryParamA || undefined);
                 if (newChat) {
                   setCurrentChatId(newChat.id);
                   // Mark this new chat as active

@@ -8,9 +8,17 @@ namespace ChatUitReact.Server.Models
     {
         public string Id { get; set; } = Guid.NewGuid().ToString();
         public string Name { get; set; } = string.Empty;
-        public AiAssistant Assistant { get; set; } = new AiAssistant();
-        public AiModelSettings CurrentSettings { get; set; } = new AiModelSettings();
-        public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
+        public AiChatSettings Settings { get; set; } = new AiChatSettings();
+        //public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
+        public DateTime CreatedAt
+        {
+            get
+            {
+                if (Messages.Count == 0)
+                    return DateTime.UtcNow;
+                return Messages.Min(m => m.Timestamp);
+            }
+        }
         public DateTime UpdatedAt
         {
             get
@@ -21,7 +29,6 @@ namespace ChatUitReact.Server.Models
             }
         }
         public List<AiChatMessage> Messages { get; set; } = new List<AiChatMessage>();
-        // public List<AiChatFile> Files { get; set; } = new List<AiChatFile>();
     }
 
     public class AiChatMessage
@@ -32,19 +39,9 @@ namespace ChatUitReact.Server.Models
 
         public List<MessageChunk> Content { get; set; } = new List<MessageChunk>();
 
-        public string Filename { get; set; } = string.Empty;
+        public AiMessageStatus Status { get; set; } = AiMessageStatus.Sent;
 
-        public ContentType ContentType {
-            get {
-                if (Content.Count == 0)
-                    return ContentType.Text;
-                if (Content.All(c => c.Type == AiMessageChunkType.Text))
-                    return ContentType.Text;
-                if (Content.All(c => c.Type == AiMessageChunkType.Image))
-                    return ContentType.Image;
-                return ContentType.Mixed;
-            }
-        }
+        public string Filename { get; set; } = string.Empty;
     }
 
     public class MessageChunk
@@ -53,11 +50,12 @@ namespace ChatUitReact.Server.Models
         public string Content { get; set; } = string.Empty;
     }
 
-    public class FileMetadata
+
+    public class AiChatSettings
     {
-        public string FileName { get; set; } = string.Empty;
-        public string ContentType { get; set; } = string.Empty;
-        public long Size { get; set; } = 0;
+        public string AssistantName { get; set; } = string.Empty;
+        public AiModelSettings ModelSettings { get; set; } = new AiModelSettings();
+        public bool SaveToDB { get; set; } = true;
     }
 
     public enum AiChatRole
@@ -75,10 +73,11 @@ namespace ChatUitReact.Server.Models
         Image,
     }
     
-    public enum ContentType
+    public enum AiMessageStatus
     {
-        Text,
-        Image,
-        Mixed,
+        Streaming,
+        Sent,
+        Error,
+        Cancelled,
     }
 }

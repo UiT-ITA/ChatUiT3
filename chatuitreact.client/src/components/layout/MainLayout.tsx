@@ -1,5 +1,4 @@
-import { useState, useEffect } from 'react';
-import type { ReactNode } from 'react';
+import { useState/*, useEffect*/ } from 'react';
 import { Outlet } from 'react-router-dom';
 import Sidebar from './Sidebar';
 import './MainLayout.css';
@@ -7,24 +6,20 @@ import './MainLayout.css';
 
 const MainLayout: React.FC = () => {
     const [isNarrow, setIsNarrow] = useState(false);
-    const [isWideScreen, setIsWideScreen] = useState(window.innerWidth > 768);
+    //const [isWideScreen, setIsWideScreen] = useState(window.innerWidth > 768);
 
     const toggleSidebar = () => {
         setIsNarrow(!isNarrow);
     };
 
-    // const handleNewChat = () => { // No longer needed, Sidebar uses NavLink
-    //   console.log('New chat requested');
-    // };
+    //useEffect(() => {
+    //    const handleResize = () => {
+    //        setIsWideScreen(window.innerWidth > 768);
+    //    };
 
-    useEffect(() => {
-        const handleResize = () => {
-            setIsWideScreen(window.innerWidth > 768);
-        };
-
-        window.addEventListener('resize', handleResize);
-        return () => window.removeEventListener('resize', handleResize);
-    }, []);
+    //    window.addEventListener('resize', handleResize);
+    //    return () => window.removeEventListener('resize', handleResize);
+    //}, []);
 
     return (
         <div className={`layout ${isNarrow ? 'narrow-sidebar' : 'wide-sidebar'}`}>

@@ -11,23 +11,13 @@ using ChatUitReact.Server.Extentions;
 
 namespace ChatUitReact.Server.Hubs
 {
-    public interface IChatHubClient
-    {
-        /// <summary>
-        /// Receive an updated list of chats for the sidebar
-        /// </summary>
-        Task ChatListUpdated(List<ChatListItemDto> chats);
-        
-        /// <summary>
-        /// Receive a new message for a specific chat
-        /// </summary>
-        Task ReceiveMessage(string chatId, MessageDto message);
-        
-        /// <summary>
-        /// Receive a chunk of a message for streaming
-        /// </summary>
-        Task ReceiveMessageChunk(string chatId, string messageId, string chunk, bool isComplete);
-    }
+public interface IChatHubClient
+{
+    Task ChatListUpdated(List<ChatListItemDto> chats);
+    Task ReceiveMessage(string chatId, MessageDto message);
+    Task ReceiveMessageChunk(string chatId, string messageId, string chunk, bool isComplete);
+    Task ChatStatusUpdated(string chatId, string status);
+}
     
     [Authorize]
     public class ChatHub : Hub<IChatHubClient>
@@ -35,6 +25,11 @@ namespace ChatUitReact.Server.Hubs
     private readonly UserService _userService;
     private readonly ILogger<ChatHub> _logger;
     private readonly IChatService _chatService;
+    
+    // Chat status constants
+    public const string ChatStatusIdle = "idle";
+    public const string ChatStatusStreaming = "streaming";
+    public const string ChatStatusUpdated = "updated";
     
     // Track active connections for user
     private static readonly Dictionary<string, string> _connections = new Dictionary<string, string>();
@@ -48,10 +43,8 @@ namespace ChatUitReact.Server.Hubs
             _logger = logger;
             _chatService = chatService;
         }
+        
 
-        /// <summary>
-        /// Gets the current user ID from the connection context
-        /// </summary>
         private string GetCurrentUserId()
         {
             try
@@ -91,7 +84,6 @@ namespace ChatUitReact.Server.Hubs
                     AssistantId = chat.Assistant?.Id
                 }).ToList();
                 
-                // Send initial chat list for sidebar rendering
                 await Clients.Caller.ChatListUpdated(chatDtos);
                 
                 // Add connection tracking
@@ -126,17 +118,11 @@ namespace ChatUitReact.Server.Hubs
             await base.OnDisconnectedAsync(exception);
         }
         
-        /// <summary>
-        /// Join a specific chat to receive all messages including any in-progress streaming ones
-        /// </summary>
         public async Task JoinChatAsync(string chatId)
         {
             try
             {
                 string userId = GetCurrentUserId();
-                
-                _logger.LogInformation("Client {ConnectionId} joining chat {ChatId}", Context.ConnectionId, chatId);
-                
                 // Get the chat to download latest state
                 var chat = await _chatService.GetChatByIdAsync(userId, chatId);
                 if (chat == null)
@@ -145,13 +131,28 @@ namespace ChatUitReact.Server.Hubs
                     return;
                 }
                 
-                // Map to DTO and send the full chat to the client immediately
-                // This enables a client to catch up with all messages including in-progress ones
+                // Map to DTO and send the full chat to the client
                 var chatDto = chat.ToChatDto();
-                await Clients.Caller.ReceiveMessage(chatId, 
-                    chatDto.Messages.LastOrDefault(m => m.Sender == "assistant"));
                 
-                _logger.LogInformation("Client {ConnectionId} successfully joined chat {ChatId}", Context.ConnectionId, chatId);
+                // Send complete messages first
+                var lastAssistantMessage = chatDto.Messages.LastOrDefault(m => m.Sender == "assistant");
+                if (lastAssistantMessage != null)
+                {
+                    await Clients.Caller.ReceiveMessage(chatId, lastAssistantMessage);
+                }
+                
+                // Check for any active or recently completed streaming messages
+                var streamingMessages = _chatService.GetAllStreamingMessages(userId, chatId);
+                foreach (var streamingMessage in streamingMessages)
+                {
+                    // Send the accumulated content for this streaming message
+                    await Clients.Caller.ReceiveMessageChunk(
+                        chatId,
+                        streamingMessage.MessageId,
+                        streamingMessage.Content,
+                        streamingMessage.IsComplete
+                    );
+                }
             }
             catch (Exception ex)
             {
@@ -304,6 +305,16 @@ namespace ChatUitReact.Server.Hubs
             return await _chatService.DeleteChatAsync(userId, chatId);
         }
         
-        // Using ToMessageDto extension method now
+        public async Task NotifyChatStatusUpdated(string chatId, string status)
+        {
+            string userId = GetCurrentUserId();
+            await Clients.Group(userId).ChatStatusUpdated(chatId, status);
+        }
+        
+        // Helper method that can be called by other services to notify status changes
+        public async Task NotifyStatusChange(string userId, string chatId, string status)
+        {
+            await Clients.Group(userId).ChatStatusUpdated(chatId, status);
+        }
     }
 }

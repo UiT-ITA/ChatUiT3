@@ -4,6 +4,10 @@ namespace ChatUitReact.Server.Services;
 
 public interface IChatService
 {
+    // Streaming Message State
+    StreamingMessageInfo GetActiveStreamingMessage(string userId, string chatId);
+    IEnumerable<StreamingMessageInfo> GetAllStreamingMessages(string userId, string chatId);
+    
     // Chat Management
     Task<List<AiChat>> GetChatsAsync(string userId);
     Task<AiChat?> GetChatByIdAsync(string userId, string chatId);

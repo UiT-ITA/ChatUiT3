@@ -367,6 +367,142 @@ public class ChatsController : ControllerBase
     }
     
     /// <summary>
+    /// Get a direct HTTP stream for a currently streaming message in a chat
+    /// </summary>
+    [HttpGet("{id}/stream")]
+    public async Task<IActionResult> StreamChat(string id)
+    {
+        try
+        {
+            string userId = GetCurrentUserId();
+            var chat = await _chatService.GetChatByIdAsync(userId, id);
+            
+            if (chat == null)
+            {
+                return NotFound($"Chat with ID {id} not found");
+            }
+            
+            // Set up response headers for streaming
+            Response.Headers.Add("Content-Type", "text/event-stream");
+            Response.Headers.Add("Cache-Control", "no-cache");
+            Response.Headers.Add("Connection", "keep-alive");
+            
+            // Check for any active streaming messages
+            var activeMessage = _chatService.GetActiveStreamingMessage(userId, id);
+            
+            if (activeMessage == null)
+            {
+                // No active streaming, send 'done' event and complete
+                await Response.WriteAsync("event: done\ndata: {}\n\n");
+                await Response.Body.FlushAsync();
+                return new EmptyResult();
+            }
+            
+            // Send metadata to create an empty message container
+            await Response.WriteAsync($"event: metadata\ndata: {{\n");
+            await Response.WriteAsync($"  \"messageId\": \"{activeMessage.MessageId}\",\n");
+            await Response.WriteAsync($"  \"isComplete\": {activeMessage.IsComplete.ToString().ToLower()}\n");
+            await Response.WriteAsync("}\n\n");
+            await Response.Body.FlushAsync();
+            
+            // Send each stored chunk individually exactly as they were sent originally
+            // This ensures clients that join later get the exact same chunks in the same order
+            foreach (var storedChunk in activeMessage.Chunks)
+            {
+                await Response.WriteAsync($"event: chunk\ndata: {{\n");
+                await Response.WriteAsync($"  \"messageId\": \"{activeMessage.MessageId}\",\n");
+                await Response.WriteAsync($"  \"chunkType\": \"text\",\n");  // We're storing the type in a future update
+                await Response.WriteAsync($"  \"chunkIndex\": 0,\n");        // We'll update this when we support multiple chunks
+                await Response.WriteAsync($"  \"content\": \"{storedChunk.Replace("\"", "\\\"")}\",\n");
+                await Response.WriteAsync($"  \"isComplete\": false\n");    // Only the last one is complete
+                await Response.WriteAsync("}\n\n");
+                await Response.Body.FlushAsync();
+                
+                // Small delay to prevent overwhelming the client
+                await Task.Delay(20);
+            }
+            
+            // If message is complete, send one final event with isComplete=true
+            if (activeMessage.IsComplete)
+            {
+                await Response.WriteAsync($"event: chunk\ndata: {{\n");
+                await Response.WriteAsync($"  \"messageId\": \"{activeMessage.MessageId}\",\n");
+                await Response.WriteAsync($"  \"chunkType\": \"text\",\n");
+                await Response.WriteAsync($"  \"chunkIndex\": 0,\n");
+                await Response.WriteAsync($"  \"content\": \"\",\n");
+                await Response.WriteAsync($"  \"isComplete\": true\n");
+                await Response.WriteAsync("}\n\n");
+                await Response.Body.FlushAsync();
+            }
+            
+            // If the message is already complete, we're done
+            if (activeMessage.IsComplete)
+            {
+                await Response.WriteAsync("event: done\ndata: {}\n\n");
+                await Response.Body.FlushAsync();
+                return new EmptyResult();
+            }
+            
+            // Create a cancellation token source with timeout
+            using var cts = new CancellationTokenSource();
+            cts.CancelAfter(TimeSpan.FromMinutes(10)); // Max streaming time of 10 minutes
+            
+            // Set up to monitor for streaming updates
+            var lastContent = activeMessage.Content;
+            var lastUpdated = activeMessage.LastUpdated;
+            
+            // Polling loop to check for updates
+            while (!cts.Token.IsCancellationRequested)
+            {
+                // Wait a bit before checking for updates
+                await Task.Delay(200, cts.Token);
+                
+                // Check for updates to the streaming message
+                activeMessage = _chatService.GetActiveStreamingMessage(userId, id);
+                
+                // If it's gone, the generation is complete
+                if (activeMessage == null)
+                {
+                    await Response.WriteAsync("event: done\ndata: {}\n\n");
+                    await Response.Body.FlushAsync();
+                    break;
+                }
+                
+                // If there's new content, send just the new chunk
+                if (activeMessage.LastUpdated > lastUpdated && activeMessage.Content.Length > lastContent.Length)
+                {
+                    var newContent = activeMessage.Content.Substring(lastContent.Length);
+                    
+                    await Response.WriteAsync($"event: chunk\ndata: {{\n");
+                    await Response.WriteAsync($"  \"messageId\": \"{activeMessage.MessageId}\",\n");
+                    await Response.WriteAsync($"  \"content\": \"{newContent.Replace("\"", "\\\"")}\",\n");
+                    await Response.WriteAsync($"  \"isComplete\": {activeMessage.IsComplete.ToString().ToLower()}\n");
+                    await Response.WriteAsync("}\n\n");
+                    await Response.Body.FlushAsync();
+                    
+                    lastContent = activeMessage.Content;
+                    lastUpdated = activeMessage.LastUpdated;
+                }
+                
+                // If the message is complete, send a done event
+                if (activeMessage.IsComplete)
+                {
+                    await Response.WriteAsync("event: done\ndata: {}\n\n");
+                    await Response.Body.FlushAsync();
+                    break;
+                }
+            }
+            
+            return new EmptyResult();
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error streaming chat {ChatId}", id);
+            return StatusCode(500, "An error occurred while streaming the chat");
+        }
+    }
+    
+    /// <summary>
     /// Get the current user ID
     /// </summary>
     private string GetCurrentUserId()
