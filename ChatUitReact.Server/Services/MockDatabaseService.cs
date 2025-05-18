@@ -558,6 +558,22 @@ Note: Some Markdown processors may have limitations on what HTML is allowed, and
         return Task.CompletedTask;
     }
 
+    public Task UpdateMessageAsync(string userId, string chatId, AiChatMessage message)
+    {
+        AddUserToService(userId);
+        var chat = _chatStorage[userId].FirstOrDefault(c => c.Id == chatId);
+        if (chat != null)
+        {
+            var existingMessage = chat.Messages.FirstOrDefault(m => m.Id == message.Id);
+            if (existingMessage != null)
+            {
+                existingMessage.Content = message.Content;
+                existingMessage.Timestamp = message.Timestamp;
+            }
+        }
+        return Task.CompletedTask;
+    }
+
     public Task DeleteMessageAsync(string userId, string chatId, string messageId)
     {
         AddUserToService(userId);

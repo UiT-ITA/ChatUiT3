@@ -39,7 +39,6 @@ public class AzureOpenAiService
 
     public async Task<string> GetChatCompletionAsync(
         List<AiChatMessage> messages, 
-        AiModel model, 
         AiChatSettings settings,
         CancellationToken cancellationToken = default)
     {

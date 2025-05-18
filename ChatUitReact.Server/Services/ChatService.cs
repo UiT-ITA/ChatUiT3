@@ -68,19 +68,22 @@ public class ChatService : IChatService
 
         SetChatName(userId, newChat.Id, messages[0].Content);
 
-        newChat.Messages.Add(new AiChatMessage
+        var response = new AiChatMessage
         {
             Role = AiChatRole.Assistant,
+            Content = "",
             Status = AiChatStatus.New
-        });
+        };
+
+        newChat.Messages.Add(response);
 
         await _databaseService.AddChatAsync(userId, newChat);
 
-        _ = _hubContext.Clients.Group(userId).SendAsync("ChatListUpdated", await GetChatListAsync(userId));
+        NotifyChatListUpdated(userId);
 
+        response.Content = await _azureOpenAiService.GetChatCompletionAsync(messages, settings);
 
-
-
+        await _databaseService.UpdateMessageAsync(userId, newChat.Id, response);
 
         return newChat;
     }
@@ -95,18 +98,24 @@ public class ChatService : IChatService
 
         await _databaseService.UpdateChatAsync(userId, chatId, settings, newTitle);
 
-        await _hubContext.Clients.Group(userId).SendAsync("ChatListUpdated", await GetChatListAsync(userId));
+        NotifyChatListUpdated(userId);
     }
 
 
-    public Task DeleteChatAsync(string userId, string chatId)
+    public async Task DeleteChatAsync(string userId, string chatId)
     {
-        throw new NotImplementedException("DeleteChatAsync is not implemented yet.");
+        await _databaseService.DeleteChatAsync(userId, chatId);
+        NotifyChatListUpdated(userId);
     }
 
     #endregion Chat management
 
     #region Message operations
+
+    public Task SendMessageAsync(string userId, string chatId, AiChatMessage message)
+    {
+        throw new NotImplementedException("SendMessageAsync is not implemented yet.");
+    }
 
     public Task AddMessageAsync(string userId, string chatId, AiChatMessage message)
     {
@@ -170,6 +179,21 @@ public class ChatService : IChatService
     {
         var name = await _azureOpenAiService.GetChatName(prompt);
         await UpdateChatAsync(userId, chatId, null, name);
+    }
+
+    private async void NotifyChatListUpdated(string userId)
+    {
+        var chatList = await GetChatListAsync(userId);
+        await _hubContext.Clients.Group(userId).SendAsync("ChatListUpdated", chatList);
+    }
+
+    private async void NotifyChatUpdated(string userId, string chatId)
+    {
+        var chat = await GetChatByIdAsync(userId, chatId);
+        if (chat != null)
+        {
+            await _hubContext.Clients.Group(userId).SendAsync("ChatUpdated", chat);
+        }
     }
 
     #endregion Internal methods

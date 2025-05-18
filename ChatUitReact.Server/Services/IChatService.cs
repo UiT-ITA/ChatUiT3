@@ -13,6 +13,7 @@ public interface IChatService
     Task DeleteChatAsync(string userId, string chatId);
     
     // Message Operations
+    Task SendMessageAsync(string userId, string chatId, AiChatMessage message);
     Task AddMessageAsync(string userId, string chatId, AiChatMessage message);
     Task DeleteMessageAsync(string userId, string chatId, string messageId);
 

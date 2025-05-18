@@ -49,6 +49,7 @@ public class AiChatSettings
 {
     public string AssistantName { get; set; } = string.Empty;
     public string SystemPrompt { get; set; } = string.Empty;
+    public AiModel Model { get; set; } = new AiModel();
     public AiModelSettings ModelSettings { get; set; } = new AiModelSettings();
     public bool SaveToDB { get; set; } = true;
 }

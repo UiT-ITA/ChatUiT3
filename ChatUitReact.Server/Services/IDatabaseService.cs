@@ -17,5 +17,6 @@ public interface IDatabaseService
 
     // Message management
     Task AddMessageAsync(string userId, string chatId, AiChatMessage message);
+    Task UpdateMessageAsync(string userId, string chatId, AiChatMessage message);
     Task DeleteMessageAsync(string userId, string chatId, string messageId);
 }
