@@ -98,7 +98,11 @@ public class ChatService : IChatService
 
         await _databaseService.UpdateChatAsync(userId, chatId, settings, newTitle);
 
-        NotifyChatListUpdated(userId);
+        if (newTitle != null)
+        {
+            NotifyChatListUpdated(userId);
+        }
+
     }
 
 
