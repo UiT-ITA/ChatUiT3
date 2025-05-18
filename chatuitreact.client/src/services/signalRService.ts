@@ -1,137 +1,95 @@
 import * as signalR from "@microsoft/signalr";
-import authService from "./authService";
-
-type Handler = (...args: any[]) => void;
+import { ChatListItem } from "../types/chatModels";
 
 class SignalRService {
     private connection: signalR.HubConnection | null = null;
-    private pendingHandlers: { event: string; handler: Handler }[] = [];
-    private connectionPromise: Promise<boolean> | null = null;
+    private chatList: ChatListItem[] = [];
+    private chatListSubscribers: ((chats: ChatListItem[]) => void)[] = [];
+    private getAccessToken: () => Promise<string | null>;
 
-    private async waitForAuth(): Promise<void> {
-        // Create a promise that resolves when auth is initialized
-        return new Promise<void>((resolve) => {
-            const checkAuth = () => {
-                // Check if auth is initialized by checking if we can get an account without error
-                const account = authService.getAccount();
-                if (account !== null) {
-                    resolve();
-                } else {
-                    // If not initialized or no account, try again in 100ms
-                    setTimeout(checkAuth, 100);
-                }
-            };
-            checkAuth();
-        });
+    constructor(getAccessToken: () => Promise<string | null>) {
+        this.getAccessToken = getAccessToken;
     }
 
-    private async getToken(): Promise<string> {
+    async start(): Promise<void> {
+        if (this.connection) return;
+
         try {
-            // Wait for auth to be initialized
-            await this.waitForAuth();
-            
-            const token = await authService.getAccessToken();
+            const token = await this.getAccessToken();
+
             if (!token) {
-                throw new Error("No token available");
-            }
-            return token;
-        } catch (error) {
-            console.error("Failed to get access token:", error);
-            throw error;
-        }
-    }
-
-    public async ensureConnected(): Promise<boolean> {
-        // If we're already connecting, return the existing promise
-        if (this.connectionPromise) {
-            return this.connectionPromise;
-        }
-
-        // Create a new connection attempt
-        this.connectionPromise = this.tryConnect();
-
-        try {
-            const result = await this.connectionPromise;
-            this.connectionPromise = null;
-            return result;
-        } catch (error) {
-            this.connectionPromise = null;
-            throw error;
-        }
-    }
-
-    private async tryConnect(): Promise<boolean> {
-        try {
-            // If already connected, return true
-            if (this.connection?.state === signalR.HubConnectionState.Connected) {
-                return true;
+                throw new Error("Authentication required to connect to SignalR hub");
             }
 
-            // Try to get token first to fail fast
-            try {
-                await this.getToken();
-            } catch (error: unknown) {
-                return false;
-            }
-
-            // If connection exists but not connected, stop it
-            if (this.connection) {
-                await this.connection.stop();
-                this.connection = null;
-            }
-
-            // Create new connection
             this.connection = new signalR.HubConnectionBuilder()
-                .withUrl('/chatHub', {
-                    accessTokenFactory: () => this.getToken()
+                .withUrl("/testAuthHub", {
+                    accessTokenFactory: () => token
                 })
-                .withAutomaticReconnect()
+                .configureLogging(signalR.LogLevel.Error)
+                .withAutomaticReconnect({
+                    nextRetryDelayInMilliseconds: retryContext => {
+                        if (retryContext.previousRetryCount === 0) {
+                            return 0; // First retry immediately
+                        }
+                        const delay = Math.min(1000 * Math.pow(2, retryContext.previousRetryCount), 30000);
+                        return delay;
+                    }
+                })
                 .build();
 
-            // Register any pending handlers
-            this.pendingHandlers.forEach(({ event, handler }) => {
-                this.connection?.on(event, handler);
+            this.connection.on("ChatListUpdated", (chats: any[]) => {
+                this.chatList = chats.map(chat => ({
+                    id: chat.id,
+                    name: chat.name,
+                    createdAt: new Date(chat.createdAt),
+                    updatedAt: new Date(chat.updatedAt),
+                    status: chat.status
+                }));
+                this.notifySubscribers();
+            });
+
+            this.connection.onreconnecting(error => {
+                console.warn("Reconnecting to SignalR hub...", error);
+            });
+
+            this.connection.onreconnected(() => {
+                console.log("Reconnected to SignalR hub");
+            });
+
+            this.connection.onclose(error => {
+                console.error("SignalR connection closed", error);
+                this.connection = null;
             });
 
             await this.connection.start();
-            return true;
         } catch (error) {
-            console.error("SignalR connection failed:", error);
-            this.connection = null;
-            return false;
+            console.error("SignalR Connection Error:", error);
+            throw error;
         }
     }
 
-    public on(event: string, handler: Handler): void {
-        // Store handler for reconnection
-        this.pendingHandlers.push({ event, handler });
+    private notifySubscribers(): void {
+        this.chatListSubscribers.forEach(callback => callback(this.chatList));
+    }
 
-        // If we have a connection, register the handler
-        if (this.connection) {
-            this.connection.on(event, handler);
-            return;
-        }
-
-        // Try to connect and register handler
-        const tryRegister = async () => {
-            try {
-                await this.ensureConnected();
-            } catch (error) {
-                console.error("Failed to connect while registering handler:", error);
-            }
+    subscribeToChatList(callback: (chats: ChatListItem[]) => void): () => void {
+        this.chatListSubscribers.push(callback);
+        callback(this.chatList); // Immediately notify with current state
+        return () => {
+            this.chatListSubscribers = this.chatListSubscribers.filter(cb => cb !== callback);
         };
-
-        tryRegister();
     }
 
-    public disconnect(): void {
+    async stop(): Promise<void> {
         if (this.connection) {
-            this.connection.stop().catch(err => console.error("Error stopping connection:", err));
+            await this.connection.stop();
             this.connection = null;
         }
-        this.pendingHandlers = [];
+    }
+
+    getChatList(): ChatListItem[] {
+        return [...this.chatList]; // Return a copy of the chat list
     }
 }
 
-const signalRService = new SignalRService();
-export default signalRService;
+export default SignalRService;

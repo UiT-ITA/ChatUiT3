@@ -21,19 +21,6 @@ const Sidebar = ({ onToggleSidebar, isNarrow, className }: SidebarProps) => {
     const navigate = useNavigate();
     const { isAdmin, isAuthenticated, login, logout } = useAuth();
 
-    // Handle responsive sidebar
-    useEffect(() => {
-        const handleResize = () => {
-            if (window.innerWidth <= 768 && !isNarrow) {
-                onToggleSidebar();
-            } else if (window.innerWidth > 768 && isNarrow) {
-                onToggleSidebar();
-            }
-        };
-        window.addEventListener('resize', handleResize);
-        return () => window.removeEventListener('resize', handleResize);
-    }, [isNarrow, onToggleSidebar]);
-
     return (
         <div className={`sidebar ${isNarrow ? 'narrow' : 'wide'} ${className || ''}`}>
             <div className="sidebar-top">

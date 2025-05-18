@@ -11,24 +11,6 @@ public class AiChatHeader
 
 public class AiChat : AiChatHeader
 {
-    new public DateTime CreatedAt
-    {
-        get
-        {
-            if (Messages.Count == 0)
-                return DateTime.UtcNow;
-            return Messages.Min(m => m.Timestamp);
-        }
-    }
-    new public DateTime UpdatedAt
-    {
-        get
-        {
-            if (Messages.Count == 0)
-                return CreatedAt;
-            return Messages.Max(m => m.Timestamp);
-        }
-    }
     public AiChatSettings Settings { get; set; } = new AiChatSettings();
     public List<AiChatMessage> Messages { get; set; } = new List<AiChatMessage>();
 }

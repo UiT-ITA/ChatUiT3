@@ -56,11 +56,11 @@ builder.Services.Configure<JwtBearerOptions>(JwtBearerDefaults.AuthenticationSch
                 }
                 
                 // Also handle streaming endpoints
-                if (path.StartsWithSegments("/api/chats") && path.Value.Contains("/stream"))
-                {
-                    // Set the token for authentication for EventSource requests
-                    context.Token = accessToken;
-                }
+                //if (path.StartsWithSegments("/api/chats") && path.Value!.Contains("/stream"))
+                //{
+                //    // Set the token for authentication for EventSource requests
+                //    context.Token = accessToken;
+                //}
             }
             
             return Task.CompletedTask;

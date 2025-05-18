@@ -44,7 +44,7 @@ public class AzureOpenAiService
     {
         try
         {
-            var chatClient = _client.GetChatClient(model.ModelId);
+            var chatClient = _client.GetChatClient(settings.Model.ModelId);
             var chatMessages = ConvertToChatMessages(messages);
             if (!string.IsNullOrEmpty(settings.SystemPrompt))
             {

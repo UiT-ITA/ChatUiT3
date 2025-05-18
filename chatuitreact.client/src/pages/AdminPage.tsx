@@ -1,7 +1,5 @@
 import React, { useState } from 'react';
-import EndpointsManager from '../components/admin/EndpointsManager';
-import ModelsManager from '../components/admin/ModelsManager';
-import AssistantsManager from '../components/admin/AssistantsManager';
+
 import './AdminPage.css';
 
 const AdminPage: React.FC = () => {
@@ -38,9 +36,9 @@ const AdminPage: React.FC = () => {
         </div>
         
         <div className="tab-content">
-          {activeTab === 'endpoints' && <EndpointsManager />}
-          {activeTab === 'models' && <ModelsManager />}
-          {activeTab === 'assistants' && <AssistantsManager />}
+          {/*{activeTab === 'endpoints' && <EndpointsManager />}*/}
+          {/*{activeTab === 'models' && <ModelsManager />}*/}
+          {/*{activeTab === 'assistants' && <AssistantsManager />}*/}
         </div>
       </div>
     </div>

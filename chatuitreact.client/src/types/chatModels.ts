@@ -1,45 +1,56 @@
+import { AiModel, AiModelSettings } from './aiModels';
+
+// AI Chat Models (from AiChatModels.cs)
+
 export interface ChatListItem {
     id: string;
-    title: string;
-    lastUpdated: Date;
+    name: string;
+    createdAt: Date;
+    updatedAt: Date;
+    status: ChatStatus;
 }
 
 export interface Chat extends ChatListItem {
-    messages: Message[];
+    settings: ChatSettings;
+    messages: ChatMessage[];
 }
 
-export interface Message {
+export interface ChatMessage {
     id: string;
-    sender: MessageRole;
+    role: ChatRole;
     timestamp: Date;
-    chunks: MessageChunk[];
-    messageStatus: MessageStatus;
-    filename?: string;
-}
-
-export interface MessageChunk {
-    type: ContentType;
     content: string;
+    status: ChatStatus;
 }
 
-export enum MessageRole {
-    User = "user",
-    Assistant = "assistant",
-    System = "system",
-    Tool = "tool",
-    File = "file"
+export interface ChatSettings {
+    assistantName: string;
+    systemPrompt: string;
+    model: AiModel;
+    modelSettings: AiModelSettings;
+    saveToDB: boolean;
 }
 
-export enum MessageStatus {
-    Sending = "streaming",
-    Sent = "sent",
-    Error = "error",
-    Cancelled = "cancelled"
+export enum ChatRole {
+    User = 'User',
+    Assistant = 'Assistant',
+    System = 'System',
+    ToolRequest = 'ToolRequest',
+    ToolResponse = 'ToolResponse',
 }
 
 export enum ContentType {
-    Text = "text",
-    Image = "image"
+    Text = 'Text',
+    Image = 'Image',
+    Mixed = 'Mixed',
+}
+
+export enum ChatStatus {
+    New = 'New',
+    Generating = 'Generating',
+    Success = 'Success',
+    Error = 'Error',
+    Cancelled = 'Cancelled',
 }
 
 

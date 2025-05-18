@@ -9,6 +9,7 @@ import AdminPage from './pages/AdminPage';
 import Help from './pages/HelpPage';
 import ChatPage from './pages/ChatPage';
 import './App.css';
+import { ChatServiceProvider } from './contexts/ChatServiceContext';
 
 // Protected route component that requires admin role
 const AdminRoute = () => {
@@ -62,10 +63,11 @@ const Home = () => {
 const App: React.FC = () => {
   return (
     <AuthProvider>
-      <BrowserRouter>
-        <Routes>
-          {/* All routes use MainLayout as their parent */}
-          <Route element={<MainLayout />}>
+      <ChatServiceProvider>
+        <BrowserRouter>
+          <Routes>
+            {/* All routes use MainLayout as their parent */}
+            <Route element={<MainLayout />}>
             {/* Home route */}
             <Route path="/" element={<Home />} />
             
@@ -80,14 +82,15 @@ const App: React.FC = () => {
             
             {/* Admin routes - protected by admin role */}
             <Route path="/admin" element={<AdminRoute />}>
-              <Route index element={<AdminPage />} />
+                <Route index element={<AdminPage />} />
             </Route>
             
             {/* Catch all other routes and redirect to home */}
             <Route path="*" element={<Navigate to="/" replace />} />
-          </Route>
-        </Routes>
-      </BrowserRouter>
+            </Route>
+          </Routes>
+        </BrowserRouter>
+      </ChatServiceProvider>
     </AuthProvider>
   );
 };

@@ -47,6 +47,12 @@ public interface IChatHubClient
         {
             try
             {
+                foreach (var claim in Context.User.Claims)
+                {
+                    _logger.LogInformation("Claim: {Type} = {Value}", claim.Type, claim.Value);
+                }
+
+
                 if (Context.User?.Identity?.IsAuthenticated == true)
                 {
                     return _userService.GetCurrentUserId(Context.User);
