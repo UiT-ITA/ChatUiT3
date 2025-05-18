@@ -3,31 +3,32 @@ using ChatUitReact.Server.Models;
 namespace ChatUitReact.Server.Services;
 
 public interface IChatService
-{
-    // Streaming Message State
-    StreamingMessageInfo GetActiveStreamingMessage(string userId, string chatId);
-    IEnumerable<StreamingMessageInfo> GetAllStreamingMessages(string userId, string chatId);
-    
+{    
     // Chat Management
+    Task<List<AiChatHeader>> GetChatListAsync(string userId);
     Task<List<AiChat>> GetChatsAsync(string userId);
     Task<AiChat?> GetChatByIdAsync(string userId, string chatId);
-    Task<AiChat> CreateChatAsync(string userId, string title, AiModelSettings settings);
-    Task<AiChat> CreateChatWithMessageAsync(string userId, string title, AiChatMessage initialMessage, AiModelSettings settings);
-    Task<AiChat?> RenameChatAsync(string userId, string chatId, string newTitle);
-    Task<bool> DeleteChatAsync(string userId, string chatId);
+    Task<AiChat> CreateChatAsync(string userId, AiChatSettings settings, List<AiChatMessage> messages);
+    Task UpdateChatAsync(string userId, string chatId, AiChatSettings? settings, string? newTitle);
+    Task DeleteChatAsync(string userId, string chatId);
     
     // Message Operations
-    Task<AiChatMessage> AddMessageAsync(string userId, string chatId, AiChatMessage message);
-    Task<AiChatMessage> AddMessageAsync(string userId, string chatId, string textContent);
-    
+    Task AddMessageAsync(string userId, string chatId, AiChatMessage message);
+    Task DeleteMessageAsync(string userId, string chatId, string messageId);
+
     // AI Response
-    Task<AiChatMessage> GetAiResponseAsync(string userId, string chatId, AiChatMessage userMessage);
-    Task<AiChatMessage> GetAiResponseAsync(string userId, string chatId, string textContent);
-    
+    Task<string> GetResponseAsync(string userId, string chatId, AiChatMessage userMessage);
+    Task<string> GetResponseAsync(string userId, string chatId);
+
+    // AI Response without chat
+    Task<string> GetResponseAsync(string userId, AiModelSettings settings, List<AiChatMessage> messages);
+
     // Streaming AI Response
-    Task StartStreamingResponseAsync(string userId, string chatId, AiChatMessage userMessage);
-    Task StartStreamingResponseAsync(string userId, string chatId, string textContent);
-    
-    // Settings
-    Task<AiChat?> UpdateChatSettingsAsync(string userId, string chatId, AiModelSettings settings);
+    // Response is a stream of strings, which can be concatenated to form the full response.
+    Task<string> GetStreamingResponseAsync(string userId, string chatId, AiChatMessage userMessage);
+    Task<string> GetStreamingResponseAsync(string userId, string chatId);
+
+    // Streaming AI Response without chat
+    Task<string> GetStreamingResponseAsync(string userId, AiModelSettings settings, List<AiChatMessage> messages);
+
 }

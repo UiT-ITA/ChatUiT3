@@ -30,6 +30,7 @@ public class AiModelEndpoint
 
 public class AiModelSettings
 {
+    public string Model { get; set; } = string.Empty;
     public float Temperature { get; set; } = 0.5f;
     public int MaxTokens { get; set; } = 4000;
     public float TopP { get; set; } = 1.0f;

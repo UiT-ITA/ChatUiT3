@@ -32,18 +32,11 @@ public class UserService
         _logger = logger;
     }
 
-    /// <summary>
-    /// Legacy method - extracts just the user ID from claims
-    /// </summary>
     public string GetCurrentUserId(ClaimsPrincipal user)
     {
-        // Return the primary identifier from the comprehensive identity
         return GetUserIdentity(user).UserId;
     }
 
-    /// <summary>
-    /// Gets comprehensive user identity information from claims
-    /// </summary>
     public UserIdentity GetUserIdentity(ClaimsPrincipal user)
     {
         if (user == null || !user.Identity!.IsAuthenticated)
@@ -55,7 +48,6 @@ public class UserService
         var identity = new UserIdentity
         {
             IsAuthenticated = true,
-            // UPN is the definitive username in Azure AD
             Username = user.FindFirst(ClaimTypes.Upn)?.Value 
                 ?? user.FindFirst("http://schemas.xmlsoap.org/ws/2005/05/identity/claims/upn")?.Value
                 ?? user.FindFirst(ClaimTypes.Email)?.Value
@@ -83,19 +75,14 @@ public class UserService
             
             TenantId = user.FindFirst("http://schemas.microsoft.com/identity/claims/tenantid")?.Value ?? string.Empty,
             
-            // Extract roles (Azure AD puts them in roles claim)
             Roles = user.FindAll(ClaimTypes.Role).Select(c => c.Value).ToList()
         };
-        
-        // Use the UPN as the primary user ID, fallback to other identifiers if needed
+
         identity.UserId = identity.Username;
 
         return identity;
     }
 
-    /// <summary>
-    /// Checks if the user has a specific role
-    /// </summary>
     public bool UserHasRole(ClaimsPrincipal user, string role)
     {
         if (user == null || !user.Identity!.IsAuthenticated) return false;
@@ -104,9 +91,6 @@ public class UserService
                user.Claims.Any(c => c.Type == ClaimTypes.Role && c.Value.Equals(role, StringComparison.OrdinalIgnoreCase));
     }
     
-    /// <summary>
-    /// Logs all claims for debugging purposes
-    /// </summary>
     public void LogAllClaims(ClaimsPrincipal user, string context = "")
     {
         if (user == null) 

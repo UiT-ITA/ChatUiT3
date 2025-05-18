@@ -134,7 +134,7 @@ public class ChatsController : ControllerBase
         // Convert chunks to model format
         var messageChunks = messageDto.Chunks.Select(c => new MessageChunk
         {
-            Type = Enum.Parse<AiMessageChunkType>(c.Type, true),
+            Type = Enum.Parse<AiContentType>(c.Type, true),
             Content = c.Content
         }).ToList();
         
@@ -233,7 +233,7 @@ public class ChatsController : ControllerBase
             // Convert chunks from DTO to model 
             var chunks = createMessageDto.Chunks.Select(c => new MessageChunk
             {
-                Type = Enum.Parse<AiMessageChunkType>(c.Type, true),
+                Type = Enum.Parse<AiContentType>(c.Type, true),
                 Content = c.Content
             }).ToList();
             
@@ -284,7 +284,7 @@ public class ChatsController : ControllerBase
             // Convert chunks from DTO to model
             var chunks = createMessageDto.Chunks.Select(c => new MessageChunk
             {
-                Type = Enum.Parse<AiMessageChunkType>(c.Type, true),
+                Type = Enum.Parse<AiContentType>(c.Type, true),
                 Content = c.Content
             }).ToList();
             

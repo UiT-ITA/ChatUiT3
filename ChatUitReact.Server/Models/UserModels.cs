@@ -1,11 +1,18 @@
 namespace ChatUitReact.Server.Models;
 
-public class UserPreferences
+public class UserInfo
 {
     public string Username { get; set; } = string.Empty;
+    public List<string> Roles { get; set; } = new List<string>();
+    public UserPreferences Preferences { get; set; } = new UserPreferences();
+}
+
+public class UserPreferences
+{
     public NotificationSettings Notifications { get; set; } = new NotificationSettings();
     public DisplaySettings Display { get; set; } = new DisplaySettings();
 }
+
 
 public class NotificationSettings
 {

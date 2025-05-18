@@ -77,11 +77,9 @@ builder.Services.AddSignalR();
 // Register services
 builder.Services.AddScoped<UserService>();
 
-builder.Services.AddSingleton<DatabaseService>();
-
-// Register MockChatService as the implementation of IChatService
-// This allows controllers to depend on the interface while we use the mock implementation
-builder.Services.AddSingleton<IChatService, MockChatService>();
+builder.Services.AddSingleton<IDatabaseService, MockDatabaseService>();
+builder.Services.AddSingleton<IChatService, ChatService>();
+builder.Services.AddSingleton<AzureOpenAiService>();
 
 var app = builder.Build();
 

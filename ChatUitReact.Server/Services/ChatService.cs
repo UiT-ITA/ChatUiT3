@@ -2,278 +2,175 @@
 using Microsoft.Extensions.Logging;
 using ChatUitReact.Server.Hubs;
 using ChatUitReact.Server.Models;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading;
-using System.Threading.Tasks;
 
-namespace ChatUitReact.Server.Services
+namespace ChatUitReact.Server.Services;
+
+public class ChatService : IChatService
 {
-    public class ChatService
+    private readonly AzureOpenAiService _azureOpenAiService;
+    private readonly IHubContext<ChatHub> _hubContext;
+    private readonly ILogger<ChatService> _logger;
+    private readonly IDatabaseService _databaseService;
+
+    public ChatService(
+        AzureOpenAiService azureOpenAiService,
+        IHubContext<ChatHub> hubContext,
+        ILogger<ChatService> logger,
+        IDatabaseService databaseService)
     {
-        private readonly OpenAiService _openAiService;
-        private readonly IHubContext<ChatHub> _hubContext;
-        private readonly ILogger<ChatService> _logger;
-        private readonly DatabaseService _databaseService;
-
-        public ChatService(
-            OpenAiService openAiService,
-            IHubContext<ChatHub> hubContext,
-            ILogger<ChatService> logger,
-            DatabaseService databaseService)
-        {
-            _openAiService = openAiService;
-            _hubContext = hubContext;
-            _logger = logger;
-            _databaseService = databaseService;
-        }
-
-        // Create a new chat
-        public async Task<AiChat> CreateChatAsync(string userId, string username, AiAssistant assistant)
-        {
-            var chat = new AiChat
-            {
-                Name = $"Chat with {assistant.Name}",
-                Assistant = assistant,
-                CurrentSettings = assistant.ModelSettings
-            };
-
-            // Add initial system message if provided
-            if (!string.IsNullOrEmpty(assistant.SystemPrompt))
-            {
-                chat.Messages.Add(new AiChatMessage
-                {
-                    Role = AiChatRole.System,
-                    //Content = assistant.SystemPrompt
-                });
-            }
-
-            // Save to database
-            await _databaseService.CreateChatAsync(chat, username);
-            
-            return chat;
-        }
-
-        // Send a message and get a response
-        public async Task<AiChatMessage> SendMessageAsync(
-            string chatId, 
-            string userId,
-            string username,
-            string message)
-        {
-        // Get the chat from database
-            var chat = await _databaseService.GetChatAsync(chatId, username);
-            if (chat == null)
-            {
-                throw new ArgumentException($"Chat not found: {chatId}");
-            }
-
-            // Add user message
-            var userMessage = new AiChatMessage
-            {
-                Role = AiChatRole.User,
-                //Content = message
-            };
-            
-            chat.Messages.Add(userMessage);
-            
-            // Save the message to database
-            await _databaseService.AddMessageAsync(userMessage, chatId, username);
-
-            // Notify of user message
-            await NotifyClientsOfUpdate(chatId, userId, userMessage);
-
-            try
-            {
-                // Get assistant response
-                var assistantMessage = await _openAiService.GetChatCompletionAsync(
-                    chat.Messages,
-                    chat.Assistant.Model,
-                    chat.CurrentSettings);
-
-                // Add to chat history in memory
-                chat.Messages.Add(assistantMessage);
-                
-                // Save to database
-                await _databaseService.AddMessageAsync(assistantMessage, chatId, username);
-                
-                // Notify connected clients
-                await NotifyClientsOfUpdate(chatId, userId, assistantMessage);
-                
-                return assistantMessage;
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Error sending message");
-                throw;
-            }
-        }
-
-        // Stream a response for real-time updates
-        public async Task<AiChatMessage> StreamMessageAsync(
-            string chatId,
-            string userId,
-            string username,
-            string message,
-            CancellationToken cancellationToken = default)
-        {
-            // Get the chat from database
-            var chat = await _databaseService.GetChatAsync(chatId, username);
-            if (chat == null)
-            {
-                throw new ArgumentException($"Chat not found: {chatId}");
-            }
-
-            // Add user message
-            var userMessage = new AiChatMessage
-            {
-                Role = AiChatRole.User,
-                //Content = message
-            };
-            
-            chat.Messages.Add(userMessage);
-            
-            // Save the message to database
-            await _databaseService.AddMessageAsync(userMessage, chatId, username);
-            
-            // Notify about the user message
-            await NotifyClientsOfUpdate(chatId, userId, userMessage);
-
-            try
-            {
-                // Create assistant message to build up
-                var assistantMessage = new AiChatMessage
-                {
-                    Role = AiChatRole.Assistant,
-                    //Content = string.Empty
-                };
-                
-                chat.Messages.Add(assistantMessage);
-
-                // Get chunks from streaming API
-                var chunks = await _openAiService.GetChatCompletionStreamChunksAsync(
-                    chat.Messages,
-                    chat.Assistant.Model,
-                    chat.CurrentSettings,
-                    cancellationToken);
-                
-                // Process chunks for real-time updates
-                StringBuilder fullResponse = new StringBuilder();
-                
-                foreach (var chunk in chunks)
-                {
-                    fullResponse.Append(chunk);
-                    
-                    // Send the chunk to connected clients
-                    await _hubContext.Clients.Group(userId)
-                        .SendAsync("ReceiveMessageChunk", chatId, assistantMessage.Id, chunk, cancellationToken);
-                }
-                
-                // Final update with complete message
-                //assistantMessage.Content = fullResponse.ToString();
-                
-                // Save the complete assistant message to database
-                await _databaseService.AddMessageAsync(assistantMessage, chatId, username);
-                
-                // Notify clients of the complete message
-                await NotifyClientsOfUpdate(chatId, userId, assistantMessage);
-                
-                return assistantMessage;
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Error streaming message");
-                throw;
-            }
-        }
-
-        // Support for tools/functions
-        public async Task<AiChatMessage> SendMessageWithToolsAsync(
-            string chatId,
-            string userId,
-            string username,
-            string message)
-        {
-            // Get the chat from database
-            var chat = await _databaseService.GetChatAsync(chatId, username);
-            if (chat == null)
-            {
-                throw new ArgumentException($"Chat not found: {chatId}");
-            }
-
-            // Add user message
-            var userMessage = new AiChatMessage
-            {
-                Role = AiChatRole.User,
-                //Content = message
-            };
-            
-            chat.Messages.Add(userMessage);
-            
-            // Save the message to database
-            await _databaseService.AddMessageAsync(userMessage, chatId, username);
-
-            // Notify of user message
-            await NotifyClientsOfUpdate(chatId, userId, userMessage);
-
-            try
-            {
-                // Get assistant response with tools
-                var assistantMessage = await _openAiService.GetChatCompletionWithToolsAsync(
-                    chat.Messages,
-                    chat.Assistant.Model,
-                    chat.CurrentSettings,
-                    chat.Assistant.Tools);
-
-                // Add to chat history
-                chat.Messages.Add(assistantMessage);
-                
-                // Save to database
-                await _databaseService.AddMessageAsync(assistantMessage, chatId, username);
-                
-                // Notify connected clients
-                await NotifyClientsOfUpdate(chatId, userId, assistantMessage);
-                
-                return assistantMessage;
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Error sending message with tools");
-                throw;
-            }
-        }
-
-        // Get chats for a user
-        public async Task<List<AiChat>> GetUserChatsAsync(string username)
-        {
-            return await _databaseService.GetUserChatsAsync(username);
-        }
-
-        // Get a specific chat
-        public async Task<AiChat> GetChatAsync(string chatId, string username)
-        {
-            return await _databaseService.GetChatAsync(chatId, username);
-        }
-
-        // Delete a chat
-        public async Task DeleteChatAsync(string chatId, string username)
-        {
-            await _databaseService.DeleteChatAsync(chatId, username);
-        }
-
-        // Notify clients of a new message
-        private async Task NotifyClientsOfUpdate(string chatId, string userId, AiChatMessage message)
-        {
-            await _hubContext.Clients.Group(userId)
-                .SendAsync("ReceiveMessage", chatId, message);
-        }
-        
-        // Attach a file to a chat
-        //public async Task<AiChatFile> AttachFileToChatAsync(string chatId, string username, string fileId)
-        //{
-        //    return await _databaseService.AttachFileToChatAsync(chatId, username, fileId);
-        //}
+        _azureOpenAiService = azureOpenAiService;
+        _hubContext = hubContext;
+        _logger = logger;
+        _databaseService = databaseService;
     }
+
+    #region Chat management
+
+    public async Task<List<AiChatHeader>> GetChatListAsync(string userId)
+    {
+        return await _databaseService.GetChatListAsync(userId);
+    }
+
+    public async Task<List<AiChat>> GetChatsAsync(string userId)
+    {
+        var chatList = await _databaseService.GetChatListAsync(userId);
+
+        var chats = new List<AiChat>();
+
+        foreach (var chatHeader in chatList)
+        {
+            var chat = await _databaseService.GetChatByIdAsync(userId, chatHeader.Id);
+            if (chat != null)
+            {
+                chats.Add(chat);
+            }
+        }
+
+        return chats;
+    }
+
+
+    public async Task<AiChat?> GetChatByIdAsync(string userId, string chatId)
+    {
+        return await _databaseService.GetChatByIdAsync(userId, chatId);
+    }
+
+
+    public async Task<AiChat> CreateChatAsync(string userId, AiChatSettings settings, List<AiChatMessage> messages)
+    {
+        
+        var newChat = new AiChat 
+        {
+            Name = "New chat",
+            Settings = settings,
+            Messages = messages,
+        };
+
+        SetChatName(userId, newChat.Id, messages[0].Content);
+
+        newChat.Messages.Add(new AiChatMessage
+        {
+            Role = AiChatRole.Assistant,
+            Status = AiChatStatus.New
+        });
+
+        await _databaseService.AddChatAsync(userId, newChat);
+
+        _ = _hubContext.Clients.Group(userId).SendAsync("ChatListUpdated", await GetChatListAsync(userId));
+
+
+
+
+
+        return newChat;
+    }
+
+
+    public async Task UpdateChatAsync(string userId, string chatId, AiChatSettings? settings, string? newTitle)
+    {
+        if (settings == null && newTitle == null)
+        {
+            return; // No changes to apply
+        }
+
+        await _databaseService.UpdateChatAsync(userId, chatId, settings, newTitle);
+
+        await _hubContext.Clients.Group(userId).SendAsync("ChatListUpdated", await GetChatListAsync(userId));
+    }
+
+
+    public Task DeleteChatAsync(string userId, string chatId)
+    {
+        throw new NotImplementedException("DeleteChatAsync is not implemented yet.");
+    }
+
+    #endregion Chat management
+
+    #region Message operations
+
+    public Task AddMessageAsync(string userId, string chatId, AiChatMessage message)
+    {
+        throw new NotImplementedException("AddMessageAsync is not implemented yet.");
+    }
+
+    public Task DeleteMessageAsync(string userId, string chatId, string messageId)
+    {
+        throw new NotImplementedException("DeleteMessageAsync is not implemented yet.");
+    }
+
+    #endregion Message operations
+
+    #region AI Response
+
+    #region Standard
+
+    public Task<string> GetResponseAsync(string userId, string chatId, AiChatMessage userMessage)
+    {
+        throw new NotImplementedException("GetResponseAsync is not implemented yet.");
+    }
+    public Task<string> GetResponseAsync(string userId, string chatId)
+    {
+        throw new NotImplementedException("GetResponseAsync is not implemented yet.");
+    }
+
+    // AI Response without chat
+    public Task<string> GetResponseAsync(string userId, AiModelSettings settings, List<AiChatMessage> messages)
+    {
+        throw new NotImplementedException("GetResponseAsync is not implemented yet.");
+    }
+
+    #endregion Standard
+
+    #region Streaming
+
+    public Task<string> GetStreamingResponseAsync(string userId, string chatId, AiChatMessage userMessage)
+    {
+        throw new NotImplementedException("GetStreamingResponseAsync is not implemented yet.");
+    }
+
+    public Task<string> GetStreamingResponseAsync(string userId, string chatId)
+    {
+        throw new NotImplementedException("GetStreamingResponseAsync is not implemented yet.");
+    }
+
+    // Streaming AI Response without chat
+    public Task<string> GetStreamingResponseAsync(string userId, AiModelSettings settings, List<AiChatMessage> messages)
+    {
+        throw new NotImplementedException("GetStreamingResponseAsync is not implemented yet.");
+    }
+
+    #endregion Streaming
+
+    #endregion AI Response
+
+
+    #region Internal methods
+
+    private async void SetChatName(string userId, string chatId, string prompt)
+    {
+        var name = await _azureOpenAiService.GetChatName(prompt);
+        await UpdateChatAsync(userId, chatId, null, name);
+    }
+
+    #endregion Internal methods
 }

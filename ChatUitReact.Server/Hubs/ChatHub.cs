@@ -205,7 +205,7 @@ public interface IChatHubClient
                 // Convert chunks to model format
                 var messageChunks = messageDto.Chunks.Select(c => new MessageChunk
                 {
-                    Type = Enum.Parse<AiMessageChunkType>(c.Type, true),
+                    Type = Enum.Parse<AiContentType>(c.Type, true),
                     Content = c.Content
                 }).ToList();
                 
@@ -270,7 +270,7 @@ public interface IChatHubClient
                 {
                     new MessageChunk
                     {
-                        Type = AiMessageChunkType.Text,
+                        Type = AiContentType.Text,
                         Content = createMessageDto.Chunks.First().Content
                     }
                 }

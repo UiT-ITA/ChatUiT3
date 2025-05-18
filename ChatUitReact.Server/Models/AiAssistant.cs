@@ -10,8 +10,7 @@ namespace ChatUitReact.Server.Models
         public string Name { get; set; } = string.Empty;
         public string Description { get; set; } = string.Empty;
         public AiModel Model { get; set; } = new AiModel();
-        public string SystemPrompt { get; set; } = string.Empty;
-        public AiModelSettings ModelSettings { get; set; } = new AiModelSettings();
+        public AiChatSettings ChatSettings { get; set; } = new AiChatSettings();
         public List<AiChatTool> Tools { get; set; } = new List<AiChatTool>();
         public bool IsSystemCreated { get; set; } = false;
         
