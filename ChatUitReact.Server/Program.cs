@@ -17,9 +17,9 @@ builder.Services.AddCors(options =>
 {
     options.AddPolicy("AllowReactApp", policy =>
     {
-        string[] allowedOrigins = builder.Configuration.GetSection("AllowedOrigins").Get<string[]>() 
+        string[] allowedOrigins = builder.Configuration.GetSection("AllowedOrigins").Get<string[]>()
             ?? new[] { "https://localhost:54979" };
-            
+
         policy.WithOrigins(allowedOrigins)
             .AllowAnyHeader()
             .AllowAnyMethod()
@@ -41,20 +41,20 @@ builder.Services.Configure<JwtBearerOptions>(JwtBearerDefaults.AuthenticationSch
         {
             // Extract token from the query string for SignalR and EventSource
             var accessToken = context.Request.Query["access_token"];
-            
+
             if (!string.IsNullOrEmpty(accessToken))
             {
                 var path = context.HttpContext.Request.Path;
-                
+
                 // If the request is for a hub...
-                if (path.StartsWithSegments("/testHub") || 
-                    path.StartsWithSegments("/testAuthHub") || 
+                if (path.StartsWithSegments("/testHub") ||
+                    path.StartsWithSegments("/testAuthHub") ||
                     path.StartsWithSegments("/chatHub"))
                 {
                     // Set the token for authentication
                     context.Token = accessToken;
                 }
-                
+
                 // Also handle streaming endpoints
                 //if (path.StartsWithSegments("/api/chats") && path.Value!.Contains("/stream"))
                 //{
@@ -62,7 +62,7 @@ builder.Services.Configure<JwtBearerOptions>(JwtBearerDefaults.AuthenticationSch
                 //    context.Token = accessToken;
                 //}
             }
-            
+
             return Task.CompletedTask;
         }
     };

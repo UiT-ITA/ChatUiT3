@@ -1,37 +1,120 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
+import ReactDOM from "react-dom";
+import { useSignalR } from "../../contexts/SignalRContext";
 import { ChatListItem } from "../../types/chatModels";
-import { useChatService } from "../../contexts/ChatServiceContext";
+import { useNavigate, useParams } from "react-router-dom";
+import { FaStar, FaEdit, FaTrash } from "react-icons/fa";
+import { MdMoreVert } from "react-icons/md";
+import "./ChatList.css";
+
+
+const contextMenuOptions = [
+  { label: "Favorite", icon: <FaStar />, action: (chat: ChatListItem) => console.log(`Favorite clicked for ${chat.name}`) },
+  { label: "Rename", icon: <FaEdit />, action: (chat: ChatListItem) => console.log(`Rename clicked for ${chat.name}`) },
+  { label: "Delete", icon: <FaTrash />, action: (chat: ChatListItem) => console.log(`Delete clicked for ${chat.name}`) },
+];
 
 export const ChatList = () => {
-    const chatService = useChatService();
-    const [chats, setChats] = useState<ChatListItem[]>([]);
+  const { chatList } = useSignalR();
+  const [menu, setMenu] = useState<{
+    chat: ChatListItem;
+    x: number;
+    y: number;
+  } | null>(null);
+  const navigate = useNavigate();
+  const { chatId: activeChatId } = useParams<{ chatId: string }>();
 
-    useEffect(() => {
-        const unsubscribe = chatService.subscribeToChatList(setChats);
-        return () => unsubscribe();
-    }, [chatService]);
+  // Close menu on outside click
+  useEffect(() => {
+    if (!menu) return;
+    const handleClick = (e: MouseEvent) => {
+      setMenu(null);
+    };
+    document.addEventListener("mousedown", handleClick);
+    return () => document.removeEventListener("mousedown", handleClick);
+  }, [menu]);
 
-    if (!chats.length) {
-        return (
-            <div className="p-4 text-gray-500">
-                No chats yet
-            </div>
-        );
-    }
+  const handleMenuClick = (option: typeof contextMenuOptions[0], chat: ChatListItem) => {
+    option.action(chat);
+    setMenu(null);
+  };
 
-    return (
-        <div className="overflow-y-auto">
-            {chats.map(chat => (
-                <div 
-                    key={chat.id}
-                    className="p-4 hover:bg-gray-100 cursor-pointer border-b border-gray-200"
-                >
-                    <div className="font-medium truncate">{chat.name}</div>
-                    <div className="text-sm text-gray-500">
-                        {new Date(chat.updatedAt).toLocaleDateString()}
-                    </div>
-                </div>
+  const handleChatClick = (chat: ChatListItem) => {
+    navigate(`/c/${chat.id}`);
+  };
+
+  const handleMoreClick = (
+    e: React.MouseEvent<HTMLSpanElement, MouseEvent>,
+    chat: ChatListItem
+  ) => {
+    e.stopPropagation();
+
+    // Get the bounding rectangle of the clicked chat item
+    const chatItem = (e.target as HTMLElement).closest(".chat-item") as HTMLElement;
+    if (!chatItem) return;
+
+    const chatItemRect = chatItem.getBoundingClientRect();
+
+    // Position the menu relative to the chat item
+    setMenu({
+      chat,
+      x: chatItemRect.right + 8, // Position to the right of the chat item
+      y: chatItemRect.top, // Align with the top of the chat item
+    });
+  };
+
+  return (
+    <div className="chat-list-container">
+      {chatList.length === 0 ? (
+        <div className="chat-list-empty">No chats yet</div>
+      ) : (
+        chatList.map(chat => (
+          <div
+            key={chat.id}
+            className={`chat-item${activeChatId === chat.id ? " chat-item-active" : ""}`}
+            title={chat.name}
+          >
+            <span
+              className="chat-item-main"
+              onClick={() => handleChatClick(chat)}
+            >
+              {chat.name}
+            </span>
+            <span
+              className="chat-item-more"
+              onClick={e => handleMoreClick(e, chat)}
+              title="More"
+            >
+              <MdMoreVert size={16} />
+            </span>
+          </div>
+        ))
+      )}
+      {menu &&
+        ReactDOM.createPortal(
+          <ul
+            className="chat-context-menu"
+            style={{
+              "--menu-x": `${menu.x}px`,
+              "--menu-y": `${menu.y}px`,
+            } as React.CSSProperties}
+          >
+            {contextMenuOptions.map(option => (
+              <li
+                key={option.label}
+                onClick={e => {
+                  e.stopPropagation();
+                  handleMenuClick(option, menu.chat);
+                }}
+                className="chat-context-menu-item"
+              >
+                <span className="menu-icon">{option.icon}</span>
+                <span>{option.label}</span>
+              </li>
             ))}
-        </div>
-    );
+          </ul>,
+          document.body
+        )}
+    </div>
+  );
 };

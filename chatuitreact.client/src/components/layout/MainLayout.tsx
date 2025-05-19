@@ -1,39 +1,43 @@
 import { useState/*, useEffect*/ } from 'react';
-import { Outlet } from 'react-router-dom';
+import { Outlet, useLocation } from 'react-router-dom';
 import Sidebar from './Sidebar';
+import { ChatList } from '../chat/ChatList';
 import './MainLayout.css';
 
 
 const MainLayout: React.FC = () => {
-    const [isNarrow, setIsNarrow] = useState(false);
-    //const [isWideScreen, setIsWideScreen] = useState(window.innerWidth > 768);
+  const [isNarrow, setIsNarrow] = useState(false);
+  const location = useLocation();
 
-    const toggleSidebar = () => {
-        setIsNarrow(!isNarrow);
-    };
+  const renderSidebarContent = () => {
+    if (location.pathname.startsWith('/help')) {
+      //return <HelpChapters />;
+      return <ChatList />;
+    } else if (location.pathname.startsWith('/c')) {
+      return <ChatList />;
+    }
+    return <ChatList />;
+  };
 
-    //useEffect(() => {
-    //    const handleResize = () => {
-    //        setIsWideScreen(window.innerWidth > 768);
-    //    };
 
-    //    window.addEventListener('resize', handleResize);
-    //    return () => window.removeEventListener('resize', handleResize);
-    //}, []);
+  const toggleSidebar = () => {
+    setIsNarrow(!isNarrow);
+  };
 
-    return (
-        <div className={`layout ${isNarrow ? 'narrow-sidebar' : 'wide-sidebar'}`}>
-            <Sidebar
-                onToggleSidebar={toggleSidebar}
-                isNarrow={isNarrow}
-            />
-            <div className="content-area">
-                <main className="main-content">
-                    <Outlet />
-                </main>
-            </div>
-        </div>
-    );
+  return (
+    <div className={`layout ${isNarrow ? 'narrow-sidebar' : 'wide-sidebar'}`}>
+      <Sidebar
+        onToggleSidebar={toggleSidebar}
+        isNarrow={isNarrow}
+        content={renderSidebarContent()}
+      />
+      <div className="content-area">
+        <main className="main-content">
+          <Outlet />
+        </main>
+      </div>
+    </div>
+  );
 };
 
 export default MainLayout;

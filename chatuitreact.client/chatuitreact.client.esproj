@@ -10,6 +10,7 @@
   </PropertyGroup>
   <ItemGroup>
     <Folder Include="src\components\admin\" />
+    <Folder Include="src\components\help\" />
     <Folder Include="src\hooks\" />
     <Folder Include="src\stores\" />
     <Folder Include="src\utils\" />

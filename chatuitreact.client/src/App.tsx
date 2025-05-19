@@ -6,10 +6,10 @@ import Weather from './pages/WeatherPage';
 import Test from './pages/TestPage';
 import Profile from './pages/ProfilePage';
 import AdminPage from './pages/AdminPage';
-import Help from './pages/HelpPage';
+import HelpPage from './pages/HelpPage';
 import ChatPage from './pages/ChatPage';
+import { SignalRProvider } from './contexts/SignalRContext';
 import './App.css';
-import { ChatServiceProvider } from './contexts/ChatServiceContext';
 
 // Protected route component that requires admin role
 const AdminRoute = () => {
@@ -63,7 +63,7 @@ const Home = () => {
 const App: React.FC = () => {
   return (
     <AuthProvider>
-      <ChatServiceProvider>
+      <SignalRProvider>
         <BrowserRouter>
           <Routes>
             {/* All routes use MainLayout as their parent */}
@@ -75,7 +75,7 @@ const App: React.FC = () => {
             <Route path="/weather" element={<Weather />} />
             <Route path="/test" element={<Test />} />
             <Route path="/profile" element={<Profile />} />
-            <Route path="/help" element={<Help />} />
+            <Route path="/help" element={<HelpPage />} />
 
             <Route path="/c/new" element={<ChatPage />} /> 
             <Route path="/c/:chatId" element={<ChatPage />} />
@@ -90,7 +90,7 @@ const App: React.FC = () => {
             </Route>
           </Routes>
         </BrowserRouter>
-      </ChatServiceProvider>
+      </SignalRProvider>
     </AuthProvider>
   );
 };

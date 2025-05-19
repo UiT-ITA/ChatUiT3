@@ -1,6 +1,6 @@
-# Getting Started
+# ChatUiT
 
-## Getting Started with ChatUiT
+## Getting Started
 
 Welcome to ChatUiT! This guide will help you get started with our powerful chat interface.
 

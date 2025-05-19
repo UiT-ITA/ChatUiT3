@@ -5,6 +5,7 @@
     cursor: pointer;
     width: 32px;
     height: 32px;
+    min-width: 32px;
     border-radius: 4px;
     display: flex;
     align-items: center;
@@ -40,7 +41,7 @@
     height: 48px;
     padding: 8px;
     display: flex;
-    min-width: 100px;
+/*    min-width: 150px;*/
     overflow: hidden;
     gap: 4px;
 }
@@ -49,6 +50,24 @@
     flex-direction: column;
     justify-content: flex-start;
     height: auto;
+}
+
+.sidebar-title {
+    font-size: 24px;
+    color: #797979;
+    font-weight: 500;
+    padding: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    overflow: hidden;
+    flex-grow: 1; /* Allow the title to take up available space */
+}
+
+.sidebar.narrow .sidebar-title {
+    display: none;
 }
 
 .sidebar-divider {
@@ -72,7 +91,11 @@
     padding: 8px;
 }
 
-.sidebar.narrow .sidebar-nav {
+.sidebar-content-inner {
+
+}
+
+.sidebar.narrow .sidebar-content-inner {
     display: none;
 }
 
@@ -89,11 +112,6 @@
     gap: 4px;
 }
 
-/* Navigation styles */
-.nav-section {
-    margin-bottom: 8px;
-}
-
 .section-title {
     font-size: 11px;
     color: #8e8ea0;
@@ -102,60 +120,3 @@
     font-weight: 500;
 }
 
-.sidebar-nav ul {
-    list-style: none;
-    padding: 0;
-    margin: 0;
-}
-
-.sidebar-nav li {
-    margin: 1px 0;
-}
-
-.chat-link {
-    color: #ececf1;
-    text-decoration: none;
-    display: block;
-    padding: 4px 8px;
-    border-radius: 6px;
-    font-size: 14px;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-    position: relative;
-}
-
-    .chat-link:hover {
-        background-color: #2d2d33;
-    }
-    
-    .chat-link.updating {
-        position: relative;
-    }
-    
-    .chat-link .update-indicator {
-        position: absolute;
-        left: -4px;
-        top: 50%;
-        transform: translateY(-50%);
-        width: 8px;
-        height: 8px;
-        border-radius: 50%;
-        background-color: #1a73e8;
-        animation: pulse 1.5s infinite;
-    }
-    
-@keyframes pulse {
-    0% {
-        transform: translateY(-50%) scale(0.8);
-        opacity: 0.8;
-    }
-    50% {
-        transform: translateY(-50%) scale(1.2);
-        opacity: 1;
-    }
-    100% {
-        transform: translateY(-50%) scale(0.8);
-        opacity: 0.8;
-    }
-}

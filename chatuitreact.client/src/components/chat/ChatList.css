@@ -1,0 +1,143 @@
+.chat-list-container {
+    display: flex;
+    flex-direction: column;
+    width: 100%;
+    height: 100%;
+    overflow-y: auto;
+    /* background-color: #1a1a1d; */
+}
+
+.chat-list-empty {
+    color: #888;
+    text-align: center;
+    padding: 16px 0;
+    font-size: 15px;
+    background: none;
+}
+
+.chat-item {
+    color: #ececf1;
+    text-decoration: none;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 4px 4px; /* Ensure consistent padding */
+    border-radius: 6px;
+    font-size: 14px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    position: relative;
+    cursor: pointer;
+    transition: background 0.15s, color 0.15s;
+    height: 28px; /* Set a fixed height */
+    box-sizing: border-box; /* Include padding in height */
+}
+
+.chat-item:hover {
+    background-color: rgba(255,255,255,0.05);
+}
+
+.chat-item-main {
+    flex: 1 1 auto;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    padding-left: 4px;
+}
+
+.chat-item-more {
+    display: none;
+    margin-left: 8px;
+    margin-right: 0;
+    color: #b0b0b8;
+    font-size: 18px;
+    cursor: pointer;
+    user-select: none;
+/*    padding: 2px 4px;*/
+
+    border-radius: 4px;
+    transition: background 0.15s, color 0.15s;
+}
+
+.chat-item:hover .chat-item-more {
+    display: inline;
+/*    background: #23232b;*/
+}
+
+.chat-item-more:hover {
+    color: #1a73e8;
+}
+
+
+.chat-item-active {
+    color: #1a73e8;
+}
+
+.chat-context-menu {
+    background: #23232b;
+    border: 1px solid #444;
+    border-radius: 6px;
+    width: 160px;
+    padding: 4px 0;
+    margin: 0;
+    list-style: none;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.18);
+    position: fixed; /* Use fixed positioning for consistent placement */
+    z-index: 1000;
+    left: 0; /* Reset left to avoid conflicts */
+    top: 0; /* Reset top to avoid conflicts */
+    transform: translate(var(--menu-x, 0px), var(--menu-y, 0px)); /* Use CSS variables for dynamic positioning */
+}
+
+.chat-context-menu-item {
+    display: flex; /* Align icon and text */
+    align-items: center;
+    color: #ececf1;
+    padding: 8px 12px;
+    cursor: pointer;
+    font-size: 14px;
+    transition: background 0.15s;
+}
+
+    .chat-context-menu-item .menu-icon {
+        margin-right: 8px; /* Add spacing between icon and text */
+        font-size: 16px;
+    }
+
+    .chat-context-menu-item:hover {
+        background: #2d2d33;
+    }
+
+.chat-item .updating {
+    position: relative;
+}
+
+.chat-item .update-indicator {
+    position: absolute;
+    left: -4px;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background-color: #1a73e8;
+    animation: pulse 1.5s infinite;
+}
+
+@keyframes pulse {
+    0% {
+        transform: translateY(-50%) scale(0.8);
+        opacity: 0.8;
+    }
+
+    50% {
+        transform: translateY(-50%) scale(1.2);
+        opacity: 1;
+    }
+
+    100% {
+        transform: translateY(-50%) scale(0.8);
+        opacity: 0.8;
+    }
+}
