@@ -1,12 +1,13 @@
 import React, { createContext, useContext, useEffect, useRef, useState, useCallback } from "react";
 import * as signalR from "@microsoft/signalr";
 import { useAuth } from "./AuthContext";
-import { ChatListItem } from "../types/chatModels";
+import { ChatListItem, Message } from "../types/chatModels";
 
 interface SignalRContextType {
   chatList: ChatListItem[];
+  messages: Message[];
   sendMessage: (chatId: string, message: string) => void;
-  // Add more methods as needed (e.g., subscribeToNotifications, sendCommand, etc.)
+  loadChat: (chatId: string) => void;
 }
 
 const SignalRContext = createContext<SignalRContextType | undefined>(undefined);
@@ -14,11 +15,13 @@ const SignalRContext = createContext<SignalRContextType | undefined>(undefined);
 export const SignalRProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const { getAccessToken, isInitializing } = useAuth();
   const [chatList, setChatList] = useState<ChatListItem[]>([]);
+  const [messages, setMessages] = useState<Message[]>([]);
   const connectionRef = useRef<signalR.HubConnection | null>(null);
 
   useEffect(() => {
-    if (isInitializing) return; // Wait for initialization
+    if (isInitializing) return;
     let isMounted = true;
+    
     const connect = async () => {
       const token = await getAccessToken();
       if (!token) return;
@@ -41,7 +44,17 @@ export const SignalRProvider: React.FC<{ children: React.ReactNode }> = ({ child
         }
       });
 
-      // Add more event handlers here (e.g., for notifications, chat updates, etc.)
+      connection.on("ReceiveChatData", (chat: any) => {
+        if (isMounted) {
+          setMessages(chat.messages.map((msg: any) => ({
+            id: msg.id,
+            role: msg.role,
+            timestamp: new Date(msg.timestamp),
+            content: msg.content,
+            status: msg.status
+          })));
+        }
+      });
 
       await connection.start();
       connectionRef.current = connection;
@@ -55,17 +68,26 @@ export const SignalRProvider: React.FC<{ children: React.ReactNode }> = ({ child
         connectionRef.current.stop();
       }
     };
-  }, [getAccessToken]);
+  }, [getAccessToken, isInitializing]);
 
-  // Example: send a message to the backend
+  const loadChat = useCallback((chatId: string) => {
+    connectionRef.current?.invoke("JoinChat", chatId)
+      .catch(error => {
+        console.error("Error loading chat:", error);
+      });
+  }, []);
+
   const sendMessage = useCallback((chatId: string, message: string) => {
     connectionRef.current?.invoke("SendMessage", chatId, message);
   }, []);
 
-  // Add more methods as needed
-
   return (
-    <SignalRContext.Provider value={{ chatList, sendMessage }}>
+    <SignalRContext.Provider value={{ 
+      chatList,
+      messages,
+      sendMessage,
+      loadChat
+    }}>
       {children}
     </SignalRContext.Provider>
   );

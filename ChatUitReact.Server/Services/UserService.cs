@@ -104,11 +104,11 @@ public class UserService
         {
             claimsLog.AppendLine($" - {claim.Type}: {claim.Value}");
         }
-        _logger.LogDebug(claimsLog.ToString());
+        // _logger.LogDebug(claimsLog.ToString());
         
-        _logger.LogDebug("Authentication: {Type}, IsAuthenticated: {IsAuth}, Name: {Name}", 
-            user.Identity?.AuthenticationType, 
-            user.Identity?.IsAuthenticated, 
-            user.Identity?.Name);
+    //     _logger.LogDebug("Authentication: {Type}, IsAuthenticated: {IsAuth}, Name: {Name}", 
+    //         user.Identity?.AuthenticationType, 
+    //         user.Identity?.IsAuthenticated, 
+    //         user.Identity?.Name);
     }
 }

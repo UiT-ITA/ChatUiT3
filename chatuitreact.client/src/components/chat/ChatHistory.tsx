@@ -3,7 +3,6 @@ import ChatMessage from './ChatMessage';
 import './ChatHistory.css';
 import type { Message } from '../../types/chatModels';
 
-
 interface ChatHistoryProps {
   messages: Message[];
 }
@@ -15,7 +14,7 @@ const ChatHistory = ({ messages }: ChatHistoryProps) => {
     if (chatHistoryRef.current) {
       chatHistoryRef.current.scrollTop = chatHistoryRef.current.scrollHeight;
     }
-  }, [messages]); // Dependency array includes messages, so it runs when messages change
+  }, [messages]);
 
   return (
     <div className="chat-history" ref={chatHistoryRef}>

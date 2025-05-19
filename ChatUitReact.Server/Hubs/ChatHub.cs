@@ -15,6 +15,7 @@ public interface IChatHubClient
 {
     Task ChatListUpdated(List<AiChatHeader> chats);
     Task ReceiveMessage(string message);
+    Task ReceiveChatData(AiChat chat);
 }
 
 [Authorize]
@@ -110,6 +111,30 @@ public class ChatHub : Hub<IChatHubClient>
         }
 
         await base.OnDisconnectedAsync(exception);
+    }
+
+    public async Task JoinChat(string chatId)
+    {
+        try
+        {
+            string userId = GetCurrentUserId();
+            _logger.LogInformation("[ChatHub] User {UserId} joining chat {ChatId}", userId, chatId);
+
+            var chat = await _chatService.GetChatByIdAsync(userId, chatId);
+            if (chat == null)
+            {
+                _logger.LogWarning("[ChatHub] Chat not found: {ChatId}", chatId);
+                throw new HubException("Chat not found");
+            }
+
+            await Clients.Caller.ReceiveChatData(chat);
+            _logger.LogInformation("[ChatHub] Sent chat data to user {UserId} for chat {ChatId}", userId, chatId);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "[ChatHub] Error joining chat {ChatId}", chatId);
+            throw;
+        }
     }
 
 

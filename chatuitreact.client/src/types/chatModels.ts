@@ -12,10 +12,10 @@ export interface ChatListItem {
 
 export interface Chat extends ChatListItem {
     settings: ChatSettings;
-    messages: ChatMessage[];
+    messages: Message[];
 }
 
-export interface ChatMessage {
+export interface Message {
     id: string;
     role: ChatRole;
     timestamp: Date;
