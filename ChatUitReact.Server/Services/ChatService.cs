@@ -2,6 +2,7 @@
 using Microsoft.Extensions.Logging;
 using ChatUitReact.Server.Hubs;
 using ChatUitReact.Server.Models;
+using System.Text;
 
 namespace ChatUitReact.Server.Services;
 
@@ -116,9 +117,63 @@ public class ChatService : IChatService
 
     #region Message operations
 
-    public Task SendMessageAsync(string userId, string chatId, AiChatMessage message)
+    public async Task SendMessageAsync(string userId, string chatId, AiChatMessage userMessage)
     {
-        throw new NotImplementedException("SendMessageAsync is not implemented yet.");
+        await SendStreamingMessageAsync(userId, chatId, userMessage);
+    }
+
+    public async Task SendStreamingMessageAsync(string userId, string chatId, AiChatMessage userMessage)
+    {
+        // Add user message to database
+        await _databaseService.AddMessageAsync(userId, chatId, userMessage);
+        
+        // Create placeholder for assistant's response
+        var assistantMessage = new AiChatMessage
+        {
+            Role = AiChatRole.Assistant,
+            Status = AiChatStatus.Generating
+        };
+        await _databaseService.AddMessageAsync(userId, chatId, assistantMessage);
+        
+        // Notify all clients about new messages
+        NotifyChatUpdated(userId, chatId);
+        
+        // Get AI response (fire and forget)
+        _ = Task.Run(async () =>
+        {
+            try 
+            {
+                var messages = (await GetChatByIdAsync(userId, chatId))?.Messages ?? new();
+                var stream = await _azureOpenAiService.GetChatCompleteionStreamingAsync(messages);
+                var content = new StringBuilder();
+                
+                await foreach (var chunk in stream)
+                {
+                    if (chunk.ContentUpdate.Count > 0)
+                    {
+                        var text = chunk.ContentUpdate[0].Text;
+                        content.Append(text);
+                        await _hubContext.Clients.Group($"{userId}:{chatId}")
+                            .SendAsync("ReceiveMessageChunk", chatId, assistantMessage.Id, text);
+                    }
+                }
+                
+                // Update assistant message with complete response
+                assistantMessage.Content = content.ToString();
+                assistantMessage.Status = AiChatStatus.Success;
+                await _databaseService.UpdateMessageAsync(userId, chatId, assistantMessage);
+                
+                // Notify all clients about updated message
+                NotifyChatUpdated(userId, chatId);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error getting chat completion");
+                assistantMessage.Status = AiChatStatus.Error;
+                await _databaseService.UpdateMessageAsync(userId, chatId, assistantMessage);
+                NotifyChatUpdated(userId, chatId);
+            }
+        });
     }
 
     public Task AddMessageAsync(string userId, string chatId, AiChatMessage message)
@@ -196,7 +251,7 @@ public class ChatService : IChatService
         var chat = await GetChatByIdAsync(userId, chatId);
         if (chat != null)
         {
-            await _hubContext.Clients.Group(userId).SendAsync("ChatUpdated", chat);
+            await _hubContext.Clients.Group($"{userId}:{chatId}").SendAsync("ChatUpdated", chat);
         }
     }
 

@@ -14,6 +14,7 @@ public interface IChatService
     
     // Message Operations
     Task SendMessageAsync(string userId, string chatId, AiChatMessage message);
+    Task SendStreamingMessageAsync(string userId, string chatId, AiChatMessage message);
     Task AddMessageAsync(string userId, string chatId, AiChatMessage message);
     Task DeleteMessageAsync(string userId, string chatId, string messageId);
 

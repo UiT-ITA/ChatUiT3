@@ -16,6 +16,8 @@ public interface IChatHubClient
     Task ChatListUpdated(List<AiChatHeader> chats);
     Task ReceiveMessage(string message);
     Task ReceiveChatData(AiChat chat);
+    Task ChatUpdated(AiChat chat);
+    Task ReceiveMessageChunk(string chatId, string messageId, string chunk);
 }
 
 [Authorize]
@@ -118,23 +120,33 @@ public class ChatHub : Hub<IChatHubClient>
         try
         {
             string userId = GetCurrentUserId();
-            _logger.LogInformation("[ChatHub] User {UserId} joining chat {ChatId}", userId, chatId);
+            var groupName = $"{userId}:{chatId}";
+            await Groups.AddToGroupAsync(Context.ConnectionId, groupName);
 
             var chat = await _chatService.GetChatByIdAsync(userId, chatId);
             if (chat == null)
             {
-                _logger.LogWarning("[ChatHub] Chat not found: {ChatId}", chatId);
                 throw new HubException("Chat not found");
             }
 
+            _logger.LogInformation("Sending chat data to client. ChatId: {ChatId}, Messages: {MessageCount}", 
+                chatId, chat.Messages?.Count ?? 0);
+
             await Clients.Caller.ReceiveChatData(chat);
-            _logger.LogInformation("[ChatHub] Sent chat data to user {UserId} for chat {ChatId}", userId, chatId);
+            await Clients.Caller.ChatUpdated(chat);
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "[ChatHub] Error joining chat {ChatId}", chatId);
+            _logger.LogError(ex, "Error joining chat {ChatId}", chatId);
             throw;
         }
+    }
+
+    public async Task LeaveChat(string chatId)
+    {
+        var userId = GetCurrentUserId();
+        var groupName = $"{userId}:{chatId}";
+        await Groups.RemoveFromGroupAsync(Context.ConnectionId, groupName);
     }
 
 
@@ -210,9 +222,15 @@ public class ChatHub : Hub<IChatHubClient>
         throw new NotImplementedException("CreateChat is not implemented yet.");
     }
 
-    public Task SendMessage()
+    public async Task SendMessage(string chatId, string content)
     {
-        throw new NotImplementedException("SendMessage is not implemented yet.");
+        var userId = GetCurrentUserId();
+        await _chatService.SendStreamingMessageAsync(userId, chatId, new AiChatMessage
+        {
+            Role = AiChatRole.User,
+            Content = content,
+            Status = AiChatStatus.Success
+        });
     }
 
 }

@@ -554,6 +554,7 @@ Note: Some Markdown processors may have limitations on what HTML is allowed, and
         if (chat != null)
         {
             chat.Messages.Add(message);
+            chat.UpdatedAt = DateTime.Now;
         }
         return Task.CompletedTask;
     }
@@ -570,6 +571,7 @@ Note: Some Markdown processors may have limitations on what HTML is allowed, and
                 existingMessage.Content = message.Content;
                 existingMessage.Timestamp = message.Timestamp;
             }
+            chat.UpdatedAt = DateTime.Now;
         }
         return Task.CompletedTask;
     }
@@ -585,6 +587,7 @@ Note: Some Markdown processors may have limitations on what HTML is allowed, and
             {
                 chat.Messages.Remove(message);
             }
+            chat.UpdatedAt = DateTime.Now;
         }
         return Task.CompletedTask;
     }

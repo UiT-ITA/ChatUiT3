@@ -8,15 +8,14 @@ import './ChatPage.css';
 
 const ChatPage = () => {
     const { chatId } = useParams<{ chatId: string }>();
-    const { messages, loadChat, sendMessage } = useSignalR();
+    const { messages, loadChat, sendMessage, isConnected } = useSignalR();
     const [initialAssistantId, setInitialAssistantId] = useState<string | undefined>();
 
     useEffect(() => {
-        if (chatId && chatId !== 'new') {
-            console.log(`Loading chat with ID: ${chatId}`);
+        if (chatId && chatId !== 'new' && isConnected) {
             loadChat(chatId);
         }
-    }, [chatId, loadChat]);
+    }, [chatId, loadChat, isConnected]);
 
     const handleSendMessage = (text: string) => {
         if (!text.trim() || !chatId) return;
