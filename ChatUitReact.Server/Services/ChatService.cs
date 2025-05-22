@@ -59,30 +59,25 @@ public class ChatService : IChatService
 
     public async Task<AiChat> CreateChatAsync(string userId, AiChatSettings settings, List<AiChatMessage> messages)
     {
+        var lastMessage = messages.Last();
+        var initialMessages = messages.Take(messages.Count - 1).ToList();
+
         var newChat = new AiChat 
         {
             Name = "New chat",
             Settings = settings,
-            Messages = messages,
+            Messages = initialMessages
         };
 
-        var response = new AiChatMessage
-        {
-            Role = AiChatRole.Assistant,
-            Content = "",
-            Status = AiChatStatus.New
-        };
-
-        newChat.Messages.Add(response);
         await _databaseService.AddChatAsync(userId, newChat);
-
-        var name = await _azureOpenAiService.GetChatName(messages[0].Content);
-        await UpdateChatAsync(userId, newChat.Id, null, name);
-
         NotifyChatListUpdated(userId);
 
-        response.Content = await _azureOpenAiService.GetChatCompletionAsync(messages, settings);
-        await _databaseService.UpdateMessageAsync(userId, newChat.Id, response);
+        _ = Task.Run(async () => {
+            var name = await _azureOpenAiService.GetChatName(messages[0].Content);
+            await UpdateChatAsync(userId, newChat.Id, null, name);
+        });
+
+        await SendStreamingMessageAsync(userId, newChat.Id, lastMessage);
 
         return newChat;
     }
