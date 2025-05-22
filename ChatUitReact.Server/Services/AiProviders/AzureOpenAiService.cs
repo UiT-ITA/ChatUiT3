@@ -147,7 +147,7 @@ public class AzureOpenAiService
         {
             var chatClient = _client.GetChatClient("gpt-4o-mini");
             var chatMessages = new List<ChatMessage> {
-                new SystemChatMessage("Create a name for this chat based on the users initial message. The name must be shorter than 50 characters. Make the name as descriptive as possible. The user's message:\n\n" + prompt)
+                new SystemChatMessage("Create a name for this chat based on the users initial message. The name must be shorter than 30 characters. Make the name as descriptive as possible. You should **only** respond with the name, exactly the way the name should be written. It should have no quotes around it. It should not have any formating. It will be set directly as the name of the chat. The user's message:\n\n" + prompt)
             };
             var options = new ChatCompletionOptions
             {

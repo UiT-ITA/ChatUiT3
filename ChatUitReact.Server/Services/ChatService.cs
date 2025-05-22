@@ -59,15 +59,12 @@ public class ChatService : IChatService
 
     public async Task<AiChat> CreateChatAsync(string userId, AiChatSettings settings, List<AiChatMessage> messages)
     {
-        
         var newChat = new AiChat 
         {
             Name = "New chat",
             Settings = settings,
             Messages = messages,
         };
-
-        SetChatName(userId, newChat.Id, messages[0].Content);
 
         var response = new AiChatMessage
         {
@@ -77,13 +74,14 @@ public class ChatService : IChatService
         };
 
         newChat.Messages.Add(response);
-
         await _databaseService.AddChatAsync(userId, newChat);
+
+        var name = await _azureOpenAiService.GetChatName(messages[0].Content);
+        await UpdateChatAsync(userId, newChat.Id, null, name);
 
         NotifyChatListUpdated(userId);
 
         response.Content = await _azureOpenAiService.GetChatCompletionAsync(messages, settings);
-
         await _databaseService.UpdateMessageAsync(userId, newChat.Id, response);
 
         return newChat;

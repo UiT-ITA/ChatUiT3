@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { useParams } from 'react-router-dom';
+import { useParams, useNavigate } from 'react-router-dom';
 import ChatHistory from '../components/chat/ChatHistory';
 import ChatInput from '../components/chat/ChatInput';
 import NewChatWelcome from '../components/chat/NewChatWelcome';
@@ -8,34 +8,52 @@ import './ChatPage.css';
 
 const ChatPage = () => {
     const { chatId } = useParams<{ chatId: string }>();
-    const { messages, loadChat, sendMessage, isConnected } = useSignalR();
+    const { messages, loadChat, sendMessage, isConnected, onChatCreated } = useSignalR();
     const [initialAssistantId, setInitialAssistantId] = useState<string | undefined>();
+    const navigate = useNavigate();
 
     useEffect(() => {
-        if (chatId && chatId !== 'new' && isConnected) {
-            loadChat(chatId);
+        if (chatId && chatId !== 'new' && chatId !== '404' && isConnected) {
+            loadChat(chatId, () => navigate('/c/404'));
         }
-    }, [chatId, loadChat, isConnected]);
+    }, [chatId, loadChat, isConnected, navigate]);
+
+    useEffect(() => {
+        onChatCreated((chatId: string) => {
+            console.log("Navigating to new chat:", chatId);
+            navigate(`/c/${chatId}`);
+        });
+    }, [navigate, onChatCreated]);
 
     const handleSendMessage = (text: string) => {
-        if (!text.trim() || !chatId) return;
-        sendMessage(chatId, text);
+        if (!text.trim()) return;
+        if (!chatId || chatId === 'new' || chatId === '404') {
+            sendMessage('new', text);
+        } else {
+            sendMessage(chatId, text);
+        }
     };
 
-    // Handle assistant selection from the welcome screen
     const handleSelectAssistant = (assistantId: string) => {
         setInitialAssistantId(assistantId);
     };
 
-    const isNewChat = !chatId || chatId === 'new' || messages.length === 0;
+    const isNewChat = !chatId || chatId === 'new' || chatId === '404' || messages.length === 0;
 
     return (
         <div className="chat-page">
             {isNewChat ? (
-                <NewChatWelcome
-                    initialAssistantId={initialAssistantId}
-                    onSelectAssistant={handleSelectAssistant}
-                />
+                <>
+                    {chatId === '404' && (
+                        <div className="chat-error">
+                            Chat not found. You can start a new chat below.
+                        </div>
+                    )}
+                    <NewChatWelcome
+                        initialAssistantId={initialAssistantId}
+                        onSelectAssistant={handleSelectAssistant}
+                    />
+                </>
             ) : (
                 <ChatHistory messages={messages} />
             )}

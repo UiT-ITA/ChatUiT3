@@ -35,7 +35,7 @@ public class TestAuthHub : Hub<ITestClient>
     public override async Task OnConnectedAsync()
     {
         // Debug log all claims using the centralized service
-        _userService.LogAllClaims(Context.User, "TestAuthHub connection");
+        //_userService.LogAllClaims(Context.User, "TestAuthHub connection");
 
         // Get comprehensive user identity
         var userIdentity = _userService.GetUserIdentity(Context.User);

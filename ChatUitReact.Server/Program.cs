@@ -8,7 +8,7 @@ var builder = WebApplication.CreateBuilder(args);
 
 if (builder.Environment.IsDevelopment())
 {
-    IdentityModelEventSource.ShowPII = true;
+    IdentityModelEventSource.ShowPII = false;
 }
 
 

@@ -1,19 +1,15 @@
 import React, { createContext, useContext, useEffect, useRef, useState, useCallback } from "react";
 import * as signalR from "@microsoft/signalr";
 import { useAuth } from "./AuthContext";
-import { ChatListItem, Message, ChatRole, ChatStatus } from "../types/chatModels";
+import { ChatListItem, Message, Chat } from "../types/chatModels";
 
 interface SignalRContextType {
   chatList: ChatListItem[];
   messages: Message[];
   sendMessage: (chatId: string, message: string) => void;
-  loadChat: (chatId: string) => void;
+  loadChat: (chatId: string, onNotFound?: () => void) => void;
   isConnected: boolean;
-}
-
-interface AiChat {
-  id: string;
-  messages: Message[];
+  onChatCreated: (callback: (chatId: string) => void) => void;
 }
 
 const SignalRContext = createContext<SignalRContextType | undefined>(undefined);
@@ -25,6 +21,11 @@ export const SignalRProvider: React.FC<{ children: React.ReactNode }> = ({ child
   const [isConnected, setIsConnected] = useState(false);
   const [currentChatId, setCurrentChatId] = useState<string | null>(null);
   const connectionRef = useRef<signalR.HubConnection | null>(null);
+  const chatCreatedCallbackRef = useRef<((chatId: string) => void) | null>(null);
+
+  const onChatCreated = useCallback((callback: (chatId: string) => void) => {
+    chatCreatedCallbackRef.current = callback;
+  }, []);
 
   useEffect(() => {
     if (isInitializing) return;
@@ -40,36 +41,18 @@ export const SignalRProvider: React.FC<{ children: React.ReactNode }> = ({ child
         .configureLogging(signalR.LogLevel.Error)
         .build();
 
-      connection.on("ChatListUpdated", (chats: any[]) => {
+      connection.on("ChatListUpdated", (chats: ChatListItem[]) => {
         if (isMounted) {
           setChatList(chats.map(chat => ({
-            id: chat.id,
-            name: chat.name,
+            ...chat,
             createdAt: new Date(chat.createdAt),
-            updatedAt: new Date(chat.updatedAt),
-            status: chat.status === 0 ? ChatStatus.New : chat.status === 1 ? ChatStatus.Generating : chat.status === 2 ? ChatStatus.Success : chat.status === 3 ? ChatStatus.Error : ChatStatus.Cancelled
+            updatedAt: new Date(chat.updatedAt)
           })));
         }
       });
 
-      connection.on("ReceiveChatData", (chat: any) => {
-        if (isMounted) {
-          try {
-            setMessages(chat.messages.map((msg: any) => ({
-              id: msg.id,
-              role: msg.role === 0 ? ChatRole.User : msg.role === 1 ? ChatRole.Assistant : ChatRole.System,
-              timestamp: new Date(msg.timestamp),
-              content: msg.content,
-              status: msg.status === 0 ? ChatStatus.New : msg.status === 1 ? ChatStatus.Generating : msg.status === 2 ? ChatStatus.Success : msg.status === 3 ? ChatStatus.Error : ChatStatus.Cancelled
-            })));
-          } catch (err) {
-            console.error("Error processing chat data:", err);
-          }
-        }
-      });
-
       connection.on("ReceiveMessageChunk", (chatId: string, messageId: string, chunk: string) => {
-        if (isMounted && chatId === currentChatId) {
+        if (isMounted/* && chatId === currentChatId*/) {
           setMessages(prev => prev.map(msg => 
             msg.id === messageId 
               ? { ...msg, content: msg.content + chunk }
@@ -78,19 +61,23 @@ export const SignalRProvider: React.FC<{ children: React.ReactNode }> = ({ child
         }
       });
 
-      connection.on("ChatUpdated", (chat: any) => {
-        if (isMounted && chat.id === currentChatId) {
+      connection.on("ChatUpdated", (chat: Chat) => {
+        if (isMounted) {
           try {
-            setMessages(chat.messages.map((msg: any) => ({
-              id: msg.id,
-              role: msg.role === 0 ? ChatRole.User : msg.role === 1 ? ChatRole.Assistant : ChatRole.System,
-              timestamp: new Date(msg.timestamp),
-              content: msg.content,
-              status: msg.status === 0 ? ChatStatus.New : msg.status === 1 ? ChatStatus.Generating : msg.status === 2 ? ChatStatus.Success : msg.status === 3 ? ChatStatus.Error : ChatStatus.Cancelled
+            setMessages(chat.messages.map((msg: Message) => ({
+              ...msg,
+              timestamp: new Date(msg.timestamp)
             })));
           } catch (err) {
             console.error("Error processing chat update:", err);
           }
+        }
+      });
+      
+      connection.on("ChatCreated", (chatId: string) => {
+        if (isMounted && chatCreatedCallbackRef.current) {
+          console.log("New chat created with ID:", chatId);
+          chatCreatedCallbackRef.current(chatId);
         }
       });
 
@@ -110,12 +97,16 @@ export const SignalRProvider: React.FC<{ children: React.ReactNode }> = ({ child
     };
   }, [getAccessToken, isInitializing]);
 
-  const loadChat = useCallback((chatId: string) => {
+  const loadChat = useCallback((chatId: string, onNotFound?: () => void) => {
     setCurrentChatId(chatId);
-    setMessages([]); // Clear messages before loading new chat
+    setMessages([]);
     connectionRef.current?.invoke("JoinChat", chatId)
       .catch(error => {
-        console.error("Error loading chat:", error);
+        if (error.message.includes("ChatNotFound")) {
+          onNotFound?.();
+        } else {
+          console.error("Error loading chat:", error);
+        }
       });
   }, []);
 
@@ -129,7 +120,8 @@ export const SignalRProvider: React.FC<{ children: React.ReactNode }> = ({ child
       messages,
       sendMessage,
       loadChat,
-      isConnected
+      isConnected,
+      onChatCreated
     }}>
       {children}
     </SignalRContext.Provider>
