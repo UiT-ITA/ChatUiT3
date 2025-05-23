@@ -15,6 +15,13 @@ export interface Chat extends ChatListItem {
     messages: Message[];
 }
 
+// Extended chat list item that can optionally contain full chat data for caching
+export interface CachedChatItem extends ChatListItem {
+    settings?: ChatSettings;
+    messages?: Message[];
+    lastViewed?: Date;
+}
+
 export interface Message {
     id: string;
     role: ChatRole;
@@ -52,5 +59,3 @@ export enum ChatStatus {
     Error = 'Error',
     Cancelled = 'Cancelled',
 }
-
-

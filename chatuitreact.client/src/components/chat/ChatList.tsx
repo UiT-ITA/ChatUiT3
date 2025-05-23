@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import ReactDOM from "react-dom";
 import { useSignalR } from "../../contexts/SignalRContext";
-import { ChatListItem } from "../../types/chatModels";
+import { CachedChatItem } from "../../types/chatModels";
 import { useNavigate, useParams } from "react-router-dom";
 import { FaStar, FaEdit, FaTrash } from "react-icons/fa";
 import { MdMoreVert } from "react-icons/md";
@@ -9,43 +9,55 @@ import "./ChatList.css";
 
 
 const contextMenuOptions = [
-  { label: "Favorite", icon: <FaStar />, action: (chat: ChatListItem) => console.log(`Favorite clicked for ${chat.name}`) },
-  { label: "Rename", icon: <FaEdit />, action: (chat: ChatListItem) => console.log(`Rename clicked for ${chat.name}`) },
-  { label: "Delete", icon: <FaTrash />, action: (chat: ChatListItem) => console.log(`Delete clicked for ${chat.name}`) },
+  { label: "Favorite", icon: <FaStar />, action: (chat: CachedChatItem) => console.log(`Favorite clicked for ${chat.name}`) },
+  { label: "Rename", icon: <FaEdit />, action: (chat: CachedChatItem) => console.log(`Rename clicked for ${chat.name}`) },
+  { label: "Delete", icon: <FaTrash />, action: (chat: CachedChatItem) => console.log(`Delete clicked for ${chat.name}`) },
 ];
 
 export const ChatList = () => {
   const { chatList } = useSignalR();
   const [menu, setMenu] = useState<{
-    chat: ChatListItem;
+    chat: CachedChatItem;
     x: number;
     y: number;
   } | null>(null);
+  const [immediateActiveId, setImmediateActiveId] = useState<string | null>(null);
   const navigate = useNavigate();
   const { chatId: activeChatId } = useParams<{ chatId: string }>();
+
+  // Sync immediate state with URL state when navigation completes
+  useEffect(() => {
+    if (activeChatId && immediateActiveId === activeChatId) {
+      // Navigation completed successfully, clear immediate state
+      setImmediateActiveId(null);
+    }
+  }, [activeChatId, immediateActiveId]);
 
   // Close menu on outside click
   useEffect(() => {
     if (!menu) return;
-    const handleClick = (e: MouseEvent) => {
+    const handleClick = () => {
       setMenu(null);
     };
     document.addEventListener("mousedown", handleClick);
     return () => document.removeEventListener("mousedown", handleClick);
   }, [menu]);
 
-  const handleMenuClick = (option: typeof contextMenuOptions[0], chat: ChatListItem) => {
+  const handleMenuClick = (option: typeof contextMenuOptions[0], chat: CachedChatItem) => {
     option.action(chat);
     setMenu(null);
   };
 
-  const handleChatClick = (chat: ChatListItem) => {
+  const handleChatClick = (chat: CachedChatItem) => {
+    // Set immediate active state for instant visual feedback
+    setImmediateActiveId(chat.id);
+    // Navigate (this may take a moment)
     navigate(`/c/${chat.id}`);
   };
 
   const handleMoreClick = (
     e: React.MouseEvent<HTMLSpanElement, MouseEvent>,
-    chat: ChatListItem
+    chat: CachedChatItem
   ) => {
     e.stopPropagation();
 
@@ -63,6 +75,11 @@ export const ChatList = () => {
     });
   };
 
+  // Determine if a chat should appear active (either via URL or immediate selection)
+  const isActiveChat = (chatId: string) => {
+    return activeChatId === chatId || immediateActiveId === chatId;
+  };
+
   return (
     <div className="chat-list-container">
       {chatList.length === 0 ? (
@@ -71,7 +88,7 @@ export const ChatList = () => {
         chatList.map(chat => (
           <div
             key={chat.id}
-            className={`chat-item${activeChatId === chat.id ? " chat-item-active" : ""}`}
+            className={`chat-item${isActiveChat(chat.id) ? " chat-item-active" : ""}`}
             title={chat.name}
           >
             <span

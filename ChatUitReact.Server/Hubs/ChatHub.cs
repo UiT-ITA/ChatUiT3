@@ -66,6 +66,7 @@ public class ChatHub : Hub<IChatHubClient>
 
     public async Task JoinChat(string chatId)
     {
+        //await Task.Delay(1000); // Simulate some delay for testing purposes
         var userId = GetCurrentUserId();
         var groupName = $"{userId}:{chatId}";
         await Groups.AddToGroupAsync(Context.ConnectionId, groupName);

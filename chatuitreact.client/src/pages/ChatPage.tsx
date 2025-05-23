@@ -38,7 +38,7 @@ const ChatPage = () => {
         setInitialAssistantId(assistantId);
     };
 
-    const isNewChat = !chatId || chatId === 'new' || chatId === '404' || messages.length === 0;
+    const isNewChat = !chatId || chatId === 'new' || chatId === '404' /* || messages.length === 0 */;
 
     return (
         <div className="chat-page">
