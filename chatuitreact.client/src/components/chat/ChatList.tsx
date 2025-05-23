@@ -1,4 +1,4 @@
-import { useEffect, useState, useRef } from "react";
+import { useEffect, useState } from "react";
 import ReactDOM from "react-dom";
 import { useSignalR } from "../../contexts/SignalRContext";
 import { ChatListItem } from "../../types/chatModels";

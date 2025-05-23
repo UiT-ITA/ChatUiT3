@@ -7,7 +7,7 @@ import { GrHelpBook } from "react-icons/gr";
 import { MdOutlineVpnKey } from "react-icons/md";
 
 import { useAuth } from '../../contexts/AuthContext';
-import { ChatList } from '../chat/ChatList';
+// import { ChatList } from '../chat/ChatList';
 
 interface SidebarProps {
   onToggleSidebar: () => void;
