@@ -3,6 +3,8 @@ using Microsoft.Extensions.Logging;
 using ChatUitReact.Server.Hubs;
 using ChatUitReact.Server.Models;
 using System.Text;
+using System.ClientModel;
+using OpenAI.Chat;
 
 namespace ChatUitReact.Server.Services;
 
@@ -12,17 +14,20 @@ public class ChatService : IChatService
     private readonly IHubContext<ChatHub> _hubContext;
     private readonly ILogger<ChatService> _logger;
     private readonly IDatabaseService _databaseService;
+    private readonly StreamingMessageService _streamingMessageService;
 
     public ChatService(
         AzureOpenAiService azureOpenAiService,
         IHubContext<ChatHub> hubContext,
         ILogger<ChatService> logger,
-        IDatabaseService databaseService)
+        IDatabaseService databaseService,
+        StreamingMessageService streamingMessageService)
     {
         _azureOpenAiService = azureOpenAiService;
         _hubContext = hubContext;
         _logger = logger;
         _databaseService = databaseService;
+        _streamingMessageService = streamingMessageService;
     }
 
     #region Chat management
@@ -137,19 +142,34 @@ public class ChatService : IChatService
             try 
             {
                 var messages = (await GetChatByIdAsync(userId, chatId))?.Messages ?? new();
-                var stream = await _azureOpenAiService.GetChatCompleteionStreamingAsync(messages);
-                var content = new StringBuilder();
+                var openAiStream = await _azureOpenAiService.GetChatCompleteionStreamingAsync(messages);
                 
-                await foreach (var chunk in stream)
+                // Create our custom streaming channel
+                var chunkChannel = new StreamingChunkChannel();
+                
+                // Start the streaming service with our custom stream
+                _streamingMessageService.StartStream(userId, chatId, assistantMessage.Id, chunkChannel.ReadAllChunks());
+                
+                // Process incoming chunks from OpenAI and write to our channel
+                var content = new StringBuilder();
+                await foreach (var chunk in openAiStream)
                 {
-                    if (chunk.ContentUpdate.Count > 0)
+                    if (chunk.ContentUpdate?.Count > 0)
                     {
                         var text = chunk.ContentUpdate[0].Text;
-                        content.Append(text);
-                        await _hubContext.Clients.Group($"{userId}:{chatId}")
-                            .SendAsync("ReceiveMessageChunk", chatId, assistantMessage.Id, text);
+                        if (!string.IsNullOrEmpty(text))
+                        {
+                            // Write to our channel for streaming clients
+                            await chunkChannel.WriteChunk(text);
+                            
+                            // Collect for database storage
+                            content.Append(text);
+                        }
                     }
                 }
+                
+                // Mark the channel as complete
+                chunkChannel.Complete();
                 
                 // Update assistant message with complete response
                 assistantMessage.Content = content.ToString();

@@ -40,9 +40,8 @@ class ChatStore {
 
     this.chats.set(chatId, updatedChat);
     
-    if (chatId === this.activeChatId) {
-      this.notifyListeners();
-    }
+    // Always notify listeners when chunks arrive for any chat
+    this.notifyListeners();
   }
 
   updateChat(chat: CachedChatItem) {

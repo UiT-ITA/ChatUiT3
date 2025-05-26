@@ -4,11 +4,14 @@ import ChatHistory from '../components/chat/ChatHistory';
 import ChatInput from '../components/chat/ChatInput';
 import NewChatWelcome from '../components/chat/NewChatWelcome';
 import { useSignalR } from '../contexts/SignalRContext';
+import { useActiveChat } from '../hooks/useChatData';
+import { ChatStatus } from '../types/chatModels';
 import './ChatPage.css';
 
 const ChatPage = () => {
     const { chatId } = useParams<{ chatId: string }>();
-    const { loadChat, sendMessage, isConnected, onChatCreated } = useSignalR();
+    const { loadChat, sendMessage, streamMessage, isConnected, onChatCreated } = useSignalR();
+    const activeChat = useActiveChat();
     const [initialAssistantId, setInitialAssistantId] = useState<string | undefined>();
     const navigate = useNavigate();
 
@@ -24,6 +27,20 @@ const ChatPage = () => {
             navigate(`/c/${chatId}`);
         });
     }, [navigate, onChatCreated]);
+
+    useEffect(() => {
+        if (activeChat?.messages) {
+            // Check if there's a streaming message in this chat
+            const streamingMessage = activeChat.messages.find(
+                msg => msg.status === ChatStatus.Generating
+            );
+            
+            if (streamingMessage) {
+                // Join the stream for this message
+                streamMessage(activeChat.id, streamingMessage.id);
+            }
+        }
+    }, [activeChat, streamMessage]);
 
     const handleSendMessage = (text: string) => {
         if (!text.trim()) return;

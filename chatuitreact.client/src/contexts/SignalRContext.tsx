@@ -1,12 +1,13 @@
 import React, { createContext, useContext, useEffect, useRef, useCallback } from "react";
 import * as signalR from "@microsoft/signalr";
 import { useAuth } from "./AuthContext";
-import { ChatListItem, Chat } from "../types/chatModels";
 import { chatStore } from "../stores/ChatStore";
+import { createSignalRConnection, setupSignalREvents } from "../services/signalRService";
 
 interface SignalRContextType {
   sendMessage: (chatId: string, message: string) => void;
   loadChat: (chatId: string, onNotFound?: () => void) => void;
+  streamMessage: (chatId: string, messageId: string) => void;
   isConnected: boolean;
   onChatCreated: (callback: (chatId: string) => void) => void;
 }
@@ -28,59 +29,19 @@ export const SignalRProvider: React.FC<{ children: React.ReactNode }> = ({ child
     let isMounted = true;
     
     const connect = async () => {
-      const token = await getAccessToken();
-      if (!token) return;
+      const connection = await createSignalRConnection(getAccessToken);
+      if (!connection) return;
 
-      const connection = new signalR.HubConnectionBuilder()
-        .withUrl("/chatHub", { accessTokenFactory: () => token })
-        .withAutomaticReconnect()
-        .configureLogging(signalR.LogLevel.Error)
-        .build();
-
-      connection.on("ChatListUpdated", (chats: ChatListItem[]) => {
-        if (isMounted) {
-          const cachedChats = chats.map(chat => ({
-            ...chat,
-            createdAt: new Date(chat.createdAt),
-            updatedAt: new Date(chat.updatedAt)
-          }));
-          chatStore.setChats(cachedChats);
-        }
-      });
-
-      connection.on("ReceiveMessageChunk", (chatId: string, messageId: string, chunk: string) => {
-        if (isMounted) {
-          chatStore.updateMessageChunk(chatId, messageId, chunk);
-        }
-      });
-
-      connection.on("ChatUpdated", (chat: Chat) => {
-        if (isMounted) {
-          try {
-            const processedChat = {
-              ...chat,
-              createdAt: new Date(chat.createdAt),
-              updatedAt: new Date(chat.updatedAt),
-              messages: chat.messages.map(msg => ({
-                ...msg,
-                timestamp: new Date(msg.timestamp)
-              })),
-              lastViewed: new Date()
-            };
-            
-            chatStore.updateChat(processedChat);
-          } catch (err) {
-            console.error("Error processing chat update:", err);
+      setupSignalREvents(connection, {
+        onChatCreated: (chatId: string) => {
+          if (chatCreatedCallbackRef.current) {
+            chatCreatedCallbackRef.current(chatId);
           }
+        },
+        onError: (error: any) => {
+          console.error("SignalR error:", error);
         }
-      });
-      
-      connection.on("ChatCreated", (chatId: string) => {
-        if (isMounted && chatCreatedCallbackRef.current) {
-          console.log("New chat created with ID:", chatId);
-          chatCreatedCallbackRef.current(chatId);
-        }
-      });
+      }, isMounted);
 
       await connection.start();
       connectionRef.current = connection;
@@ -120,6 +81,11 @@ export const SignalRProvider: React.FC<{ children: React.ReactNode }> = ({ child
       });
   }, []);
 
+  const streamMessage = useCallback((chatId: string, messageId: string) => {
+    console.log("Streaming message:", chatId, messageId);
+    connectionRef.current?.invoke("StreamMessage", chatId, messageId);
+  }, []);
+
   const sendMessage = useCallback((chatId: string, message: string) => {
     connectionRef.current?.invoke("SendMessage", chatId, message);
   }, []);
@@ -128,6 +94,7 @@ export const SignalRProvider: React.FC<{ children: React.ReactNode }> = ({ child
     <SignalRContext.Provider value={{ 
       sendMessage,
       loadChat,
+      streamMessage,
       isConnected,
       onChatCreated
     }}>

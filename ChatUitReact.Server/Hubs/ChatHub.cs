@@ -25,13 +25,15 @@ public class ChatHub : Hub<IChatHubClient>
     private readonly UserService _userService;
     private readonly ILogger<ChatHub> _logger;
     private readonly IChatService _chatService;
+    private readonly StreamingMessageService _streamingMessageService;
     private static readonly Dictionary<string, string> _connections = new Dictionary<string, string>();
 
-    public ChatHub(UserService userService, ILogger<ChatHub> logger, IChatService chatService)
+    public ChatHub(UserService userService, ILogger<ChatHub> logger, IChatService chatService, StreamingMessageService streamingMessageService)
     {
         _userService = userService;
         _logger = logger;
         _chatService = chatService;
+        _streamingMessageService = streamingMessageService;
     }
 
     private string GetCurrentUserId()
@@ -61,12 +63,12 @@ public class ChatHub : Hub<IChatHubClient>
         {
             _connections.Remove(Context.ConnectionId);
         }
+        _streamingMessageService.CancelClientStream(Context.ConnectionId);
         await base.OnDisconnectedAsync(exception);
     }
 
     public async Task JoinChat(string chatId)
     {
-        //await Task.Delay(1000); // Simulate some delay for testing purposes
         var userId = GetCurrentUserId();
         var groupName = $"{userId}:{chatId}";
         await Groups.AddToGroupAsync(Context.ConnectionId, groupName);
@@ -85,6 +87,15 @@ public class ChatHub : Hub<IChatHubClient>
         var userId = GetCurrentUserId();
         var groupName = $"{userId}:{chatId}";
         await Groups.RemoveFromGroupAsync(Context.ConnectionId, groupName);
+    }
+
+    public async Task StreamMessage(string chatId, string messageId)
+    {
+        var userId = GetCurrentUserId();
+        var clientId = Context.ConnectionId;
+        
+        _ = _streamingMessageService.StreamToClient(clientId, userId, chatId, messageId, 
+            async (cId, mId, chunk) => await Clients.Client(clientId).ReceiveMessageChunk(cId, mId, chunk));
     }
 
     public async Task SendMessage(string chatId, string content)
