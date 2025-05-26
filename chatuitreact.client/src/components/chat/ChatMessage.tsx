@@ -1,3 +1,4 @@
+import React from 'react';
 import './ChatMessage.css';
 import { MdRefresh, MdEdit, MdContentCopy, MdCallSplit } from 'react-icons/md';
 import ReactMarkdown from 'react-markdown';
@@ -143,4 +144,4 @@ const ChatMessage = ({ message }: ChatMessageProps) => {
   );
 };
 
-export default ChatMessage;
+export default React.memo(ChatMessage);

@@ -1,13 +1,11 @@
+import React from 'react';
 import { useEffect, useRef } from 'react';
 import ChatMessage from './ChatMessage';
 import './ChatHistory.css';
-import type { Message } from '../../types/chatModels';
+import { useActiveChatMessages } from '../../hooks/useChatData';
 
-interface ChatHistoryProps {
-  messages: Message[];
-}
-
-const ChatHistory = ({ messages }: ChatHistoryProps) => {
+const ChatHistory = () => {
+  const messages = useActiveChatMessages();
   const chatHistoryRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -25,4 +23,4 @@ const ChatHistory = ({ messages }: ChatHistoryProps) => {
   );
 };
 
-export default ChatHistory;
+export default React.memo(ChatHistory);

@@ -1,10 +1,10 @@
-import React, { createContext, useContext, useEffect, useRef, useState, useCallback } from "react";
+import React, { createContext, useContext, useEffect, useRef, useCallback } from "react";
 import * as signalR from "@microsoft/signalr";
 import { useAuth } from "./AuthContext";
-import { ChatListItem, Message, Chat, CachedChatItem } from "../types/chatModels";
+import { ChatListItem, Chat } from "../types/chatModels";
+import { chatStore } from "../stores/ChatStore";
 
 interface SignalRContextType {
-  chatList: CachedChatItem[];
   sendMessage: (chatId: string, message: string) => void;
   loadChat: (chatId: string, onNotFound?: () => void) => void;
   isConnected: boolean;
@@ -15,8 +15,7 @@ const SignalRContext = createContext<SignalRContextType | undefined>(undefined);
 
 export const SignalRProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const { getAccessToken, isInitializing } = useAuth();
-  const [chatList, setChatList] = useState<CachedChatItem[]>([]);
-  const [isConnected, setIsConnected] = useState(false);
+  const [isConnected, setIsConnected] = React.useState(false);
   const connectionRef = useRef<signalR.HubConnection | null>(null);
   const chatCreatedCallbackRef = useRef<((chatId: string) => void) | null>(null);
 
@@ -40,65 +39,36 @@ export const SignalRProvider: React.FC<{ children: React.ReactNode }> = ({ child
 
       connection.on("ChatListUpdated", (chats: ChatListItem[]) => {
         if (isMounted) {
-          setChatList(prevChatList => {
-            const existingChatsMap = new Map(prevChatList.map(chat => [chat.id, chat]));
-            
-            return chats.map(chat => {
-              const existingChat = existingChatsMap.get(chat.id);
-              return {
-                ...chat,
-                createdAt: new Date(chat.createdAt),
-                updatedAt: new Date(chat.updatedAt),
-                messages: existingChat?.messages,
-                settings: existingChat?.settings,
-                lastViewed: existingChat?.lastViewed
-              };
-            });
-          });
+          const cachedChats = chats.map(chat => ({
+            ...chat,
+            createdAt: new Date(chat.createdAt),
+            updatedAt: new Date(chat.updatedAt)
+          }));
+          chatStore.setChats(cachedChats);
         }
       });
 
       connection.on("ReceiveMessageChunk", (chatId: string, messageId: string, chunk: string) => {
         if (isMounted) {
-          setChatList(prevChatList => 
-            prevChatList.map(cachedChat => 
-              cachedChat.id === chatId && cachedChat.messages
-                ? {
-                    ...cachedChat,
-                    messages: cachedChat.messages.map(msg => 
-                      msg.id === messageId 
-                        ? { ...msg, content: msg.content + chunk }
-                        : msg
-                    )
-                  }
-                : cachedChat
-            )
-          );
+          chatStore.updateMessageChunk(chatId, messageId, chunk);
         }
       });
 
       connection.on("ChatUpdated", (chat: Chat) => {
         if (isMounted) {
           try {
-            const processedMessages = chat.messages.map((msg: Message) => ({
-              ...msg,
-              timestamp: new Date(msg.timestamp)
-            }));
+            const processedChat = {
+              ...chat,
+              createdAt: new Date(chat.createdAt),
+              updatedAt: new Date(chat.updatedAt),
+              messages: chat.messages.map(msg => ({
+                ...msg,
+                timestamp: new Date(msg.timestamp)
+              })),
+              lastViewed: new Date()
+            };
             
-            setChatList(prevChatList => 
-              prevChatList.map(cachedChat => 
-                cachedChat.id === chat.id 
-                  ? {
-                      ...cachedChat,
-                      ...chat,
-                      createdAt: new Date(chat.createdAt),
-                      updatedAt: new Date(chat.updatedAt),
-                      messages: processedMessages,
-                      lastViewed: new Date()
-                    }
-                  : cachedChat
-              )
-            );
+            chatStore.updateChat(processedChat);
           } catch (err) {
             console.error("Error processing chat update:", err);
           }
@@ -129,13 +99,16 @@ export const SignalRProvider: React.FC<{ children: React.ReactNode }> = ({ child
   }, [getAccessToken, isInitializing]);
 
   const loadChat = useCallback((chatId: string, onNotFound?: () => void) => {
-    setChatList(prevChatList => 
-      prevChatList.map(chat => 
-        chat.id === chatId 
-          ? { ...chat, lastViewed: new Date() }
-          : chat
-      )
-    );
+    chatStore.setActiveChatId(chatId);
+    
+    const existingChat = chatStore.getChat(chatId);
+    if (existingChat) {
+      const updatedChat = {
+        ...existingChat,
+        lastViewed: new Date()
+      };
+      chatStore.updateChat(updatedChat);
+    }
     
     connectionRef.current?.invoke("JoinChat", chatId)
       .catch(error => {
@@ -153,7 +126,6 @@ export const SignalRProvider: React.FC<{ children: React.ReactNode }> = ({ child
 
   return (
     <SignalRContext.Provider value={{ 
-      chatList,
       sendMessage,
       loadChat,
       isConnected,

@@ -1,6 +1,6 @@
-import { useEffect, useState } from "react";
+import React, { useEffect, useState } from "react";
 import ReactDOM from "react-dom";
-import { useSignalR } from "../../contexts/SignalRContext";
+import { useChatList } from "../../hooks/useChatData";
 import { CachedChatItem } from "../../types/chatModels";
 import { useNavigate, useParams } from "react-router-dom";
 import { FaStar, FaEdit, FaTrash } from "react-icons/fa";
@@ -14,17 +14,23 @@ const contextMenuOptions = [
   { label: "Delete", icon: <FaTrash />, action: (chat: CachedChatItem) => console.log(`Delete clicked for ${chat.name}`) },
 ];
 
-export const ChatList = () => {
-  const { chatList } = useSignalR();
+export const ChatList = React.memo(() => {
+  const chatList = useChatList();
   const [menu, setMenu] = useState<{
     chat: CachedChatItem;
     x: number;
     y: number;
   } | null>(null);
+  const [immediateActiveId, setImmediateActiveId] = useState<string | null>(null);
   const navigate = useNavigate();
   const { chatId: activeChatId } = useParams<{ chatId: string }>();
 
-  // Close menu on outside click
+  useEffect(() => {
+    if (activeChatId && immediateActiveId === activeChatId) {
+      setImmediateActiveId(null);
+    }
+  }, [activeChatId, immediateActiveId]);
+
   useEffect(() => {
     if (!menu) return;
     const handleClick = () => {
@@ -40,6 +46,7 @@ export const ChatList = () => {
   };
 
   const handleChatClick = (chat: CachedChatItem) => {
+    setImmediateActiveId(chat.id);
     navigate(`/c/${chat.id}`);
   };
 
@@ -49,22 +56,20 @@ export const ChatList = () => {
   ) => {
     e.stopPropagation();
 
-    // Get the bounding rectangle of the clicked chat item
     const chatItem = (e.target as HTMLElement).closest(".chat-item") as HTMLElement;
     if (!chatItem) return;
 
     const chatItemRect = chatItem.getBoundingClientRect();
 
-    // Position the menu relative to the chat item
     setMenu({
       chat,
-      x: chatItemRect.right + 8, // Position to the right of the chat item
-      y: chatItemRect.top, // Align with the top of the chat item
+      x: chatItemRect.right + 8,
+      y: chatItemRect.top,
     });
   };
 
   const isActiveChat = (chatId: string) => {
-    return activeChatId === chatId;
+    return activeChatId === chatId || immediateActiveId === chatId;
   };
 
   return (
@@ -72,7 +77,7 @@ export const ChatList = () => {
       {chatList.length === 0 ? (
         <div className="chat-list-empty">No chats yet</div>
       ) : (
-        chatList.map(chat => (
+        chatList.map((chat: CachedChatItem) => (
           <div
             key={chat.id}
             className={`chat-item${isActiveChat(chat.id) ? " chat-item-active" : ""}`}
@@ -121,4 +126,4 @@ export const ChatList = () => {
         )}
     </div>
   );
-};
+});
