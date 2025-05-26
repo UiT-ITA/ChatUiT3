@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import ChatHistory from '../components/chat/ChatHistory';
 import ChatInput from '../components/chat/ChatInput';
@@ -8,10 +8,18 @@ import './ChatPage.css';
 
 const ChatPage = () => {
     const { chatId } = useParams<{ chatId: string }>();
-    const { messages, loadChat, sendMessage, isConnected, onChatCreated } = useSignalR();
+    const { chatList, loadChat, sendMessage, isConnected, onChatCreated } = useSignalR();
     const [initialAssistantId, setInitialAssistantId] = useState<string | undefined>();
     const navigate = useNavigate();
 
+    // Get messages directly from cache based on URL chatId
+    const messages = useMemo(() => {
+        if (!chatId || chatId === 'new' || chatId === '404') return [];
+        const currentChat = chatList.find(chat => chat.id === chatId);
+        return currentChat?.messages || [];
+    }, [chatList, chatId]);
+
+    // Load chat data in background after UI has updated
     useEffect(() => {
         if (chatId && chatId !== 'new' && chatId !== '404' && isConnected) {
             loadChat(chatId, () => navigate('/c/404'));
@@ -38,7 +46,7 @@ const ChatPage = () => {
         setInitialAssistantId(assistantId);
     };
 
-    const isNewChat = !chatId || chatId === 'new' || chatId === '404' /* || messages.length === 0 */;
+    const isNewChat = !chatId || chatId === 'new' || chatId === '404';
 
     return (
         <div className="chat-page">

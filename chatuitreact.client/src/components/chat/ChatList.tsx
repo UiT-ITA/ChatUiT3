@@ -21,17 +21,8 @@ export const ChatList = () => {
     x: number;
     y: number;
   } | null>(null);
-  const [immediateActiveId, setImmediateActiveId] = useState<string | null>(null);
   const navigate = useNavigate();
   const { chatId: activeChatId } = useParams<{ chatId: string }>();
-
-  // Sync immediate state with URL state when navigation completes
-  useEffect(() => {
-    if (activeChatId && immediateActiveId === activeChatId) {
-      // Navigation completed successfully, clear immediate state
-      setImmediateActiveId(null);
-    }
-  }, [activeChatId, immediateActiveId]);
 
   // Close menu on outside click
   useEffect(() => {
@@ -49,9 +40,6 @@ export const ChatList = () => {
   };
 
   const handleChatClick = (chat: CachedChatItem) => {
-    // Set immediate active state for instant visual feedback
-    setImmediateActiveId(chat.id);
-    // Navigate (this may take a moment)
     navigate(`/c/${chat.id}`);
   };
 
@@ -75,9 +63,8 @@ export const ChatList = () => {
     });
   };
 
-  // Determine if a chat should appear active (either via URL or immediate selection)
   const isActiveChat = (chatId: string) => {
-    return activeChatId === chatId || immediateActiveId === chatId;
+    return activeChatId === chatId;
   };
 
   return (

@@ -5,7 +5,6 @@ import { ChatListItem, Message, Chat, CachedChatItem } from "../types/chatModels
 
 interface SignalRContextType {
   chatList: CachedChatItem[];
-  messages: Message[];
   sendMessage: (chatId: string, message: string) => void;
   loadChat: (chatId: string, onNotFound?: () => void) => void;
   isConnected: boolean;
@@ -17,7 +16,6 @@ const SignalRContext = createContext<SignalRContextType | undefined>(undefined);
 export const SignalRProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const { getAccessToken, isInitializing } = useAuth();
   const [chatList, setChatList] = useState<CachedChatItem[]>([]);
-  const [messages, setMessages] = useState<Message[]>([]);
   const [isConnected, setIsConnected] = useState(false);
   const connectionRef = useRef<signalR.HubConnection | null>(null);
   const chatCreatedCallbackRef = useRef<((chatId: string) => void) | null>(null);
@@ -43,17 +41,14 @@ export const SignalRProvider: React.FC<{ children: React.ReactNode }> = ({ child
       connection.on("ChatListUpdated", (chats: ChatListItem[]) => {
         if (isMounted) {
           setChatList(prevChatList => {
-            // Create a map of existing cached chats
             const existingChatsMap = new Map(prevChatList.map(chat => [chat.id, chat]));
             
-            // Merge new chat list with existing cached data
             return chats.map(chat => {
               const existingChat = existingChatsMap.get(chat.id);
               return {
                 ...chat,
                 createdAt: new Date(chat.createdAt),
                 updatedAt: new Date(chat.updatedAt),
-                // Preserve cached messages and settings if they exist
                 messages: existingChat?.messages,
                 settings: existingChat?.settings,
                 lastViewed: existingChat?.lastViewed
@@ -65,14 +60,6 @@ export const SignalRProvider: React.FC<{ children: React.ReactNode }> = ({ child
 
       connection.on("ReceiveMessageChunk", (chatId: string, messageId: string, chunk: string) => {
         if (isMounted) {
-          // Update current messages display
-          setMessages(prev => prev.map(msg => 
-            msg.id === messageId 
-              ? { ...msg, content: msg.content + chunk }
-              : msg
-          ));
-          
-          // Also update cached messages
           setChatList(prevChatList => 
             prevChatList.map(cachedChat => 
               cachedChat.id === chatId && cachedChat.messages
@@ -98,10 +85,6 @@ export const SignalRProvider: React.FC<{ children: React.ReactNode }> = ({ child
               timestamp: new Date(msg.timestamp)
             }));
             
-            // Update the current messages display
-            setMessages(processedMessages);
-            
-            // Cache the full chat data in chatList
             setChatList(prevChatList => 
               prevChatList.map(cachedChat => 
                 cachedChat.id === chat.id 
@@ -146,28 +129,14 @@ export const SignalRProvider: React.FC<{ children: React.ReactNode }> = ({ child
   }, [getAccessToken, isInitializing]);
 
   const loadChat = useCallback((chatId: string, onNotFound?: () => void) => {
-    // Check if we have cached messages for this chat using functional state update
-    setChatList(prevChatList => {
-      const cachedChat = prevChatList.find(chat => chat.id === chatId);
-      if (cachedChat?.messages && cachedChat.messages.length > 0) {
-        // Display cached messages immediately
-        setMessages(cachedChat.messages);
-        
-        // Update the lastViewed timestamp and return updated list
-        return prevChatList.map(chat => 
-          chat.id === chatId 
-            ? { ...chat, lastViewed: new Date() }
-            : chat
-        );
-      } else {
-        // No cached messages, clear current messages
-        setMessages([]);
-        // Return unchanged list
-        return prevChatList;
-      }
-    });
+    setChatList(prevChatList => 
+      prevChatList.map(chat => 
+        chat.id === chatId 
+          ? { ...chat, lastViewed: new Date() }
+          : chat
+      )
+    );
     
-    // Always fetch fresh data from server regardless of cache
     connectionRef.current?.invoke("JoinChat", chatId)
       .catch(error => {
         if (error.message.includes("ChatNotFound")) {
@@ -185,7 +154,6 @@ export const SignalRProvider: React.FC<{ children: React.ReactNode }> = ({ child
   return (
     <SignalRContext.Provider value={{ 
       chatList,
-      messages,
       sendMessage,
       loadChat,
       isConnected,
