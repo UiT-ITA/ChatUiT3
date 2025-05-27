@@ -43,6 +43,7 @@ export const setupSignalREvents = (
   });
 
   connection.on("ChatUpdated", (chat: Chat) => {
+    //console.log("Raw chat data received:", JSON.stringify(chat, null, 2));
     if (isMounted) {
       try {
         const processedChat = {

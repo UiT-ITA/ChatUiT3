@@ -26,14 +26,16 @@ public class ChatHub : Hub<IChatHubClient>
     private readonly ILogger<ChatHub> _logger;
     private readonly IChatService _chatService;
     private readonly StreamingMessageService _streamingMessageService;
+    private readonly IHubContext<ChatHub> _hubContext;
     private static readonly Dictionary<string, string> _connections = new Dictionary<string, string>();
 
-    public ChatHub(UserService userService, ILogger<ChatHub> logger, IChatService chatService, StreamingMessageService streamingMessageService)
+    public ChatHub(UserService userService, ILogger<ChatHub> logger, IChatService chatService, StreamingMessageService streamingMessageService, IHubContext<ChatHub> hubContext)
     {
         _userService = userService;
         _logger = logger;
         _chatService = chatService;
         _streamingMessageService = streamingMessageService;
+        _hubContext = hubContext;
     }
 
     private string GetCurrentUserId()
@@ -93,9 +95,11 @@ public class ChatHub : Hub<IChatHubClient>
     {
         var userId = GetCurrentUserId();
         var clientId = Context.ConnectionId;
-        
+
+        Console.WriteLine($"Streaming message {messageId} for chat {chatId} to client {clientId}");
+
         _ = _streamingMessageService.StreamToClient(clientId, userId, chatId, messageId, 
-            async (cId, mId, chunk) => await Clients.Client(clientId).ReceiveMessageChunk(cId, mId, chunk));
+            async (cId, mId, chunk) => await _hubContext.Clients.Client(clientId).SendAsync("ReceiveMessageChunk", cId, mId, chunk));
     }
 
     public async Task SendMessage(string chatId, string content)

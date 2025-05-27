@@ -32,3 +32,30 @@ export function useActiveChatMessages(): Message[] {
   const activeChat = useActiveChat();
   return activeChat?.messages || [];
 }
+
+export function useMessageContent(messageId: string): string {
+  const [content, setContent] = useState<string>(() => {
+    const streamingContent = chatStore.getMessageContent(messageId);
+    if (streamingContent) return streamingContent;
+    
+    const activeChat = chatStore.getActiveChat();
+    const message = activeChat?.messages?.find(m => m.id === messageId);
+    return message?.content || '';
+  });
+
+  useEffect(() => {
+    const unsubscribe = chatStore.subscribe(() => {
+      const streamingContent = chatStore.getMessageContent(messageId);
+      if (streamingContent) {
+        setContent(streamingContent);
+      } else {
+        const activeChat = chatStore.getActiveChat();
+        const message = activeChat?.messages?.find(m => m.id === messageId);
+        setContent(message?.content || '');
+      }
+    });
+    return unsubscribe;
+  }, [messageId]);
+
+  return content;
+}

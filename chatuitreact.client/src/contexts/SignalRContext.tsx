@@ -82,7 +82,6 @@ export const SignalRProvider: React.FC<{ children: React.ReactNode }> = ({ child
   }, []);
 
   const streamMessage = useCallback((chatId: string, messageId: string) => {
-    console.log("Streaming message:", chatId, messageId);
     connectionRef.current?.invoke("StreamMessage", chatId, messageId);
   }, []);
 

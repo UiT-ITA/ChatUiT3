@@ -5,7 +5,7 @@ import ChatInput from '../components/chat/ChatInput';
 import NewChatWelcome from '../components/chat/NewChatWelcome';
 import { useSignalR } from '../contexts/SignalRContext';
 import { useActiveChat } from '../hooks/useChatData';
-import { ChatStatus } from '../types/chatModels';
+import { chatStore } from '../stores/ChatStore';
 import './ChatPage.css';
 
 const ChatPage = () => {
@@ -29,18 +29,9 @@ const ChatPage = () => {
     }, [navigate, onChatCreated]);
 
     useEffect(() => {
-        if (activeChat?.messages) {
-            // Check if there's a streaming message in this chat
-            const streamingMessage = activeChat.messages.find(
-                msg => msg.status === ChatStatus.Generating
-            );
-            
-            if (streamingMessage) {
-                // Join the stream for this message
-                streamMessage(activeChat.id, streamingMessage.id);
-            }
-        }
-    }, [activeChat, streamMessage]);
+        // Set up the streamMessage callback in the store
+        chatStore.setStreamMessageCallback(streamMessage);
+    }, [streamMessage]);
 
     const handleSendMessage = (text: string) => {
         if (!text.trim()) return;

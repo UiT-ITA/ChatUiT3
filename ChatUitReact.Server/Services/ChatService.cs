@@ -135,7 +135,7 @@ public class ChatService : IChatService
         
         // Notify all clients about new messages
         NotifyChatUpdated(userId, chatId);
-        
+
         // Get AI response (fire and forget)
         _ = Task.Run(async () =>
         {
@@ -173,6 +173,7 @@ public class ChatService : IChatService
                 
                 // Update assistant message with complete response
                 assistantMessage.Content = content.ToString();
+                Console.WriteLine($"Current status: {assistantMessage.Status}");
                 assistantMessage.Status = AiChatStatus.Success;
                 await _databaseService.UpdateMessageAsync(userId, chatId, assistantMessage);
                 
@@ -262,6 +263,7 @@ public class ChatService : IChatService
     private async void NotifyChatUpdated(string userId, string chatId)
     {
         var chat = await GetChatByIdAsync(userId, chatId);
+
         if (chat != null)
         {
             await _hubContext.Clients.Group($"{userId}:{chatId}").SendAsync("ChatUpdated", chat);

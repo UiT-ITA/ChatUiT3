@@ -3,7 +3,14 @@ import { CachedChatItem, Message } from '../types/chatModels';
 class ChatStore {
   private chats = new Map<string, CachedChatItem>();
   private activeChatId: string | null = null;
+  private streamingMessages = new Map<string, string>(); // messageId -> accumulated content
+  
   private listeners = new Set<() => void>();
+  private streamMessageCallback: ((chatId: string, messageId: string) => void) | null = null;
+
+  setStreamMessageCallback(callback: (chatId: string, messageId: string) => void) {
+    this.streamMessageCallback = callback;
+  }
 
   setChats(chatList: CachedChatItem[]) {
     chatList.forEach(chat => {
@@ -19,32 +26,32 @@ class ChatStore {
   }
 
   updateMessageChunk(chatId: string, messageId: string, chunk: string) {
-    const chat = this.chats.get(chatId);
-    if (!chat?.messages) return;
-
-    const messageIndex = chat.messages.findIndex(msg => msg.id === messageId);
-    if (messageIndex === -1) return;
-
-    const updatedMessage = {
-      ...chat.messages[messageIndex],
-      content: chat.messages[messageIndex].content + chunk
-    };
-
-    const updatedMessages = [...chat.messages];
-    updatedMessages[messageIndex] = updatedMessage;
-
-    const updatedChat = {
-      ...chat,
-      messages: updatedMessages
-    };
-
-    this.chats.set(chatId, updatedChat);
-    
-    // Always notify listeners when chunks arrive for any chat
+    if (!this.streamingMessages.has(messageId)) {
+      this.streamingMessages.set(messageId, chunk);
+    } else {
+      const existing = this.streamingMessages.get(messageId)!;
+      this.streamingMessages.set(messageId, existing + chunk);
+    }
     this.notifyListeners();
   }
 
   updateChat(chat: CachedChatItem) {
+    // Check for new "Generating" messages and start streaming
+    if (chat.messages) {
+      chat.messages.forEach(msg => {
+        if (msg.status === 'Generating' && !this.streamingMessages.has(msg.id)) {
+          // New generating message - start streaming
+          this.streamingMessages.set(msg.id, msg.content || '');
+          if (this.streamMessageCallback) {
+            this.streamMessageCallback(chat.id, msg.id);
+          }
+        } else if (msg.status !== 'Generating' && this.streamingMessages.has(msg.id)) {
+          // Message completed - clean up streaming
+          this.streamingMessages.delete(msg.id);
+        }
+      });
+    }
+
     this.chats.set(chat.id, chat);
     this.notifyListeners();
   }
@@ -69,6 +76,10 @@ class ChatStore {
 
   getChat(chatId: string): CachedChatItem | undefined {
     return this.chats.get(chatId);
+  }
+
+  getMessageContent(messageId: string): string | null {
+    return this.streamingMessages.get(messageId) || null;
   }
 
   subscribe(listener: () => void): () => void {
