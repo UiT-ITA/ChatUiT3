@@ -220,6 +220,10 @@
   margin: 0.5rem 0;
 }
 
+span.katex-html {
+  max-width: calc(100% - 2px);
+}
+
 /* Horizontal rule styling */
 .message-content hr {
   border: 0;
