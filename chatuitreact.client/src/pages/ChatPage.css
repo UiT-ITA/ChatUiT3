@@ -20,3 +20,9 @@
   margin: 0 auto;
   padding-right: var(--scrollbar-width, 0px); /* Dynamically adjust for scrollbar width */
 }
+
+.chat-error {
+  text-align: center;
+  color: #dc3545;
+  margin-bottom: 1rem;
+}

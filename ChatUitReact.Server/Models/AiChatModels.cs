@@ -1,4 +1,8 @@
-﻿namespace ChatUitReact.Server.Models;
+﻿using System;
+using System.Collections.Generic;
+using System.Text.Json.Serialization;
+
+namespace ChatUitReact.Server.Models;
 
 public class AiChatHeader
 {
@@ -6,6 +10,7 @@ public class AiChatHeader
     public string Name { get; set; } = string.Empty;
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
     public DateTime UpdatedAt { get; set; } = DateTime.UtcNow;
+
     public AiChatStatus Status { get; set; } = AiChatStatus.Success;
 }
 
@@ -62,6 +67,7 @@ public class AiChatFileMixed : AiChatFile
 }
 
 
+[JsonConverter(typeof(JsonStringEnumConverter))]
 public enum AiChatRole
 {
     User,
@@ -70,12 +76,16 @@ public enum AiChatRole
     ToolRequest,
     ToolResponse,
 }
+
+[JsonConverter(typeof(JsonStringEnumConverter))]
 public enum AiContentType
 {
     Text,
     Image,
     Mixed
 }
+
+[JsonConverter(typeof(JsonStringEnumConverter))]
 public enum AiChatStatus
 {
     New,

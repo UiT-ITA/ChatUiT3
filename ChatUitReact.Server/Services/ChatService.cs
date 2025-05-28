@@ -2,6 +2,9 @@
 using Microsoft.Extensions.Logging;
 using ChatUitReact.Server.Hubs;
 using ChatUitReact.Server.Models;
+using System.Text;
+using System.ClientModel;
+using OpenAI.Chat;
 
 namespace ChatUitReact.Server.Services;
 
@@ -11,17 +14,20 @@ public class ChatService : IChatService
     private readonly IHubContext<ChatHub> _hubContext;
     private readonly ILogger<ChatService> _logger;
     private readonly IDatabaseService _databaseService;
+    private readonly StreamingMessageService _streamingMessageService;
 
     public ChatService(
         AzureOpenAiService azureOpenAiService,
         IHubContext<ChatHub> hubContext,
         ILogger<ChatService> logger,
-        IDatabaseService databaseService)
+        IDatabaseService databaseService,
+        StreamingMessageService streamingMessageService)
     {
         _azureOpenAiService = azureOpenAiService;
         _hubContext = hubContext;
         _logger = logger;
         _databaseService = databaseService;
+        _streamingMessageService = streamingMessageService;
     }
 
     #region Chat management
@@ -58,32 +64,25 @@ public class ChatService : IChatService
 
     public async Task<AiChat> CreateChatAsync(string userId, AiChatSettings settings, List<AiChatMessage> messages)
     {
-        
+        var lastMessage = messages.Last();
+        var initialMessages = messages.Take(messages.Count - 1).ToList();
+
         var newChat = new AiChat 
         {
             Name = "New chat",
             Settings = settings,
-            Messages = messages,
+            Messages = initialMessages
         };
-
-        SetChatName(userId, newChat.Id, messages[0].Content);
-
-        var response = new AiChatMessage
-        {
-            Role = AiChatRole.Assistant,
-            Content = "",
-            Status = AiChatStatus.New
-        };
-
-        newChat.Messages.Add(response);
 
         await _databaseService.AddChatAsync(userId, newChat);
-
         NotifyChatListUpdated(userId);
 
-        response.Content = await _azureOpenAiService.GetChatCompletionAsync(messages, settings);
+        _ = Task.Run(async () => {
+            var name = await _azureOpenAiService.GetChatName(messages[0].Content);
+            await UpdateChatAsync(userId, newChat.Id, null, name);
+        });
 
-        await _databaseService.UpdateMessageAsync(userId, newChat.Id, response);
+        await SendStreamingMessageAsync(userId, newChat.Id, lastMessage);
 
         return newChat;
     }
@@ -116,9 +115,79 @@ public class ChatService : IChatService
 
     #region Message operations
 
-    public Task SendMessageAsync(string userId, string chatId, AiChatMessage message)
+    public async Task SendMessageAsync(string userId, string chatId, AiChatMessage userMessage)
     {
-        throw new NotImplementedException("SendMessageAsync is not implemented yet.");
+        await SendStreamingMessageAsync(userId, chatId, userMessage);
+    }
+
+    public async Task SendStreamingMessageAsync(string userId, string chatId, AiChatMessage userMessage)
+    {
+        // Add user message to database
+        await _databaseService.AddMessageAsync(userId, chatId, userMessage);
+        
+        // Create placeholder for assistant's response
+        var assistantMessage = new AiChatMessage
+        {
+            Role = AiChatRole.Assistant,
+            Status = AiChatStatus.Generating
+        };
+        await _databaseService.AddMessageAsync(userId, chatId, assistantMessage);
+        
+        // Notify all clients about new messages
+        NotifyChatUpdated(userId, chatId);
+
+        // Get AI response (fire and forget)
+        _ = Task.Run(async () =>
+        {
+            try 
+            {
+                var messages = (await GetChatByIdAsync(userId, chatId))?.Messages ?? new();
+                var openAiStream = await _azureOpenAiService.GetChatCompleteionStreamingAsync(messages);
+                
+                // Create our custom streaming channel
+                var chunkChannel = new StreamingChunkChannel();
+                
+                // Start the streaming service with our custom stream
+                _streamingMessageService.StartStream(userId, chatId, assistantMessage.Id, chunkChannel.ReadAllChunks());
+                
+                // Process incoming chunks from OpenAI and write to our channel
+                var content = new StringBuilder();
+                await foreach (var chunk in openAiStream)
+                {
+                    if (chunk.ContentUpdate?.Count > 0)
+                    {
+                        var text = chunk.ContentUpdate[0].Text;
+                        if (!string.IsNullOrEmpty(text))
+                        {
+                            // Write to our channel for streaming clients
+                            await chunkChannel.WriteChunk(text);
+                            
+                            // Collect for database storage
+                            content.Append(text);
+                        }
+                    }
+                }
+                
+                // Mark the channel as complete
+                chunkChannel.Complete();
+                
+                // Update assistant message with complete response
+                assistantMessage.Content = content.ToString();
+                Console.WriteLine($"Current status: {assistantMessage.Status}");
+                assistantMessage.Status = AiChatStatus.Success;
+                await _databaseService.UpdateMessageAsync(userId, chatId, assistantMessage);
+                
+                // Notify all clients about updated message
+                NotifyChatUpdated(userId, chatId);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error getting chat completion");
+                assistantMessage.Status = AiChatStatus.Error;
+                await _databaseService.UpdateMessageAsync(userId, chatId, assistantMessage);
+                NotifyChatUpdated(userId, chatId);
+            }
+        });
     }
 
     public Task AddMessageAsync(string userId, string chatId, AiChatMessage message)
@@ -194,9 +263,10 @@ public class ChatService : IChatService
     private async void NotifyChatUpdated(string userId, string chatId)
     {
         var chat = await GetChatByIdAsync(userId, chatId);
+
         if (chat != null)
         {
-            await _hubContext.Clients.Group(userId).SendAsync("ChatUpdated", chat);
+            await _hubContext.Clients.Group($"{userId}:{chatId}").SendAsync("ChatUpdated", chat);
         }
     }
 

@@ -1,3 +1,4 @@
+import React from 'react';
 import './ChatMessage.css';
 import { MdRefresh, MdEdit, MdContentCopy, MdCallSplit } from 'react-icons/md';
 import ReactMarkdown from 'react-markdown';
@@ -5,29 +6,52 @@ import remarkGfm from 'remark-gfm';
 import remarkMath from 'remark-math';
 import rehypeKatex from 'rehype-katex';
 import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter';
-import { atomDark } from 'react-syntax-highlighter/dist/esm/styles/prism'; // Or any other theme
-
-import 'katex/dist/katex.min.css'; // KaTeX CSS
-
-// Import Message type from our models
-import { Message, MessageChunkType } from '../../types/chatModels';
+import { atomDark } from 'react-syntax-highlighter/dist/esm/styles/prism';
+import 'katex/dist/katex.min.css';
+import { ChatRole, ChatStatus, Message } from '../../types/chatModels';
+import { useMessageContent, useStreamingContent } from '../../hooks/useChatData';
 
 interface ChatMessageProps {
   message: Message;
 }
 
 const ChatMessage = ({ message }: ChatMessageProps) => {
-  const isUser = message.sender === 'user';
-  const isStreaming = message.isStreaming === true;
-  const isFileMessage = message.sender === 'file';
+  const staticContent = useMessageContent(message.id);
+  const streamingContent = useStreamingContent(message.id);
+  const content = message.status === ChatStatus.Generating ? streamingContent : staticContent;
+  const isUser = message.role === ChatRole.User;
+  const isStreaming = message.status === ChatStatus.Generating;
+  const isFileMessage = message.role === ChatRole.System;
 
   const handleCopyCode = (code: string) => {
-    navigator.clipboard.writeText(code).then(() => {
-      // Optional: Show a temporary "Copied!" message or icon
-      console.log('Code copied to clipboard');
-    }).catch(err => {
-      console.error('Failed to copy code: ', err);
-    });
+    navigator.clipboard.writeText(code)
+      .catch(err => console.error('Failed to copy code:', err));
+  };
+
+  const handleCopyMessage = () => {
+    navigator.clipboard.writeText(message.content)
+      .catch(err => console.error('Failed to copy message:', err));
+  };
+
+  const handleRetry = () => {
+    try {
+    } catch (err) {
+      console.error('Failed to retry message:', err);
+    }
+  };
+
+  const handleEdit = () => {
+    try {
+    } catch (err) {
+      console.error('Failed to edit message:', err);
+    }
+  };
+
+  const handleBranch = () => {
+    try {
+    } catch (err) {
+      console.error('Failed to branch message:', err);
+    }
   };
   
   const markdownComponents = {
@@ -63,48 +87,17 @@ const ChatMessage = ({ message }: ChatMessageProps) => {
     },
   };
 
-  const renderChunks = () => {
-    return (
-      <>
-        {message.chunks.map((chunk, index) => {
-          if (chunk.type === MessageChunkType.Text) {
-            return (
-              <ReactMarkdown
-                key={`chunk-${index}`}
-                remarkPlugins={[remarkGfm, remarkMath]}
-                rehypePlugins={[rehypeKatex]}
-                components={markdownComponents}
-              >
-                {chunk.content}
-              </ReactMarkdown>
-            );
-          } else if (chunk.type === MessageChunkType.Image) {
-            return (
-              <div key={`chunk-${index}`} className="message-image-container">
-                <img 
-                  src={chunk.content} 
-                  alt="Message attachment" 
-                  className="message-image"
-                />
-              </div>
-            );
-          }
-          return null;
-        })}
-        {isStreaming && <span className="streaming-indicator">▋</span>}
-      </>
-    );
-  };
-
   return (
     <div className={`chat-message ${isUser ? 'user-message' : isFileMessage ? 'file-message' : 'assistant-message'} ${isStreaming ? 'streaming' : ''}`}>
-      {isFileMessage && message.filename && (
-        <div className="file-header">
-          <span className="file-name">{message.filename}</span>
-        </div>
-      )}
       <div className="message-content">
-        {renderChunks()}
+        <ReactMarkdown
+          remarkPlugins={[remarkGfm, remarkMath]}
+          rehypePlugins={[rehypeKatex]}
+          components={markdownComponents}
+        >
+          {content}
+        </ReactMarkdown>
+        {isStreaming && <span className="streaming-indicator">▋</span>}
       </div>
       
       <div className="message-toolbar">
@@ -114,13 +107,13 @@ const ChatMessage = ({ message }: ChatMessageProps) => {
               {message.timestamp.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
             </span>
             <div className="message-actions">
-              <button className="message-action-button" title="Retry">
+              <button className="message-action-button" title="Retry" onClick={handleRetry}>
                 <MdRefresh size="20px" />
               </button>
-              <button className="message-action-button" title="Edit">
+              <button className="message-action-button" title="Edit" onClick={handleEdit}>
                 <MdEdit size="20px" />
               </button>
-              <button className="message-action-button" title="Copy">
+              <button className="message-action-button" title="Copy" onClick={handleCopyMessage}>
                 <MdContentCopy size="20px" />
               </button>
             </div>
@@ -128,15 +121,15 @@ const ChatMessage = ({ message }: ChatMessageProps) => {
         ) : (
           <>
             <div className="message-actions">
-              <button className="message-action-button" title="Copy">
+              <button className="message-action-button" title="Copy" onClick={handleCopyMessage}>
                 <MdContentCopy size="20px" />
               </button>
               {!isFileMessage && (
                 <>
-                  <button className="message-action-button" title="Branch">
+                  <button className="message-action-button" title="Branch" onClick={handleBranch}>
                     <MdCallSplit size="20px" />
                   </button>
-                  <button className="message-action-button" title="Retry">
+                  <button className="message-action-button" title="Retry" onClick={handleRetry}>
                     <MdRefresh size="20px" />
                   </button>
                 </>
@@ -152,4 +145,9 @@ const ChatMessage = ({ message }: ChatMessageProps) => {
   );
 };
 
-export default ChatMessage;
+export default React.memo(ChatMessage, (prevProps, nextProps) => {
+  return (
+    prevProps.message.id === nextProps.message.id &&
+    prevProps.message.status === nextProps.message.status
+  );
+});

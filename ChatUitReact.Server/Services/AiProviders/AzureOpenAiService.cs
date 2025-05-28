@@ -67,6 +67,32 @@ public class AzureOpenAiService
             throw;
         }
     }
+    
+    // Used for testing purposes
+    public async Task<string> GetChatCompletionAsync(
+        List<AiChatMessage> messages,
+        CancellationToken cancellationToken = default)
+    {
+        try
+        {
+            var chatClient = _client.GetChatClient("gpt-4o-mini");
+            var chatMessages = ConvertToChatMessages(messages);
+            var options = BuildCompletionOptions(null);
+
+            var completion = await chatClient.CompleteChatAsync(chatMessages, options, cancellationToken);
+
+            var response = completion.Value.Content[0].Text;
+
+            _logger.LogInformation("Chat completion response: {Response}", response);
+
+            return response;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error getting chat completion");
+            throw;
+        }
+    }
 
     // Streaming chat completion - returns collected chunks to avoid yielding in try-catch
     public async Task<AsyncCollectionResult<StreamingChatCompletionUpdate>> GetChatCompleteionStreamingAsync(
@@ -76,12 +102,34 @@ public class AzureOpenAiService
         CancellationToken cancellationToken = default)
     {
         var results = new List<string>();
-        
+
         try
         {
             var chatClient = _client.GetChatClient(model.ModelId);
             var chatMessages = ConvertToChatMessages(messages);
             var options = BuildCompletionOptions(settings);
+
+            return chatClient.CompleteChatStreamingAsync(chatMessages, options, cancellationToken);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error streaming chat completion");
+            throw;
+        }
+    }
+    
+    // Used for testing purposes
+        public async Task<AsyncCollectionResult<StreamingChatCompletionUpdate>> GetChatCompleteionStreamingAsync(
+    List<AiChatMessage> messages,
+    CancellationToken cancellationToken = default)
+    {
+        var results = new List<string>();
+
+        try
+        {
+            var chatClient = _client.GetChatClient("gpt-4o");
+            var chatMessages = ConvertToChatMessages(messages);
+            var options = BuildCompletionOptions(null);
 
             return chatClient.CompleteChatStreamingAsync(chatMessages, options, cancellationToken);
         }
@@ -98,8 +146,8 @@ public class AzureOpenAiService
         try
         {
             var chatClient = _client.GetChatClient("gpt-4o-mini");
-            var chatMessages = new List<ChatMessage> { 
-                new SystemChatMessage("Create a name for this chat based on the users initial message. The name must be shorter than 50 characters. Make the name as descriptive as possible. The user's message:\n\n" + prompt) 
+            var chatMessages = new List<ChatMessage> {
+                new SystemChatMessage("Create a name for this chat based on the users initial message. The name must be shorter than 30 characters. Make the name as descriptive as possible. You should **only** respond with the name, exactly the way the name should be written. It should have no quotes around it. It should not have any formating. It will be set directly as the name of the chat. The user's message:\n\n" + prompt)
             };
             var options = new ChatCompletionOptions
             {
@@ -107,7 +155,7 @@ public class AzureOpenAiService
                 MaxOutputTokenCount = 50,
             };
             var completion = await chatClient.CompleteChatAsync(chatMessages, options);
-            
+
             var response = completion.Value.Content[0].Text.Trim();
 
             return response;
@@ -145,12 +193,12 @@ public class AzureOpenAiService
         return result;
     }
 
-    private ChatCompletionOptions BuildCompletionOptions(AiModelSettings settings)
+    private ChatCompletionOptions BuildCompletionOptions(AiModelSettings? settings)
     {
         // Create options with available properties in the current version
         var options = new ChatCompletionOptions
         {
-            Temperature = settings.Temperature
+            Temperature = settings?.Temperature ?? 0.5f
         };
         
         return options;

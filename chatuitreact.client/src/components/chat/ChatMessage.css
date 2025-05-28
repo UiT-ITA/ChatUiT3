@@ -32,6 +32,10 @@
   align-items: flex-start;
 }
 
+.chat-message.assistant-message.streaming {
+  min-height: calc(100vh - 200px); /* Adjusted for streaming messages */
+}
+
 .assistant-message .message-content {
   color: #ececf1;
   width: 100%;
@@ -214,6 +218,10 @@
   display: block;
   border-radius: 4px;
   margin: 0.5rem 0;
+}
+
+span.katex-html {
+  max-width: calc(100% - 2px);
 }
 
 /* Horizontal rule styling */

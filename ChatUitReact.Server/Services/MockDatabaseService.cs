@@ -1,4 +1,5 @@
 ﻿using ChatUitReact.Server.Models;
+using System.Collections.Concurrent;
 
 namespace ChatUitReact.Server.Services;
 
@@ -391,13 +392,13 @@ Note: Some Markdown processors may have limitations on what HTML is allowed, and
         }
     };
 
-    private Dictionary<string, List<AiChat>> _chatStorage = new Dictionary<string, List<AiChat>>();
+    private ConcurrentDictionary<string, List<AiChat>> _chatStorage = new ConcurrentDictionary<string, List<AiChat>>();
 
     
     private void AddUserToService(string userId)
     {
-        // Add a new user to the chat storage with an empty chat list
-        if (!_chatStorage.ContainsKey(userId))
+        // Add a new user to the chat storage with an empty chat list using thread-safe operations
+        _chatStorage.GetOrAdd(userId, _ => 
         {
             List<AiChat> userChats = new List<AiChat>();
             // Add all chats from dummy history to the user's chat list
@@ -420,8 +421,8 @@ Note: Some Markdown processors may have limitations on what HTML is allowed, and
                     }
                 });
             }
-            _chatStorage[userId] = userChats;
-        }
+            return userChats;
+        });
     }
     
     #region User management
@@ -483,7 +484,8 @@ Note: Some Markdown processors may have limitations on what HTML is allowed, and
                     Id = m.Id,
                     Role = m.Role,
                     Content = m.Content,
-                    Timestamp = m.Timestamp
+                    Timestamp = m.Timestamp,
+                    Status = m.Status,
                 }).ToList(),
                 Settings = new AiChatSettings
                 {
@@ -554,6 +556,7 @@ Note: Some Markdown processors may have limitations on what HTML is allowed, and
         if (chat != null)
         {
             chat.Messages.Add(message);
+            chat.UpdatedAt = DateTime.Now;
         }
         return Task.CompletedTask;
     }
@@ -570,6 +573,7 @@ Note: Some Markdown processors may have limitations on what HTML is allowed, and
                 existingMessage.Content = message.Content;
                 existingMessage.Timestamp = message.Timestamp;
             }
+            chat.UpdatedAt = DateTime.Now;
         }
         return Task.CompletedTask;
     }
@@ -585,6 +589,7 @@ Note: Some Markdown processors may have limitations on what HTML is allowed, and
             {
                 chat.Messages.Remove(message);
             }
+            chat.UpdatedAt = DateTime.Now;
         }
         return Task.CompletedTask;
     }
