@@ -6,7 +6,7 @@ export function useChatList(): CachedChatItem[] {
   const [chatList, setChatList] = useState<CachedChatItem[]>(() => chatStore.getChatList());
 
   useEffect(() => {
-    const unsubscribe = chatStore.subscribe(() => {
+    const unsubscribe = chatStore.subscribeToChatUpdates(() => {
       setChatList(chatStore.getChatList());
     });
     return unsubscribe;
@@ -19,7 +19,7 @@ export function useActiveChat(): CachedChatItem | null {
   const [activeChat, setActiveChat] = useState<CachedChatItem | null>(() => chatStore.getActiveChat());
 
   useEffect(() => {
-    const unsubscribe = chatStore.subscribe(() => {
+    const unsubscribe = chatStore.subscribeToChatUpdates(() => {
       setActiveChat(chatStore.getActiveChat());
     });
     return unsubscribe;
@@ -33,29 +33,23 @@ export function useActiveChatMessages(): Message[] {
   return activeChat?.messages || [];
 }
 
-export function useMessageContent(messageId: string): string {
+export function useStreamingContent(messageId: string): string {
   const [content, setContent] = useState<string>(() => {
-    const streamingContent = chatStore.getMessageContent(messageId);
-    if (streamingContent) return streamingContent;
-    
-    const activeChat = chatStore.getActiveChat();
-    const message = activeChat?.messages?.find(m => m.id === messageId);
-    return message?.content || '';
+    return chatStore.getStreamingContent(messageId) || '';
   });
 
   useEffect(() => {
-    const unsubscribe = chatStore.subscribe(() => {
-      const streamingContent = chatStore.getMessageContent(messageId);
-      if (streamingContent) {
-        setContent(streamingContent);
-      } else {
-        const activeChat = chatStore.getActiveChat();
-        const message = activeChat?.messages?.find(m => m.id === messageId);
-        setContent(message?.content || '');
-      }
+    const unsubscribe = chatStore.subscribeToStreamingUpdates(messageId, () => {
+      setContent(chatStore.getStreamingContent(messageId) || '');
     });
     return unsubscribe;
   }, [messageId]);
 
   return content;
+}
+
+export function useMessageContent(messageId: string): string {
+  const activeChat = useActiveChat();
+  const message = activeChat?.messages?.find(m => m.id === messageId);
+  return message?.content || '';
 }

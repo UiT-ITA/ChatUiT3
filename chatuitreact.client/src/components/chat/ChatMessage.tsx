@@ -9,14 +9,16 @@ import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter';
 import { atomDark } from 'react-syntax-highlighter/dist/esm/styles/prism';
 import 'katex/dist/katex.min.css';
 import { ChatRole, ChatStatus, Message } from '../../types/chatModels';
-import { useMessageContent } from '../../hooks/useChatData';
+import { useMessageContent, useStreamingContent } from '../../hooks/useChatData';
 
 interface ChatMessageProps {
   message: Message;
 }
 
 const ChatMessage = ({ message }: ChatMessageProps) => {
-  const content = useMessageContent(message.id);
+  const staticContent = useMessageContent(message.id);
+  const streamingContent = useStreamingContent(message.id);
+  const content = message.status === ChatStatus.Generating ? streamingContent : staticContent;
   const isUser = message.role === ChatRole.User;
   const isStreaming = message.status === ChatStatus.Generating;
   const isFileMessage = message.role === ChatRole.System;
@@ -33,7 +35,6 @@ const ChatMessage = ({ message }: ChatMessageProps) => {
 
   const handleRetry = () => {
     try {
-      // TODO: Implement retry functionality
     } catch (err) {
       console.error('Failed to retry message:', err);
     }
@@ -41,7 +42,6 @@ const ChatMessage = ({ message }: ChatMessageProps) => {
 
   const handleEdit = () => {
     try {
-      // TODO: Implement edit functionality
     } catch (err) {
       console.error('Failed to edit message:', err);
     }
@@ -49,7 +49,6 @@ const ChatMessage = ({ message }: ChatMessageProps) => {
 
   const handleBranch = () => {
     try {
-      // TODO: Implement branch functionality
     } catch (err) {
       console.error('Failed to branch message:', err);
     }
@@ -90,7 +89,6 @@ const ChatMessage = ({ message }: ChatMessageProps) => {
 
   return (
     <div className={`chat-message ${isUser ? 'user-message' : isFileMessage ? 'file-message' : 'assistant-message'} ${isStreaming ? 'streaming' : ''}`}>
-      {/* <p>{message.status}</p> */}
       <div className="message-content">
         <ReactMarkdown
           remarkPlugins={[remarkGfm, remarkMath]}
@@ -150,7 +148,6 @@ const ChatMessage = ({ message }: ChatMessageProps) => {
 export default React.memo(ChatMessage, (prevProps, nextProps) => {
   return (
     prevProps.message.id === nextProps.message.id &&
-    prevProps.message.content === nextProps.message.content &&
     prevProps.message.status === nextProps.message.status
   );
 });
