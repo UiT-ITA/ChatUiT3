@@ -7,6 +7,8 @@ import { GrHelpBook } from "react-icons/gr";
 import { MdOutlineVpnKey } from "react-icons/md";
 
 import { useAuth } from '../../contexts/AuthContext';
+import { useTranslation } from 'react-i18next';
+import LanguageSwitcher from '../common/LanguageSwitcher';
 // import { ChatList } from '../chat/ChatList';
 
 interface SidebarProps {
@@ -16,6 +18,7 @@ interface SidebarProps {
 }
 
 const Sidebar = ({ onToggleSidebar, isNarrow, content}: SidebarProps) => {
+  const { t } = useTranslation();
   const navigate = useNavigate();
   const { isAdmin, isAuthenticated, login, logout } = useAuth();
 
@@ -26,13 +29,13 @@ const Sidebar = ({ onToggleSidebar, isNarrow, content}: SidebarProps) => {
   return (
     <div className={`sidebar ${isNarrow ? 'narrow' : 'wide'}`}>
       <div className="sidebar-top">
-        <button className="icon-button sidebar-toggle" onClick={onToggleSidebar} title={isNarrow ? 'Expand sidebar' : 'Collapse sidebar'}>
+        <button className="icon-button sidebar-toggle" onClick={onToggleSidebar} title={isNarrow ? t('sidebar.expand') : t('sidebar.collapse')}>
           <PiSidebarSimple size={"24px"} />
         </button>
 
         <div className="sidebar-title">ChatUiT</div>
 
-        <NavLink to="/c/new" className="icon-button" title="New chat">
+        <NavLink to="/c/new" className="icon-button" title={t('sidebar.newChat')}>
           <RiChatAiLine size={"24px"} />
         </NavLink>
       </div>
@@ -47,23 +50,17 @@ const Sidebar = ({ onToggleSidebar, isNarrow, content}: SidebarProps) => {
 
       <div className="sidebar-divider" />
       <div className="sidebar-bottom">
+        <LanguageSwitcher />
         <SidebarButton
           icon={<GrHelpBook size={24} />}
-          text="Help"
+          text={t('sidebar.help')}
           onClick={() => navigate('/help')}
           isNarrow={isNarrow}
         />
 
         <SidebarButton
-          icon={<RiChatSettingsLine size={24} />}
-          text="Chat Settings"
-          onClick={() => console.log('Chat settings clicked')}
-          isNarrow={isNarrow}
-        />
-
-        <SidebarButton
           icon={<RiSettings3Line size={24} />}
-          text="Settings"
+          text={t('sidebar.settings')}
           onClick={() => console.log('Settings clicked')}
           isNarrow={isNarrow}
         />
@@ -71,7 +68,7 @@ const Sidebar = ({ onToggleSidebar, isNarrow, content}: SidebarProps) => {
         {isAdmin && (
           <SidebarButton
             icon={<RiAdminLine size={24} />}
-            text="Admin"
+            text={t('sidebar.admin')}
             onClick={() => navigate('/admin')}
             isNarrow={isNarrow}
           />
@@ -79,7 +76,7 @@ const Sidebar = ({ onToggleSidebar, isNarrow, content}: SidebarProps) => {
 
         <SidebarButton
           icon={<RiUserLine size={24} />}
-          text="Account"
+          text={t('sidebar.profile')}
           onClick={() => navigate('/profile')}
           isNarrow={isNarrow}
         />
@@ -87,14 +84,14 @@ const Sidebar = ({ onToggleSidebar, isNarrow, content}: SidebarProps) => {
         {isAuthenticated ? (
           <SidebarButton
             icon={<MdOutlineVpnKey size={24} />}
-            text="Log out"
+            text={t('sidebar.logout')}
             onClick={logout}
             isNarrow={isNarrow}
           />
         ) : (
           <SidebarButton
             icon={<MdOutlineVpnKey size={24} />}
-            text="Log in"
+            text={t('sidebar.login')}
             onClick={login}
             isNarrow={isNarrow}
           />

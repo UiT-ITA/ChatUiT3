@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import ChatHistory from '../components/chat/ChatHistory';
 import ChatInput from '../components/chat/ChatInput';
 import NewChatWelcome from '../components/chat/NewChatWelcome';
@@ -9,6 +10,7 @@ import { chatStore } from '../stores/ChatStore';
 import './ChatPage.css';
 
 const ChatPage = () => {
+    const { t } = useTranslation('chat');
     const { chatId } = useParams<{ chatId: string }>();
     const { loadChat, sendMessage, streamMessage, isConnected, onChatCreated } = useSignalR();
     // const activeChat = useActiveChat();
@@ -54,7 +56,7 @@ const ChatPage = () => {
                 <>
                     {chatId === '404' && (
                         <div className="chat-error">
-                            Chat not found. You can start a new chat below.
+                            {t('chatNotFound')}
                         </div>
                     )}
                     <NewChatWelcome
