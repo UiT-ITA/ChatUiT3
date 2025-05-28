@@ -1,4 +1,4 @@
-import { CachedChatItem, Message } from '../types/chatModels';
+import { CachedChatItem } from '../types/chatModels';
 
 class ChatStore {
   private chats = new Map<string, CachedChatItem>();
@@ -26,7 +26,7 @@ class ChatStore {
     this.notifyChatListeners();
   }
 
-  updateMessageChunk(chatId: string, messageId: string, chunk: string) {
+  updateMessageChunk(messageId: string, chunk: string) {
     if (!this.streamingMessages.has(messageId)) {
       this.streamingMessages.set(messageId, chunk);
     } else {

@@ -4,14 +4,14 @@ import ChatHistory from '../components/chat/ChatHistory';
 import ChatInput from '../components/chat/ChatInput';
 import NewChatWelcome from '../components/chat/NewChatWelcome';
 import { useSignalR } from '../contexts/SignalRContext';
-import { useActiveChat } from '../hooks/useChatData';
+// import { useActiveChat } from '../hooks/useChatData';
 import { chatStore } from '../stores/ChatStore';
 import './ChatPage.css';
 
 const ChatPage = () => {
     const { chatId } = useParams<{ chatId: string }>();
     const { loadChat, sendMessage, streamMessage, isConnected, onChatCreated } = useSignalR();
-    const activeChat = useActiveChat();
+    // const activeChat = useActiveChat();
     const [initialAssistantId, setInitialAssistantId] = useState<string | undefined>();
     const navigate = useNavigate();
 
