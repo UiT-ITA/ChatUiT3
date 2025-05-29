@@ -57,6 +57,23 @@
   --scale-factor: 1.25;
 }
 
+/* Chat Width Classes */
+.chat-width-small {
+  --chat-max-width: 800px;
+}
+
+.chat-width-medium {
+  --chat-max-width: 1000px;
+}
+
+.chat-width-large {
+  --chat-max-width: 1200px;
+}
+
+.chat-width-full {
+  --chat-max-width: none;
+}
+
 /* Light Theme */
 .theme-light {
   --bg-primary: #ffffff;

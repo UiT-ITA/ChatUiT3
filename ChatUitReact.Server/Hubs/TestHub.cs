@@ -38,6 +38,12 @@ public class TestAuthHub : Hub<ITestClient>
         //_userService.LogAllClaims(Context.User, "TestAuthHub connection");
 
         // Get comprehensive user identity
+        if (Context.User == null)
+        {
+            _logger.LogWarning("User context is null in TestAuthHub");
+            return;
+        }
+        
         var userIdentity = _userService.GetUserIdentity(Context.User);
 
         // Send user-specific connection info to clients
@@ -52,8 +58,14 @@ public class TestAuthHub : Hub<ITestClient>
     }
 
     // Get detailed user information
-    public async Task<object> GetUserInfo()
+    public object GetUserInfo()
     {
+        if (Context.User == null)
+        {
+            _logger.LogWarning("User context is null in GetUserInfo");
+            return new { Error = "User context is null" };
+        }
+        
         var identity = _userService.GetUserIdentity(Context.User);
 
         // Return anonymized object with user details

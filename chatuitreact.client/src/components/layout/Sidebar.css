@@ -6,12 +6,12 @@
     width: 32px;
     height: 32px;
     min-width: 32px;
-    border-radius: calc(4px * var(--scale-factor));
+    border-radius: 4px;
     display: flex;
     align-items: center;
     justify-content: center;
     padding: 0;
-    transition: var(--transition-base);
+    transition: background-color var(--transition-base), color var(--transition-base);
 }
 
 .icon-button:hover {
@@ -30,7 +30,7 @@
 }
 
 .sidebar.wide {
-    width: 200px;
+    width: calc(225px * var(--scale-factor));
 }
 
 .sidebar.narrow {
@@ -42,7 +42,7 @@
     padding: var(--padding-base);
     display: flex;
     overflow: hidden;
-    gap: calc(4px * var(--scale-factor));
+    gap: 4px;
 }
 
 .sidebar.narrow .sidebar-top {
@@ -52,7 +52,7 @@
 }
 
 .sidebar-title {
-    font-size: var(--font-2xl);
+    font-size: 24px;
     color: var(--text-secondary);
     font-weight: 500;
     padding: var(--padding-base);
@@ -103,18 +103,18 @@
     width: 100%;
     padding-bottom: var(--padding-base);
     padding-top: var(--padding-base);
-    min-width: 200px;
+    min-width: calc(225px * var(--scale-factor));
     overflow: hidden;
     display: flex;
     flex-shrink: 1;
     flex-direction: column;
-    gap: calc(4px * var(--scale-factor));
+    gap: 4px;
 }
 
 .section-title {
-    font-size: var(--font-xs);
+    font-size: 12px;
     color: var(--text-tertiary);
-    margin: calc(4px * var(--scale-factor)) 0;
+    margin: 4px 0;
     padding: 0 var(--padding-base);
     font-weight: 500;
 }

@@ -95,7 +95,7 @@ public class AzureOpenAiService
     }
 
     // Streaming chat completion - returns collected chunks to avoid yielding in try-catch
-    public async Task<AsyncCollectionResult<StreamingChatCompletionUpdate>> GetChatCompleteionStreamingAsync(
+    public AsyncCollectionResult<StreamingChatCompletionUpdate> GetChatCompleteionStreamingAsync(
         List<AiChatMessage> messages,
         AiModel model,
         AiModelSettings settings,
@@ -119,7 +119,7 @@ public class AzureOpenAiService
     }
     
     // Used for testing purposes
-        public async Task<AsyncCollectionResult<StreamingChatCompletionUpdate>> GetChatCompletionStreamingAsync(
+        public AsyncCollectionResult<StreamingChatCompletionUpdate> GetChatCompletionStreamingAsync(
     List<AiChatMessage> messages,
     CancellationToken cancellationToken = default)
     {

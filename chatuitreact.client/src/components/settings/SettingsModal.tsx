@@ -1,8 +1,9 @@
 import React, { useState } from 'react';
 import { RiCloseLine } from 'react-icons/ri';
 import { useTranslation } from 'react-i18next';
-import AppearanceSettings from './AppearanceSettings';
-import LanguageSettings from './LanguageSettings';
+import GeneralSettings from './GeneralSettings';
+import PersonalizationSettings from './PersonalizationSettings';
+import DataControlSettings from './DataControlSettings';
 import './SettingsModal.css';
 
 interface SettingsModalProps {
@@ -10,11 +11,11 @@ interface SettingsModalProps {
   onClose: () => void;
 }
 
-type SettingsTab = 'appearance' | 'language';
+type SettingsTab = 'general' | 'personalization' | 'data';
 
 const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose }) => {
   const { t } = useTranslation();
-  const [activeTab, setActiveTab] = useState<SettingsTab>('appearance');
+  const [activeTab, setActiveTab] = useState<SettingsTab>('general');
 
   if (!isOpen) return null;
 
@@ -31,18 +32,21 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose }) => {
   };
 
   const tabs = [
-    { id: 'appearance' as const, label: t('settings.appearanceTab'), icon: '🎨' },
-    { id: 'language' as const, label: t('settings.languageTab'), icon: '🌐' },
+    { id: 'general' as const, label: t('settings.generalTab'), icon: '⚙️' },
+    { id: 'personalization' as const, label: t('settings.personalizationTab'), icon: '👤' },
+    { id: 'data' as const, label: t('settings.dataTab'), icon: '🗃️' },
   ];
 
   const renderTabContent = () => {
     switch (activeTab) {
-      case 'appearance':
-        return <AppearanceSettings />;
-      case 'language':
-        return <LanguageSettings />;
+      case 'general':
+        return <GeneralSettings />;
+      case 'personalization':
+        return <PersonalizationSettings />;
+      case 'data':
+        return <DataControlSettings />;
       default:
-        return <AppearanceSettings />;
+        return <GeneralSettings />;
     }
   };
 
@@ -61,7 +65,7 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose }) => {
             onClick={onClose}
             aria-label={t('common.close')}
           >
-            <RiCloseLine size={24} />
+            <RiCloseLine size={20} />
           </button>
         </div>
 

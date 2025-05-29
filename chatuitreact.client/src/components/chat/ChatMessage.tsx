@@ -25,7 +25,7 @@ const ChatMessage = ({ message }: ChatMessageProps) => {
   const isUser = message.role === ChatRole.User;
   const isStreaming = message.status === ChatStatus.Generating;
   const isFileMessage = message.role === ChatRole.System;
-  const { theme } = useTheme();
+  const { theme, markdownEnabled } = useTheme();
 
   // Select syntax highlighting theme based on current theme
   const getSyntaxHighlighterStyle = () => {
@@ -108,13 +108,19 @@ const ChatMessage = ({ message }: ChatMessageProps) => {
   return (
     <div className={`chat-message ${isUser ? 'user-message' : isFileMessage ? 'file-message' : 'assistant-message'} ${isStreaming ? 'streaming' : ''}`}>
       <div className="message-content">
-        <ReactMarkdown
-          remarkPlugins={[remarkGfm, remarkMath]}
-          rehypePlugins={[rehypeKatex]}
-          components={markdownComponents}
-        >
-          {content}
-        </ReactMarkdown>
+        {markdownEnabled ? (
+          <ReactMarkdown
+            remarkPlugins={[remarkGfm, remarkMath]}
+            rehypePlugins={[rehypeKatex]}
+            components={markdownComponents}
+          >
+            {content}
+          </ReactMarkdown>
+        ) : (
+          <pre style={{ whiteSpace: 'pre-wrap', fontFamily: 'inherit', margin: 0 }}>
+            {content}
+          </pre>
+        )}
         {isStreaming && <span className="streaming-indicator">▋</span>}
       </div>
       

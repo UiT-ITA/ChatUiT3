@@ -1,10 +1,15 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import ReactMarkdown from 'react-markdown';
-import SyntaxHighlighter from 'react-syntax-highlighter';
-import { atomOneDark } from 'react-syntax-highlighter/dist/esm/styles/hljs';
+import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter';
+import { atomDark } from 'react-syntax-highlighter/dist/esm/styles/prism';
+import { oneLight } from 'react-syntax-highlighter/dist/esm/styles/prism';
+import { dracula } from 'react-syntax-highlighter/dist/esm/styles/prism';
 import remarkGfm from 'remark-gfm';
 import remarkMath from 'remark-math';
 import rehypeKatex from 'rehype-katex';
+import { useTranslation } from 'react-i18next';
+import { useTheme } from '../contexts/ThemeContext';
+import { MdContentCopy } from 'react-icons/md';
 import './HelpPage.css';
 
 // Type for TOC item
@@ -17,14 +22,66 @@ type TocItem = {
 };
 
 const Help: React.FC = () => {
+  const { i18n } = useTranslation();
+  const { theme } = useTheme();
   const [docContent, setDocContent] = useState<string>('# Loading...');
   const [tableOfContents, setTableOfContents] = useState<TocItem[]>([]);
   const [activeHeading, setActiveHeading] = useState<string>('');
   const [activeH1, setActiveH1] = useState<string>('');
   const contentRef = useRef<HTMLDivElement>(null);
 
+  // Get the appropriate syntax highlighter style based on theme
+  const getSyntaxHighlighterStyle = () => {
+    switch (theme) {
+      case 'light':
+        return oneLight;
+      case 'dark':
+        return atomDark;
+      case 'alt-dark':
+        return dracula;
+      default:
+        return atomDark;
+    }
+  };
+
+  // Handle copying code to clipboard
+  const handleCopyCode = (code: string) => {
+    navigator.clipboard.writeText(code)
+      .catch(err => console.error('Failed to copy code:', err));
+  };
+
+  // Get documentation file based on current language
+  const getDocumentationFile = () => {
+    const currentLanguage = i18n.language;
+    
+    // Map language codes to file names
+    const languageMap: { [key: string]: string } = {
+      'no': 'doc_no-NB.md',
+      'no-NB': 'doc_no-NB.md',
+      'nb': 'doc_no-NB.md',
+      'nb-NO': 'doc_no-NB.md',
+      'en': 'doc_en-US.md',
+      'en-US': 'doc_en-US.md'
+    };
+
+    return languageMap[currentLanguage] || 'doc_en-US.md';
+  };
+
   useEffect(() => {
-    fetch('/documentation.md')
+    const docFile = getDocumentationFile();
+    
+    // Try to fetch the language-specific documentation
+    fetch(`/${docFile}`)
+      .then(response => {
+        if (!response.ok) {
+          // If language-specific file not found, fallback to English
+          if (docFile !== 'doc_en-US.md') {
+            return fetch('/doc_en-US.md');
+          }
+          throw new Error('Documentation not found');
+        }
+        return response;
+      })
       .then(response => response.text())
       .then(text => {
         setDocContent(text);
@@ -34,7 +91,7 @@ const Help: React.FC = () => {
         console.error('Error loading documentation:', error);
         setDocContent('# Error Loading Documentation');
       });
-  }, []);
+  }, [i18n.language]);
 
   // Extract h1, h2, h3 and their parent relationships
   const extractTableOfContents = (content: string): TocItem[] => {
@@ -157,15 +214,28 @@ const Help: React.FC = () => {
             components={{
               code({ className, inline, children, ...props }: any) {
                 const match = /language-(\w+)/.exec(className || '');
+                const codeText = String(children).replace(/\n$/, '');
                 return !inline && match ? (
-                  <SyntaxHighlighter
-                    style={atomOneDark}
-                    language={match[1]}
-                    PreTag="div"
-                    {...props}
-                  >
-                    {String(children).replace(/\n$/, '')}
-                  </SyntaxHighlighter>
+                  <div className="code-block-wrapper">
+                    <div className="code-block-header">
+                      <span className="language-name">{match[1]}</span>
+                      <button 
+                        className="copy-code-button" 
+                        onClick={() => handleCopyCode(codeText)}
+                        title="Copy code"
+                      >
+                        <MdContentCopy size="16px" /> Copy
+                      </button>
+                    </div>
+                    <SyntaxHighlighter
+                      style={getSyntaxHighlighterStyle()}
+                      language={match[1]}
+                      PreTag="div"
+                      {...props}
+                    >
+                      {codeText}
+                    </SyntaxHighlighter>
+                  </div>
                 ) : (
                   <code className={className} {...props}>
                     {children}

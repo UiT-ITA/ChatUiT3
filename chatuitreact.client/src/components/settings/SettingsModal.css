@@ -15,11 +15,13 @@
 
 .settings-modal {
   background: var(--bg-secondary);
-  border-radius: var(--border-radius-xl);
+  border-radius: var(--border-radius-lg);
   box-shadow: var(--shadow-lg);
   width: 90vw;
-  max-width: 800px;
-  max-height: 80vh;
+  max-width: 700px;
+  height: 600px;
+  min-height: 500px;
+  max-height: calc(100vh - 40px);
   display: flex;
   flex-direction: column;
   animation: slideUp var(--transition-base);
@@ -29,12 +31,12 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: var(--padding-xl);
+  padding: calc(20px * var(--scale-factor));
   border-bottom: 1px solid var(--border-secondary);
 }
 
 .settings-modal-title {
-  font-size: var(--font-xl);
+  font-size: calc(18px * var(--scale-factor));
   font-weight: 600;
   color: var(--text-primary);
   margin: 0;
@@ -45,7 +47,7 @@
   border: none;
   color: var(--text-secondary);
   cursor: pointer;
-  padding: var(--padding-sm);
+  padding: calc(6px * var(--scale-factor));
   border-radius: var(--border-radius);
   transition: all var(--transition-base);
   display: flex;
@@ -67,17 +69,17 @@
 .settings-tabs {
   display: flex;
   flex-direction: column;
-  width: 200px;
+  width: calc(160px * var(--scale-factor));
   border-right: 1px solid var(--border-secondary);
-  padding: var(--padding-lg);
-  gap: var(--margin-sm);
+  padding: calc(12px * var(--scale-factor));
+  gap: calc(4px * var(--scale-factor));
 }
 
 .settings-tab {
   display: flex;
   align-items: center;
-  gap: var(--margin-lg);
-  padding: var(--padding-lg);
+  gap: calc(8px * var(--scale-factor));
+  padding: calc(8px * var(--scale-factor)) calc(12px * var(--scale-factor));
   background: none;
   border: none;
   border-radius: var(--border-radius);
@@ -85,7 +87,7 @@
   cursor: pointer;
   transition: all var(--transition-base);
   text-align: left;
-  font-size: var(--font-base);
+  font-size: calc(14px * var(--scale-factor));
 }
 
 .settings-tab:hover {
@@ -99,8 +101,8 @@
 }
 
 .settings-tab-icon {
-  font-size: var(--font-lg);
-  width: var(--icon-size);
+  font-size: calc(16px * var(--scale-factor));
+  width: calc(20px * var(--scale-factor));
   display: flex;
   align-items: center;
   justify-content: center;
@@ -113,86 +115,194 @@
 
 .settings-content {
   flex: 1;
-  padding: var(--padding-xl);
+  padding: calc(20px * var(--scale-factor));
   overflow-y: auto;
 }
 
 .settings-section {
   display: flex;
   flex-direction: column;
-  gap: var(--margin-2xl);
+  gap: calc(12px * var(--scale-factor));
 }
 
-.settings-group {
+.settings-row {
   display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: calc(8px * var(--scale-factor)) 0;
+  border-bottom: 1px solid var(--border-secondary);
+}
+
+.settings-row:last-child {
+  border-bottom: none;
+}
+
+.settings-row-vertical {
   flex-direction: column;
-  gap: var(--margin-lg);
+  align-items: stretch;
+  gap: calc(8px * var(--scale-factor));
 }
 
-.settings-group-title {
-  font-size: var(--font-lg);
-  font-weight: 600;
-  color: var(--text-primary);
-  margin: 0;
-}
-
-.settings-group-description {
-  font-size: var(--font-sm);
-  color: var(--text-secondary);
-  margin: 0;
-  line-height: 1.5;
-}
-
-.settings-options {
-  display: flex;
-  flex-direction: column;
-  gap: var(--margin-base);
-}
-
-.settings-option {
-  display: flex;
-  align-items: flex-start;
-  gap: var(--margin-lg);
-  padding: var(--padding-lg);
-  border: 1px solid var(--border-secondary);
-  border-radius: var(--border-radius-lg);
-  cursor: pointer;
-  transition: all var(--transition-base);
-}
-
-.settings-option:hover {
-  border-color: var(--border-hover);
-  background: var(--button-secondary-bg);
-}
-
-.settings-option:has(.settings-option-input:checked) {
-  border-color: var(--accent-primary);
-  background: var(--accent-secondary);
-}
-
-.settings-option-input {
-  margin: 0;
-  margin-top: 2px;
-  accent-color: var(--accent-primary);
-}
-
-.settings-option-content {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  gap: var(--margin-xs);
-}
-
-.settings-option-label {
-  font-size: var(--font-base);
+.settings-label {
+  font-size: calc(14px * var(--scale-factor));
   font-weight: 500;
   color: var(--text-primary);
+  margin: 0;
+  flex: 1;
 }
 
-.settings-option-description {
-  font-size: var(--font-sm);
-  color: var(--text-secondary);
-  line-height: 1.4;
+.settings-control {
+  display: flex;
+  align-items: center;
+  min-width: calc(140px * var(--scale-factor));
+}
+
+.settings-select {
+  background: var(--input-bg);
+  color: var(--text-primary);
+  border: 1px solid var(--border-secondary);
+  border-radius: var(--border-radius);
+  padding: calc(6px * var(--scale-factor)) calc(8px * var(--scale-factor));
+  font-size: calc(14px * var(--scale-factor));
+  width: 100%;
+  cursor: pointer;
+  transition: border-color var(--transition-base);
+}
+
+.settings-select:hover {
+  border-color: var(--border-hover);
+}
+
+.settings-select:focus {
+  outline: none;
+  border-color: var(--accent-primary);
+}
+
+.settings-input {
+  background: var(--input-bg);
+  color: var(--text-primary);
+  border: 1px solid var(--border-secondary);
+  border-radius: var(--border-radius);
+  padding: calc(6px * var(--scale-factor)) calc(8px * var(--scale-factor));
+  font-size: calc(14px * var(--scale-factor));
+  width: 100%;
+  transition: border-color var(--transition-base);
+}
+
+.settings-input:hover {
+  border-color: var(--border-hover);
+}
+
+.settings-input:focus {
+  outline: none;
+  border-color: var(--accent-primary);
+}
+
+.settings-textarea {
+  background: var(--input-bg);
+  color: var(--text-primary);
+  border: 1px solid var(--border-secondary);
+  border-radius: var(--border-radius);
+  padding: calc(8px * var(--scale-factor));
+  font-size: calc(14px * var(--scale-factor));
+  width: 100%;
+  resize: vertical;
+  min-height: calc(80px * var(--scale-factor));
+  font-family: inherit;
+  transition: border-color var(--transition-base);
+}
+
+.settings-textarea:hover {
+  border-color: var(--border-hover);
+}
+
+.settings-textarea:focus {
+  outline: none;
+  border-color: var(--accent-primary);
+}
+
+.settings-toggle {
+  position: relative;
+  display: inline-block;
+  width: calc(44px * var(--scale-factor));
+  height: calc(24px * var(--scale-factor));
+}
+
+.settings-toggle-input {
+  opacity: 0;
+  width: 0;
+  height: 0;
+}
+
+.settings-toggle-slider {
+  position: absolute;
+  cursor: pointer;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: var(--border-secondary);
+  border-radius: calc(24px * var(--scale-factor));
+  transition: var(--transition-base);
+}
+
+.settings-toggle-slider:before {
+  position: absolute;
+  content: "";
+  height: calc(18px * var(--scale-factor));
+  width: calc(18px * var(--scale-factor));
+  left: calc(3px * var(--scale-factor));
+  bottom: calc(3px * var(--scale-factor));
+  background-color: white;
+  border-radius: 50%;
+  transition: var(--transition-base);
+}
+
+.settings-toggle-input:checked + .settings-toggle-slider {
+  background-color: var(--accent-primary);
+}
+
+.settings-toggle-input:checked + .settings-toggle-slider:before {
+  transform: translateX(calc(20px * var(--scale-factor)));
+}
+
+.settings-button {
+  background: var(--button-secondary-bg);
+  color: var(--text-primary);
+  border: 1px solid var(--border-secondary);
+  border-radius: var(--border-radius);
+  padding: calc(6px * var(--scale-factor)) calc(12px * var(--scale-factor));
+  font-size: calc(14px * var(--scale-factor));
+  cursor: pointer;
+  transition: all var(--transition-base);
+  font-weight: 500;
+}
+
+.settings-button:hover {
+  background: var(--border-hover);
+  border-color: var(--border-hover);
+}
+
+.settings-button-secondary {
+  background: var(--accent-primary);
+  color: var(--text-inverse);
+  border-color: var(--accent-primary);
+}
+
+.settings-button-secondary:hover {
+  background: var(--accent-primary-hover);
+  border-color: var(--accent-primary-hover);
+}
+
+.settings-button-danger {
+  background: var(--danger);
+  color: var(--text-inverse);
+  border-color: var(--danger);
+}
+
+.settings-button-danger:hover {
+  background: var(--danger-hover);
+  border-color: var(--danger-hover);
 }
 
 @keyframes fadeIn {
@@ -218,7 +328,9 @@
 @media (max-width: 768px) {
   .settings-modal {
     width: 95vw;
-    max-height: 90vh;
+    height: 85vh;
+    min-height: 400px;
+    max-height: calc(100vh - 20px);
   }
   
   .settings-modal-body {
@@ -231,7 +343,7 @@
     border-right: none;
     border-bottom: 1px solid var(--border-secondary);
     overflow-x: auto;
-    padding: var(--padding-base) var(--padding-lg);
+    padding: calc(8px * var(--scale-factor)) calc(12px * var(--scale-factor));
   }
   
   .settings-tab {
@@ -241,5 +353,15 @@
   
   .settings-tab-label {
     white-space: nowrap;
+  }
+
+  .settings-row {
+    flex-direction: column;
+    align-items: stretch;
+    gap: calc(6px * var(--scale-factor));
+  }
+
+  .settings-control {
+    min-width: auto;
   }
 }

@@ -44,31 +44,86 @@
     },
     "settings": {
         "title": "Settings",
-        "appearanceTab": "Appearance",
-        "languageTab": "Language",
+        "generalTab": "General",
+        "personalizationTab": "Personalization",
+        "dataTab": "Data Controls",
         "theme": {
             "title": "Theme",
-            "description": "Choose your preferred theme",
             "light": "Light",
-            "lightDescription": "Clean and bright interface",
             "dark": "Dark",
-            "darkDescription": "Current dark theme (classic)",
-            "altDark": "Alt Dark",
-            "altDarkDescription": "Modern dark theme with improved contrast"
+            "altDark": "Alt Dark"
         },
         "textScale": {
             "title": "Text Scale",
-            "description": "Adjust the size of text and interface elements",
             "small": "Small",
-            "smallDescription": "Default size (100%)",
             "medium": "Medium",
-            "mediumDescription": "Slightly larger (112.5%)",
-            "large": "Large",
-            "largeDescription": "Much larger (125%)"
+            "large": "Large"
+        },
+        "chatWidth": {
+            "title": "Chat Width",
+            "small": "Small (800px)",
+            "medium": "Medium (1000px)",
+            "large": "Large (1200px)",
+            "full": "Full Width"
+        },
+        "markdown": {
+            "title": "Markdown Rendering"
         },
         "language": {
-            "title": "Language",
-            "description": "Choose your preferred language"
+            "title": "Language"
+        },
+        "personalization": {
+            "name": {
+                "title": "Name",
+                "placeholder": "Enter your name"
+            },
+            "jobRole": {
+                "title": "Job Role",
+                "placeholder": "e.g., Software Engineer, Teacher, Student"
+            },
+            "responseStyle": {
+                "title": "Response Style",
+                "creative": "Creative",
+                "balanced": "Balanced",
+                "precise": "Precise"
+            },
+            "responseLength": {
+                "title": "Response Length",
+                "short": "Short",
+                "medium": "Medium",
+                "long": "Long"
+            },
+            "customInstructions": {
+                "title": "Custom Instructions",
+                "placeholder": "Provide additional context or preferences for how the assistant should respond..."
+            }
+        },
+        "dataControl": {
+            "retentionPeriod": {
+                "title": "Chat Retention Period",
+                "1week": "1 Week",
+                "1month": "1 Month",
+                "3months": "3 Months",
+                "1year": "1 Year",
+                "forever": "Forever"
+            },
+            "autoDelete": {
+                "title": "Auto-delete old chats"
+            },
+            "exportFormat": {
+                "title": "Export Format",
+                "json": "JSON",
+                "markdown": "Markdown",
+                "txt": "Plain Text"
+            },
+            "exportData": {
+                "title": "Export Chat History",
+                "button": "Export Data"
+            },
+            "deleteAll": {
+                "title": "Delete All Chats",
+                "button": "Delete All"
+            }
         }
     },
     "common": {

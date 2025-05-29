@@ -142,7 +142,7 @@ public class ChatService : IChatService
             try 
             {
                 var messages = (await GetChatByIdAsync(userId, chatId))?.Messages ?? new();
-                var openAiStream = await _azureOpenAiService.GetChatCompletionStreamingAsync(messages);
+                var openAiStream = _azureOpenAiService.GetChatCompletionStreamingAsync(messages);
                 
                 // Create our custom streaming channel
                 var chunkChannel = new StreamingChunkChannel();

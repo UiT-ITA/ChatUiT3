@@ -44,31 +44,86 @@
     },
     "settings": {
         "title": "Innstillinger",
-        "appearanceTab": "Utseende",
-        "languageTab": "Språk",
+        "generalTab": "Generelt",
+        "personalizationTab": "Personalisering",
+        "dataTab": "Datakontroll",
         "theme": {
             "title": "Tema",
-            "description": "Velg ditt foretrukne tema",
             "light": "Lys",
-            "lightDescription": "Rent og lyst grensesnitt",
             "dark": "Mørk",
-            "darkDescription": "Nåværende mørke tema (klassisk)",
-            "altDark": "Alt Mørk",
-            "altDarkDescription": "Moderne mørkt tema med forbedret kontrast"
+            "altDark": "Alt Mørk"
         },
         "textScale": {
             "title": "Tekststørrelse",
-            "description": "Juster størrelsen på tekst og grensesnittelementer",
             "small": "Liten",
-            "smallDescription": "Standard størrelse (100%)",
             "medium": "Medium",
-            "mediumDescription": "Litt større (112.5%)",
-            "large": "Stor",
-            "largeDescription": "Mye større (125%)"
+            "large": "Stor"
+        },
+        "chatWidth": {
+            "title": "Chat Bredde",
+            "small": "Liten (800px)",
+            "medium": "Medium (1000px)",
+            "large": "Stor (1200px)",
+            "full": "Full Bredde"
+        },
+        "markdown": {
+            "title": "Markdown Rendering"
         },
         "language": {
-            "title": "Språk",
-            "description": "Velg ditt foretrukne språk"
+            "title": "Språk"
+        },
+        "personalization": {
+            "name": {
+                "title": "Navn",
+                "placeholder": "Skriv inn navnet ditt"
+            },
+            "jobRole": {
+                "title": "Jobbstilling",
+                "placeholder": "f.eks., Programvareutvikler, Lærer, Student"
+            },
+            "responseStyle": {
+                "title": "Svarstil",
+                "creative": "Kreativ",
+                "balanced": "Balansert",
+                "precise": "Presis"
+            },
+            "responseLength": {
+                "title": "Svarlengde",
+                "short": "Kort",
+                "medium": "Medium",
+                "long": "Lang"
+            },
+            "customInstructions": {
+                "title": "Tilpassede Instruksjoner",
+                "placeholder": "Gi tilleggskontekst eller preferanser for hvordan assistenten skal svare..."
+            }
+        },
+        "dataControl": {
+            "retentionPeriod": {
+                "title": "Chat Oppbevaringsperiode",
+                "1week": "1 Uke",
+                "1month": "1 Måned",
+                "3months": "3 Måneder",
+                "1year": "1 År",
+                "forever": "For Alltid"
+            },
+            "autoDelete": {
+                "title": "Auto-slett gamle chatter"
+            },
+            "exportFormat": {
+                "title": "Eksportformat",
+                "json": "JSON",
+                "markdown": "Markdown",
+                "txt": "Ren Tekst"
+            },
+            "exportData": {
+                "title": "Eksporter Chat Historikk",
+                "button": "Eksporter Data"
+            },
+            "deleteAll": {
+                "title": "Slett Alle Chatter",
+                "button": "Slett Alt"
+            }
         }
     },
     "common": {

@@ -7,10 +7,10 @@
     color: var(--text-secondary);
     cursor: pointer;
     height: 32px;
-    border-radius: calc(4px * var(--scale-factor));
-    transition: var(--transition-base);
+    border-radius: 4px;
+    transition: background-color var(--transition-base), color var(--transition-base);
     width: 100%;
-    padding: var(--padding-base);
+    padding: 8px;
 }
 
 .sidebar-button:hover {
@@ -26,9 +26,9 @@
 }
 
 .button-text {
-    padding-left: calc(4px * var(--scale-factor));
-    padding-bottom: calc(4px * var(--scale-factor));
-    font-size: calc(20px * var(--scale-factor));
+    padding-left: 4px;
+    padding-bottom: 4px;
+    font-size: 20px;
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
