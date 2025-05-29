@@ -1,70 +1,24 @@
-using System.ComponentModel.DataAnnotations;
+namespace ChatUitReact.Server.Models.DTOs;
 
-namespace ChatUitReact.Server.Models.DTOs
+public class ModelDto
 {
-    // DTO for model capabilities
-    public class ModelCapabilitiesDto
-    {
-        public bool SupportsVision { get; set; } = false;
-        public bool SupportsReasoning { get; set; } = false;
-        public bool SupportsFunctionCalling { get; set; } = false;
-        public bool SupportsCodeInterpreter { get; set; } = false;
-        public int MaxContextLength { get; set; } = 16000;
-        public int MaxOutputLength { get; set; } = 4000;
-    }
+    public string Id { get; set; } = string.Empty;
+    public string ModelName { get; set; } = string.Empty;
+    public string EndpointId { get; set; } = string.Empty;
+    public List<UserRole> AllowedRoles { get; set; } = new List<UserRole>();
+}
 
-    // DTO for returning model information
-    public class ModelDto
-    {
-        public string Id { get; set; } = string.Empty;
-        public string Name { get; set; } = string.Empty;
-        public string Description { get; set; } = string.Empty;
-        public string ModelId { get; set; } = string.Empty;
-        public string ModelType { get; set; } = string.Empty;
-        public EndpointDto Endpoint { get; set; } = new EndpointDto();
-        public ModelCapabilitiesDto Capabilities { get; set; } = new ModelCapabilitiesDto();
-    }
+public class CreateModelDto
+{
+    public string ModelName { get; set; } = string.Empty;
+    public string EndpointId { get; set; } = string.Empty;
+    public List<UserRole> AllowedRoles { get; set; } = new List<UserRole>();
+}
 
-    // DTO for creating a new model
-    public class CreateModelDto
-    {
-        [Required]
-        public string Name { get; set; } = string.Empty;
-        
-        public string Description { get; set; } = string.Empty;
-        
-        [Required]
-        public string ModelId { get; set; } = string.Empty;
-        
-        [Required]
-        public string ModelType { get; set; } = string.Empty;
-        
-        [Required]
-        public string EndpointId { get; set; } = string.Empty;
-        
-        public ModelCapabilitiesDto Capabilities { get; set; } = new ModelCapabilitiesDto();
-    }
-
-    // DTO for updating an existing model
-    public class UpdateModelDto
-    {
-        [Required]
-        public string Id { get; set; } = string.Empty;
-        
-        [Required]
-        public string Name { get; set; } = string.Empty;
-        
-        public string Description { get; set; } = string.Empty;
-        
-        [Required]
-        public string ModelId { get; set; } = string.Empty;
-        
-        [Required]
-        public string ModelType { get; set; } = string.Empty;
-        
-        [Required]
-        public string EndpointId { get; set; } = string.Empty;
-        
-        public ModelCapabilitiesDto Capabilities { get; set; } = new ModelCapabilitiesDto();
-    }
+public class UpdateModelDto
+{
+    public string Id { get; set; } = string.Empty;
+    public string ModelName { get; set; } = string.Empty;
+    public string EndpointId { get; set; } = string.Empty;
+    public List<UserRole> AllowedRoles { get; set; } = new List<UserRole>();
 }

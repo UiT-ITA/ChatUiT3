@@ -8,34 +8,34 @@
 }
 
 .chat-list-empty {
-    color: #888;
+    color: var(--text-tertiary);
     text-align: center;
-    padding: 16px 0;
-    font-size: 15px;
+    padding: calc(16px * var(--scale-factor)) 0;
+    font-size: var(--font-sm);
     background: none;
 }
 
 .chat-item {
-    color: #ececf1;
+    color: var(--text-primary);
     text-decoration: none;
     display: flex;
     align-items: center;
     justify-content: space-between;
-    padding: 4px 4px; /* Ensure consistent padding */
-    border-radius: 6px;
-    font-size: 14px;
+    padding: calc(4px * var(--scale-factor)) calc(4px * var(--scale-factor)); /* Ensure consistent padding */
+    border-radius: calc(6px * var(--scale-factor));
+    font-size: var(--font-sm);
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
     position: relative;
     cursor: pointer;
-    transition: background 0.15s, color 0.15s;
-    height: 28px; /* Set a fixed height */
+    transition: background var(--transition-fast), color var(--transition-fast);
+    height: calc(28px * var(--scale-factor)); /* Set a fixed height */
     box-sizing: border-box; /* Include padding in height */
 }
 
 .chat-item:hover {
-    background-color: rgba(255,255,255,0.05);
+    background-color: var(--button-secondary-bg);
 }
 
 .chat-item-main {
@@ -43,21 +43,21 @@
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
-    padding-left: 4px;
+    padding-left: calc(4px * var(--scale-factor));
 }
 
 .chat-item-more {
     display: none;
-    margin-left: 8px;
+    margin-left: calc(8px * var(--scale-factor));
     margin-right: 0;
-    color: #b0b0b8;
-    font-size: 18px;
+    color: var(--text-secondary);
+    font-size: calc(18px * var(--scale-factor));
     cursor: pointer;
     user-select: none;
 /*    padding: 2px 4px;*/
 
-    border-radius: 4px;
-    transition: background 0.15s, color 0.15s;
+    border-radius: calc(4px * var(--scale-factor));
+    transition: background var(--transition-fast), color var(--transition-fast);
 }
 
 .chat-item:hover .chat-item-more {
@@ -66,23 +66,22 @@
 }
 
 .chat-item-more:hover {
-    color: #1a73e8;
+    color: var(--accent-primary);
 }
 
-
 .chat-item-active {
-    color: #1a73e8;
+    color: var(--accent-primary);
 }
 
 .chat-context-menu {
-    background: #23232b;
-    border: 1px solid #444;
-    border-radius: 6px;
-    width: 160px;
-    padding: 4px 0;
+    background: var(--bg-quaternary);
+    border: 1px solid var(--border-primary);
+    border-radius: calc(6px * var(--scale-factor));
+    width: calc(160px * var(--scale-factor));
+    padding: calc(4px * var(--scale-factor)) 0;
     margin: 0;
     list-style: none;
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.18);
+    box-shadow: var(--shadow);
     position: fixed; /* Use fixed positioning for consistent placement */
     z-index: 1000;
     left: 0; /* Reset left to avoid conflicts */
@@ -93,20 +92,20 @@
 .chat-context-menu-item {
     display: flex; /* Align icon and text */
     align-items: center;
-    color: #ececf1;
-    padding: 8px 12px;
+    color: var(--text-primary);
+    padding: calc(8px * var(--scale-factor)) calc(12px * var(--scale-factor));
     cursor: pointer;
-    font-size: 14px;
-    transition: background 0.15s;
+    font-size: var(--font-sm);
+    transition: background var(--transition-fast);
 }
 
     .chat-context-menu-item .menu-icon {
-        margin-right: 8px; /* Add spacing between icon and text */
-        font-size: 16px;
+        margin-right: calc(8px * var(--scale-factor)); /* Add spacing between icon and text */
+        font-size: calc(16px * var(--scale-factor));
     }
 
     .chat-context-menu-item:hover {
-        background: #2d2d33;
+        background: var(--button-secondary-bg);
     }
 
 .chat-item .updating {
@@ -115,13 +114,13 @@
 
 .chat-item .update-indicator {
     position: absolute;
-    left: -4px;
+    left: calc(-4px * var(--scale-factor));
     top: 50%;
     transform: translateY(-50%);
-    width: 8px;
-    height: 8px;
+    width: calc(8px * var(--scale-factor));
+    height: calc(8px * var(--scale-factor));
     border-radius: 50%;
-    background-color: #1a73e8;
+    background-color: var(--accent-primary);
     animation: pulse 1.5s infinite;
 }
 

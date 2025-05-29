@@ -1,10 +1,13 @@
 ﻿using ChatUitReact.Server.Models;
 using System.Collections.Concurrent;
+using Microsoft.Extensions.Configuration;
 
 namespace ChatUitReact.Server.Services;
 
-public class MockDatabaseService : IDatabaseService
+public partial class MockDatabaseService : IDatabaseService
 {
+    private readonly IConfiguration _configuration;
+    
     private UserInfo _userInfo = new UserInfo
     {
         Preferences = new UserPreferences
@@ -12,7 +15,7 @@ public class MockDatabaseService : IDatabaseService
             Notifications = new NotificationSettings(),
             Display = new DisplaySettings()
         },
-        Roles = new List<string> {  }
+        Roles = new List<UserRole> { UserRole.Admin }
     };
 
     private List<AiChat> dummyHistory = new List<AiChat>
@@ -393,15 +396,19 @@ Note: Some Markdown processors may have limitations on what HTML is allowed, and
     };
 
     private ConcurrentDictionary<string, List<AiChat>> _chatStorage = new ConcurrentDictionary<string, List<AiChat>>();
+    private ConcurrentDictionary<string, AiModelEndpoint> _endpoints = new ConcurrentDictionary<string, AiModelEndpoint>();
+    private ConcurrentDictionary<string, AiModel> _models = new ConcurrentDictionary<string, AiModel>();
 
-    
+    public MockDatabaseService(IConfiguration configuration)
+    {
+        _configuration = configuration;
+    }
+
     private void AddUserToService(string userId)
     {
-        // Add a new user to the chat storage with an empty chat list using thread-safe operations
         _chatStorage.GetOrAdd(userId, _ => 
         {
             List<AiChat> userChats = new List<AiChat>();
-            // Add all chats from dummy history to the user's chat list
             foreach (var chat in dummyHistory)
             {
                 userChats.Add(new AiChat
@@ -424,175 +431,4 @@ Note: Some Markdown processors may have limitations on what HTML is allowed, and
             return userChats;
         });
     }
-    
-    #region User management
-
-    public Task<UserInfo> GetUserInfoAsync(string userId)
-    {
-        // Simulate fetching user info from a database
-        UserInfo userInfo = new ()
-        {
-            Username = userId,
-            Preferences = _userInfo.Preferences,
-            Roles = _userInfo.Roles
-        };
-
-
-        return Task.FromResult(userInfo);
-    }
-
-    public async Task<bool> UpdateUserInfoAsync(string userId, UserInfo userInfo)
-    {
-        _userInfo = userInfo;
-        return await Task.FromResult(true);
-    }
-
-    #endregion User management
-
-    #region Chat management
-
-    public Task<List<AiChatHeader>> GetChatListAsync(string userId)
-    {
-        AddUserToService(userId);
-
-        var chatList = new List<AiChatHeader>();
-        chatList.AddRange(_chatStorage[userId].Select(chat => new AiChatHeader
-        {
-            Id = chat.Id,
-            Name = chat.Name,
-            CreatedAt = chat.CreatedAt,
-            UpdatedAt = chat.UpdatedAt
-        }));
-
-        return Task.FromResult(chatList);
-    }
-
-    public Task<AiChat?> GetChatByIdAsync(string userId, string chatId)
-    {
-        AddUserToService(userId);
-
-        AiChat? chat = _chatStorage[userId].FirstOrDefault(c => c.Id == chatId);
-        // Return a copy of the chat to avoid modifying the original
-        if (chat != null)
-        {
-            chat = new AiChat
-            {
-                Id = chat.Id,
-                Name = chat.Name,
-                Messages = chat.Messages.Select(m => new AiChatMessage
-                {
-                    Id = m.Id,
-                    Role = m.Role,
-                    Content = m.Content,
-                    Timestamp = m.Timestamp,
-                    Status = m.Status,
-                }).ToList(),
-                Settings = new AiChatSettings
-                {
-                    AssistantName = chat.Settings.AssistantName
-                }
-            };
-        }
-        return Task.FromResult<AiChat?>(chat);
-    }
-
-    public Task AddChatAsync(string userId, AiChat chat)
-    {
-        AddUserToService(userId);
-
-        _chatStorage[userId].Add(chat);
-        return Task.CompletedTask;
-    }
-
-    public Task DeleteChatAsync(string userId, string chatId)
-    {
-        AddUserToService(userId);
-
-        var chat = _chatStorage[userId].FirstOrDefault(c => c.Id == chatId);
-        if (chat != null)
-        {
-            _chatStorage[userId].Remove(chat);
-        }
-
-        return Task.CompletedTask;
-    }
-
-    
-    public Task UpdateChatAsync(string userId, string chatId, AiChatSettings? settings, string? newTitle)
-    {
-        if (settings == null && string.IsNullOrEmpty(newTitle))
-        {
-            return Task.CompletedTask; // No updates needed
-        }
-
-        AddUserToService(userId);
-
-        var chat = _chatStorage[userId].FirstOrDefault(c => c.Id == chatId);
-        
-        if (chat != null)
-        {
-            if (settings != null)
-            {
-                chat.Settings = settings;
-            }
-            if (!string.IsNullOrEmpty(newTitle))
-            {
-                chat.Name = newTitle;
-            }
-        }
-        
-        return Task.CompletedTask;
-    }
-
-    #endregion Chat management
-
-    #region Message operations
-
-    // Message management
-    public Task AddMessageAsync(string userId, string chatId, AiChatMessage message)
-    {
-        AddUserToService(userId);
-        var chat = _chatStorage[userId].FirstOrDefault(c => c.Id == chatId);
-        if (chat != null)
-        {
-            chat.Messages.Add(message);
-            chat.UpdatedAt = DateTime.Now;
-        }
-        return Task.CompletedTask;
-    }
-
-    public Task UpdateMessageAsync(string userId, string chatId, AiChatMessage message)
-    {
-        AddUserToService(userId);
-        var chat = _chatStorage[userId].FirstOrDefault(c => c.Id == chatId);
-        if (chat != null)
-        {
-            var existingMessage = chat.Messages.FirstOrDefault(m => m.Id == message.Id);
-            if (existingMessage != null)
-            {
-                existingMessage.Content = message.Content;
-                existingMessage.Timestamp = message.Timestamp;
-            }
-            chat.UpdatedAt = DateTime.Now;
-        }
-        return Task.CompletedTask;
-    }
-
-    public Task DeleteMessageAsync(string userId, string chatId, string messageId)
-    {
-        AddUserToService(userId);
-        var chat = _chatStorage[userId].FirstOrDefault(c => c.Id == chatId);
-        if (chat != null)
-        {
-            var message = chat.Messages.FirstOrDefault(m => m.Id == messageId);
-            if (message != null)
-            {
-                chat.Messages.Remove(message);
-            }
-            chat.UpdatedAt = DateTime.Now;
-        }
-        return Task.CompletedTask;
-    }
-    
-    #endregion Message operations
 }

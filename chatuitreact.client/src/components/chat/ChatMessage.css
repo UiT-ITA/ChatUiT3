@@ -2,9 +2,9 @@
 .chat-message {
   width: 100%;
   /* padding: 0.5rem 1rem; */
-  margin: 0.5rem 0;
+  margin: calc(0.5rem * var(--scale-factor)) 0;
   position: relative;
-  border-radius: 0.5rem;
+  border-radius: calc(0.5rem * var(--scale-factor));
 }
 
 /* User message styling */
@@ -15,14 +15,14 @@
 }
 
 .user-message .message-content {
-  background-color: #222831; /* User-specified background color */
-  color: white;
-  border-radius: 16px;
-  padding: 0.75rem 1rem;
+  background-color: var(--chat-user-bg);
+  color: var(--chat-user-text);
+  border-radius: calc(16px * var(--scale-factor));
+  padding: calc(0.75rem * var(--scale-factor)) calc(1rem * var(--scale-factor));
   max-width: fit-content;
   word-break: break-word;
   line-height: 1.5;
-  font-size: 16px;
+  font-size: var(--font-base);
 }
 
 /* AI message styling */
@@ -37,22 +37,22 @@
 }
 
 .assistant-message .message-content {
-  color: #ececf1;
+  color: var(--text-primary);
   width: 100%;
-  padding: 0.5rem 0;
+  padding: calc(0.5rem * var(--scale-factor)) 0;
   word-break: break-word;
   line-height: 1.5;
-  font-size: 16px;
+  font-size: var(--font-base);
 }
 
 /* Toolbar styling - hidden by default, shows on hover */
 .message-toolbar {
   display: flex;
   align-items: center;
-  margin-top: 0.5rem;
+  margin-top: calc(0.5rem * var(--scale-factor));
   opacity: 0; /* Hidden by default */
-  transition: opacity 0.2s ease;
-  gap: 10px;
+  transition: opacity var(--transition-base);
+  gap: calc(10px * var(--scale-factor));
   width: 100%;
 }
 
@@ -62,14 +62,14 @@
 
 /* Message timestamp styling */
 .message-time {
-  font-size: 0.7rem;
-  color: #8e8ea0;
+  font-size: var(--font-xs);
+  color: var(--text-tertiary);
 }
 
 /* Message actions container */
 .message-actions {
   display: flex;
-  gap: 8px;
+  gap: var(--margin-base);
 }
 
 /* Toolbar alignment for user messages */
@@ -86,29 +86,29 @@
 .message-action-button {
   background: none;
   border: none;
-  color: #797979;
+  color: var(--text-secondary);
   cursor: pointer;
-  width: 28px;
-  height: 28px;
-  border-radius: 4px;
+  width: calc(28px * var(--scale-factor));
+  height: calc(28px * var(--scale-factor));
+  border-radius: var(--border-radius-sm);
   display: flex;
   align-items: center;
   justify-content: center;
   padding: 0;
-  transition: color 0.2s, background-color 0.2s;
+  transition: color var(--transition-base), background-color var(--transition-base);
 }
 
 .message-action-button:hover {
-  color: #175ddc;
+  color: var(--accent-primary);
   /* background-color: rgba(23, 93, 220, 0.1); */
 }
 
 /* Styles for code blocks within messages */
 .message-content .code-block-wrapper {
-  background-color: #1e1e1e; /* Darker background for the whole code block area */
-  border: 1px solid #555555; /* Added border for better visibility */
-  border-radius: 8px;
-  margin: 10px 0;
+  background-color: var(--code-bg);
+  border: 1px solid var(--code-border);
+  border-radius: var(--border-radius-lg);
+  margin: calc(10px * var(--scale-factor)) 0;
   overflow: hidden; /* Ensures child elements like header don't break border radius */
   position: relative; /* For positioning copy button or other elements if needed */
 }
@@ -117,11 +117,11 @@
   display: flex;
   justify-content: space-between;
   align-items: center;
-  background-color: #333333; /* Slightly lighter than code bg, for contrast */
-  padding: 6px 12px;
-  color: #cccccc;
-  font-size: 0.85em;
-  border-bottom: 1px solid #444444;
+  background-color: var(--code-header-bg);
+  padding: calc(6px * var(--scale-factor)) calc(12px * var(--scale-factor));
+  color: var(--text-primary);
+  font-size: calc(0.85em * var(--scale-factor));
+  border-bottom: 1px solid var(--border-primary);
 }
 
 .message-content .language-name {
@@ -130,71 +130,71 @@
 }
 
 .message-content .copy-code-button {
-  background-color: #4a4a4a;
-  color: #ffffff;
+  background-color: var(--bg-quaternary);
+  color: var(--text-primary);
   border: none;
-  border-radius: 4px;
-  padding: 4px 8px;
+  border-radius: var(--border-radius-sm);
+  padding: calc(4px * var(--scale-factor)) calc(8px * var(--scale-factor));
   cursor: pointer;
-  font-size: 0.8em;
+  font-size: calc(0.8em * var(--scale-factor));
   display: flex;
   align-items: center;
-  gap: 4px;
-  transition: background-color 0.2s ease;
+  gap: calc(4px * var(--scale-factor));
+  transition: background-color var(--transition-base);
 }
 
 .message-content .copy-code-button:hover {
-  background-color: #5a5a5a;
+  background-color: var(--button-secondary-bg);
 }
 
 .message-content .copy-code-button:active {
-  background-color: #6a6a6a;
+  background-color: var(--border-hover);
 }
 
 /* Ensure SyntaxHighlighter's PreTag (div) has no default margin/padding that conflicts */
 .message-content .code-block-wrapper div[class*="syntax-highlighter"] {
   margin: 0 !important;
-  padding: 1em !important; /* Default padding for atomDark style, adjust if needed */
-  border-radius: 0 0 8px 8px !important; /* Match bottom radius of wrapper */
+  padding: calc(1em * var(--scale-factor)) !important; /* Default padding for atomDark style, adjust if needed */
+  border-radius: 0 0 var(--border-radius-lg) var(--border-radius-lg) !important; /* Match bottom radius of wrapper */
   overflow-x: auto; /* Add horizontal scroll for long lines */
 }
 
 /* Styles for tables within messages */
 .message-content table {
   border-collapse: collapse;
-  margin: 1em 0;
+  margin: calc(1em * var(--scale-factor)) 0;
   width: auto; /* Or 100% if you want full width tables */
-  font-size: 0.9em;
-  border: 1px solid #555555;
+  font-size: calc(0.9em * var(--scale-factor));
+  border: 1px solid var(--code-border);
 }
 
 /* Control paragraph spacing in markdown content */
 .message-content p {
   margin-top: 0;
-  margin-bottom: 0.75rem; 
+  margin-bottom: calc(0.75rem * var(--scale-factor)); 
   line-height: 1.7; /* Increased line height for better readability */
 }
 
 /* Add minimal spacing between paragraphs if needed */
 .message-content p + p {
-  margin-top: 0.4rem; /* Added spacing between paragraphs */
+  margin-top: calc(0.4rem * var(--scale-factor)); /* Added spacing between paragraphs */
 }
 
 /* Negative margins to keep bubbles compact while allowing internal spacing */
 .message-content > *:first-child {
-  margin-top: -0.35rem;
+  margin-top: calc(-0.35rem * var(--scale-factor));
 }
 
 .message-content > *:last-child {
-  margin-bottom: -0.35rem;
+  margin-bottom: calc(-0.35rem * var(--scale-factor));
 }
 
 /* Streaming indicator styling */
 .streaming-indicator {
   display: inline-block;
-  font-size: 1.2em;
-  margin-left: 2px;
-  color: #175ddc;
+  font-size: calc(1.2em * var(--scale-factor));
+  margin-left: calc(2px * var(--scale-factor));
+  color: var(--streaming-border);
   font-weight: bold;
   animation: blink 1s infinite;
   vertical-align: middle;
@@ -207,8 +207,8 @@
 }
 
 .chat-message.streaming .message-content {
-  border-left: 3px solid #175ddc;
-  padding-left: 10px;
+  border-left: calc(3px * var(--scale-factor)) solid var(--streaming-border);
+  padding-left: calc(10px * var(--scale-factor));
 }
 
 /* Make sure images fit within the container and scale proportionally */
@@ -216,8 +216,8 @@
   max-width: 100%;
   height: auto;
   display: block;
-  border-radius: 4px;
-  margin: 0.5rem 0;
+  border-radius: var(--border-radius-sm);
+  margin: calc(0.5rem * var(--scale-factor)) 0;
 }
 
 span.katex-html {
@@ -228,27 +228,27 @@ span.katex-html {
 .message-content hr {
   border: 0;
   height: 1px;
-  background-color: #444;
-  margin: 1.5rem 0;
+  background-color: var(--border-primary);
+  margin: calc(1.5rem * var(--scale-factor)) 0;
 }
 
 /* List styling */
 .message-content ul,
 .message-content ol {
-  padding-left: 1.5rem; /* Reduce default padding */
-  margin: 0 0 0.75rem 0; /* Match paragraph bottom margin */
+  padding-left: calc(1.5rem * var(--scale-factor)); /* Reduce default padding */
+  margin: 0 0 calc(0.75rem * var(--scale-factor)) 0; /* Match paragraph bottom margin */
 }
 
 .message-content li {
-  margin-bottom: 0.4rem; /* Slightly increased space between list items */
+  margin-bottom: calc(0.4rem * var(--scale-factor)); /* Slightly increased space between list items */
   line-height: 1.7; /* Increased line height for better readability, matching paragraphs */
 }
 
 /* Nested list styling */
 .message-content li > ul,
 .message-content li > ol {
-  margin: 0.4rem 0 0 0; /* Better spacing for nested lists */
-  padding-left: 1.25rem; /* Slightly tighter indent for nested lists */
+  margin: calc(0.4rem * var(--scale-factor)) 0 0 0; /* Better spacing for nested lists */
+  padding-left: calc(1.25rem * var(--scale-factor)); /* Slightly tighter indent for nested lists */
 }
 
 /* Accessibility: Support for forced colors mode (replacing -ms-high-contrast) */
@@ -281,18 +281,18 @@ span.katex-html {
 
 .message-content th,
 .message-content td {
-  border: 1px solid #555555;
-  padding: 8px 12px;
+  border: 1px solid var(--code-border);
+  padding: calc(8px * var(--scale-factor)) calc(12px * var(--scale-factor));
   text-align: left;
 }
 
 .message-content th {
-  background-color: #333333;
-  color: #cccccc;
+  background-color: var(--code-header-bg);
+  color: var(--text-primary);
   font-weight: bold;
 }
 
 .message-content tr:nth-child(even) {
   /* Optional: for striped rows, if desired */
-  background-color: #2c2c2c;
+  background-color: var(--table-stripe);
 }

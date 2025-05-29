@@ -1,27 +1,28 @@
 .language-switcher {
   display: flex;
-  gap: 4px;
-  margin: 8px 0;
+  gap: calc(4px * var(--scale-factor));
+  margin: calc(8px * var(--scale-factor)) 0;
 }
 
 .language-btn {
-  padding: 6px 12px;
-  border: 1px solid #ddd;
-  background: #f8f9fa;
-  color: #333;
-  border-radius: 4px;
+  padding: calc(6px * var(--scale-factor)) calc(12px * var(--scale-factor));
+  border: 1px solid var(--border-primary);
+  background: var(--bg-secondary);
+  color: var(--text-primary);
+  border-radius: var(--border-radius-sm);
   cursor: pointer;
-  transition: all 0.2s ease;
-  font-size: 12px;
+  transition: all var(--transition-base);
+  font-size: calc(12px * var(--scale-factor));
   font-weight: 500;
 }
 
 .language-btn:hover {
-  background: #e9ecef;
+  background: var(--button-secondary-bg);
+  border-color: var(--border-hover);
 }
 
 .language-btn.active {
-  background: #007bff;
-  color: white;
-  border-color: #007bff;
+  background: var(--accent-primary);
+  color: var(--text-inverse);
+  border-color: var(--accent-primary);
 }

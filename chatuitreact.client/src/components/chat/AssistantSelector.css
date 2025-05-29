@@ -8,28 +8,27 @@
   align-items: center;
   background: transparent;
   border: none;
-  color: #797979;
+  color: var(--text-secondary);
   cursor: pointer;
-  padding: 6px 10px;
-  transition: color 0.2s;
+  padding: calc(6px * var(--scale-factor)) calc(10px * var(--scale-factor));
+  transition: color var(--transition-base);
   white-space: nowrap;
-  gap: 4px;
+  gap: calc(4px * var(--scale-factor));
 }
 
-
 .assistant-name {
-  max-width: 150px;
+  max-width: calc(150px * var(--scale-factor));
   overflow: hidden;
   text-overflow: ellipsis;
-  font-size: 1.0rem;
+  font-size: var(--font-base);
   font-weight: 500;
-  color: #959595;
-  transition: color 0.2s;
+  color: var(--text-secondary);
+  transition: color var(--transition-base);
 }
 
 .assistant-selector-button:hover,
 .assistant-selector-button:hover .assistant-name {
-  color: #175ddc;
+  color: var(--accent-primary);
 }
 
 /* Dropdown styling */
@@ -37,59 +36,59 @@
   position: absolute;
   bottom: 100%;
   left: 0;
-  margin-bottom: 8px;
-  background-color: #2a2a2a;
-  min-width: 240px;
-  border-radius: 8px;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+  margin-bottom: calc(8px * var(--scale-factor));
+  background-color: var(--bg-quaternary);
+  min-width: calc(240px * var(--scale-factor));
+  border-radius: var(--border-radius-lg);
+  box-shadow: var(--shadow-lg);
   z-index: 10;
 }
 
 .assistant-option {
-  padding: 10px 12px;
-  color: #ececf1;
+  padding: calc(10px * var(--scale-factor)) calc(12px * var(--scale-factor));
+  color: var(--text-primary);
   cursor: pointer;
   display: flex;
   justify-content: space-between;
   align-items: center;
-  transition: background-color 0.2s;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  transition: background-color var(--transition-base);
+  border-bottom: 1px solid var(--border-secondary);
   background-color: transparent;
 }
 
 .assistant-option:first-child {
-  border-top-left-radius: 8px;
-  border-top-right-radius: 8px;
+  border-top-left-radius: var(--border-radius-lg);
+  border-top-right-radius: var(--border-radius-lg);
 }
 
 .assistant-option:last-child {
   border-bottom: none;
-  border-bottom-left-radius: 8px;
-  border-bottom-right-radius: 8px;
+  border-bottom-left-radius: var(--border-radius-lg);
+  border-bottom-right-radius: var(--border-radius-lg);
 }
 
 .assistant-option:hover {
-  background-color: rgba(255, 255, 255, 0.05);
+  background-color: var(--button-secondary-bg);
 }
 
 .assistant-option.selected {
-  background-color: rgba(23, 93, 220, 0.3);
+  background-color: var(--accent-secondary);
 }
 
 .assistant-info {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: calc(8px * var(--scale-factor));
 }
 
 .assistant-option-name {
-  font-size: 0.9rem;
+  font-size: calc(0.9rem * var(--scale-factor));
 }
 
 .assistant-capabilities {
   display: flex;
-  gap: 6px;
-  color: rgba(255, 255, 255, 0.7);
+  gap: calc(6px * var(--scale-factor));
+  color: var(--text-tertiary);
 }
 
 .capability-icon {
@@ -106,37 +105,37 @@
 }
 
 .info-icon {
-  color: rgba(255, 255, 255, 0.6);
+  color: var(--text-tertiary);
   cursor: help;
 }
 
 .info-tooltip {
   visibility: hidden;
   position: fixed;
-  width: 200px;
-  background-color: #333;
-  color: #ececf1;
+  width: calc(200px * var(--scale-factor));
+  background-color: var(--bg-quaternary);
+  color: var(--text-primary);
   text-align: center;
-  border-radius: 6px;
-  padding: 8px;
+  border-radius: calc(6px * var(--scale-factor));
+  padding: calc(8px * var(--scale-factor));
   z-index: 1000;
-  font-size: 0.8rem;
+  font-size: calc(0.8rem * var(--scale-factor));
   line-height: 1.4;
-  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.2);
+  box-shadow: var(--shadow);
   opacity: 0;
-  transition: opacity 0.3s;
+  transition: opacity var(--transition-slow);
   pointer-events: none;
-  margin-left: 10px;
+  margin-left: calc(10px * var(--scale-factor));
 }
 
 .info-tooltip::after {
   content: "";
   position: absolute;
-  top: 10px;
+  top: calc(10px * var(--scale-factor));
   right: 100%;
-  border-width: 5px;
+  border-width: calc(5px * var(--scale-factor));
   border-style: solid;
-  border-color: transparent #333 transparent transparent;
+  border-color: transparent var(--bg-quaternary) transparent transparent;
 }
 
 .info-tooltip-container:hover .info-tooltip {

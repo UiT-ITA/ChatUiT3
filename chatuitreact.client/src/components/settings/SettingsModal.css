@@ -1,0 +1,245 @@
+.settings-modal-backdrop {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: var(--bg-overlay);
+  backdrop-filter: blur(4px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  animation: fadeIn var(--transition-base);
+}
+
+.settings-modal {
+  background: var(--bg-secondary);
+  border-radius: var(--border-radius-xl);
+  box-shadow: var(--shadow-lg);
+  width: 90vw;
+  max-width: 800px;
+  max-height: 80vh;
+  display: flex;
+  flex-direction: column;
+  animation: slideUp var(--transition-base);
+}
+
+.settings-modal-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: var(--padding-xl);
+  border-bottom: 1px solid var(--border-secondary);
+}
+
+.settings-modal-title {
+  font-size: var(--font-xl);
+  font-weight: 600;
+  color: var(--text-primary);
+  margin: 0;
+}
+
+.settings-modal-close {
+  background: none;
+  border: none;
+  color: var(--text-secondary);
+  cursor: pointer;
+  padding: var(--padding-sm);
+  border-radius: var(--border-radius);
+  transition: all var(--transition-base);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.settings-modal-close:hover {
+  color: var(--text-primary);
+  background: var(--button-secondary-bg);
+}
+
+.settings-modal-body {
+  display: flex;
+  flex: 1;
+  min-height: 0;
+}
+
+.settings-tabs {
+  display: flex;
+  flex-direction: column;
+  width: 200px;
+  border-right: 1px solid var(--border-secondary);
+  padding: var(--padding-lg);
+  gap: var(--margin-sm);
+}
+
+.settings-tab {
+  display: flex;
+  align-items: center;
+  gap: var(--margin-lg);
+  padding: var(--padding-lg);
+  background: none;
+  border: none;
+  border-radius: var(--border-radius);
+  color: var(--text-secondary);
+  cursor: pointer;
+  transition: all var(--transition-base);
+  text-align: left;
+  font-size: var(--font-base);
+}
+
+.settings-tab:hover {
+  background: var(--button-secondary-bg);
+  color: var(--text-primary);
+}
+
+.settings-tab.active {
+  background: var(--accent-secondary);
+  color: var(--accent-primary);
+}
+
+.settings-tab-icon {
+  font-size: var(--font-lg);
+  width: var(--icon-size);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.settings-tab-label {
+  flex: 1;
+  font-weight: 500;
+}
+
+.settings-content {
+  flex: 1;
+  padding: var(--padding-xl);
+  overflow-y: auto;
+}
+
+.settings-section {
+  display: flex;
+  flex-direction: column;
+  gap: var(--margin-2xl);
+}
+
+.settings-group {
+  display: flex;
+  flex-direction: column;
+  gap: var(--margin-lg);
+}
+
+.settings-group-title {
+  font-size: var(--font-lg);
+  font-weight: 600;
+  color: var(--text-primary);
+  margin: 0;
+}
+
+.settings-group-description {
+  font-size: var(--font-sm);
+  color: var(--text-secondary);
+  margin: 0;
+  line-height: 1.5;
+}
+
+.settings-options {
+  display: flex;
+  flex-direction: column;
+  gap: var(--margin-base);
+}
+
+.settings-option {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--margin-lg);
+  padding: var(--padding-lg);
+  border: 1px solid var(--border-secondary);
+  border-radius: var(--border-radius-lg);
+  cursor: pointer;
+  transition: all var(--transition-base);
+}
+
+.settings-option:hover {
+  border-color: var(--border-hover);
+  background: var(--button-secondary-bg);
+}
+
+.settings-option:has(.settings-option-input:checked) {
+  border-color: var(--accent-primary);
+  background: var(--accent-secondary);
+}
+
+.settings-option-input {
+  margin: 0;
+  margin-top: 2px;
+  accent-color: var(--accent-primary);
+}
+
+.settings-option-content {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: var(--margin-xs);
+}
+
+.settings-option-label {
+  font-size: var(--font-base);
+  font-weight: 500;
+  color: var(--text-primary);
+}
+
+.settings-option-description {
+  font-size: var(--font-sm);
+  color: var(--text-secondary);
+  line-height: 1.4;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes slideUp {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@media (max-width: 768px) {
+  .settings-modal {
+    width: 95vw;
+    max-height: 90vh;
+  }
+  
+  .settings-modal-body {
+    flex-direction: column;
+  }
+  
+  .settings-tabs {
+    width: auto;
+    flex-direction: row;
+    border-right: none;
+    border-bottom: 1px solid var(--border-secondary);
+    overflow-x: auto;
+    padding: var(--padding-base) var(--padding-lg);
+  }
+  
+  .settings-tab {
+    flex-shrink: 0;
+    min-width: auto;
+  }
+  
+  .settings-tab-label {
+    white-space: nowrap;
+  }
+}

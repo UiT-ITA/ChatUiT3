@@ -1,6 +1,7 @@
 import React from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
+import { ThemeProvider } from './contexts/ThemeContext';
 import MainLayout from './components/layout/MainLayout';
 import Weather from './pages/WeatherPage';
 import Test from './pages/TestPage';
@@ -12,6 +13,7 @@ import ProtectedRoute from './components/common/ProtectedRoute';
 import LoadingIndicator from './components/common/LoadingIndicator';
 import { SignalRProvider } from './contexts/SignalRContext';
 import './App.css';
+import './styles/themes.css';
 
 const Home = () => {
   const { isAuthenticated, isInitializing, account } = useAuth();
@@ -39,32 +41,34 @@ const Home = () => {
 
 const App: React.FC = () => {
   return (
-    <AuthProvider>
-      <SignalRProvider>
-        <BrowserRouter>
-          <Routes>
-            <Route element={<MainLayout />}>
-              <Route path="/" element={<Home />} />
-              <Route path="/weather" element={<Weather />} />
-              <Route path="/test" element={<Test />} />
-              <Route path="/profile" element={<Profile />} />
-              <Route path="/help" element={<HelpPage />} />
-              <Route path="/c/new" element={<ChatPage />} /> 
-              <Route path="/c/:chatId" element={<ChatPage />} />
-              <Route 
-                path="/admin" 
-                element={
-                  <ProtectedRoute requiredRole="admin">
-                    <AdminPage />
-                  </ProtectedRoute>
-                } 
-              />
-              <Route path="*" element={<Navigate to="/" replace />} />
-            </Route>
-          </Routes>
-        </BrowserRouter>
-      </SignalRProvider>
-    </AuthProvider>
+    <ThemeProvider>
+      <AuthProvider>
+        <SignalRProvider>
+          <BrowserRouter>
+            <Routes>
+              <Route element={<MainLayout />}>
+                <Route path="/" element={<Home />} />
+                <Route path="/weather" element={<Weather />} />
+                <Route path="/test" element={<Test />} />
+                <Route path="/profile" element={<Profile />} />
+                <Route path="/help" element={<HelpPage />} />
+                <Route path="/c/new" element={<ChatPage />} /> 
+                <Route path="/c/:chatId" element={<ChatPage />} />
+                <Route 
+                  path="/admin" 
+                  element={
+                    <ProtectedRoute requiredRole="admin">
+                      <AdminPage />
+                    </ProtectedRoute>
+                  } 
+                />
+                <Route path="*" element={<Navigate to="/" replace />} />
+              </Route>
+            </Routes>
+          </BrowserRouter>
+        </SignalRProvider>
+      </AuthProvider>
+    </ThemeProvider>
   );
 };
 

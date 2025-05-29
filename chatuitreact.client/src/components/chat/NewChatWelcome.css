@@ -3,76 +3,76 @@
   justify-content: center;
   align-items: center;
   height: 100%;
-  padding: 2rem;
+  padding: calc(2rem * var(--scale-factor));
 }
 
 .welcome-content {
-  background-color: rgba(42, 42, 42, 0.7);
-  border-radius: 12px;
-  padding: 2rem;
-  max-width: 600px;
+  background-color: var(--bg-overlay);
+  border-radius: calc(12px * var(--scale-factor));
+  padding: calc(2rem * var(--scale-factor));
+  max-width: calc(600px * var(--scale-factor));
   width: 100%;
   text-align: center;
-  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.2);
+  box-shadow: var(--shadow-lg);
 }
 
 .welcome-content h2 {
-  font-size: 1.8rem;
-  margin-bottom: 0.5rem;
-  color: #fff;
+  font-size: var(--font-xl);
+  margin-bottom: calc(0.5rem * var(--scale-factor));
+  color: var(--text-primary);
 }
 
 .welcome-content p {
-  color: #ececf1;
-  margin-bottom: 2rem;
-  font-size: 1rem;
+  color: var(--text-primary);
+  margin-bottom: calc(2rem * var(--scale-factor));
+  font-size: var(--font-base);
 }
 
 .welcome-assistant-selector {
   display: flex;
   justify-content: center;
-  margin: 2rem 0;
+  margin: calc(2rem * var(--scale-factor)) 0;
 }
 
 /* Override some assistant selector styles for the welcome component */
 .welcome-assistant-selector .assistant-dropdown {
   bottom: auto;
   top: 100%;
-  margin-top: 8px;
+  margin-top: calc(8px * var(--scale-factor));
   margin-bottom: 0;
 }
 
 .welcome-features {
   display: flex;
   justify-content: space-between;
-  margin-top: 1rem;
+  margin-top: calc(1rem * var(--scale-factor));
   flex-wrap: wrap;
 }
 
 .feature-item {
   flex: 1;
-  min-width: 150px;
-  padding: 1rem;
-  margin: 0.5rem;
-  background-color: rgba(65, 65, 65, 0.5);
-  border-radius: 8px;
-  transition: all 0.2s;
+  min-width: calc(150px * var(--scale-factor));
+  padding: calc(1rem * var(--scale-factor));
+  margin: calc(0.5rem * var(--scale-factor));
+  background-color: var(--button-secondary-bg);
+  border-radius: var(--border-radius-lg);
+  transition: all var(--transition-base);
 }
 
 .feature-item:hover {
-  background-color: rgba(85, 85, 85, 0.5);
-  transform: translateY(-2px);
+  background-color: var(--border-hover);
+  transform: translateY(calc(-2px * var(--scale-factor)));
 }
 
 .feature-item h3 {
-  font-size: 1rem;
-  margin-bottom: 0.5rem;
-  color: #fff;
+  font-size: var(--font-base);
+  margin-bottom: calc(0.5rem * var(--scale-factor));
+  color: var(--text-primary);
 }
 
 .feature-item p {
-  font-size: 0.85rem;
-  color: #d0d0d0;
+  font-size: var(--font-sm);
+  color: var(--text-secondary);
   margin-bottom: 0;
 }
 
@@ -82,6 +82,6 @@
   }
   
   .feature-item {
-    margin: 0.5rem 0;
+    margin: calc(0.5rem * var(--scale-factor)) 0;
   }
 }

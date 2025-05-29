@@ -41,5 +41,37 @@
         "favorite": "Favoritt",
         "rename": "Gi nytt navn",
         "delete": "Slett"
+    },
+    "settings": {
+        "title": "Innstillinger",
+        "appearanceTab": "Utseende",
+        "languageTab": "Språk",
+        "theme": {
+            "title": "Tema",
+            "description": "Velg ditt foretrukne tema",
+            "light": "Lys",
+            "lightDescription": "Rent og lyst grensesnitt",
+            "dark": "Mørk",
+            "darkDescription": "Nåværende mørke tema (klassisk)",
+            "altDark": "Alt Mørk",
+            "altDarkDescription": "Moderne mørkt tema med forbedret kontrast"
+        },
+        "textScale": {
+            "title": "Tekststørrelse",
+            "description": "Juster størrelsen på tekst og grensesnittelementer",
+            "small": "Liten",
+            "smallDescription": "Standard størrelse (100%)",
+            "medium": "Medium",
+            "mediumDescription": "Litt større (112.5%)",
+            "large": "Stor",
+            "largeDescription": "Mye større (125%)"
+        },
+        "language": {
+            "title": "Språk",
+            "description": "Velg ditt foretrukne språk"
+        }
+    },
+    "common": {
+        "close": "Lukk"
     }
 }

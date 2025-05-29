@@ -41,5 +41,37 @@
         "favorite": "Favorite",
         "rename": "Rename",
         "delete": "Delete"
+    },
+    "settings": {
+        "title": "Settings",
+        "appearanceTab": "Appearance",
+        "languageTab": "Language",
+        "theme": {
+            "title": "Theme",
+            "description": "Choose your preferred theme",
+            "light": "Light",
+            "lightDescription": "Clean and bright interface",
+            "dark": "Dark",
+            "darkDescription": "Current dark theme (classic)",
+            "altDark": "Alt Dark",
+            "altDarkDescription": "Modern dark theme with improved contrast"
+        },
+        "textScale": {
+            "title": "Text Scale",
+            "description": "Adjust the size of text and interface elements",
+            "small": "Small",
+            "smallDescription": "Default size (100%)",
+            "medium": "Medium",
+            "mediumDescription": "Slightly larger (112.5%)",
+            "large": "Large",
+            "largeDescription": "Much larger (125%)"
+        },
+        "language": {
+            "title": "Language",
+            "description": "Choose your preferred language"
+        }
+    },
+    "common": {
+        "close": "Close"
     }
 }

@@ -5,9 +5,9 @@ namespace ChatUitReact.Server.Models.DTOs
     // DTO for returning endpoint information
     public class EndpointDto
     {
-        public string Id { get; set; } = Guid.NewGuid().ToString();
+        public string Id { get; set; } = string.Empty;
         public string Url { get; set; } = string.Empty;
-        // We don't include the API key in responses for security reasons
+        public string EndpointType { get; set; } = string.Empty;
     }
 
     // DTO for creating a new endpoint
@@ -18,6 +18,9 @@ namespace ChatUitReact.Server.Models.DTOs
         
         [Required]
         public string ApiKey { get; set; } = string.Empty;
+        
+        [Required]
+        public string EndpointType { get; set; } = string.Empty;
     }
 
     // DTO for updating an existing endpoint
@@ -31,5 +34,8 @@ namespace ChatUitReact.Server.Models.DTOs
         
         [Required]
         public string ApiKey { get; set; } = string.Empty;
+        
+        [Required]
+        public string EndpointType { get; set; } = string.Empty;
     }
 }

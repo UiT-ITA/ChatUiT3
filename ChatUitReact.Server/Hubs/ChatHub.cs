@@ -108,7 +108,7 @@ public class ChatHub : Hub<IChatHubClient>
         
         if (chatId == "new")
         {
-            var settings = new AiChatSettings { Model = new AiModel { ModelId = "gpt-4o" } };
+            var settings = new AiChatSettings { Model = new AiModel { ModelName = "gpt-4o" } };
             var messages = new List<AiChatMessage>
             {
                 new AiChatMessage

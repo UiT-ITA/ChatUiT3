@@ -3,15 +3,12 @@
 public class AiModel
 {
     public string Id { get; set; } = Guid.NewGuid().ToString();
-    public string Name { get; set; } = string.Empty;
-    public string Description { get; set; } = string.Empty;
-    public string ModelId { get; set; } = string.Empty;
-    public AiModelType ModelType { get; set; } = AiModelType.AzureOpenAI;
-    public AiModelEndpoint Endpoint { get; set; } = new AiModelEndpoint();
-    public AiModelCapabilities Capabilities { get; set; } = new AiModelCapabilities();
+    public string ModelName { get; set; } = string.Empty;
+    public string EndpointId { get; set; } = string.Empty;
+    public List<UserRole> AllowedRoles { get; set; } = new List<UserRole>();
 }
 
-public enum AiModelType
+public enum AiEndpointType
 {
     AzureOpenAI,
     OpenAI,
@@ -25,17 +22,12 @@ public class AiModelEndpoint
     public string Id { get; set; } = Guid.NewGuid().ToString();
     public string Url { get; set; } = string.Empty;
     public string ApiKey { get; set; } = string.Empty;
-    // Additional endpoint-specific properties could be added here
+    public AiEndpointType EndpointType { get; set; } = AiEndpointType.AzureOpenAI;
 }
 
 public class AiModelSettings
 {
-    public string Model { get; set; } = string.Empty;
     public float Temperature { get; set; } = 0.5f;
-    public int MaxTokens { get; set; } = 4000;
-    public float TopP { get; set; } = 1.0f;
-    public float FrequencyPenalty { get; set; } = 0.0f;
-    public float PresencePenalty { get; set; } = 0.0f;
     public ReasoningEffort ReasoningEffort { get; set; } = ReasoningEffort.None;
 }
 

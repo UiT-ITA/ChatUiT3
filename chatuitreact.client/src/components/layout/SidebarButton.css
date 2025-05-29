@@ -1,23 +1,21 @@
-/* SidebarButton styles */
 .sidebar-button {
     display: flex;
     align-items: center;
     justify-content: flex-start;
     background: none;
     border: none;
-    color: #797979;
+    color: var(--text-secondary);
     cursor: pointer;
     height: 32px;
-    border-radius: 4px;
-    transition: background-color 0.2s;
+    border-radius: calc(4px * var(--scale-factor));
+    transition: var(--transition-base);
     width: 100%;
-    padding: 8px;
+    padding: var(--padding-base);
 }
 
-
-    .sidebar-button:hover {
-        color: #175ddc;
-    }
+.sidebar-button:hover {
+    color: var(--accent-primary);
+}
 
 .icon-container {
     display: flex;
@@ -28,9 +26,9 @@
 }
 
 .button-text {
-    padding-left: 4px;
-    padding-bottom: 4px;
-    font-size: 20px;
+    padding-left: calc(4px * var(--scale-factor));
+    padding-bottom: calc(4px * var(--scale-factor));
+    font-size: calc(20px * var(--scale-factor));
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;

@@ -7,9 +7,12 @@ import remarkMath from 'remark-math';
 import rehypeKatex from 'rehype-katex';
 import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter';
 import { atomDark } from 'react-syntax-highlighter/dist/esm/styles/prism';
+import { oneLight } from 'react-syntax-highlighter/dist/esm/styles/prism';
+import { dracula } from 'react-syntax-highlighter/dist/esm/styles/prism';
 import 'katex/dist/katex.min.css';
 import { ChatRole, ChatStatus, Message } from '../../types/chatModels';
 import { useMessageContent, useStreamingContent } from '../../hooks/useChatData';
+import { useTheme } from '../../contexts/ThemeContext';
 
 interface ChatMessageProps {
   message: Message;
@@ -22,6 +25,21 @@ const ChatMessage = ({ message }: ChatMessageProps) => {
   const isUser = message.role === ChatRole.User;
   const isStreaming = message.status === ChatStatus.Generating;
   const isFileMessage = message.role === ChatRole.System;
+  const { theme } = useTheme();
+
+  // Select syntax highlighting theme based on current theme
+  const getSyntaxHighlighterStyle = () => {
+    switch (theme) {
+      case 'light':
+        return oneLight;
+      case 'dark':
+        return atomDark;
+      case 'alt-dark':
+        return dracula;
+      default:
+        return atomDark;
+    }
+  };
 
   const handleCopyCode = (code: string) => {
     navigator.clipboard.writeText(code)
@@ -71,7 +89,7 @@ const ChatMessage = ({ message }: ChatMessageProps) => {
             </button>
           </div>
           <SyntaxHighlighter
-            style={atomDark}
+            style={getSyntaxHighlighterStyle()}
             language={match[1]}
             PreTag="div"
             {...props}

@@ -1,0 +1,229 @@
+/* Base CSS Custom Properties System */
+:root {
+  /* Scaling system */
+  --scale-factor: 1;
+  --icon-scale: var(--scale-factor);
+  --spacing-scale: var(--scale-factor);
+  
+  /* Typography scale */
+  --font-xs: calc(0.75rem * var(--scale-factor));
+  --font-sm: calc(0.875rem * var(--scale-factor));
+  --font-base: calc(1rem * var(--scale-factor));
+  --font-lg: calc(1.125rem * var(--scale-factor));
+  --font-xl: calc(1.25rem * var(--scale-factor));
+  --font-2xl: calc(1.5rem * var(--scale-factor));
+  
+  /* Component sizes */
+  --padding-xs: calc(4px * var(--spacing-scale));
+  --padding-sm: calc(6px * var(--spacing-scale));
+  --padding-base: calc(8px * var(--spacing-scale));
+  --padding-lg: calc(12px * var(--spacing-scale));
+  --padding-xl: calc(16px * var(--spacing-scale));
+  --padding-2xl: calc(24px * var(--spacing-scale));
+  
+  --margin-xs: calc(4px * var(--spacing-scale));
+  --margin-sm: calc(6px * var(--spacing-scale));
+  --margin-base: calc(8px * var(--spacing-scale));
+  --margin-lg: calc(12px * var(--spacing-scale));
+  --margin-xl: calc(16px * var(--spacing-scale));
+  --margin-2xl: calc(24px * var(--spacing-scale));
+  
+  --border-radius-sm: calc(4px * var(--scale-factor));
+  --border-radius: calc(6px * var(--scale-factor));
+  --border-radius-lg: calc(8px * var(--scale-factor));
+  --border-radius-xl: calc(12px * var(--scale-factor));
+  --border-radius-2xl: calc(16px * var(--scale-factor));
+  
+  --icon-size-sm: calc(18px * var(--icon-scale));
+  --icon-size: calc(24px * var(--icon-scale));
+  --icon-size-lg: calc(32px * var(--icon-scale));
+  
+  /* Transitions */
+  --transition-fast: 0.15s ease;
+  --transition-base: 0.2s ease;
+  --transition-slow: 0.3s ease;
+}
+
+/* Text Scaling Classes */
+.scale-small {
+  --scale-factor: 1;
+}
+
+.scale-medium {
+  --scale-factor: 1.125;
+}
+
+.scale-large {
+  --scale-factor: 1.25;
+}
+
+/* Light Theme */
+.theme-light {
+  --bg-primary: #ffffff;
+  --bg-secondary: #f8f9fa;
+  --bg-tertiary: #e9ecef;
+  --bg-quaternary: #dee2e6;
+  --bg-overlay: rgba(0, 0, 0, 0.5);
+  
+  --text-primary: #212529;
+  --text-secondary: #6c757d;
+  --text-tertiary: #adb5bd;
+  --text-inverse: #ffffff;
+  
+  --border-primary: #dee2e6;
+  --border-secondary: #e9ecef;
+  --border-hover: #adb5bd;
+  
+  --accent-primary: #175ddc;
+  --accent-primary-hover: #1e4db3;
+  --accent-secondary: rgba(23, 93, 220, 0.1);
+  
+  --success: #28a745;
+  --success-bg: rgba(40, 167, 69, 0.1);
+  --warning: #ffc107;
+  --warning-bg: rgba(255, 193, 7, 0.1);
+  --danger: #dc3545;
+  --danger-bg: rgba(220, 53, 69, 0.1);
+  --danger-hover: #c82333;
+  
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.05);
+  --shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+  --shadow-lg: 0 4px 6px rgba(0, 0, 0, 0.1);
+  
+  --scrollbar-track: transparent;
+  --scrollbar-thumb: rgba(0, 0, 0, 0.2);
+  --scrollbar-thumb-hover: rgba(0, 0, 0, 0.3);
+  
+  /* Additional light theme specific colors */
+  --input-bg: #ffffff;
+  --code-bg: #f8f9fa;
+  --code-border: #dee2e6;
+  --code-header-bg: #e9ecef;
+  --button-secondary-bg: rgba(0, 0, 0, 0.05);
+  --table-stripe: rgba(0, 0, 0, 0.02);
+  --chat-user-bg: #175ddc;
+  --chat-user-text: #ffffff;
+  --streaming-border: #175ddc;
+}
+
+/* Dark Theme (Current/Preserved) */
+.theme-dark {
+  --bg-primary: #343541;
+  --bg-secondary: #1f1f1f;
+  --bg-tertiary: #0a0a0a;
+  --bg-quaternary: #2a2a2a;
+  --bg-overlay: rgba(0, 0, 0, 0.7);
+  
+  --text-primary: #ececf1;
+  --text-secondary: #797979;
+  --text-tertiary: #8e8ea0;
+  --text-inverse: #212529;
+  
+  --border-primary: #3b3b3f;
+  --border-secondary: rgba(255, 255, 255, 0.1);
+  --border-hover: rgba(255, 255, 255, 0.2);
+  
+  --accent-primary: #175ddc;
+  --accent-primary-hover: #1e4db3;
+  --accent-secondary: rgba(23, 93, 220, 0.1);
+  
+  --success: #28a745;
+  --success-bg: rgba(40, 167, 69, 0.2);
+  --warning: #ffc107;
+  --warning-bg: rgba(255, 193, 7, 0.2);
+  --danger: #dc3545;
+  --danger-bg: rgba(220, 53, 69, 0.2);
+  --danger-hover: #c82333;
+  
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.3);
+  --shadow: 0 1px 3px rgba(0, 0, 0, 0.4);
+  --shadow-lg: 0 4px 6px rgba(0, 0, 0, 0.5);
+  
+  --scrollbar-track: transparent;
+  --scrollbar-thumb: rgba(255, 255, 255, 0.1);
+  --scrollbar-thumb-hover: rgba(255, 255, 255, 0.2);
+  
+  /* Additional dark theme specific colors */
+  --input-bg: #292929;
+  --code-bg: #1e1e1e;
+  --code-border: #555555;
+  --code-header-bg: #333333;
+  --button-secondary-bg: rgba(255, 255, 255, 0.05);
+  --table-stripe: rgba(255, 255, 255, 0.02);
+  --chat-user-bg: #222831;
+  --chat-user-text: #ffffff;
+  --streaming-border: #175ddc;
+}
+
+/* Alt Dark Theme (Improved) */
+.theme-alt-dark {
+  --bg-primary: #1a1b23;
+  --bg-secondary: #252632;
+  --bg-tertiary: #0f1015;
+  --bg-quaternary: #2d2e3f;
+  --bg-overlay: rgba(0, 0, 0, 0.8);
+  
+  --text-primary: #f0f2f5;
+  --text-secondary: #8b92a5;
+  --text-tertiary: #6b7280;
+  --text-inverse: #1a1b23;
+  
+  --border-primary: #3f4451;
+  --border-secondary: rgba(240, 242, 245, 0.1);
+  --border-hover: rgba(240, 242, 245, 0.2);
+  
+  --accent-primary: #4f8af7;
+  --accent-primary-hover: #3b7de8;
+  --accent-secondary: rgba(79, 138, 247, 0.15);
+  
+  --success: #10b981;
+  --success-bg: rgba(16, 185, 129, 0.15);
+  --warning: #f59e0b;
+  --warning-bg: rgba(245, 158, 11, 0.15);
+  --danger: #ef4444;
+  --danger-bg: rgba(239, 68, 68, 0.15);
+  --danger-hover: #dc2626;
+  
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.4);
+  --shadow: 0 1px 3px rgba(0, 0, 0, 0.5);
+  --shadow-lg: 0 4px 6px rgba(0, 0, 0, 0.6);
+  
+  --scrollbar-track: transparent;
+  --scrollbar-thumb: rgba(240, 242, 245, 0.15);
+  --scrollbar-thumb-hover: rgba(240, 242, 245, 0.25);
+  
+  /* Additional alt dark theme specific colors */
+  --input-bg: #2d2e3f;
+  --code-bg: #1e1f2e;
+  --code-border: #3f4451;
+  --code-header-bg: #2d2e3f;
+  --button-secondary-bg: rgba(240, 242, 245, 0.08);
+  --table-stripe: rgba(240, 242, 245, 0.03);
+  --chat-user-bg: #4f8af7;
+  --chat-user-text: #ffffff;
+  --streaming-border: #4f8af7;
+}
+
+/* Base scrollbar styling */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: var(--scrollbar-thumb) var(--scrollbar-track);
+}
+
+*::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+*::-webkit-scrollbar-track {
+  background: var(--scrollbar-track);
+}
+
+*::-webkit-scrollbar-thumb {
+  background: var(--scrollbar-thumb);
+  border-radius: calc(3px * var(--scale-factor));
+}
+
+*::-webkit-scrollbar-thumb:hover {
+  background: var(--scrollbar-thumb-hover);
+}

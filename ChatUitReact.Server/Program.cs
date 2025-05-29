@@ -78,6 +78,7 @@ builder.Services.AddSignalR();
 builder.Services.AddScoped<UserService>();
 builder.Services.AddSingleton<StreamingMessageService>();
 builder.Services.AddSingleton<IDatabaseService, MockDatabaseService>();
+builder.Services.AddSingleton<IModelService, ModelService>();
 builder.Services.AddSingleton<IChatService, ChatService>();
 builder.Services.AddSingleton<AzureOpenAiService>();
 
