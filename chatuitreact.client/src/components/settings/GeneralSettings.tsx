@@ -4,7 +4,7 @@ import { useTranslation } from 'react-i18next';
 import LanguageSwitcher from '../common/LanguageSwitcher';
 
 const GeneralSettings: React.FC = () => {
-  const { t, i18n } = useTranslation();
+  const { t } = useTranslation();
   const { theme, textScale, chatWidth, markdownEnabled, setTheme, setTextScale, setChatWidth, setMarkdownEnabled } = useTheme();
 
   const themes: { id: Theme; label: string }[] = [
