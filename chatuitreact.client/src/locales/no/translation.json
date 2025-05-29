@@ -1,0 +1,45 @@
+{
+    "welcome": {
+        "header": "Velkommen til ChatUiT",
+        "subheader": "Velg en assistent og begynn å chatte!",
+        "files": {
+            "title": "Filer og bilder",
+            "description": "Alle modeller støtter filopplasting, men bare noen modeller støtter bilder."
+        },
+        "tools": {
+            "title": "Verktøy",
+            "description": "Noen modeller har tilgang til verktøy som kan brukes til å forbedre chatteopplevelsen."
+        },
+        "reasoning": {
+            "title": "Resonnering",
+            "description": "Noen modeller har resonnementsevner. Dette kan være nyttig for komplekse oppgaver."
+        }
+    },
+    "chat": {
+        "sendMessage": "Send melding",
+        "chatNotFound": "Chat ikke funnet. Du kan starte en ny chat nedenfor.",
+        "messagePlaceholder": "Melding til ChatUiT..."
+    },
+    "capabilities": {
+        "vision": "Vision tilgjengelig",
+        "internet": "Internett-tilgang",
+        "reasoning": "Avansert resonnement"
+    },
+    "sidebar": {
+        "newChat": "Ny Chat",
+        "expand": "Utvid Sidefelt",
+        "collapse": "Kollaps Sidefelt",
+        "help": "Hjelp",
+        "chatSettings": "Chat Innstillinger",
+        "settings": "Innstillinger",
+        "admin": "Admin",
+        "profile": "Profil",
+        "logout": "Logg ut",
+        "login": "Logg inn",
+        "noChats": "Ingen chatter funnet",
+        "moreOptions": "Alternativer",
+        "favorite": "Favoritt",
+        "rename": "Gi nytt navn",
+        "delete": "Slett"
+    }
+}

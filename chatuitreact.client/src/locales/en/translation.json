@@ -1,0 +1,45 @@
+{
+    "welcome": {
+        "header": "Welcome to ChatUiT",
+        "subheader": "Select an assistant and start chatting!",
+        "files": {
+            "title": "Files and Vision",
+            "description": "All models support files uploads, but only some models support images."
+        },
+        "tools": {
+            "title": "Tool Usage",
+            "description": "Some models have access to tools that can be used to enhance the chat experience."
+        },
+        "reasoning": {
+            "title": "Reasoning",
+            "description": "Some models have reasoning capabilities. This can be useful for complex tasks."
+        }
+    },
+    "chat": {
+        "sendMessage": "Send message",
+        "chatNotFound": "Chat not found. You can start a new chat below.",
+        "messagePlaceholder": "Message ChatUiT..."
+    },
+    "capabilities": {
+        "vision": "Vision available",
+        "internet": "Internet access",
+        "reasoning": "Advanced reasoning"
+    },
+    "sidebar": {
+        "newChat": "New chat",
+        "expand": "Expand sidebar",
+        "collapse": "Collapse sidebar",
+        "help": "Help",
+        "chatSettings": "Chat settings",
+        "settings": "Settings",
+        "admin": "Admin",
+        "profile": "Profile",
+        "logout": "Logout",
+        "login": "Login",
+        "noChats": "No chats found",
+        "moreOptions": "More options",
+        "favorite": "Favorite",
+        "rename": "Rename",
+        "delete": "Delete"
+    }
+}

@@ -91,7 +91,7 @@ public class ChatHub : Hub<IChatHubClient>
         await Groups.RemoveFromGroupAsync(Context.ConnectionId, groupName);
     }
 
-    public async Task StreamMessage(string chatId, string messageId)
+    public void StreamMessage(string chatId, string messageId)
     {
         var userId = GetCurrentUserId();
         var clientId = Context.ConnectionId;

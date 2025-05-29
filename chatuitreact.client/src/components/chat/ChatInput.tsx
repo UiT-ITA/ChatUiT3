@@ -2,9 +2,10 @@ import { useState, useRef, useEffect } from 'react';
 import type { ChangeEvent } from 'react';
 import './ChatInput.css';
 import { MdSend, MdKeyboardArrowDown, MdKeyboardArrowUp, MdSearch, MdCloud, MdTune, MdAttachFile  } from "react-icons/md";
+import { useTranslation } from 'react-i18next';
 import ToolbarTool from './ToolbarTool';
 import AssistantSelector from './AssistantSelector';
-import { getAllAssistants, getDefaultAssistant } from '../../services/mockAssistantService';
+import { getAllAssistants } from '../../services/mockAssistantService';
 
 interface ChatInputProps {
   onSendMessage: (text: string) => void;
@@ -12,6 +13,7 @@ interface ChatInputProps {
 }
 
 const ChatInput = ({ onSendMessage, initialAssistantId }: ChatInputProps) => {
+  const { t } = useTranslation();
   const [message, setMessage] = useState('');
   const [isToolbarExpanded, setIsToolbarExpanded] = useState(false);
   const [activeTools, setActiveTools] = useState<{[key: string]: boolean}>({
@@ -145,7 +147,7 @@ const ChatInput = ({ onSendMessage, initialAssistantId }: ChatInputProps) => {
             value={message}
             onChange={(e) => setMessage(e.target.value)}
             onKeyDown={handleKeyDown}
-            placeholder="Message ChatUiT..."
+            placeholder={t('chat.messagePlaceholder')}
             rows={1}
             className={isToolbarExpanded ? 'full-width' : ''}
           />
@@ -155,7 +157,7 @@ const ChatInput = ({ onSendMessage, initialAssistantId }: ChatInputProps) => {
               type="submit"
               className="chat-input-button" 
               disabled={!message.trim()}
-              title="Send message"
+              title={t('chat.sendMessage')}
             >
               <MdSend size={"24px"} />
             </button>
@@ -232,7 +234,7 @@ const ChatInput = ({ onSendMessage, initialAssistantId }: ChatInputProps) => {
               className="chat-input-button send-button-toolbar" 
               disabled={!message.trim()}
               onClick={handleSubmit}
-              title="Send message"
+              title={t('sendMessage')}
             >
               <MdSend size={"24px"} />
             </button>

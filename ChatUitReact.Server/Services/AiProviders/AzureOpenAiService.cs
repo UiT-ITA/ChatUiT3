@@ -119,7 +119,7 @@ public class AzureOpenAiService
     }
     
     // Used for testing purposes
-        public async Task<AsyncCollectionResult<StreamingChatCompletionUpdate>> GetChatCompleteionStreamingAsync(
+        public async Task<AsyncCollectionResult<StreamingChatCompletionUpdate>> GetChatCompletionStreamingAsync(
     List<AiChatMessage> messages,
     CancellationToken cancellationToken = default)
     {

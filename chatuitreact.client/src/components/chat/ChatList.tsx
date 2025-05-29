@@ -6,15 +6,12 @@ import { useNavigate, useParams } from "react-router-dom";
 import { FaStar, FaEdit, FaTrash } from "react-icons/fa";
 import { MdMoreVert } from "react-icons/md";
 import "./ChatList.css";
+import { useTranslation } from "react-i18next";
 
 
-const contextMenuOptions = [
-  { label: "Favorite", icon: <FaStar />, action: (chat: CachedChatItem) => console.log(`Favorite clicked for ${chat.name}`) },
-  { label: "Rename", icon: <FaEdit />, action: (chat: CachedChatItem) => console.log(`Rename clicked for ${chat.name}`) },
-  { label: "Delete", icon: <FaTrash />, action: (chat: CachedChatItem) => console.log(`Delete clicked for ${chat.name}`) },
-];
 
 export const ChatList = React.memo(() => {
+  const { t } = useTranslation();
   const chatList = useChatList();
   const [menu, setMenu] = useState<{
     chat: CachedChatItem;
@@ -25,6 +22,12 @@ export const ChatList = React.memo(() => {
   const navigate = useNavigate();
   const { chatId: activeChatId } = useParams<{ chatId: string }>();
 
+  const contextMenuOptions = [
+    { label: t('sidebar.favorite'), icon: <FaStar />, action: (chat: CachedChatItem) => console.log(`Favorite clicked for ${chat.name}`) },
+    { label: t('sidebar.rename'), icon: <FaEdit />, action: (chat: CachedChatItem) => console.log(`Rename clicked for ${chat.name}`) },
+    { label: t('sidebar.delete'), icon: <FaTrash />, action: (chat: CachedChatItem) => console.log(`Delete clicked for ${chat.name}`) },
+  ];
+  
   useEffect(() => {
     if (activeChatId && immediateActiveId === activeChatId) {
       setImmediateActiveId(null);
@@ -75,24 +78,24 @@ export const ChatList = React.memo(() => {
   return (
     <div className="chat-list-container">
       {chatList.length === 0 ? (
-        <div className="chat-list-empty">No chats yet</div>
+        <div className="chat-list-empty">{t('sidebar.noChats')}</div>
       ) : (
         chatList.map((chat: CachedChatItem) => (
           <div
             key={chat.id}
             className={`chat-item${isActiveChat(chat.id) ? " chat-item-active" : ""}`}
             title={chat.name}
+            onClick={() => handleChatClick(chat)}
           >
             <span
               className="chat-item-main"
-              onClick={() => handleChatClick(chat)}
             >
               {chat.name}
             </span>
             <span
               className="chat-item-more"
               onClick={e => handleMoreClick(e, chat)}
-              title="More"
+              title={t('sidebar.moreOptions')}
             >
               <MdMoreVert size={16} />
             </span>

@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { getAllAssistants } from '../../services/mockAssistantService';
 import AssistantSelector from './AssistantSelector';
 import './NewChatWelcome.css';
+import { useTranslation } from 'react-i18next';
 
 interface NewChatWelcomeProps {
   initialAssistantId?: string;
@@ -12,6 +13,7 @@ const NewChatWelcome: React.FC<NewChatWelcomeProps> = ({
   initialAssistantId, 
   onSelectAssistant 
 }) => {
+  const { t } = useTranslation();
   const assistants = getAllAssistants();
   const [selectedAssistantId, setSelectedAssistantId] = useState<string | undefined>(initialAssistantId);
 
@@ -23,9 +25,9 @@ const NewChatWelcome: React.FC<NewChatWelcomeProps> = ({
   return (
     <div className="new-chat-welcome">
       <div className="welcome-content">
-        <h2>Start a New Chat</h2>
-        <p>Select an AI assistant to begin your conversation</p>
-        
+        <h2>{t('welcome.header')}</h2>
+        <p>{t('welcome.subheader')}</p>
+
         <div className="welcome-assistant-selector">
           <AssistantSelector 
             assistants={assistants}
@@ -36,16 +38,16 @@ const NewChatWelcome: React.FC<NewChatWelcomeProps> = ({
         
         <div className="welcome-features">
           <div className="feature-item">
-            <h3>Vision Support</h3>
-            <p>Some assistants can analyze images and provide insights</p>
+            <h3>{t('welcome.files.title')}</h3>
+            <p>{t('welcome.files.description')}</p>
           </div>
           <div className="feature-item">
-            <h3>Internet Access</h3>
-            <p>Access to current information for real-time assistance</p>
+            <h3>{t('welcome.tools.title')}</h3>
+            <p>{t('welcome.tools.description')}</p>
           </div>
           <div className="feature-item">
-            <h3>Advanced Reasoning</h3>
-            <p>Complex problem-solving and logical reasoning abilities</p>
+            <h3>{t('welcome.reasoning.title')}</h3>
+            <p>{t('welcome.reasoning.description')}</p>
           </div>
         </div>
       </div>
