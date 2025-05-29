@@ -1,0 +1,186 @@
+export interface ModelCapabilityInfo {
+    id: string;
+    name: string;
+    contextSize: number;
+    maxOutputTokens: number;
+    knowledgeCutoff: string;
+    reasoning: boolean;
+    vision: boolean;
+    tools: boolean;
+    description: string;
+    // Add more fields as needed
+}
+
+export const modelCapabilities: ModelCapabilityInfo[] = [
+    // GPT models
+    {
+        id: "gpt-3.5-turbo",
+        name: "GPT 3.5 Turbo",
+        contextSize: 16_384,
+        maxOutputTokens: 4096,
+        knowledgeCutoff: "2021-09",
+        reasoning: false,
+        vision: false,
+        tools: false,
+        description: "First widely adopted model with good performance for many tasks.",
+    },
+    {
+        id: "gpt-4",
+        name: "GPT 4",
+        contextSize: 8192,
+        maxOutputTokens: 8192,
+        knowledgeCutoff: "2023-12",
+        reasoning: false,
+        vision: false,
+        tools: false,
+        description: "A more advanced model with improved reasoning and understanding.",
+    },
+    {
+        id: "gpt-4-turbo",
+        name: "GPT 4 Turbo",
+        contextSize: 128_000,
+        maxOutputTokens: 4096,
+        knowledgeCutoff: "2023-12",
+        reasoning: false,
+        vision: false,
+        tools: true,
+        description: "A faster and cheaper variant of GPT 4 with similar capabilities.",
+    },
+    {
+        id: "gpt-4o",
+        name: "GPT 4 Omni",
+        contextSize: 128_000,
+        maxOutputTokens: 16_384,
+        knowledgeCutoff: "2023-10",
+        reasoning: false,
+        vision: true,
+        tools: true,
+        description: "Next generation model with vision and tool use capabilities.",
+    },
+    {
+        id: "gpt-4o-mini",
+        name: "GPT 4 Omni Mini",
+        contextSize: 128_000,
+        maxOutputTokens: 16_384,
+        knowledgeCutoff: "2023-10",
+        reasoning: false,
+        vision: true,
+        tools: true,
+        description: "Smaller, faster variant of GPT 4 Omni with similar multimodal capabilities.",
+    },
+    {
+        id: "gpt-4.1",
+        name: "GPT 4.1",
+        contextSize: 1_047_576,
+        maxOutputTokens: 32_768,
+        knowledgeCutoff: "2024-06",
+        reasoning: false,
+        vision: false,
+        tools: true,
+        description: "Incremental update to GPT 4 Omni with larger context window and improved performance.",
+    },
+    {
+        id: "gpt-4.1-mini",
+        name: "GPT 4.1 Mini",
+        contextSize: 1_047_576,
+        maxOutputTokens: 32_768,
+        knowledgeCutoff: "2024-06",
+        reasoning: false,
+        vision: true,
+        tools: true,
+        description: "Smaller, faster GPT 4.1 variant that is good enough for most tasks.",
+    },
+    {
+        id: "gpt-4.1-nano",
+        name: "GPT 4.1 Nano",
+        contextSize: 1_047_576,
+        maxOutputTokens: 32_768,
+        knowledgeCutoff: "2024-06",
+        reasoning: false,
+        vision: true,
+        tools: true,
+        description: "Lightning fast variant of GPT 4.1 with reduced capabilities but very low latency.",
+    },
+    {
+        id: "gpt-4.5",
+        name: "GPT 4.5",
+        contextSize: 128_000,
+        maxOutputTokens: 16_384,
+        knowledgeCutoff: "2023-10",
+        reasoning: false,
+        vision: true,
+        tools: true,
+        description: "Largest model available from OpenAI with advanced multimodal capabilities.",
+    },
+
+    // O series models
+    {
+        id: "o1",
+        name: "O1",
+        contextSize: 200_000,
+        maxOutputTokens: 100_000,
+        knowledgeCutoff: "2023-10",
+        reasoning: true,
+        vision: true,
+        tools: true,
+        description: "First generation O series model with reasoning.",
+    },
+    {
+        id: "o1-mini",
+        name: "O1 Mini",
+        contextSize: 128_000,
+        maxOutputTokens: 65_536,
+        knowledgeCutoff: "2023-10",
+        reasoning: true,
+        vision: false,
+        tools: false,
+        description: "Smaller, faster O1 variant for efficient tasks.",
+    },
+    {
+        id: "o3",
+        name: "O3",
+        contextSize: 200_000,
+        maxOutputTokens: 100_000,
+        knowledgeCutoff: "2024-06",
+        reasoning: true,
+        vision: true,
+        tools: true,
+        description: "O3 is the second generation O model (yes... really) with advanced reasoning and multimodal capabilities.",
+    },
+    {
+        id: "o3-mini",
+        name: "O3 Mini",
+        contextSize: 200_000,
+        maxOutputTokens: 100_000,
+        knowledgeCutoff: "2023-10",
+        reasoning: true,
+        vision: false,
+        tools: true,
+        description: "Compact O3 variant for faster, cost-effective inference.",
+    },
+    {
+        id: "o4-mini",
+        name: "O4 Mini",
+        contextSize: 200_000,
+        maxOutputTokens: 100_000,
+        knowledgeCutoff: "2024-06",
+        reasoning: true,
+        vision: true,
+        tools: true,
+        description: "Latest O series mini model with strong multimodal support.",
+    },
+    // Custom models
+    {
+        id: "orakel",
+        name: "Orakel",
+        contextSize: 1_047_576,
+        maxOutputTokens: 32_768,
+        knowledgeCutoff: "2025-06 (UiT)",
+        reasoning: false,
+        vision: true,
+        tools: true,
+        description: "Orakel is an agent with access to the latest information from UiT.",
+    },
+
+  // ...other models
+];  

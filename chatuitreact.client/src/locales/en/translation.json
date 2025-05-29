@@ -20,6 +20,11 @@
         "chatNotFound": "Chat not found. You can start a new chat below.",
         "messagePlaceholder": "Message ChatUiT..."
     },
+    "capabilities": {
+        "vision": "Vision available",
+        "internet": "Internet access",
+        "reasoning": "Advanced reasoning"
+    },
     "sidebar": {
         "newChat": "New chat",
         "expand": "Expand sidebar",

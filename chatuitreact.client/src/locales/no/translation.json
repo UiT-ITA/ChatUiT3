@@ -20,6 +20,11 @@
         "chatNotFound": "Chat ikke funnet. Du kan starte en ny chat nedenfor.",
         "messagePlaceholder": "Melding til ChatUiT..."
     },
+    "capabilities": {
+        "vision": "Vision tilgjengelig",
+        "internet": "Internett-tilgang",
+        "reasoning": "Avansert resonnement"
+    },
     "sidebar": {
         "newChat": "Ny Chat",
         "expand": "Utvid Sidefelt",

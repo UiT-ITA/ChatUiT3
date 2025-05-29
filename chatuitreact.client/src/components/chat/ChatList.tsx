@@ -85,10 +85,10 @@ export const ChatList = React.memo(() => {
             key={chat.id}
             className={`chat-item${isActiveChat(chat.id) ? " chat-item-active" : ""}`}
             title={chat.name}
+            onClick={() => handleChatClick(chat)}
           >
             <span
               className="chat-item-main"
-              onClick={() => handleChatClick(chat)}
             >
               {chat.name}
             </span>

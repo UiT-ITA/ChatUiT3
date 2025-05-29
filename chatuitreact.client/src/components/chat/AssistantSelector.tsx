@@ -2,6 +2,7 @@ import React, { useState, useRef, useEffect } from 'react';
 import { MdExpandMore, MdExpandLess, MdInfo, MdImage, MdPublic, MdPsychology } from 'react-icons/md';
 import type { Assistant, AssistantCapability } from '../../services/mockAssistantService';
 import './AssistantSelector.css';
+import { useTranslation } from 'react-i18next';
 
 interface AssistantSelectorProps {
   assistants: Assistant[];
@@ -16,7 +17,8 @@ const AssistantSelector: React.FC<AssistantSelectorProps> = ({
 }) => {
   const [isOpen, setIsOpen] = useState(false);
   const selectorRef = useRef<HTMLDivElement>(null);
-  
+  const { t } = useTranslation();
+
   // Find the currently selected assistant
   const selectedAssistant = selectedAssistantId 
     ? assistants.find(a => a.id === selectedAssistantId) 
@@ -54,11 +56,11 @@ const AssistantSelector: React.FC<AssistantSelectorProps> = ({
   const renderCapabilityIcon = (capability: AssistantCapability) => {
     switch (capability) {
       case 'vision':
-        return <MdImage size="16px" title="Vision capability" />;
+        return <MdImage size="16px" title={t('capabilities.vision')} />;
       case 'internet':
-        return <MdPublic size="16px" title="Internet access" />;
+        return <MdPublic size="16px" title={t('capabilities.internet')} />;
       case 'reasoning':
-        return <MdPsychology size="16px" title="Advanced reasoning" />;
+        return <MdPsychology size="16px" title={t('capabilities.reasoning')} />;
       default:
         return null;
     }
