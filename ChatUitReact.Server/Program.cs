@@ -80,6 +80,7 @@ builder.Services.AddSingleton<StreamingMessageService>();
 builder.Services.AddSingleton<IDatabaseService, MockDatabaseService>();
 builder.Services.AddSingleton<IModelService, ModelService>();
 builder.Services.AddSingleton<IChatService, ChatService>();
+builder.Services.AddSingleton<IAssistantService, AssistantService>();
 builder.Services.AddSingleton<AzureOpenAiService>();
 
 var app = builder.Build();

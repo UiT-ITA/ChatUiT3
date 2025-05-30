@@ -39,10 +39,7 @@ public partial class MockDatabaseService
                     Timestamp = m.Timestamp,
                     Status = m.Status,
                 }).ToList(),
-                Settings = new AiChatSettings
-                {
-                    AssistantName = chat.Settings.AssistantName
-                }
+                AssistantId = chat.AssistantId
             };
         }
         return Task.FromResult<AiChat?>(chat);
@@ -68,9 +65,9 @@ public partial class MockDatabaseService
         return Task.CompletedTask;
     }
 
-    public Task UpdateChatAsync(string userId, string chatId, AiChatSettings? settings, string? newTitle)
+    public Task UpdateChatAsync(string userId, string chatId, string? newTitle, string? newAssistantId = null)
     {
-        if (settings == null && string.IsNullOrEmpty(newTitle))
+        if (string.IsNullOrEmpty(newTitle) && string.IsNullOrEmpty(newAssistantId))
         {
             return Task.CompletedTask;
         }
@@ -81,13 +78,13 @@ public partial class MockDatabaseService
         
         if (chat != null)
         {
-            if (settings != null)
-            {
-                chat.Settings = settings;
-            }
             if (!string.IsNullOrEmpty(newTitle))
             {
                 chat.Name = newTitle;
+            }
+            if (!string.IsNullOrEmpty(newAssistantId))
+            {
+                chat.AssistantId = newAssistantId;
             }
         }
         

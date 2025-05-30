@@ -88,6 +88,7 @@
 .assistant-capabilities {
   display: flex;
   gap: calc(6px * var(--scale-factor));
+  align-items: center;
   color: var(--text-tertiary);
 }
 
@@ -95,6 +96,23 @@
   display: flex;
   align-items: center;
   justify-content: center;
+  color: var(--accent-primary);
+  transition: color var(--transition-base);
+}
+
+.capability-icon:hover {
+  color: var(--accent-primary-hover);
+}
+
+.system-badge {
+  background: var(--accent-secondary);
+  color: var(--accent-primary);
+  font-size: calc(0.7rem * var(--scale-factor));
+  font-weight: 500;
+  padding: calc(2px * var(--scale-factor)) calc(6px * var(--scale-factor));
+  border-radius: calc(4px * var(--scale-factor));
+  border: 1px solid var(--accent-primary);
+  margin-left: calc(4px * var(--scale-factor));
 }
 
 /* Info tooltip */

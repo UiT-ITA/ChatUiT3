@@ -23,6 +23,9 @@ public class UserPreferences
 {
     public NotificationSettings Notifications { get; set; } = new NotificationSettings();
     public DisplaySettings Display { get; set; } = new DisplaySettings();
+    public List<string> SharedAssistantIds { get; set; } = new List<string>();
+    public List<string> FavoritedAssistantIds { get; set; } = new List<string>();
+    public List<string> VisibleAssistantIds { get; set; } = new List<string>();
 }
 
 

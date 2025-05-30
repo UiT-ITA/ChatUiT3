@@ -1,11 +1,12 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { MdExpandMore, MdExpandLess, MdInfo, MdImage, MdPublic, MdPsychology } from 'react-icons/md';
-import type { Assistant, AssistantCapability } from '../../services/mockAssistantService';
+import type { AnyAssistantDto } from '../../types/dtos';
+import { getAssistantCapabilities, AssistantCapabilities } from '../../utils/modelUtils';
 import './AssistantSelector.css';
 import { useTranslation } from 'react-i18next';
 
 interface AssistantSelectorProps {
-  assistants: Assistant[];
+  assistants: AnyAssistantDto[];
   selectedAssistantId: string | undefined;
   onSelectAssistant: (assistantId: string) => void;
 }
@@ -52,15 +53,22 @@ const AssistantSelector: React.FC<AssistantSelectorProps> = ({
     setIsOpen(false);
   };
 
+  // Helper function to check if assistant is a system assistant
+  const isSystemAssistant = (assistant: AnyAssistantDto): boolean => {
+    return 'modelName' in assistant && !('model' in assistant);
+  };
+
   // Render capability icon based on type
-  const renderCapabilityIcon = (capability: AssistantCapability) => {
+  const renderCapabilityIcon = (capability: keyof AssistantCapabilities, enabled: boolean) => {
+    if (!enabled) return null;
+    
     switch (capability) {
       case 'vision':
-        return <MdImage size="16px" title={t('capabilities.vision')} />;
-      case 'internet':
-        return <MdPublic size="16px" title={t('capabilities.internet')} />;
+        return <MdImage key="vision" size="16px" title="Vision" className="capability-icon" />;
+      case 'tools':
+        return <MdPublic key="tools" size="16px" title="Tools" className="capability-icon" />;
       case 'reasoning':
-        return <MdPsychology size="16px" title={t('capabilities.reasoning')} />;
+        return <MdPsychology key="reasoning" size="16px" title="Reasoning" className="capability-icon" />;
       default:
         return null;
     }
@@ -88,39 +96,44 @@ const AssistantSelector: React.FC<AssistantSelectorProps> = ({
 
       {isOpen && (
         <div className="assistant-dropdown">
-          {assistants.map((assistant) => (
-            <div 
-              key={assistant.id}
-              className={`assistant-option ${selectedAssistantId === assistant.id ? 'selected' : ''}`}
-              onClick={() => handleSelectAssistant(assistant.id)}
-            >
-              <div className="assistant-info">
-                <span className="assistant-option-name">{assistant.name}</span>
-                <div className="info-tooltip-container">
-                  <MdInfo 
-                    size="16px" 
-                    className="info-icon" 
-                    onMouseEnter={(e) => {
-                      const tooltip = e.currentTarget.nextElementSibling as HTMLElement;
-                      if (tooltip) {
-                        const rect = e.currentTarget.getBoundingClientRect();
-                        tooltip.style.top = `${rect.top - 5}px`;
-                        tooltip.style.left = `${rect.right + 5}px`;
-                      }
-                    }}
-                  />
-                  <div className="info-tooltip">{assistant.description}</div>
+          {assistants.map((assistant) => {
+            const capabilities = getAssistantCapabilities(assistant);
+            
+            return (
+              <div 
+                key={assistant.id}
+                className={`assistant-option ${selectedAssistantId === assistant.id ? 'selected' : ''}`}
+                onClick={() => handleSelectAssistant(assistant.id)}
+              >
+                <div className="assistant-info">
+                  <span className="assistant-option-name">{assistant.name}</span>
+                  <div className="info-tooltip-container">
+                    <MdInfo 
+                      size="16px" 
+                      className="info-icon" 
+                      onMouseEnter={(e) => {
+                        const tooltip = e.currentTarget.nextElementSibling as HTMLElement;
+                        if (tooltip) {
+                          const rect = e.currentTarget.getBoundingClientRect();
+                          tooltip.style.top = `${rect.top - 5}px`;
+                          tooltip.style.left = `${rect.right + 5}px`;
+                        }
+                      }}
+                    />
+                    <div className="info-tooltip">{assistant.description}</div>
+                  </div>
+                </div>
+                <div className="assistant-capabilities">
+                  {renderCapabilityIcon('vision', capabilities.vision)}
+                  {renderCapabilityIcon('tools', capabilities.tools)}
+                  {renderCapabilityIcon('reasoning', capabilities.reasoning)}
+                  {/* {isSystemAssistant(assistant) && (
+                    <span className="system-badge">System</span>
+                  )} */}
                 </div>
               </div>
-              <div className="assistant-capabilities">
-                {assistant.capabilities.map((capability, index) => (
-                  <span key={index} className="capability-icon">
-                    {renderCapabilityIcon(capability)}
-                  </span>
-                ))}
-              </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
       )}
     </div>

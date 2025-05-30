@@ -14,16 +14,18 @@ using System.ClientModel;
 
 public class AzureOpenAiService
 {
-    private readonly AzureOpenAIClient _client;
+    private readonly AzureOpenAIClient _client; // ONLY used for development
     private readonly ILogger<AzureOpenAiService> _logger;
+    private readonly IAssistantService _assistantService;
 
-    public AzureOpenAiService(IConfiguration configuration, ILogger<AzureOpenAiService> logger)
+    public AzureOpenAiService(IConfiguration configuration, ILogger<AzureOpenAiService> logger, IAssistantService assistantService)
     {
         _logger = logger;
+        _assistantService = assistantService;
 
         // Get Azure OpenAI configuration
         // Will be replaced with propper configuration management
-        var endpoint = configuration["AzureOpenAI:Endpoint"];
+        var endpoint = configuration["AzureOpenAI:Endpoint"]; // Remove
         var key = configuration["AzureOpenAI:ApiKey"];
         
         if (string.IsNullOrEmpty(endpoint) || string.IsNullOrEmpty(key))
@@ -38,8 +40,9 @@ public class AzureOpenAiService
 
 
     public async Task<string> GetChatCompletionAsync(
-        List<AiChatMessage> messages, 
-        AiChatSettings settings,
+        List<AiChatMessage> messages, // replace
+        AiChatSettings settings, // replace
+        //AiChat chat, // Should be used instead of messages and settings
         CancellationToken cancellationToken = default)
     {
         try
@@ -50,7 +53,7 @@ public class AzureOpenAiService
             {
                 chatMessages.Insert(0, new SystemChatMessage(settings.SystemPrompt));
             }
-            var options = BuildCompletionOptions(settings.ModelSettings);
+            var options = BuildCompletionOptions(settings);
             
             var completion = await chatClient.CompleteChatAsync(chatMessages, options, cancellationToken);
             
@@ -98,7 +101,7 @@ public class AzureOpenAiService
     public AsyncCollectionResult<StreamingChatCompletionUpdate> GetChatCompleteionStreamingAsync(
         List<AiChatMessage> messages,
         AiModel model,
-        AiModelSettings settings,
+        AiChatSettings settings,
         CancellationToken cancellationToken = default)
     {
         var results = new List<string>();
@@ -193,7 +196,7 @@ public class AzureOpenAiService
         return result;
     }
 
-    private ChatCompletionOptions BuildCompletionOptions(AiModelSettings? settings)
+    private ChatCompletionOptions BuildCompletionOptions(AiChatSettings? settings)
     {
         // Create options with available properties in the current version
         var options = new ChatCompletionOptions

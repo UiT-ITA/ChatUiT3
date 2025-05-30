@@ -25,11 +25,6 @@ public class AiModelEndpoint
     public AiEndpointType EndpointType { get; set; } = AiEndpointType.AzureOpenAI;
 }
 
-public class AiModelSettings
-{
-    public float Temperature { get; set; } = 0.5f;
-    public ReasoningEffort ReasoningEffort { get; set; } = ReasoningEffort.None;
-}
 
 public class AiModelCapabilities
 {

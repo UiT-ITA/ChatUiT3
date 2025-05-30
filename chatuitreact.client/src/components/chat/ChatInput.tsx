@@ -5,10 +5,10 @@ import { MdSend, MdKeyboardArrowDown, MdKeyboardArrowUp, MdSearch, MdCloud, MdTu
 import { useTranslation } from 'react-i18next';
 import ToolbarTool from './ToolbarTool';
 import AssistantSelector from './AssistantSelector';
-import { getAllAssistants } from '../../services/mockAssistantService';
+import { useAssistants } from '../../hooks/useAssistants';
 
 interface ChatInputProps {
-  onSendMessage: (text: string) => void;
+  onSendMessage: (text: string, assistantId?: string) => void;
   initialAssistantId?: string;
 }
 
@@ -26,7 +26,7 @@ const ChatInput = ({ onSendMessage, initialAssistantId }: ChatInputProps) => {
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   
   // Load all available assistants
-  const assistants = getAllAssistants();
+  const { visibleAssistants } = useAssistants();
 
   // Auto-resize textarea based on content
   useEffect(() => {
@@ -37,11 +37,18 @@ const ChatInput = ({ onSendMessage, initialAssistantId }: ChatInputProps) => {
     }
   }, [message]);
 
+  // Set default assistant if none selected and assistants are available
+  useEffect(() => {
+    if (!selectedAssistantId && visibleAssistants.length > 0) {
+      setSelectedAssistantId(visibleAssistants[0].id);
+    }
+  }, [selectedAssistantId, visibleAssistants]);
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     
     if (message.trim()) {
-      onSendMessage(message);
+      onSendMessage(message, selectedAssistantId);
       console.log('Submitting files:', selectedFiles);
       setSelectedFiles([]);
       setMessage('');
@@ -176,7 +183,7 @@ const ChatInput = ({ onSendMessage, initialAssistantId }: ChatInputProps) => {
             </button>
             
             <AssistantSelector 
-              assistants={assistants}
+              assistants={visibleAssistants}
               selectedAssistantId={selectedAssistantId}
               onSelectAssistant={setSelectedAssistantId}
             />

@@ -7,7 +7,7 @@ using Microsoft.AspNetCore.Authorization;
 using ChatUitReact.Server.Models.DTOs;
 using Microsoft.Extensions.Logging;
 using ChatUitReact.Server.Models;
-using ChatUitReact.Server.Extentions;
+using System.Linq;
 
 namespace ChatUitReact.Server.Hubs;
 
@@ -17,25 +17,31 @@ public interface IChatHubClient
     Task ChatUpdated(AiChat chat);
     Task ReceiveMessageChunk(string chatId, string messageId, string chunk);
     Task ChatCreated(string chatId);
+    Task UserAssistants(AssistantListDto assistants);
+    Task Error(string message);
 }
 
 [Authorize]
-public class ChatHub : Hub<IChatHubClient>
+public partial class ChatHub : Hub<IChatHubClient>
 {
     private readonly UserService _userService;
     private readonly ILogger<ChatHub> _logger;
     private readonly IChatService _chatService;
     private readonly StreamingMessageService _streamingMessageService;
     private readonly IHubContext<ChatHub> _hubContext;
+    private readonly IAssistantService _assistantService;
+    private readonly IModelService _modelService;
     private static readonly Dictionary<string, string> _connections = new Dictionary<string, string>();
 
-    public ChatHub(UserService userService, ILogger<ChatHub> logger, IChatService chatService, StreamingMessageService streamingMessageService, IHubContext<ChatHub> hubContext)
+    public ChatHub(UserService userService, ILogger<ChatHub> logger, IChatService chatService, StreamingMessageService streamingMessageService, IHubContext<ChatHub> hubContext, IAssistantService assistantService, IModelService modelService)
     {
         _userService = userService;
         _logger = logger;
         _chatService = chatService;
         _streamingMessageService = streamingMessageService;
         _hubContext = hubContext;
+        _assistantService = assistantService;
+        _modelService = modelService;
     }
 
     private string GetCurrentUserId()
@@ -45,6 +51,19 @@ public class ChatHub : Hub<IChatHubClient>
             return _userService.GetCurrentUserId(Context.User);
         }
         throw new UnauthorizedAccessException("User must be authenticated");
+    }
+
+    public async Task<ModelDto[]> GetAvailableModels()
+    {
+        // For now, just return all models. In a real system, you'd filter by user roles
+        var models = await _modelService.GetAllModelsAsync();
+        return models.Select(m => new ModelDto
+        {
+            Id = m.Id,
+            ModelName = m.ModelName,
+            EndpointId = m.EndpointId,
+            AllowedRoles = m.AllowedRoles
+        }).ToArray();
     }
 
     public override async Task OnConnectedAsync()
@@ -67,78 +86,5 @@ public class ChatHub : Hub<IChatHubClient>
         }
         _streamingMessageService.CancelClientStream(Context.ConnectionId);
         await base.OnDisconnectedAsync(exception);
-    }
-
-    public async Task JoinChat(string chatId)
-    {
-        var userId = GetCurrentUserId();
-        var groupName = $"{userId}:{chatId}";
-        await Groups.AddToGroupAsync(Context.ConnectionId, groupName);
-
-        var chat = await _chatService.GetChatByIdAsync(userId, chatId);
-        if (chat == null)
-        {
-            throw new HubException("ChatNotFound");
-        }
-
-        await Clients.Caller.ChatUpdated(chat);
-    }
-
-    public async Task LeaveChat(string chatId)
-    {
-        var userId = GetCurrentUserId();
-        var groupName = $"{userId}:{chatId}";
-        await Groups.RemoveFromGroupAsync(Context.ConnectionId, groupName);
-    }
-
-    public void StreamMessage(string chatId, string messageId)
-    {
-        var userId = GetCurrentUserId();
-        var clientId = Context.ConnectionId;
-
-        Console.WriteLine($"Streaming message {messageId} for chat {chatId} to client {clientId}");
-
-        _ = _streamingMessageService.StreamToClient(clientId, userId, chatId, messageId, 
-            async (cId, mId, chunk) => await _hubContext.Clients.Client(clientId).SendAsync("ReceiveMessageChunk", cId, mId, chunk));
-    }
-
-    public async Task SendMessage(string chatId, string content)
-    {
-        var userId = GetCurrentUserId();
-        
-        if (chatId == "new")
-        {
-            var settings = new AiChatSettings { Model = new AiModel { ModelName = "gpt-4o" } };
-            var messages = new List<AiChatMessage>
-            {
-                new AiChatMessage
-                {
-                    Role = AiChatRole.User,
-                    Content = content,
-                    Status = AiChatStatus.Success
-                }
-            };
-            
-            var chat = await _chatService.CreateChatAsync(userId, settings, messages);
-            _logger.LogInformation("Created new chat with ID: {ChatId}", chat.Id);
-            await Groups.AddToGroupAsync(Context.ConnectionId, $"{userId}:{chat.Id}");
-            await Clients.Caller.ChatCreated(chat.Id);
-        }
-        else
-        {
-            await Groups.AddToGroupAsync(Context.ConnectionId, $"{userId}:{chatId}");
-            await _chatService.SendStreamingMessageAsync(userId, chatId, new AiChatMessage
-            {
-                Role = AiChatRole.User,
-                Content = content,
-                Status = AiChatStatus.Success
-            });
-
-            var chat = await _chatService.GetChatByIdAsync(userId, chatId);
-            if (chat != null)
-            {
-                await Clients.Group($"{userId}:{chatId}").ChatUpdated(chat);
-            }
-        }
     }
 }

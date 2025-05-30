@@ -35,12 +35,12 @@ const ChatPage = () => {
         chatStore.setStreamMessageCallback(streamMessage);
     }, [streamMessage]);
 
-    const handleSendMessage = (text: string) => {
+    const handleSendMessage = (text: string, assistantId?: string) => {
         if (!text.trim()) return;
         if (!chatId || chatId === 'new' || chatId === '404') {
-            sendMessage('new', text);
+            sendMessage('new', text, assistantId);
         } else {
-            sendMessage(chatId, text);
+            sendMessage(chatId, text, assistantId);
         }
     };
 

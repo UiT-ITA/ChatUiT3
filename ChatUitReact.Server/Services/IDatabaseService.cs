@@ -7,13 +7,15 @@ public interface IDatabaseService
     // User management
     Task<UserInfo> GetUserInfoAsync(string userId);
     Task<bool> UpdateUserInfoAsync(string userId, UserInfo userInfo);
+    Task<UserInfo?> GetUserAsync(string userId);
+    Task<bool> UpdateUserAsync(UserInfo user);
 
     // Chat management
     Task<List<AiChatHeader>> GetChatListAsync(string userId);
     Task<AiChat?> GetChatByIdAsync(string userId, string chatId);
     Task AddChatAsync(string userId, AiChat chat);
     Task DeleteChatAsync(string userId, string chatId);
-    Task UpdateChatAsync(string userId, string chatId, AiChatSettings? settings, string? newTitle);
+    Task UpdateChatAsync(string userId, string chatId, string? newTitle, string? newAssistantId = null);
 
     // Message management
     Task AddMessageAsync(string userId, string chatId, AiChatMessage message);
@@ -33,4 +35,13 @@ public interface IDatabaseService
     Task<string> CreateModelAsync(AiModel model);
     Task<bool> UpdateModelAsync(AiModel model);
     Task<bool> DeleteModelAsync(string modelId);
+
+    // Assistant management
+    Task<List<AiAssistant>> GetAssistantsByOwnerAsync(string ownerId);
+    Task<List<AiAssistant>> GetSystemAssistantsAsync();
+    Task<List<AiAssistant>> GetAssistantsByIdsAsync(List<string> assistantIds);
+    Task<AiAssistant?> GetAssistantByIdAsync(string assistantId);
+    Task<AiAssistant> CreateAssistantAsync(AiAssistant assistant);
+    Task<AiAssistant?> UpdateAssistantAsync(AiAssistant assistant);
+    Task<bool> DeleteAssistantAsync(string assistantId);
 }

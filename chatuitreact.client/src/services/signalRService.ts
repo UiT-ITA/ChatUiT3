@@ -36,7 +36,7 @@ export const setupSignalREvents = (
     }
   });
 
-  connection.on("ReceiveMessageChunk", (chatId: string, messageId: string, chunk: string) => {
+  connection.on("ReceiveMessageChunk", (_chatId: string, messageId: string, chunk: string) => {
     if (isMounted) {
       chatStore.updateMessageChunk(messageId, chunk);
     }

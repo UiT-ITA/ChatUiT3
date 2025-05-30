@@ -9,14 +9,11 @@ namespace ChatUitReact.Server.Models
         public string Id { get; set; } = Guid.NewGuid().ToString();
         public string Name { get; set; } = string.Empty;
         public string Description { get; set; } = string.Empty;
-        public AiModel Model { get; set; } = new AiModel();
+        public List<string> Tags { get; set; } = new List<string>();
+        public AiModel Model { get; set; } = new AiModel(); // maybe use model id instead?
         public AiChatSettings ChatSettings { get; set; } = new AiChatSettings();
-        public List<AiChatTool> Tools { get; set; } = new List<AiChatTool>();
-        public bool IsSystemCreated { get; set; } = false;
-        
-        // For internal use by DatabaseService only
+        // public List<AiChatTool> Tools { get; set; } = new List<AiChatTool>(); // Tools will be implemented later
+        // public List<AiChatFile> Files { get; set; } = new List<AiChatFile>(); // Files will be implemented later
         internal string OwnerId { get; set; } = string.Empty;
-        internal List<string> SharedWithUserIds { get; set; } = new List<string>();
-        internal List<string> PreloadedDocumentIds { get; set; } = new List<string>();
     }
 }

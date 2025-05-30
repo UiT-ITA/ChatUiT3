@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { getAllAssistants } from '../../services/mockAssistantService';
+import { useAssistants } from '../../hooks/useAssistants';
 import AssistantSelector from './AssistantSelector';
 import './NewChatWelcome.css';
 import { useTranslation } from 'react-i18next';
@@ -14,7 +14,7 @@ const NewChatWelcome: React.FC<NewChatWelcomeProps> = ({
   onSelectAssistant 
 }) => {
   const { t } = useTranslation();
-  const assistants = getAllAssistants();
+  const { visibleAssistants } = useAssistants();
   const [selectedAssistantId, setSelectedAssistantId] = useState<string | undefined>(initialAssistantId);
 
   const handleSelectAssistant = (assistantId: string) => {
@@ -30,7 +30,7 @@ const NewChatWelcome: React.FC<NewChatWelcomeProps> = ({
 
         <div className="welcome-assistant-selector">
           <AssistantSelector 
-            assistants={assistants}
+            assistants={visibleAssistants}
             selectedAssistantId={selectedAssistantId}
             onSelectAssistant={handleSelectAssistant}
           />

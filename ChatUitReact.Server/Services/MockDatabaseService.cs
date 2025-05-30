@@ -13,7 +13,8 @@ public partial class MockDatabaseService : IDatabaseService
         Preferences = new UserPreferences
         {
             Notifications = new NotificationSettings(),
-            Display = new DisplaySettings()
+            Display = new DisplaySettings(),
+            VisibleAssistantIds = new List<string> { "system-general", "system-coding" }
         },
         Roles = new List<UserRole> { UserRole.Admin }
     };
@@ -29,7 +30,7 @@ public partial class MockDatabaseService : IDatabaseService
                 new AiChatMessage { Id = "1", Role = AiChatRole.User, Content = "Hello!", Timestamp = DateTime.UtcNow },
                 new AiChatMessage { Id = "2", Role = AiChatRole.Assistant, Content = "Hi there!", Timestamp = DateTime.UtcNow.AddMinutes(1) }
             },
-            Settings = new AiChatSettings { AssistantName = "Assistant 1" }
+            AssistantId = "00000000-0000-0000-0000-assistant00001"
         },
         new AiChat
         {
@@ -40,7 +41,7 @@ public partial class MockDatabaseService : IDatabaseService
                 new AiChatMessage { Id = "3", Role = AiChatRole.User, Content = "How are you?", Timestamp = DateTime.UtcNow.AddMinutes(2) },
                 new AiChatMessage { Id = "4", Role = AiChatRole.Assistant, Content = "I'm fine, thank you!", Timestamp = DateTime.UtcNow.AddMinutes(3) }
             },
-            Settings = new AiChatSettings { AssistantName = "Assistant 2" }
+            AssistantId = "00000000-0000-0000-0000-assistant00002"
         },
         new AiChat
         {
@@ -391,7 +392,7 @@ Yes, most Markdown parsers allow embedding HTML directly. Here are some examples
 Note: Some Markdown processors may have limitations on what HTML is allowed, and some environments may sanitize HTML for security reasons. Always check the specific platform's documentation.
 ", Timestamp = DateTime.UtcNow.AddMinutes(11) }
             },
-            Settings = new AiChatSettings { AssistantName = "Assistant 3" }
+            AssistantId = "00000000-0000-0000-0000-assistant00003"
         }
     };
 
@@ -402,6 +403,8 @@ Note: Some Markdown processors may have limitations on what HTML is allowed, and
     public MockDatabaseService(IConfiguration configuration)
     {
         _configuration = configuration;
+        InitializeEndpointsAndModels();
+        InitializeSystemAssistants();
     }
 
     private void AddUserToService(string userId)
@@ -422,10 +425,7 @@ Note: Some Markdown processors may have limitations on what HTML is allowed, and
                         Content = m.Content,
                         Timestamp = m.Timestamp
                     }).ToList(),
-                    Settings = new AiChatSettings
-                    {
-                        AssistantName = chat.Settings.AssistantName
-                    }
+                    AssistantId = chat.AssistantId
                 });
             }
             return userChats;

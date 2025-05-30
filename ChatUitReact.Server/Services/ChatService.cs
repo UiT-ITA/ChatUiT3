@@ -15,19 +15,22 @@ public class ChatService : IChatService
     private readonly ILogger<ChatService> _logger;
     private readonly IDatabaseService _databaseService;
     private readonly StreamingMessageService _streamingMessageService;
+    private readonly IAssistantService _assistantService;
 
     public ChatService(
         AzureOpenAiService azureOpenAiService,
         IHubContext<ChatHub> hubContext,
         ILogger<ChatService> logger,
         IDatabaseService databaseService,
-        StreamingMessageService streamingMessageService)
+        StreamingMessageService streamingMessageService,
+        IAssistantService assistantService)
     {
         _azureOpenAiService = azureOpenAiService;
         _hubContext = hubContext;
         _logger = logger;
         _databaseService = databaseService;
         _streamingMessageService = streamingMessageService;
+        _assistantService = assistantService;
     }
 
     #region Chat management
@@ -55,14 +58,23 @@ public class ChatService : IChatService
         return chats;
     }
 
-
     public async Task<AiChat?> GetChatByIdAsync(string userId, string chatId)
     {
         return await _databaseService.GetChatByIdAsync(userId, chatId);
     }
 
+    public async Task<AiChat> CreateChatAsync(string userId, string? assistantId, List<AiChatMessage> messages)
+    {
+        var settings = await GetChatSettingsFromAssistant(userId, assistantId);
+        return await CreateChatAsync(userId, settings, messages, assistantId);
+    }
 
     public async Task<AiChat> CreateChatAsync(string userId, AiChatSettings settings, List<AiChatMessage> messages)
+    {
+        return await CreateChatAsync(userId, settings, messages, null);
+    }
+
+    private async Task<AiChat> CreateChatAsync(string userId, AiChatSettings settings, List<AiChatMessage> messages, string? assistantId)
     {
         var lastMessage = messages.Last();
         var initialMessages = messages.Take(messages.Count - 1).ToList();
@@ -70,7 +82,7 @@ public class ChatService : IChatService
         var newChat = new AiChat 
         {
             Name = "New chat",
-            Settings = settings,
+            AssistantId = assistantId,
             Messages = initialMessages
         };
 
@@ -79,31 +91,28 @@ public class ChatService : IChatService
 
         _ = Task.Run(async () => {
             var name = await _azureOpenAiService.GetChatName(messages[0].Content);
-            await UpdateChatAsync(userId, newChat.Id, null, name);
+            await UpdateChatAsync(userId, newChat.Id, name, null);
         });
 
-        await SendStreamingMessageAsync(userId, newChat.Id, lastMessage);
+        await SendStreamingMessageAsync(userId, newChat.Id, lastMessage, assistantId);
 
         return newChat;
     }
 
-
-    public async Task UpdateChatAsync(string userId, string chatId, AiChatSettings? settings, string? newTitle)
+    public async Task UpdateChatAsync(string userId, string chatId, string? newTitle, string? newAssistantId = null)
     {
-        if (settings == null && newTitle == null)
+        if (newTitle == null && newAssistantId == null)
         {
             return; // No changes to apply
         }
 
-        await _databaseService.UpdateChatAsync(userId, chatId, settings, newTitle);
+        await _databaseService.UpdateChatAsync(userId, chatId, newTitle, newAssistantId);
 
         if (newTitle != null)
         {
             NotifyChatListUpdated(userId);
         }
-
     }
-
 
     public async Task DeleteChatAsync(string userId, string chatId)
     {
@@ -115,12 +124,22 @@ public class ChatService : IChatService
 
     #region Message operations
 
-    public async Task SendMessageAsync(string userId, string chatId, AiChatMessage userMessage)
+    public async Task SendMessageAsync(string userId, string chatId, AiChatMessage message)
     {
-        await SendStreamingMessageAsync(userId, chatId, userMessage);
+        await SendStreamingMessageAsync(userId, chatId, message);
+    }
+
+    public async Task SendMessageAsync(string userId, string chatId, AiChatMessage message, string? assistantId)
+    {
+        await SendStreamingMessageAsync(userId, chatId, message, assistantId);
     }
 
     public async Task SendStreamingMessageAsync(string userId, string chatId, AiChatMessage userMessage)
+    {
+        await SendStreamingMessageAsync(userId, chatId, userMessage, null);
+    }
+
+    public async Task SendStreamingMessageAsync(string userId, string chatId, AiChatMessage userMessage, string? assistantId)
     {
         // Add user message to database
         await _databaseService.AddMessageAsync(userId, chatId, userMessage);
@@ -141,7 +160,13 @@ public class ChatService : IChatService
         {
             try 
             {
-                var messages = (await GetChatByIdAsync(userId, chatId))?.Messages ?? new();
+                var chat = await GetChatByIdAsync(userId, chatId);
+                var messages = chat?.Messages ?? new();
+                
+                // Get AI settings - use the assistant from the chat or the provided one
+                var effectiveAssistantId = assistantId ?? chat?.AssistantId;
+                var settings = await GetChatSettingsFromAssistant(userId, effectiveAssistantId);
+                
                 var openAiStream = _azureOpenAiService.GetChatCompletionStreamingAsync(messages);
                 
                 // Create our custom streaming channel
@@ -173,7 +198,7 @@ public class ChatService : IChatService
                 
                 // Update assistant message with complete response
                 assistantMessage.Content = content.ToString();
-                Console.WriteLine($"Current status: {assistantMessage.Status}");
+                
                 assistantMessage.Status = AiChatStatus.Success;
                 await _databaseService.UpdateMessageAsync(userId, chatId, assistantMessage);
                 
@@ -216,7 +241,7 @@ public class ChatService : IChatService
     }
 
     // AI Response without chat
-    public Task<string> GetResponseAsync(string userId, AiModelSettings settings, List<AiChatMessage> messages)
+    public Task<string> GetResponseAsync(string userId, AiChatSettings settings, List<AiChatMessage> messages)
     {
         throw new NotImplementedException("GetResponseAsync is not implemented yet.");
     }
@@ -236,7 +261,7 @@ public class ChatService : IChatService
     }
 
     // Streaming AI Response without chat
-    public Task<string> GetStreamingResponseAsync(string userId, AiModelSettings settings, List<AiChatMessage> messages)
+    public Task<string> GetStreamingResponseAsync(string userId, AiChatSettings settings, List<AiChatMessage> messages)
     {
         throw new NotImplementedException("GetStreamingResponseAsync is not implemented yet.");
     }
@@ -245,6 +270,37 @@ public class ChatService : IChatService
 
     #endregion AI Response
 
+    #region Private helper methods
+
+    private async Task<AiChatSettings> GetChatSettingsFromAssistant(string userId, string? assistantId)
+    {
+        if (!string.IsNullOrEmpty(assistantId))
+        {
+            try
+            {
+                var assistant = await _assistantService.GetAssistantByIdAsync(assistantId, userId);
+                if (assistant?.Model != null)
+                {
+                    return new AiChatSettings 
+                    { 
+                        Model = assistant.Model,
+                        SystemPrompt = assistant.ChatSettings?.SystemPrompt ?? string.Empty,
+                        Temperature = assistant.ChatSettings?.Temperature ?? 0.7f,
+                        ReasoningEffort = assistant.ChatSettings?.ReasoningEffort ?? ReasoningEffort.Medium
+                    };
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "Failed to get assistant {AssistantId} for user {UserId}, using default settings", assistantId, userId);
+            }
+        }
+        
+        // Fallback to default settings
+        return new AiChatSettings { Model = new AiModel { ModelName = "gpt-4o" } };
+    }
+
+    #endregion Private helper methods
 
     #region Internal methods
 

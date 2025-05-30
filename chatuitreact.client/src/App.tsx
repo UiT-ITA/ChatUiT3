@@ -9,6 +9,7 @@ import Profile from './pages/ProfilePage';
 import AdminPage from './pages/AdminPage';
 import HelpPage from './pages/HelpPage';
 import ChatPage from './pages/ChatPage';
+import AssistantsPage from './pages/AssistantsPage';
 import ProtectedRoute from './components/common/ProtectedRoute';
 import LoadingIndicator from './components/common/LoadingIndicator';
 import { SignalRProvider } from './contexts/SignalRContext';
@@ -52,6 +53,7 @@ const App: React.FC = () => {
                 <Route path="/test" element={<Test />} />
                 <Route path="/profile" element={<Profile />} />
                 <Route path="/help" element={<HelpPage />} />
+                <Route path="/assistants" element={<AssistantsPage />} />
                 <Route path="/c/new" element={<ChatPage />} /> 
                 <Route path="/c/:chatId" element={<ChatPage />} />
                 <Route 

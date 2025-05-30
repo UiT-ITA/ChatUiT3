@@ -16,7 +16,7 @@ public class AiChatHeader
 
 public class AiChat : AiChatHeader
 {
-    public AiChatSettings Settings { get; set; } = new AiChatSettings();
+    public string? AssistantId { get; set; }
     public List<AiChatMessage> Messages { get; set; } = new List<AiChatMessage>();
 }
 
@@ -34,11 +34,11 @@ public class AiChatMessage
 
 public class AiChatSettings
 {
-    public string AssistantName { get; set; } = string.Empty;
     public string SystemPrompt { get; set; } = string.Empty;
-    public AiModel Model { get; set; } = new AiModel();
-    public AiModelSettings ModelSettings { get; set; } = new AiModelSettings();
-    public bool SaveToDB { get; set; } = true;
+    public AiModel Model { get; set; } = new AiModel(); // maybe use model id instead?
+    public float Temperature { get; set; } = 0.5f;
+    public ReasoningEffort ReasoningEffort { get; set; } = ReasoningEffort.None;
+    
 }
 
 public abstract class AiChatFile
