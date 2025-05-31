@@ -2,7 +2,7 @@ import React, { useLayoutEffect, useRef } from 'react';
 import ChatMessage from './ChatMessage';
 import './ChatHistory.css';
 import { useActiveChatMessages } from '../../hooks/useChatData';
-import { ChatStatus } from '../../types/chatModels';
+// import { ChatStatus } from '../../types/chatModels';
 
 const ChatHistory = () => {
   const messages = useActiveChatMessages();
