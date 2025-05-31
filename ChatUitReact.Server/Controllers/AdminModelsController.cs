@@ -1,6 +1,5 @@
 using Microsoft.AspNetCore.Mvc;
 using ChatUitReact.Server.Models;
-using ChatUitReact.Server.Models.DTOs;
 using ChatUitReact.Server.Services;
 
 namespace ChatUitReact.Server.Controllers;
@@ -70,7 +69,7 @@ public class AdminModelsController : ControllerBase
     {
         try
         {
-            var model = new AiModel
+            var model = new Model
             {
                 ModelName = createDto.ModelName,
                 EndpointId = createDto.EndpointId,
@@ -106,7 +105,7 @@ public class AdminModelsController : ControllerBase
                 return BadRequest("Route id does not match request body id");
             }
 
-            var model = new AiModel
+            var model = new Model
             {
                 Id = updateDto.Id,
                 ModelName = updateDto.ModelName,

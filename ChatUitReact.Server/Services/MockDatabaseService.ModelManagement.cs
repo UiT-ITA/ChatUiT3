@@ -4,25 +4,25 @@ namespace ChatUitReact.Server.Services;
 
 public partial class MockDatabaseService
 {
-    public Task<List<AiModel>> GetModelsAsync()
+    public Task<List<Model>> GetModelsAsync()
     {
         return Task.FromResult(_models.Values.ToList());
     }
 
-    public Task<AiModel?> GetModelByIdAsync(string modelId)
+    public Task<Model?> GetModelByIdAsync(string modelId)
     {
         _models.TryGetValue(modelId, out var model);
-        return Task.FromResult<AiModel?>(model);
+        return Task.FromResult<Model?>(model);
     }
 
-    public Task<string> CreateModelAsync(AiModel model)
+    public Task<string> CreateModelAsync(Model model)
     {
         model.Id = Guid.NewGuid().ToString();
         _models[model.Id] = model;
         return Task.FromResult(model.Id);
     }
 
-    public Task<bool> UpdateModelAsync(AiModel model)
+    public Task<bool> UpdateModelAsync(Model model)
     {
         if (_models.ContainsKey(model.Id))
         {

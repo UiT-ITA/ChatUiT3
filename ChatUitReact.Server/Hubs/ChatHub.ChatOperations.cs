@@ -44,9 +44,9 @@ public partial class ChatHub
         
         if (chatId == "new")
         {
-            var messages = new List<AiChatMessage>
+            var messages = new List<ChatMessage>
             {
-                new AiChatMessage
+                new ChatMessage
                 {
                     Role = AiChatRole.User,
                     Content = content,
@@ -62,7 +62,7 @@ public partial class ChatHub
         else
         {
             await Groups.AddToGroupAsync(Context.ConnectionId, $"{userId}:{chatId}");
-            await _chatService.SendStreamingMessageAsync(userId, chatId, new AiChatMessage
+            await _chatService.SendStreamingMessageAsync(userId, chatId, new ChatMessage
             {
                 Role = AiChatRole.User,
                 Content = content,

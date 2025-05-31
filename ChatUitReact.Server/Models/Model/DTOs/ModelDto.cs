@@ -1,4 +1,6 @@
-namespace ChatUitReact.Server.Models.DTOs;
+using System.Collections.Generic;
+
+namespace ChatUitReact.Server.Models;
 
 public class ModelDto
 {

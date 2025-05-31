@@ -6,8 +6,8 @@ namespace ChatUitReact.Server.Services;
 public class ModelService : IModelService
 {
     private readonly IDatabaseService _databaseService;
-    private readonly ConcurrentDictionary<string, AiModelEndpoint> _endpoints = new();
-    private readonly ConcurrentDictionary<string, AiModel> _models = new();
+    private readonly ConcurrentDictionary<string, ModelEndpoint> _endpoints = new();
+    private readonly ConcurrentDictionary<string, Model> _models = new();
     private bool _isInitialized = false;
     private readonly SemaphoreSlim _initLock = new(1, 1);
 
@@ -43,20 +43,20 @@ public class ModelService : IModelService
     }
 
     // Endpoint operations
-    public async Task<List<AiModelEndpoint>> GetAllEndpointsAsync()
+    public async Task<List<ModelEndpoint>> GetAllEndpointsAsync()
     {
         await EnsureInitializedAsync();
         return _endpoints.Values.ToList();
     }
 
-    public async Task<AiModelEndpoint?> GetEndpointByIdAsync(string endpointId)
+    public async Task<ModelEndpoint?> GetEndpointByIdAsync(string endpointId)
     {
         await EnsureInitializedAsync();
         _endpoints.TryGetValue(endpointId, out var endpoint);
         return endpoint;
     }
 
-    public async Task<string> CreateEndpointAsync(AiModelEndpoint endpoint)
+    public async Task<string> CreateEndpointAsync(ModelEndpoint endpoint)
     {
         await EnsureInitializedAsync();
         var id = await _databaseService.CreateEndpointAsync(endpoint);
@@ -65,7 +65,7 @@ public class ModelService : IModelService
         return id;
     }
 
-    public async Task<bool> UpdateEndpointAsync(AiModelEndpoint endpoint)
+    public async Task<bool> UpdateEndpointAsync(ModelEndpoint endpoint)
     {
         await EnsureInitializedAsync();
         var success = await _databaseService.UpdateEndpointAsync(endpoint);
@@ -84,20 +84,20 @@ public class ModelService : IModelService
     }
 
     // Model operations
-    public async Task<List<AiModel>> GetAllModelsAsync()
+    public async Task<List<Model>> GetAllModelsAsync()
     {
         await EnsureInitializedAsync();
         return _models.Values.ToList();
     }
 
-    public async Task<AiModel?> GetModelByIdAsync(string modelId)
+    public async Task<Model?> GetModelByIdAsync(string modelId)
     {
         await EnsureInitializedAsync();
         _models.TryGetValue(modelId, out var model);
         return model;
     }
 
-    public async Task<string> CreateModelAsync(AiModel model)
+    public async Task<string> CreateModelAsync(Model model)
     {
         await EnsureInitializedAsync();
         var id = await _databaseService.CreateModelAsync(model);
@@ -106,7 +106,7 @@ public class ModelService : IModelService
         return id;
     }
 
-    public async Task<bool> UpdateModelAsync(AiModel model)
+    public async Task<bool> UpdateModelAsync(Model model)
     {
         await EnsureInitializedAsync();
         var success = await _databaseService.UpdateModelAsync(model);
@@ -125,7 +125,7 @@ public class ModelService : IModelService
     }
 
     // User-specific operations
-    public async Task<List<AiModel>> GetAvailableModelsForUserAsync(List<UserRole> userRoles)
+    public async Task<List<Model>> GetAvailableModelsForUserAsync(List<UserRole> userRoles)
     {
         await EnsureInitializedAsync();
         return _models.Values
@@ -133,7 +133,7 @@ public class ModelService : IModelService
             .ToList();
     }
 
-    public async Task<AiModel?> GetModelForUserAsync(string modelId, List<UserRole> userRoles)
+    public async Task<Model?> GetModelForUserAsync(string modelId, List<UserRole> userRoles)
     {
         await EnsureInitializedAsync();
         if (!_models.TryGetValue(modelId, out var model))
@@ -143,7 +143,7 @@ public class ModelService : IModelService
     }
 
     // Provider integration
-    public async Task<(AiModelEndpoint endpoint, AiModel model)?> GetModelWithEndpointAsync(string modelId)
+    public async Task<(ModelEndpoint endpoint, Model model)?> GetModelWithEndpointAsync(string modelId)
     {
         await EnsureInitializedAsync();
         if (!_models.TryGetValue(modelId, out var model))

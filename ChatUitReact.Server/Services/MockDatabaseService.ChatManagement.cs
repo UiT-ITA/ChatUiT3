@@ -4,34 +4,35 @@ namespace ChatUitReact.Server.Services;
 
 public partial class MockDatabaseService
 {
-    public Task<List<AiChatHeader>> GetChatListAsync(string userId)
+    public Task<List<ChatHeader>> GetChatListAsync(string userId)
     {
         AddUserToService(userId);
 
-        var chatList = new List<AiChatHeader>();
-        chatList.AddRange(_chatStorage[userId].Select(chat => new AiChatHeader
+        var chatList = new List<ChatHeader>();
+        chatList.AddRange(_chatStorage[userId].Select(chat => new ChatHeader
         {
             Id = chat.Id,
             Name = chat.Name,
             CreatedAt = chat.CreatedAt,
-            UpdatedAt = chat.UpdatedAt
+            UpdatedAt = chat.UpdatedAt,
+            Status = chat.Status
         }));
 
         return Task.FromResult(chatList);
     }
 
-    public Task<AiChat?> GetChatByIdAsync(string userId, string chatId)
+    public Task<Chat?> GetChatByIdAsync(string userId, string chatId)
     {
         AddUserToService(userId);
 
-        AiChat? chat = _chatStorage[userId].FirstOrDefault(c => c.Id == chatId);
+        Chat? chat = _chatStorage[userId].FirstOrDefault(c => c.Id == chatId);
         if (chat != null)
         {
-            chat = new AiChat
+            chat = new Chat
             {
                 Id = chat.Id,
                 Name = chat.Name,
-                Messages = chat.Messages.Select(m => new AiChatMessage
+                Messages = chat.Messages.Select(m => new ChatMessage
                 {
                     Id = m.Id,
                     Role = m.Role,
@@ -39,13 +40,16 @@ public partial class MockDatabaseService
                     Timestamp = m.Timestamp,
                     Status = m.Status,
                 }).ToList(),
-                AssistantId = chat.AssistantId
+                AssistantId = chat.AssistantId,
+                Status = chat.Status,
+                CreatedAt = chat.CreatedAt,
+                UpdatedAt = chat.UpdatedAt
             };
         }
-        return Task.FromResult<AiChat?>(chat);
+        return Task.FromResult<Chat?>(chat);
     }
 
-    public Task AddChatAsync(string userId, AiChat chat)
+    public Task AddChatAsync(string userId, Chat chat)
     {
         AddUserToService(userId);
         _chatStorage[userId].Add(chat);

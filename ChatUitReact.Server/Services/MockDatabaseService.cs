@@ -19,38 +19,38 @@ public partial class MockDatabaseService : IDatabaseService
         Roles = new List<UserRole> { UserRole.Admin }
     };
 
-    private List<AiChat> dummyHistory = new List<AiChat>
+    private List<Chat> dummyHistory = new List<Chat>
     {
-        new AiChat
+        new Chat
         {
             Id = "chat1",
             Name = "Chat 1",
-            Messages = new List<AiChatMessage>
+            Messages = new List<ChatMessage>
             {
-                new AiChatMessage { Id = "1", Role = AiChatRole.User, Content = "Hello!", Timestamp = DateTime.UtcNow },
-                new AiChatMessage { Id = "2", Role = AiChatRole.Assistant, Content = "Hi there!", Timestamp = DateTime.UtcNow.AddMinutes(1) }
+                new ChatMessage { Id = "1", Role = AiChatRole.User, Content = "Hello!", Timestamp = DateTime.UtcNow },
+                new ChatMessage { Id = "2", Role = AiChatRole.Assistant, Content = "Hi there!", Timestamp = DateTime.UtcNow.AddMinutes(1) }
             },
             AssistantId = "assistant1"
         },
-        new AiChat
+        new Chat
         {
             Id = "chat2",
             Name = "Chat 2",
-            Messages = new List<AiChatMessage>
+            Messages = new List<ChatMessage>
             {
-                new AiChatMessage { Id = "3", Role = AiChatRole.User, Content = "How are you?", Timestamp = DateTime.UtcNow.AddMinutes(2) },
-                new AiChatMessage { Id = "4", Role = AiChatRole.Assistant, Content = "I'm fine, thank you!", Timestamp = DateTime.UtcNow.AddMinutes(3) }
+                new ChatMessage { Id = "3", Role = AiChatRole.User, Content = "How are you?", Timestamp = DateTime.UtcNow.AddMinutes(2) },
+                new ChatMessage { Id = "4", Role = AiChatRole.Assistant, Content = "I'm fine, thank you!", Timestamp = DateTime.UtcNow.AddMinutes(3) }
             },
             AssistantId = "assistant1"
         },
-        new AiChat
+        new Chat
         {
             Id = "chat3",
             Name = "Markdown",
-            Messages = new List<AiChatMessage>
+            Messages = new List<ChatMessage>
             {
-                new AiChatMessage { Id = "5", Role = AiChatRole.User, Content = "Hi, I need examples of advanced markdown formatting for my documentation. Can you show me various features like tables, code blocks, math equations, etc.?", Timestamp = DateTime.UtcNow.AddMinutes(4) },
-                new AiChatMessage { Id = "6", Role = AiChatRole.Assistant, Content = @"# Markdown Showcase
+                new ChatMessage { Id = "5", Role = AiChatRole.User, Content = "Hi, I need examples of advanced markdown formatting for my documentation. Can you show me various features like tables, code blocks, math equations, etc.?", Timestamp = DateTime.UtcNow.AddMinutes(4) },
+                new ChatMessage { Id = "6", Role = AiChatRole.Assistant, Content = @"# Markdown Showcase
 
 Certainly! I'd be happy to demonstrate various markdown formatting options.
 
@@ -103,8 +103,8 @@ for i in range(10):
 ```
 
 ", Timestamp = DateTime.UtcNow.AddMinutes(5) },
-                new AiChatMessage { Id = "7", Role = AiChatRole.User, Content = "That's great! Can you show me more examples, particularly with math equations and diagrams? Also, can you show code examples in other languages?", Timestamp = DateTime.UtcNow.AddMinutes(6) },
-                new AiChatMessage { Id = "8", Role = AiChatRole.Assistant, Content = @"## Math Equations
+                new ChatMessage { Id = "7", Role = AiChatRole.User, Content = "That's great! Can you show me more examples, particularly with math equations and diagrams? Also, can you show code examples in other languages?", Timestamp = DateTime.UtcNow.AddMinutes(6) },
+                new ChatMessage { Id = "8", Role = AiChatRole.Assistant, Content = @"## Math Equations
 
 Markdown supports LaTeX-style math equations. Here are some examples:
 
@@ -176,8 +176,8 @@ WHERE Orders.OrderDate > '2023-01-01'
 ORDER BY Customers.CustomerName, Orders.OrderID;
 ```
 ", Timestamp = DateTime.UtcNow.AddMinutes(7) },
-                new AiChatMessage { Id = "9", Role = AiChatRole.User, Content = "This is incredibly helpful! Can you also show me how to add quotes, horizontal rules, and maybe some advanced link formatting? Also, are there any markdown extensions for diagrams?", Timestamp = DateTime.UtcNow.AddMinutes(8) },
-                new AiChatMessage { Id = "10", Role = AiChatRole.Assistant, Content = @"## Quotes and Horizontal Rules
+                new ChatMessage { Id = "9", Role = AiChatRole.User, Content = "This is incredibly helpful! Can you also show me how to add quotes, horizontal rules, and maybe some advanced link formatting? Also, are there any markdown extensions for diagrams?", Timestamp = DateTime.UtcNow.AddMinutes(8) },
+                new ChatMessage { Id = "10", Role = AiChatRole.Assistant, Content = @"## Quotes and Horizontal Rules
 
 > This is a simple blockquote.
 
@@ -293,8 +293,8 @@ Another Term
 
 I hope these examples cover what you're looking for!
 ", Timestamp = DateTime.UtcNow.AddMinutes(9) },
-                new AiChatMessage { Id = "11", Role = AiChatRole.User, Content = "This is an outstanding reference! One last thing - could you show me examples of embedding HTML directly in markdown? I heard that's possible too.", Timestamp = DateTime.UtcNow.AddMinutes(10) },
-                new AiChatMessage { Id = "12", Role = AiChatRole.Assistant, Content = @"## HTML in Markdown
+                new ChatMessage { Id = "11", Role = AiChatRole.User, Content = "This is an outstanding reference! One last thing - could you show me examples of embedding HTML directly in markdown? I heard that's possible too.", Timestamp = DateTime.UtcNow.AddMinutes(10) },
+                new ChatMessage { Id = "12", Role = AiChatRole.Assistant, Content = @"## HTML in Markdown
 
 Yes, most Markdown parsers allow embedding HTML directly. Here are some examples:
 
@@ -396,9 +396,9 @@ Note: Some Markdown processors may have limitations on what HTML is allowed, and
         }
     };
 
-    private ConcurrentDictionary<string, List<AiChat>> _chatStorage = new ConcurrentDictionary<string, List<AiChat>>();
-    private ConcurrentDictionary<string, AiModelEndpoint> _endpoints = new ConcurrentDictionary<string, AiModelEndpoint>();
-    private ConcurrentDictionary<string, AiModel> _models = new ConcurrentDictionary<string, AiModel>();
+    private ConcurrentDictionary<string, List<Chat>> _chatStorage = new ConcurrentDictionary<string, List<Chat>>();
+    private ConcurrentDictionary<string, ModelEndpoint> _endpoints = new ConcurrentDictionary<string, ModelEndpoint>();
+    private ConcurrentDictionary<string, Model> _models = new ConcurrentDictionary<string, Model>();
 
     public MockDatabaseService(IConfiguration configuration)
     {
@@ -411,14 +411,14 @@ Note: Some Markdown processors may have limitations on what HTML is allowed, and
     {
         _chatStorage.GetOrAdd(userId, _ => 
         {
-            List<AiChat> userChats = new List<AiChat>();
+            List<Chat> userChats = new List<Chat>();
             foreach (var chat in dummyHistory)
             {
-                userChats.Add(new AiChat
+                userChats.Add(new Chat
                 {
                     Id = chat.Id,
                     Name = chat.Name,
-                    Messages = chat.Messages.Select(m => new AiChatMessage
+                    Messages = chat.Messages.Select(m => new ChatMessage
                     {
                         Id = m.Id,
                         Role = m.Role,

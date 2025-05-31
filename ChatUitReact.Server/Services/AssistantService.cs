@@ -1,5 +1,4 @@
 using ChatUitReact.Server.Models;
-using ChatUitReact.Server.Models.DTOs;
 using ChatUitReact.Server.Hubs;
 using Microsoft.AspNetCore.SignalR;
 
@@ -35,7 +34,7 @@ namespace ChatUitReact.Server.Services
             };
         }
 
-        public async Task<AiAssistant?> GetAssistantByIdAsync(string assistantId, string userId)
+        public async Task<Assistant?> GetAssistantByIdAsync(string assistantId, string userId)
         {
             var assistant = await _databaseService.GetAssistantByIdAsync(assistantId);
             if (assistant == null) return null;
@@ -56,13 +55,13 @@ namespace ChatUitReact.Server.Services
                 throw new ArgumentException("Invalid model ID", nameof(createDto.ModelId));
             }
 
-            var assistant = new AiAssistant
+            var assistant = new Assistant
             {
                 Name = createDto.Name,
                 Description = createDto.Description,
                 Tags = createDto.Tags,
                 Model = model,
-                ChatSettings = new AiChatSettings
+                ChatSettings = new ChatSettings
                 {
                     SystemPrompt = createDto.SystemPrompt,
                     Temperature = createDto.Temperature,
@@ -98,7 +97,7 @@ namespace ChatUitReact.Server.Services
             assistant.Description = updateDto.Description;
             assistant.Tags = updateDto.Tags;
             assistant.Model = model;
-            assistant.ChatSettings = new AiChatSettings
+            assistant.ChatSettings = new ChatSettings
             {
                 SystemPrompt = updateDto.SystemPrompt,
                 Temperature = updateDto.Temperature,

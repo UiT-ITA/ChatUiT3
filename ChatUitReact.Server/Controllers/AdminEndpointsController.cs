@@ -1,6 +1,5 @@
 using Microsoft.AspNetCore.Mvc;
 using ChatUitReact.Server.Models;
-using ChatUitReact.Server.Models.DTOs;
 using ChatUitReact.Server.Services;
 
 namespace ChatUitReact.Server.Controllers;
@@ -68,12 +67,12 @@ public class AdminEndpointsController : ControllerBase
     {
         try
         {
-            if (!Enum.TryParse<AiEndpointType>(createDto.EndpointType, out var endpointType))
+            if (!Enum.TryParse<EndpointType>(createDto.EndpointType, out var endpointType))
             {
                 return BadRequest($"Invalid endpoint type: {createDto.EndpointType}");
             }
 
-            var endpoint = new AiModelEndpoint
+            var endpoint = new ModelEndpoint
             {
                 Url = createDto.Url,
                 ApiKey = createDto.ApiKey,
@@ -108,12 +107,12 @@ public class AdminEndpointsController : ControllerBase
                 return BadRequest("Route id does not match request body id");
             }
 
-            if (!Enum.TryParse<AiEndpointType>(updateDto.EndpointType, out var endpointType))
+            if (!Enum.TryParse<EndpointType>(updateDto.EndpointType, out var endpointType))
             {
                 return BadRequest($"Invalid endpoint type: {updateDto.EndpointType}");
             }
 
-            var endpoint = new AiModelEndpoint
+            var endpoint = new ModelEndpoint
             {
                 Id = updateDto.Id,
                 Url = updateDto.Url,

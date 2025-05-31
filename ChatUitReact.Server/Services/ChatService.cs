@@ -35,16 +35,16 @@ public class ChatService : IChatService
 
     #region Chat management
 
-    public async Task<List<AiChatHeader>> GetChatListAsync(string userId)
+    public async Task<List<ChatHeader>> GetChatListAsync(string userId)
     {
         return await _databaseService.GetChatListAsync(userId);
     }
 
-    public async Task<List<AiChat>> GetChatsAsync(string userId)
+    public async Task<List<Chat>> GetChatsAsync(string userId)
     {
         var chatList = await _databaseService.GetChatListAsync(userId);
 
-        var chats = new List<AiChat>();
+        var chats = new List<Chat>();
 
         foreach (var chatHeader in chatList)
         {
@@ -58,28 +58,28 @@ public class ChatService : IChatService
         return chats;
     }
 
-    public async Task<AiChat?> GetChatByIdAsync(string userId, string chatId)
+    public async Task<Chat?> GetChatByIdAsync(string userId, string chatId)
     {
         return await _databaseService.GetChatByIdAsync(userId, chatId);
     }
 
-    public async Task<AiChat> CreateChatAsync(string userId, string? assistantId, List<AiChatMessage> messages)
+    public async Task<Chat> CreateChatAsync(string userId, string? assistantId, List<Models.ChatMessage> messages)
     {
         var settings = await GetChatSettingsFromAssistant(userId, assistantId);
         return await CreateChatAsync(userId, settings, messages, assistantId);
     }
 
-    public async Task<AiChat> CreateChatAsync(string userId, AiChatSettings settings, List<AiChatMessage> messages)
+    public async Task<Chat> CreateChatAsync(string userId, ChatSettings settings, List<Models.ChatMessage> messages)
     {
         return await CreateChatAsync(userId, settings, messages, null);
     }
 
-    private async Task<AiChat> CreateChatAsync(string userId, AiChatSettings settings, List<AiChatMessage> messages, string? assistantId)
+    private async Task<Chat> CreateChatAsync(string userId, ChatSettings settings, List<Models.ChatMessage> messages, string? assistantId)
     {
         var lastMessage = messages.Last();
         var initialMessages = messages.Take(messages.Count - 1).ToList();
 
-        var newChat = new AiChat 
+        var newChat = new Chat 
         {
             Name = "New chat",
             AssistantId = assistantId,
@@ -124,28 +124,28 @@ public class ChatService : IChatService
 
     #region Message operations
 
-    public async Task SendMessageAsync(string userId, string chatId, AiChatMessage message)
+    public async Task SendMessageAsync(string userId, string chatId, Models.ChatMessage message)
     {
         await SendStreamingMessageAsync(userId, chatId, message);
     }
 
-    public async Task SendMessageAsync(string userId, string chatId, AiChatMessage message, string? assistantId)
+    public async Task SendMessageAsync(string userId, string chatId, Models.ChatMessage message, string? assistantId)
     {
         await SendStreamingMessageAsync(userId, chatId, message, assistantId);
     }
 
-    public async Task SendStreamingMessageAsync(string userId, string chatId, AiChatMessage userMessage)
+    public async Task SendStreamingMessageAsync(string userId, string chatId, Models.ChatMessage userMessage)
     {
         await SendStreamingMessageAsync(userId, chatId, userMessage, null);
     }
 
-    public async Task SendStreamingMessageAsync(string userId, string chatId, AiChatMessage userMessage, string? assistantId)
+    public async Task SendStreamingMessageAsync(string userId, string chatId, Models.ChatMessage userMessage, string? assistantId)
     {
         // Add user message to database
         await _databaseService.AddMessageAsync(userId, chatId, userMessage);
         
         // Create placeholder for assistant's response
-        var assistantMessage = new AiChatMessage
+        var assistantMessage = new Models.ChatMessage
         {
             Role = AiChatRole.Assistant,
             Status = AiChatStatus.Generating
@@ -215,7 +215,7 @@ public class ChatService : IChatService
         });
     }
 
-    public Task AddMessageAsync(string userId, string chatId, AiChatMessage message)
+    public Task AddMessageAsync(string userId, string chatId, Models.ChatMessage message)
     {
         throw new NotImplementedException("AddMessageAsync is not implemented yet.");
     }
@@ -231,7 +231,7 @@ public class ChatService : IChatService
 
     #region Standard
 
-    public Task<string> GetResponseAsync(string userId, string chatId, AiChatMessage userMessage)
+    public Task<string> GetResponseAsync(string userId, string chatId, Models.ChatMessage userMessage)
     {
         throw new NotImplementedException("GetResponseAsync is not implemented yet.");
     }
@@ -241,7 +241,7 @@ public class ChatService : IChatService
     }
 
     // AI Response without chat
-    public Task<string> GetResponseAsync(string userId, AiChatSettings settings, List<AiChatMessage> messages)
+    public Task<string> GetResponseAsync(string userId, ChatSettings settings, List<Models.ChatMessage> messages)
     {
         throw new NotImplementedException("GetResponseAsync is not implemented yet.");
     }
@@ -250,7 +250,7 @@ public class ChatService : IChatService
 
     #region Streaming
 
-    public Task<string> GetStreamingResponseAsync(string userId, string chatId, AiChatMessage userMessage)
+    public Task<string> GetStreamingResponseAsync(string userId, string chatId, Models.ChatMessage userMessage)
     {
         throw new NotImplementedException("GetStreamingResponseAsync is not implemented yet.");
     }
@@ -261,7 +261,7 @@ public class ChatService : IChatService
     }
 
     // Streaming AI Response without chat
-    public Task<string> GetStreamingResponseAsync(string userId, AiChatSettings settings, List<AiChatMessage> messages)
+    public Task<string> GetStreamingResponseAsync(string userId, ChatSettings settings, List<Models.ChatMessage> messages)
     {
         throw new NotImplementedException("GetStreamingResponseAsync is not implemented yet.");
     }
@@ -272,7 +272,7 @@ public class ChatService : IChatService
 
     #region Private helper methods
 
-    private async Task<AiChatSettings> GetChatSettingsFromAssistant(string userId, string? assistantId)
+    private async Task<ChatSettings> GetChatSettingsFromAssistant(string userId, string? assistantId)
     {
         if (!string.IsNullOrEmpty(assistantId))
         {
@@ -281,7 +281,7 @@ public class ChatService : IChatService
                 var assistant = await _assistantService.GetAssistantByIdAsync(assistantId, userId);
                 if (assistant?.Model != null)
                 {
-                    return new AiChatSettings 
+                    return new ChatSettings 
                     { 
                         Model = assistant.Model,
                         SystemPrompt = assistant.ChatSettings?.SystemPrompt ?? string.Empty,
@@ -297,7 +297,7 @@ public class ChatService : IChatService
         }
         
         // Fallback to default settings
-        return new AiChatSettings { Model = new AiModel { ModelName = "gpt-4o" } };
+        return new ChatSettings { Model = new Model { ModelName = "gpt-4o" } };
     }
 
     #endregion Private helper methods

@@ -1,11 +1,6 @@
 using Microsoft.AspNetCore.SignalR;
-using System;
-using System.Collections.Generic;
-using System.Threading.Tasks;
 using ChatUitReact.Server.Services;
 using Microsoft.AspNetCore.Authorization;
-using ChatUitReact.Server.Models.DTOs;
-using Microsoft.Extensions.Logging;
 using ChatUitReact.Server.Models;
 using System.Linq;
 
@@ -13,8 +8,8 @@ namespace ChatUitReact.Server.Hubs;
 
 public interface IChatHubClient
 {
-    Task ChatListUpdated(List<AiChatHeader> chats);
-    Task ChatUpdated(AiChat chat);
+    Task ChatListUpdated(List<ChatHeader> chats);
+    Task ChatUpdated(Chat chat);
     Task ReceiveMessageChunk(string chatId, string messageId, string chunk);
     Task ChatCreated(string chatId);
     Task UserAssistants(AssistantListDto assistants);

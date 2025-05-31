@@ -108,8 +108,6 @@ app.UseAuthorization();
 
 app.MapControllers();
 app.MapHub<ChatHub>("/chatHub");
-app.MapHub<TestHub>("/testHub");
-app.MapHub<TestAuthHub>("/testAuthHub");
 app.MapFallbackToFile("/index.html");
 
 app.Run();

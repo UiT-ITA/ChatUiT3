@@ -4,7 +4,7 @@ namespace ChatUitReact.Server.Services;
 
 public partial class MockDatabaseService
 {
-    public Task AddMessageAsync(string userId, string chatId, AiChatMessage message)
+    public Task AddMessageAsync(string userId, string chatId, ChatMessage message)
     {
         AddUserToService(userId);
         var chat = _chatStorage[userId].FirstOrDefault(c => c.Id == chatId);
@@ -16,7 +16,7 @@ public partial class MockDatabaseService
         return Task.CompletedTask;
     }
 
-    public Task UpdateMessageAsync(string userId, string chatId, AiChatMessage message)
+    public Task UpdateMessageAsync(string userId, string chatId, ChatMessage message)
     {
         AddUserToService(userId);
         var chat = _chatStorage[userId].FirstOrDefault(c => c.Id == chatId);

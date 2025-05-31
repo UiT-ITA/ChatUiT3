@@ -1,6 +1,8 @@
-﻿namespace ChatUitReact.Server.Models;
+using System;
 
-public class AiChatTool
+namespace ChatUitReact.Server.Models;
+
+public class ChatTool
 {
     public string Id { get; set; } = Guid.NewGuid().ToString();
     public string Name { get; set; } = string.Empty;

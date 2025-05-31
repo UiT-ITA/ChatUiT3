@@ -4,10 +4,10 @@ namespace ChatUitReact.Server.Services;
 
 public partial class MockDatabaseService
 {
-    private readonly List<AiAssistant> _assistants = new();
+    private readonly List<Assistant> _assistants = new();
     private readonly object _assistantsLock = new();
 
-    public Task<List<AiAssistant>> GetAssistantsByOwnerAsync(string ownerId)
+    public Task<List<Assistant>> GetAssistantsByOwnerAsync(string ownerId)
     {
         lock (_assistantsLock)
         {
@@ -15,7 +15,7 @@ public partial class MockDatabaseService
         }
     }
 
-    public Task<List<AiAssistant>> GetSystemAssistantsAsync()
+    public Task<List<Assistant>> GetSystemAssistantsAsync()
     {
         lock (_assistantsLock)
         {
@@ -23,7 +23,7 @@ public partial class MockDatabaseService
         }
     }
 
-    public Task<List<AiAssistant>> GetAssistantsByIdsAsync(List<string> assistantIds)
+    public Task<List<Assistant>> GetAssistantsByIdsAsync(List<string> assistantIds)
     {
         lock (_assistantsLock)
         {
@@ -31,7 +31,7 @@ public partial class MockDatabaseService
         }
     }
 
-    public Task<AiAssistant?> GetAssistantByIdAsync(string assistantId)
+    public Task<Assistant?> GetAssistantByIdAsync(string assistantId)
     {
         lock (_assistantsLock)
         {
@@ -39,7 +39,7 @@ public partial class MockDatabaseService
         }
     }
 
-    public Task<AiAssistant> CreateAssistantAsync(AiAssistant assistant)
+    public Task<Assistant> CreateAssistantAsync(Assistant assistant)
     {
         lock (_assistantsLock)
         {
@@ -48,7 +48,7 @@ public partial class MockDatabaseService
         }
     }
 
-    public Task<AiAssistant?> UpdateAssistantAsync(AiAssistant assistant)
+    public Task<Assistant?> UpdateAssistantAsync(Assistant assistant)
     {
         lock (_assistantsLock)
         {
@@ -56,9 +56,9 @@ public partial class MockDatabaseService
             if (index >= 0)
             {
                 _assistants[index] = assistant;
-                return Task.FromResult<AiAssistant?>(assistant);
+                return Task.FromResult<Assistant?>(assistant);
             }
-            return Task.FromResult<AiAssistant?>(null);
+            return Task.FromResult<Assistant?>(null);
         }
     }
 
@@ -95,23 +95,23 @@ public partial class MockDatabaseService
 
     private void InitializeSystemAssistants()
     {
-        var defaultModel = _models.Values.FirstOrDefault() ?? new AiModel
+        var defaultModel = _models.Values.FirstOrDefault() ?? new Model
         {
             Id = "default-model",
             ModelName = "Default Model",
             EndpointId = "default-endpoint"
         };
 
-        var systemAssistants = new List<AiAssistant>
+        var systemAssistants = new List<Assistant>
         {
-            new AiAssistant
+            new Assistant
             {
                 Id = "assistant1",
                 Name = "General Assistant",
                 Description = "A helpful general-purpose AI assistant",
                 Tags = new List<string> { "general", "helpful" },
                 Model = defaultModel,
-                ChatSettings = new AiChatSettings
+                ChatSettings = new ChatSettings
                 {
                     SystemPrompt = "You are a helpful AI assistant. Be concise and accurate.",
                     Temperature = 0.7f,
@@ -119,14 +119,14 @@ public partial class MockDatabaseService
                 },
                 OwnerId = "System"
             },
-            new AiAssistant
+            new Assistant
             {
                 Id = "assistant2",
                 Name = "Coding Assistant",
                 Description = "An AI assistant specialized in programming and code review",
                 Tags = new List<string> { "coding", "programming", "development" },
                 Model = defaultModel,
-                ChatSettings = new AiChatSettings
+                ChatSettings = new ChatSettings
                 {
                     SystemPrompt = "You are a programming expert. Help with code, debugging, and best practices.",
                     Temperature = 0.3f,

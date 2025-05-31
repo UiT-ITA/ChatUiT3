@@ -1,0 +1,31 @@
+using System.Text.Json.Serialization;
+
+namespace ChatUitReact.Server.Models;
+
+[JsonConverter(typeof(JsonStringEnumConverter))]
+public enum AiChatRole
+{
+    User,
+    Assistant,
+    System,
+    ToolRequest,
+    ToolResponse,
+}
+
+[JsonConverter(typeof(JsonStringEnumConverter))]
+public enum AiContentType
+{
+    Text,
+    Image,
+    Mixed
+}
+
+[JsonConverter(typeof(JsonStringEnumConverter))]
+public enum AiChatStatus
+{
+    New,
+    Generating,
+    Success,
+    Error,
+    Cancelled,
+}

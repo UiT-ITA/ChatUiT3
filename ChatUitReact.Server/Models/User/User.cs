@@ -1,16 +1,6 @@
-using System.Text.Json.Serialization;
+using System.Collections.Generic;
 
 namespace ChatUitReact.Server.Models;
-
-[JsonConverter(typeof(JsonStringEnumConverter))]
-public enum UserRole
-{
-    User,
-    Admin,
-    Beta,
-    Super,
-    External
-}
 
 public class UserInfo
 {
@@ -27,7 +17,6 @@ public class UserPreferences
     public List<string> FavoritedAssistantIds { get; set; } = new List<string>();
     public List<string> VisibleAssistantIds { get; set; } = new List<string>();
 }
-
 
 public class NotificationSettings
 {

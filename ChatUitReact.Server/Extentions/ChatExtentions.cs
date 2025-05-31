@@ -1,5 +1,4 @@
 using ChatUitReact.Server.Models;
-using ChatUitReact.Server.Models.DTOs;
 
 namespace ChatUitReact.Server.Extentions
 {

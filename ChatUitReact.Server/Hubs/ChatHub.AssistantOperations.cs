@@ -1,4 +1,4 @@
-using ChatUitReact.Server.Models.DTOs;
+using ChatUitReact.Server.Models;
 using Microsoft.AspNetCore.SignalR;
 
 namespace ChatUitReact.Server.Hubs

@@ -3,7 +3,6 @@ import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 import { ThemeProvider } from './contexts/ThemeContext';
 import MainLayout from './components/layout/MainLayout';
-import Weather from './pages/WeatherPage';
 import Test from './pages/TestPage';
 import Profile from './pages/ProfilePage';
 import AdminPage from './pages/AdminPage';
@@ -49,7 +48,6 @@ const App: React.FC = () => {
             <Routes>
               <Route element={<MainLayout />}>
                 <Route path="/" element={<Home />} />
-                <Route path="/weather" element={<Weather />} />
                 <Route path="/test" element={<Test />} />
                 <Route path="/profile" element={<Profile />} />
                 <Route path="/help" element={<HelpPage />} />

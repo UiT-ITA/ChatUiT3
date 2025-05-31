@@ -4,25 +4,25 @@ namespace ChatUitReact.Server.Services;
 
 public partial class MockDatabaseService
 {
-    public Task<List<AiModelEndpoint>> GetEndpointsAsync()
+    public Task<List<ModelEndpoint>> GetEndpointsAsync()
     {
         return Task.FromResult(_endpoints.Values.ToList());
     }
 
-    public Task<AiModelEndpoint?> GetEndpointByIdAsync(string endpointId)
+    public Task<ModelEndpoint?> GetEndpointByIdAsync(string endpointId)
     {
         _endpoints.TryGetValue(endpointId, out var endpoint);
-        return Task.FromResult<AiModelEndpoint?>(endpoint);
+        return Task.FromResult<ModelEndpoint?>(endpoint);
     }
 
-    public Task<string> CreateEndpointAsync(AiModelEndpoint endpoint)
+    public Task<string> CreateEndpointAsync(ModelEndpoint endpoint)
     {
         endpoint.Id = Guid.NewGuid().ToString();
         _endpoints[endpoint.Id] = endpoint;
         return Task.FromResult(endpoint.Id);
     }
 
-    public Task<bool> UpdateEndpointAsync(AiModelEndpoint endpoint)
+    public Task<bool> UpdateEndpointAsync(ModelEndpoint endpoint)
     {
         if (_endpoints.ContainsKey(endpoint.Id))
         {

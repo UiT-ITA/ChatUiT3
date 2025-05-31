@@ -40,8 +40,8 @@ public class AzureOpenAiService
 
 
     public async Task<string> GetChatCompletionAsync(
-        List<AiChatMessage> messages, // replace
-        AiChatSettings settings, // replace
+        List<Models.ChatMessage> messages, // replace
+        ChatSettings settings, // replace
         //AiChat chat, // Should be used instead of messages and settings
         CancellationToken cancellationToken = default)
     {
@@ -73,7 +73,7 @@ public class AzureOpenAiService
     
     // Used for testing purposes
     public async Task<string> GetChatCompletionAsync(
-        List<AiChatMessage> messages,
+        List<Models.ChatMessage> messages,
         CancellationToken cancellationToken = default)
     {
         try
@@ -99,9 +99,9 @@ public class AzureOpenAiService
 
     // Streaming chat completion - returns collected chunks to avoid yielding in try-catch
     public AsyncCollectionResult<StreamingChatCompletionUpdate> GetChatCompleteionStreamingAsync(
-        List<AiChatMessage> messages,
-        AiModel model,
-        AiChatSettings settings,
+        List<Models.ChatMessage> messages,
+        Model model,
+        ChatSettings settings,
         CancellationToken cancellationToken = default)
     {
         var results = new List<string>();
@@ -123,7 +123,7 @@ public class AzureOpenAiService
     
     // Used for testing purposes
         public AsyncCollectionResult<StreamingChatCompletionUpdate> GetChatCompletionStreamingAsync(
-    List<AiChatMessage> messages,
+    List<Models.ChatMessage> messages,
     CancellationToken cancellationToken = default)
     {
         var results = new List<string>();
@@ -149,7 +149,7 @@ public class AzureOpenAiService
         try
         {
             var chatClient = _client.GetChatClient("gpt-4o-mini");
-            var chatMessages = new List<ChatMessage> {
+            var chatMessages = new List<OpenAI.Chat.ChatMessage> {
                 new SystemChatMessage("Create a name for this chat based on the users initial message. The name must be shorter than 30 characters. Make the name as descriptive as possible. You should **only** respond with the name, exactly the way the name should be written. It should have no quotes around it. It should not have any formating. It will be set directly as the name of the chat. The user's message:\n\n" + prompt)
             };
             var options = new ChatCompletionOptions
@@ -173,9 +173,9 @@ public class AzureOpenAiService
 
 
     // Helper methods
-    private List<ChatMessage> ConvertToChatMessages(List<AiChatMessage> messages)
+    private List<OpenAI.Chat.ChatMessage> ConvertToChatMessages(List<Models.ChatMessage> messages)
     {
-        var result = new List<ChatMessage>();
+        var result = new List<OpenAI.Chat.ChatMessage>();
         
         foreach (var message in messages)
         {
@@ -196,7 +196,7 @@ public class AzureOpenAiService
         return result;
     }
 
-    private ChatCompletionOptions BuildCompletionOptions(AiChatSettings? settings)
+    private ChatCompletionOptions BuildCompletionOptions(ChatSettings? settings)
     {
         // Create options with available properties in the current version
         var options = new ChatCompletionOptions
