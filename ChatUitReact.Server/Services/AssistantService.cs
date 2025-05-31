@@ -138,7 +138,7 @@ namespace ChatUitReact.Server.Services
             if (updatedAssistant == null) return false;
 
             // Notify all connected clients for this user
-            Console.WriteLine($"Assistant {assistant.Id} updated by user {userId}");
+            // Console.WriteLine($"Assistant {assistant.Id} updated by user {userId}");
             await NotifyAssistantsUpdated(userId);
 
             return true;

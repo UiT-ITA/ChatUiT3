@@ -1,5 +1,4 @@
-import React from 'react';
-import { useEffect, useRef } from 'react';
+import React, { useLayoutEffect, useRef } from 'react';
 import ChatMessage from './ChatMessage';
 import './ChatHistory.css';
 import { useActiveChatMessages } from '../../hooks/useChatData';
@@ -15,43 +14,33 @@ const ChatHistory = () => {
     }
   };
 
-const scrollToBottomIfNeeded = () => {
-  if (!chatHistoryRef.current) return;
-  
-  const lastMessage = chatHistoryRef.current.lastElementChild as HTMLElement;
-  if (!lastMessage) return;
-  
-  const containerRect = chatHistoryRef.current.getBoundingClientRect();
-  const messageRect = lastMessage.getBoundingClientRect();
-  
-  // Check if the top of the last message is visible
-  const isTopVisible = messageRect.top >= containerRect.top && messageRect.top <= containerRect.bottom;
+  const scrollToBottomIfNearBottom = () => {
+    if (!chatHistoryRef.current) return;
+    const threshold = 50; // px from bottom to still auto-scroll
+    const { scrollTop, scrollHeight, clientHeight } = chatHistoryRef.current;
+    // If user is within threshold px of the bottom, scroll to bottom
+    if (scrollHeight - scrollTop - clientHeight < threshold) {
+      scrollToBottom();
+    }
+  };
 
-  // Check if ANY part of the last message is visible in the viewport
-  const isAnyPartVisible = messageRect.bottom > containerRect.top && messageRect.top < containerRect.bottom;
-  
-  // Only scroll if the last message is NOT visible (user scrolled up)
-  if (!isAnyPartVisible || isTopVisible) {
-    scrollToBottom();
-  }
-};
-
-useEffect(() => {
-  const lastMessage = messages[messages.length - 1];
-  
-  // Case 1: New generating message - ALWAYS scroll
-  if (lastMessage?.status === ChatStatus.Generating) {
-    scrollToBottom();
-  } else {
-    // Case 2: Other times - only scroll if user not viewing last message
-    scrollToBottomIfNeeded();
-  }
-}, [messages]);
+  useLayoutEffect(() => {
+    // const lastMessage = messages[messages.length - 1];
+    // if (lastMessage?.status === ChatStatus.Generating) {
+    //   scrollToBottomIfNearBottom();
+    // } else {
+      scrollToBottom();
+    // }
+  }, [messages]);
 
   return (
     <div className="chat-history" ref={chatHistoryRef}>
       {messages.map((message) => (
-        <ChatMessage key={message.id} message={message} />
+        <ChatMessage
+          key={message.id}
+          message={message}
+          onStreamingChunk={scrollToBottomIfNearBottom}
+        />
       ))}
     </div>
   );

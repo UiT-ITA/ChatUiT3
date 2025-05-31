@@ -38,7 +38,7 @@ public partial class ChatHub
 
     public async Task SendMessage(string chatId, string content, string? assistantId = null)
     {
-        Console.WriteLine($"SendMessage called with chatId: {chatId}, content: {content}, assistantId: {assistantId}");
+        // Console.WriteLine($"SendMessage called with chatId: {chatId}, content: {content}, assistantId: {assistantId}");
         var userId = GetCurrentUserId();
         
         if (chatId == "new")

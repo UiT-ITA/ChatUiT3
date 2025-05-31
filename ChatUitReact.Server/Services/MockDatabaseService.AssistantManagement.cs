@@ -95,7 +95,6 @@ public partial class MockDatabaseService
 
     private void InitializeSystemAssistants()
     {
-        Console.WriteLine("Initializing system assistants...");
         var defaultModel = _models.Values.FirstOrDefault() ?? new AiModel
         {
             Id = "default-model",

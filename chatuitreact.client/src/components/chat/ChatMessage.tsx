@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useLayoutEffect } from 'react';
 import './ChatMessage.css';
 import { MdRefresh, MdEdit, MdContentCopy, MdCallSplit } from 'react-icons/md';
 import ReactMarkdown from 'react-markdown';
@@ -16,9 +16,10 @@ import { useTheme } from '../../contexts/ThemeContext';
 
 interface ChatMessageProps {
   message: Message;
+  onStreamingChunk?: () => void; // <-- add this prop
 }
 
-const ChatMessage = ({ message }: ChatMessageProps) => {
+const ChatMessage = ({ message, onStreamingChunk }: ChatMessageProps) => {
   const staticContent = useMessageContent(message.id);
   const streamingContent = useStreamingContent(message.id);
   const content = message.status === ChatStatus.Generating ? streamingContent : staticContent;
@@ -104,6 +105,14 @@ const ChatMessage = ({ message }: ChatMessageProps) => {
       );
     },
   };
+
+  useLayoutEffect(() => {
+    if (isStreaming && onStreamingChunk) {
+      onStreamingChunk();
+    }
+    // Only run when streaming content changes
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [streamingContent]);
 
   return (
     <div className={`chat-message ${isUser ? 'user-message' : isFileMessage ? 'file-message' : 'assistant-message'} ${isStreaming ? 'streaming' : ''}`}>
