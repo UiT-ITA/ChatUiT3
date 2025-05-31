@@ -1,5 +1,3 @@
-import { AiModel, AiModelSettings } from './aiModels';
-
 // AI Chat Models (from AiChatModels.cs)
 
 export interface ChatListItem {
