@@ -106,7 +106,7 @@ public partial class MockDatabaseService
         {
             new AiAssistant
             {
-                Id = "system-general",
+                Id = "assistant1",
                 Name = "General Assistant",
                 Description = "A helpful general-purpose AI assistant",
                 Tags = new List<string> { "general", "helpful" },
@@ -121,7 +121,7 @@ public partial class MockDatabaseService
             },
             new AiAssistant
             {
-                Id = "system-coding",
+                Id = "assistant2",
                 Name = "Coding Assistant",
                 Description = "An AI assistant specialized in programming and code review",
                 Tags = new List<string> { "coding", "programming", "development" },

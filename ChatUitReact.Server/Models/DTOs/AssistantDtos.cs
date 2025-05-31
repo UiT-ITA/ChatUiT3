@@ -16,7 +16,9 @@ namespace ChatUitReact.Server.Models.DTOs
         public string Description { get; set; } = string.Empty;
         public List<string> Tags { get; set; } = new List<string>();
         public AiModel Model { get; set; } = new AiModel();
-        public AiChatSettings ChatSettings { get; set; } = new AiChatSettings();
+        public string SystemPrompt { get; set; } = string.Empty;
+        public float Temperature { get; set; } = 0.7f;
+        public ReasoningEffort ReasoningEffort { get; set; } = ReasoningEffort.None;
         public bool IsVisible { get; set; }
     }
 
@@ -48,7 +50,9 @@ namespace ChatUitReact.Server.Models.DTOs
         public List<string> Tags { get; set; } = new List<string>();
         [Required]
         public string ModelId { get; set; } = string.Empty;
-        public AiChatSettings ChatSettings { get; set; } = new AiChatSettings();
+        public string SystemPrompt { get; set; } = string.Empty;
+        public float Temperature { get; set; } = 0.7f;
+        public ReasoningEffort ReasoningEffort { get; set; } = ReasoningEffort.None;
     }
 
     public class UpdateAssistantDto
@@ -61,6 +65,8 @@ namespace ChatUitReact.Server.Models.DTOs
         public List<string> Tags { get; set; } = new List<string>();
         [Required]
         public string ModelId { get; set; } = string.Empty;
-        public AiChatSettings ChatSettings { get; set; } = new AiChatSettings();
+        public string SystemPrompt { get; set; } = string.Empty;
+        public float Temperature { get; set; } = 0.7f;
+        public ReasoningEffort ReasoningEffort { get; set; } = ReasoningEffort.None;
     }
 }

@@ -23,29 +23,29 @@ public partial class MockDatabaseService : IDatabaseService
     {
         new AiChat
         {
-            Id = "00000000-0000-0000-0000-000000000001",
+            Id = "chat1",
             Name = "Chat 1",
             Messages = new List<AiChatMessage>
             {
                 new AiChatMessage { Id = "1", Role = AiChatRole.User, Content = "Hello!", Timestamp = DateTime.UtcNow },
                 new AiChatMessage { Id = "2", Role = AiChatRole.Assistant, Content = "Hi there!", Timestamp = DateTime.UtcNow.AddMinutes(1) }
             },
-            AssistantId = "00000000-0000-0000-0000-assistant00001"
+            AssistantId = "assistant1"
         },
         new AiChat
         {
-            Id = "00000000-0000-0000-0000-000000000002",
+            Id = "chat2",
             Name = "Chat 2",
             Messages = new List<AiChatMessage>
             {
                 new AiChatMessage { Id = "3", Role = AiChatRole.User, Content = "How are you?", Timestamp = DateTime.UtcNow.AddMinutes(2) },
                 new AiChatMessage { Id = "4", Role = AiChatRole.Assistant, Content = "I'm fine, thank you!", Timestamp = DateTime.UtcNow.AddMinutes(3) }
             },
-            AssistantId = "00000000-0000-0000-0000-assistant00002"
+            AssistantId = "assistant1"
         },
         new AiChat
         {
-            Id = "00000000-0000-0000-0000-000000000003",
+            Id = "chat3",
             Name = "Markdown",
             Messages = new List<AiChatMessage>
             {
@@ -392,7 +392,7 @@ Yes, most Markdown parsers allow embedding HTML directly. Here are some examples
 Note: Some Markdown processors may have limitations on what HTML is allowed, and some environments may sanitize HTML for security reasons. Always check the specific platform's documentation.
 ", Timestamp = DateTime.UtcNow.AddMinutes(11) }
             },
-            AssistantId = "00000000-0000-0000-0000-assistant00003"
+            AssistantId = "assistant1"
         }
     };
 

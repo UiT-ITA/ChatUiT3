@@ -18,51 +18,24 @@ namespace ChatUitReact.Server.Services
             _hubContext = hubContext;
         }
 
-        public async Task<AssistantListDto> GetUserAssistantsAsync(string userId)
+        public async Task<UserAssistantsResult> GetUserAssistantsAsync(string userId)
         {
             var user = await _databaseService.GetUserAsync(userId);
-            if (user == null) return new AssistantListDto();
+            if (user == null) return new UserAssistantsResult();
 
             var ownedAssistants = await _databaseService.GetAssistantsByOwnerAsync(userId);
             var systemAssistants = await _databaseService.GetSystemAssistantsAsync();
             var sharedAssistants = await _databaseService.GetAssistantsByIdsAsync(user.Preferences.SharedAssistantIds);
 
-            return new AssistantListDto
+            return new UserAssistantsResult
             {
-                Owned = ownedAssistants.Select(assistant => new PrivateAssistantDto
-                {
-                    Id = assistant.Id,
-                    Name = assistant.Name,
-                    Description = assistant.Description,
-                    Tags = assistant.Tags,
-                    Model = assistant.Model,
-                    ChatSettings = assistant.ChatSettings,
-                    IsVisible = user.Preferences.VisibleAssistantIds.Contains(assistant.Id)
-                }).ToList(),
-
-                System = systemAssistants.Select(assistant => new SystemAssistantDto
-                {
-                    Id = assistant.Id,
-                    Name = assistant.Name,
-                    Description = assistant.Description,
-                    Tags = assistant.Tags,
-                    ModelName = assistant.Model.ModelName,
-                    IsVisible = user.Preferences.VisibleAssistantIds.Contains(assistant.Id)
-                }).ToList(),
-
-                Shared = sharedAssistants.Select(assistant => new SharedAssistantDto
-                {
-                    Id = assistant.Id,
-                    Name = assistant.Name,
-                    Description = assistant.Description,
-                    Tags = assistant.Tags,
-                    ModelName = assistant.Model.ModelName,
-                    IsVisible = user.Preferences.VisibleAssistantIds.Contains(assistant.Id)
-                }).ToList()
+                Owned = ownedAssistants,
+                System = systemAssistants,
+                Shared = sharedAssistants
             };
         }
 
-        public async Task<PrivateAssistantDto?> GetAssistantByIdAsync(string assistantId, string userId)
+        public async Task<AiAssistant?> GetAssistantByIdAsync(string assistantId, string userId)
         {
             var assistant = await _databaseService.GetAssistantByIdAsync(assistantId);
             if (assistant == null) return null;
@@ -72,18 +45,7 @@ namespace ChatUitReact.Server.Services
                 return null;
             }
 
-            var user = await _databaseService.GetUserAsync(userId);
-            
-            return new PrivateAssistantDto
-            {
-                Id = assistant.Id,
-                Name = assistant.Name,
-                Description = assistant.Description,
-                Tags = assistant.Tags,
-                Model = assistant.Model,
-                ChatSettings = assistant.ChatSettings,
-                IsVisible = user?.Preferences.VisibleAssistantIds.Contains(assistant.Id) ?? false
-            };
+            return assistant;
         }
 
         public async Task<bool> CreateAssistantAsync(CreateAssistantDto createDto, string userId)
@@ -100,13 +62,18 @@ namespace ChatUitReact.Server.Services
                 Description = createDto.Description,
                 Tags = createDto.Tags,
                 Model = model,
-                ChatSettings = createDto.ChatSettings,
+                ChatSettings = new AiChatSettings
+                {
+                    SystemPrompt = createDto.SystemPrompt,
+                    Temperature = createDto.Temperature,
+                    ReasoningEffort = createDto.ReasoningEffort,
+                    Model = model
+                },
                 OwnerId = userId
             };
 
             var createdAssistant = await _databaseService.CreateAssistantAsync(assistant);
             
-            // Add to visible list by default
             var user = await _databaseService.GetUserAsync(userId);
             if (user != null && !user.Preferences.VisibleAssistantIds.Contains(createdAssistant.Id))
             {
@@ -114,7 +81,6 @@ namespace ChatUitReact.Server.Services
                 await _databaseService.UpdateUserAsync(user);
             }
 
-            // Notify all connected clients for this user
             await NotifyAssistantsUpdated(userId);
             
             return true;
@@ -132,13 +98,17 @@ namespace ChatUitReact.Server.Services
             assistant.Description = updateDto.Description;
             assistant.Tags = updateDto.Tags;
             assistant.Model = model;
-            assistant.ChatSettings = updateDto.ChatSettings;
+            assistant.ChatSettings = new AiChatSettings
+            {
+                SystemPrompt = updateDto.SystemPrompt,
+                Temperature = updateDto.Temperature,
+                ReasoningEffort = updateDto.ReasoningEffort,
+                Model = model
+            };
 
             var updatedAssistant = await _databaseService.UpdateAssistantAsync(assistant);
             if (updatedAssistant == null) return false;
 
-            // Notify all connected clients for this user
-            // Console.WriteLine($"Assistant {assistant.Id} updated by user {userId}");
             await NotifyAssistantsUpdated(userId);
 
             return true;
@@ -149,7 +119,6 @@ namespace ChatUitReact.Server.Services
             var assistant = await _databaseService.GetAssistantByIdAsync(assistantId);
             if (assistant == null || assistant.OwnerId != userId) return false;
 
-            // Remove from visible list
             var user = await _databaseService.GetUserAsync(userId);
             if (user != null && user.Preferences.VisibleAssistantIds.Contains(assistantId))
             {
@@ -161,7 +130,6 @@ namespace ChatUitReact.Server.Services
             
             if (success)
             {
-                // Notify all connected clients for this user
                 await NotifyAssistantsUpdated(userId);
             }
 
@@ -179,11 +147,9 @@ namespace ChatUitReact.Server.Services
             if (!user.Preferences.SharedAssistantIds.Contains(assistantId))
             {
                 user.Preferences.SharedAssistantIds.Add(assistantId);
-                // Add to visible by default
                 user.Preferences.VisibleAssistantIds.Add(assistantId);
                 await _databaseService.UpdateUserAsync(user);
 
-                // Notify all connected clients for this user
                 await NotifyAssistantsUpdated(userId);
             }
 
@@ -206,7 +172,6 @@ namespace ChatUitReact.Server.Services
 
             await _databaseService.UpdateUserAsync(user);
 
-            // Notify all connected clients for this user
             await NotifyAssistantsUpdated(userId);
 
             return true;
@@ -225,8 +190,46 @@ namespace ChatUitReact.Server.Services
 
         private async Task NotifyAssistantsUpdated(string userId)
         {
-            var assistants = await GetUserAssistantsAsync(userId);
-            await _hubContext.Clients.User(userId).SendAsync("UserAssistants", assistants);
+            var result = await GetUserAssistantsAsync(userId);
+            var user = await _databaseService.GetUserAsync(userId);
+            
+            var assistants = new AssistantListDto
+            {
+                Owned = result.Owned.Select(assistant => new PrivateAssistantDto
+                {
+                    Id = assistant.Id,
+                    Name = assistant.Name,
+                    Description = assistant.Description,
+                    Tags = assistant.Tags,
+                    Model = assistant.Model,
+                    SystemPrompt = assistant.ChatSettings.SystemPrompt,
+                    Temperature = assistant.ChatSettings.Temperature,
+                    ReasoningEffort = assistant.ChatSettings.ReasoningEffort,
+                    IsVisible = user?.Preferences.VisibleAssistantIds.Contains(assistant.Id) ?? false
+                }).ToList(),
+
+                System = result.System.Select(assistant => new SystemAssistantDto
+                {
+                    Id = assistant.Id,
+                    Name = assistant.Name,
+                    Description = assistant.Description,
+                    Tags = assistant.Tags,
+                    ModelName = assistant.Model.ModelName,
+                    IsVisible = user?.Preferences.VisibleAssistantIds.Contains(assistant.Id) ?? false
+                }).ToList(),
+
+                Shared = result.Shared.Select(assistant => new SharedAssistantDto
+                {
+                    Id = assistant.Id,
+                    Name = assistant.Name,
+                    Description = assistant.Description,
+                    Tags = assistant.Tags,
+                    ModelName = assistant.Model.ModelName,
+                    IsVisible = user?.Preferences.VisibleAssistantIds.Contains(assistant.Id) ?? false
+                }).ToList()
+            };
+            
+            await _hubContext.Clients.Group(userId).SendAsync("UserAssistants", assistants);
         }
     }
 }

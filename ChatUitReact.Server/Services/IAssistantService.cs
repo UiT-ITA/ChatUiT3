@@ -5,8 +5,8 @@ namespace ChatUitReact.Server.Services
 {
     public interface IAssistantService
     {
-        Task<AssistantListDto> GetUserAssistantsAsync(string userId);
-        Task<PrivateAssistantDto?> GetAssistantByIdAsync(string assistantId, string userId);
+        Task<UserAssistantsResult> GetUserAssistantsAsync(string userId);
+        Task<AiAssistant?> GetAssistantByIdAsync(string assistantId, string userId);
         Task<bool> CreateAssistantAsync(CreateAssistantDto createDto, string userId);
         Task<bool> UpdateAssistantAsync(UpdateAssistantDto updateDto, string userId);
         Task<bool> DeleteAssistantAsync(string assistantId, string userId);

@@ -49,29 +49,18 @@ const AssistantModal: React.FC<AssistantModalProps> = ({
   }, [isModelDropdownOpen]);
 
   const handleChange = (field: string, value: any) => {
-    if (field.startsWith('chatSettings.')) {
-      const settingsField = field.split('.')[1];
-      onFormChange({
-        ...formData,
-        chatSettings: { ...formData.chatSettings, [settingsField]: value }
-      });
-    } else {
-      onFormChange({ ...formData, [field]: value });
-    }
+    onFormChange({ ...formData, [field]: value });
   };
 
   const handleModelChange = (modelId: string) => {
     const newModel = models.find(m => m.id === modelId);
     
     // If switching to a non-reasoning model, reset reasoning effort to None
-    if (newModel && !newModel.capabilities.reasoning && formData.chatSettings.reasoningEffort !== ReasoningEffort.None) {
+    if (newModel && !newModel.capabilities.reasoning && formData.reasoningEffort !== ReasoningEffort.None) {
       onFormChange({
         ...formData,
         modelId,
-        chatSettings: {
-          ...formData.chatSettings,
-          reasoningEffort: ReasoningEffort.None
-        }
+        reasoningEffort: ReasoningEffort.None
       });
     } else {
       handleChange('modelId', modelId);
@@ -203,8 +192,8 @@ const AssistantModal: React.FC<AssistantModalProps> = ({
           <div className="form-group">
             <label className="form-label">System Prompt</label>
             <textarea
-              value={formData.chatSettings.systemPrompt}
-              onChange={(e) => handleChange('chatSettings.systemPrompt', e.target.value)}
+              value={formData.systemPrompt}
+              onChange={(e) => handleChange('systemPrompt', e.target.value)}
               className="form-textarea large"
               placeholder="You are a helpful assistant that..."
             />
@@ -218,8 +207,8 @@ const AssistantModal: React.FC<AssistantModalProps> = ({
                 min="0"
                 max="1"
                 step="0.1"
-                value={formData.chatSettings.temperature}
-                onChange={(e) => handleChange('chatSettings.temperature', parseFloat(e.target.value))}
+                value={formData.temperature}
+                onChange={(e) => handleChange('temperature', parseFloat(e.target.value))}
                 className="form-input"
               />
             </div>
@@ -232,8 +221,8 @@ const AssistantModal: React.FC<AssistantModalProps> = ({
                 )}
               </label>
               <select
-                value={formData.chatSettings.reasoningEffort}
-                onChange={(e) => handleChange('chatSettings.reasoningEffort', e.target.value as ReasoningEffort)}
+                value={formData.reasoningEffort}
+                onChange={(e) => handleChange('reasoningEffort', e.target.value as ReasoningEffort)}
                 className="form-select"
                 disabled={selectedModel && !selectedModel.capabilities.reasoning}
                 title={selectedModel && !selectedModel.capabilities.reasoning ? 'This model does not support reasoning' : ''}

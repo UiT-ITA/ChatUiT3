@@ -61,7 +61,9 @@ export interface PrivateAssistantDto {
   description: string;
   tags: string[];
   model: ModelDto;
-  chatSettings: AiChatSettings;
+  systemPrompt: string;
+  temperature: number;
+  reasoningEffort: ReasoningEffort;
   isVisible: boolean;
 }
 
@@ -88,7 +90,9 @@ export interface CreateAssistantDto {
   description: string;
   tags: string[];
   modelId: string;
-  chatSettings: AiChatSettings;
+  systemPrompt: string;
+  temperature: number;
+  reasoningEffort: ReasoningEffort;
 }
 
 export interface UpdateAssistantDto {
@@ -97,10 +101,6 @@ export interface UpdateAssistantDto {
   description: string;
   tags: string[];
   modelId: string;
-  chatSettings: AiChatSettings;
-}
-
-export interface AiChatSettings {
   systemPrompt: string;
   temperature: number;
   reasoningEffort: ReasoningEffort;

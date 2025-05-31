@@ -19,7 +19,6 @@ class ChatStore {
       this.chats.set(chat.id, {
         ...chat,
         messages: existingChat?.messages || chat.messages,
-        settings: existingChat?.settings || chat.settings,
         lastViewed: existingChat?.lastViewed || chat.lastViewed
       });
     });

@@ -24,11 +24,9 @@ const AssistantsPage: React.FC = () => {
     description: '',
     tags: [],
     modelId: '',
-    chatSettings: {
-      systemPrompt: '',
-      temperature: 0.7,
-      reasoningEffort: ReasoningEffort.None
-    }
+    systemPrompt: '',
+    temperature: 0.7,
+    reasoningEffort: ReasoningEffort.None
   });
 
   const loadModels = async () => {
@@ -50,7 +48,9 @@ const AssistantsPage: React.FC = () => {
       description: assistant.description,
       tags: assistant.tags,
       modelId: assistant.model.id,
-      chatSettings: assistant.chatSettings
+      systemPrompt: assistant.systemPrompt,
+      temperature: assistant.temperature,
+      reasoningEffort: assistant.reasoningEffort
     });
   };
 
@@ -69,7 +69,9 @@ const AssistantsPage: React.FC = () => {
       description: formData.description,
       tags: formData.tags,
       modelId: formData.modelId,
-      chatSettings: formData.chatSettings
+      systemPrompt: formData.systemPrompt,
+      temperature: formData.temperature,
+      reasoningEffort: formData.reasoningEffort
     };
 
     await updateAssistant(updateData);
@@ -106,11 +108,9 @@ const AssistantsPage: React.FC = () => {
       description: '',
       tags: [],
       modelId: '',
-      chatSettings: {
-        systemPrompt: '',
-        temperature: 0.7,
-        reasoningEffort: ReasoningEffort.None
-      }
+      systemPrompt: '',
+      temperature: 0.7,
+      reasoningEffort: ReasoningEffort.None
     });
   };
 

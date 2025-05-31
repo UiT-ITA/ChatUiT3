@@ -1,4 +1,5 @@
-﻿namespace ChatUitReact.Server.Models;
+﻿using System.Text.Json.Serialization;
+namespace ChatUitReact.Server.Models;
 
 public class AiModel
 {
@@ -36,6 +37,8 @@ public class AiModelCapabilities
     public int MaxOutputLength { get; set; } = 16_000;
 }
 
+// Json serialization as string
+[JsonConverter(typeof(JsonStringEnumConverter))]
 public enum ReasoningEffort
 {
     None,

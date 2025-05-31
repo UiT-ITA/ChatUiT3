@@ -11,13 +11,13 @@ export interface ChatListItem {
 }
 
 export interface Chat extends ChatListItem {
-    settings: ChatSettings;
+    assistantId: string;
     messages: Message[];
 }
 
 // Extended chat list item that can optionally contain full chat data for caching
 export interface CachedChatItem extends ChatListItem {
-    settings?: ChatSettings;
+    assistantId?: string;
     messages?: Message[];
     lastViewed?: Date;
 }
@@ -28,14 +28,6 @@ export interface Message {
     timestamp: Date;
     content: string;
     status: ChatStatus;
-}
-
-export interface ChatSettings {
-    assistantName: string;
-    systemPrompt: string;
-    model: AiModel;
-    modelSettings: AiModelSettings;
-    saveToDB: boolean;
 }
 
 export enum ChatRole {
