@@ -8,14 +8,15 @@ public partial class ChatHub
     public async Task JoinChat(string chatId)
     {
         var userId = GetCurrentUserId();
-        var groupName = $"{userId}:{chatId}";
-        await Groups.AddToGroupAsync(Context.ConnectionId, groupName);
-
         var chat = await _chatService.GetChatByIdAsync(userId, chatId);
         if (chat == null)
         {
-            throw new HubException("ChatNotFound");
+            await Clients.Caller.Error("Chat not found");
+            return;
         }
+
+        var groupName = $"{userId}:{chatId}";
+        await Groups.AddToGroupAsync(Context.ConnectionId, groupName);
 
         await Clients.Caller.ChatUpdated(chat);
     }

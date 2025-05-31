@@ -15,10 +15,12 @@
   padding-left: 1rem;
 }
 
+
 .chat-history > div {
   max-width: var(--chat-max-width, 1000px);
   margin: 0 auto;
-  padding-right: var(--scrollbar-width, 0px); /* Dynamically adjust for scrollbar width */
+  /* padding-right: var(--scrollbar-width, 0px); Dynamically adjust for scrollbar width (????) */
+  padding-right: 0.5rem;
 }
 
 .chat-error {

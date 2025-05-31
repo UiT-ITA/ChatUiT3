@@ -105,7 +105,7 @@
 
 /* Styles for code blocks within messages */
 .message-content .code-block-wrapper {
-  background-color: var(--code-bg);
+  /* background-color: var(--code-bg); */
   border: 1px solid var(--code-border);
   border-radius: var(--border-radius-lg);
   margin: calc(10px * var(--scale-factor)) 0;
@@ -149,6 +149,12 @@
 
 .message-content .copy-code-button:active {
   background-color: var(--border-hover);
+}
+
+.message-content .code-block-wrapper > div,
+.message-content .code-block-wrapper pre,
+.message-content .code-block-wrapper code {
+  margin: 0 !important;
 }
 
 /* Ensure SyntaxHighlighter's PreTag (div) has no default margin/padding that conflicts */
