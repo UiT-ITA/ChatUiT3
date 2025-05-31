@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { MdImage, MdPublic, MdPsychology, MdExpandMore, MdExpandLess } from 'react-icons/md';
-import { CreateAssistantDto, PrivateAssistantDto, ModelDto, ReasoningEffort } from '../../types/dtos';
+import { CreateAssistantDto, PrivateAssistantDto, ReasoningEffort } from '../../types/dtos';
 import { EnhancedModel } from '../../utils/modelUtils';
 import './AssistantModals.css';
 

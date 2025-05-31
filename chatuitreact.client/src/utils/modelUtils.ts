@@ -1,5 +1,5 @@
 import { ModelDto } from '../types/dtos';
-import { ModelCapabilityInfo, modelCapabilities } from '../data/modelCapabilities';
+import { modelCapabilities } from '../data/modelCapabilities';
 
 export interface EnhancedModel extends ModelDto {
   displayName: string;

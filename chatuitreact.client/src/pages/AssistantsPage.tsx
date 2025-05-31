@@ -1,7 +1,6 @@
 import React, { useState } from 'react';
 import { MdAdd } from 'react-icons/md';
-import { useTranslation } from 'react-i18next';
-import { AnyAssistantDto, PrivateAssistantDto, SharedAssistantDto, CreateAssistantDto, UpdateAssistantDto, ModelDto, ReasoningEffort } from '../types/dtos';
+import { PrivateAssistantDto, CreateAssistantDto, UpdateAssistantDto, ReasoningEffort } from '../types/dtos';
 import { useAssistants } from '../hooks/useAssistants';
 
 import { enhanceModelsWithCapabilities, EnhancedModel } from '../utils/modelUtils';
@@ -12,7 +11,6 @@ import AddExternalAssistant from '../components/assistants/AddExternalAssistant'
 import './AssistantsPage.css';
 
 const AssistantsPage: React.FC = () => {
-  const { t } = useTranslation();
   const { assistantList, createAssistant, updateAssistant, deleteAssistant, toggleVisibility, addSharedAssistant, getAvailableModels } = useAssistants();
 
   

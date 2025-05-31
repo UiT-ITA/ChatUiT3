@@ -3,7 +3,7 @@ import './Sidebar.css';
 import SidebarButton from './SidebarButton';
 import { NavLink, useNavigate } from 'react-router-dom';
 import { PiSidebarSimple } from "react-icons/pi";
-import { RiSettings3Line, RiChatAiLine, RiChatSettingsLine, RiAdminLine, RiUserLine, RiRobot2Line } from 'react-icons/ri';
+import { RiSettings3Line, RiChatAiLine, RiAdminLine, RiUserLine, RiRobot2Line } from 'react-icons/ri';
 import { GrHelpBook } from "react-icons/gr";
 import { MdOutlineVpnKey } from "react-icons/md";
 

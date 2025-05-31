@@ -3,7 +3,6 @@ import { MdExpandMore, MdExpandLess, MdInfo, MdImage, MdPublic, MdPsychology } f
 import type { AnyAssistantDto } from '../../types/dtos';
 import { getAssistantCapabilities, AssistantCapabilities } from '../../utils/modelUtils';
 import './AssistantSelector.css';
-import { useTranslation } from 'react-i18next';
 
 interface AssistantSelectorProps {
   assistants: AnyAssistantDto[];
@@ -18,7 +17,6 @@ const AssistantSelector: React.FC<AssistantSelectorProps> = ({
 }) => {
   const [isOpen, setIsOpen] = useState(false);
   const selectorRef = useRef<HTMLDivElement>(null);
-  const { t } = useTranslation();
 
   // Find the currently selected assistant
   const selectedAssistant = selectedAssistantId 
@@ -51,11 +49,6 @@ const AssistantSelector: React.FC<AssistantSelectorProps> = ({
   const handleSelectAssistant = (assistantId: string) => {
     onSelectAssistant(assistantId);
     setIsOpen(false);
-  };
-
-  // Helper function to check if assistant is a system assistant
-  const isSystemAssistant = (assistant: AnyAssistantDto): boolean => {
-    return 'modelName' in assistant && !('model' in assistant);
   };
 
   // Render capability icon based on type
@@ -127,9 +120,6 @@ const AssistantSelector: React.FC<AssistantSelectorProps> = ({
                   {renderCapabilityIcon('vision', capabilities.vision)}
                   {renderCapabilityIcon('tools', capabilities.tools)}
                   {renderCapabilityIcon('reasoning', capabilities.reasoning)}
-                  {/* {isSystemAssistant(assistant) && (
-                    <span className="system-badge">System</span>
-                  )} */}
                 </div>
               </div>
             );
