@@ -140,6 +140,11 @@ namespace ChatUitReact.Server.Services
             var assistant = await _databaseService.GetAssistantByIdAsync(assistantId);
             if (assistant == null) return false;
 
+            if (assistant.OwnerId == userId)
+            {
+                return false;
+            }
+
             var user = await _databaseService.GetUserAsync(userId);
             if (user == null) return false;
 

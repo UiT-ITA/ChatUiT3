@@ -8,51 +8,23 @@ public partial class MockDatabaseService
     {
         AddUserToService(userId);
 
-        var chatList = new List<ChatHeader>();
-        chatList.AddRange(_chatStorage[userId].Select(chat => new ChatHeader
-        {
-            Id = chat.Id,
-            Name = chat.Name,
-            CreatedAt = chat.CreatedAt,
-            UpdatedAt = chat.UpdatedAt,
-            Status = chat.Status
-        }));
-
-        return Task.FromResult(chatList);
+        var chatHeaders = _chatStorage[userId].Select(chat => DeepCopyChatHeader(chat)).ToList();
+        return Task.FromResult(chatHeaders);
     }
 
     public Task<Chat?> GetChatByIdAsync(string userId, string chatId)
     {
         AddUserToService(userId);
 
-        Chat? chat = _chatStorage[userId].FirstOrDefault(c => c.Id == chatId);
-        if (chat != null)
-        {
-            chat = new Chat
-            {
-                Id = chat.Id,
-                Name = chat.Name,
-                Messages = chat.Messages.Select(m => new ChatMessage
-                {
-                    Id = m.Id,
-                    Role = m.Role,
-                    Content = m.Content,
-                    Timestamp = m.Timestamp,
-                    Status = m.Status,
-                }).ToList(),
-                AssistantId = chat.AssistantId,
-                Status = chat.Status,
-                CreatedAt = chat.CreatedAt,
-                UpdatedAt = chat.UpdatedAt
-            };
-        }
-        return Task.FromResult<Chat?>(chat);
+        var chat = _chatStorage[userId].FirstOrDefault(c => c.Id == chatId);
+        return Task.FromResult(chat != null ? DeepCopyChat(chat) : null);
     }
 
     public Task AddChatAsync(string userId, Chat chat)
     {
         AddUserToService(userId);
-        _chatStorage[userId].Add(chat);
+        var chatCopy = DeepCopyChat(chat);
+        _chatStorage[userId].Add(chatCopy);
         return Task.CompletedTask;
     }
 

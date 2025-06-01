@@ -11,7 +11,8 @@ public partial class MockDatabaseService
     {
         lock (_assistantsLock)
         {
-            return Task.FromResult(_assistants.Where(a => a.OwnerId == ownerId).ToList());
+            var assistants = _assistants.Where(a => a.OwnerId == ownerId).ToList();
+            return Task.FromResult(DeepCopyList(assistants, DeepCopyAssistant));
         }
     }
 
@@ -19,7 +20,8 @@ public partial class MockDatabaseService
     {
         lock (_assistantsLock)
         {
-            return Task.FromResult(_assistants.Where(a => a.OwnerId == "System").ToList());
+            var assistants = _assistants.Where(a => a.OwnerId == "System").ToList();
+            return Task.FromResult(DeepCopyList(assistants, DeepCopyAssistant));
         }
     }
 
@@ -27,7 +29,8 @@ public partial class MockDatabaseService
     {
         lock (_assistantsLock)
         {
-            return Task.FromResult(_assistants.Where(a => assistantIds.Contains(a.Id)).ToList());
+            var assistants = _assistants.Where(a => assistantIds.Contains(a.Id)).ToList();
+            return Task.FromResult(DeepCopyList(assistants, DeepCopyAssistant));
         }
     }
 
@@ -35,7 +38,8 @@ public partial class MockDatabaseService
     {
         lock (_assistantsLock)
         {
-            return Task.FromResult(_assistants.FirstOrDefault(a => a.Id == assistantId));
+            var assistant = _assistants.FirstOrDefault(a => a.Id == assistantId);
+            return Task.FromResult(assistant != null ? DeepCopyAssistant(assistant) : null);
         }
     }
 
@@ -43,8 +47,9 @@ public partial class MockDatabaseService
     {
         lock (_assistantsLock)
         {
-            _assistants.Add(assistant);
-            return Task.FromResult(assistant);
+            var assistantCopy = DeepCopyAssistant(assistant);
+            _assistants.Add(assistantCopy);
+            return Task.FromResult(DeepCopyAssistant(assistantCopy));
         }
     }
 
@@ -55,8 +60,9 @@ public partial class MockDatabaseService
             var index = _assistants.FindIndex(a => a.Id == assistant.Id);
             if (index >= 0)
             {
-                _assistants[index] = assistant;
-                return Task.FromResult<Assistant?>(assistant);
+                var assistantCopy = DeepCopyAssistant(assistant);
+                _assistants[index] = assistantCopy;
+                return Task.FromResult<Assistant?>(DeepCopyAssistant(assistantCopy));
             }
             return Task.FromResult<Assistant?>(null);
         }
@@ -91,54 +97,5 @@ public partial class MockDatabaseService
     public async Task<bool> UpdateUserAsync(UserInfo user)
     {
         return await UpdateUserInfoAsync(user.Username, user);
-    }
-
-    private void InitializeSystemAssistants()
-    {
-        var defaultModel = _models.Values.FirstOrDefault() ?? new Model
-        {
-            Id = "default-model",
-            ModelName = "Default Model",
-            EndpointId = "default-endpoint"
-        };
-
-        var systemAssistants = new List<Assistant>
-        {
-            new Assistant
-            {
-                Id = "assistant1",
-                Name = "General Assistant",
-                Description = "A helpful general-purpose AI assistant",
-                Tags = new List<string> { "general", "helpful" },
-                Model = defaultModel,
-                ChatSettings = new ChatSettings
-                {
-                    SystemPrompt = "You are a helpful AI assistant. Be concise and accurate.",
-                    Temperature = 0.7f,
-                    ReasoningEffort = ReasoningEffort.Medium
-                },
-                OwnerId = "System"
-            },
-            new Assistant
-            {
-                Id = "assistant2",
-                Name = "Coding Assistant",
-                Description = "An AI assistant specialized in programming and code review",
-                Tags = new List<string> { "coding", "programming", "development" },
-                Model = defaultModel,
-                ChatSettings = new ChatSettings
-                {
-                    SystemPrompt = "You are a programming expert. Help with code, debugging, and best practices.",
-                    Temperature = 0.3f,
-                    ReasoningEffort = ReasoningEffort.High
-                },
-                OwnerId = "otv001@uit.no"
-            }
-        };
-
-        lock (_assistantsLock)
-        {
-            _assistants.AddRange(systemAssistants);
-        }
     }
 }
