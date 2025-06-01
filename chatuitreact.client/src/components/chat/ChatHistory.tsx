@@ -1,12 +1,14 @@
-import React, { useLayoutEffect, useRef } from 'react';
+import React, { useLayoutEffect, useRef, useState, useEffect } from 'react';
 import ChatMessage from './ChatMessage';
+import ScrollToBottomButton from './ScrollToBottomButton';
 import './ChatHistory.css';
 import { useActiveChatMessages } from '../../hooks/useChatData';
-// import { ChatStatus } from '../../types/chatModels';
 
 const ChatHistory = () => {
   const messages = useActiveChatMessages();
   const chatHistoryRef = useRef<HTMLDivElement>(null);
+  const [shouldAutoScroll, setShouldAutoScroll] = useState(true);
+  const [prevScrollTop, setPrevScrollTop] = useState(0);
 
   const scrollToBottom = () => {
     if (chatHistoryRef.current) {
@@ -14,23 +16,55 @@ const ChatHistory = () => {
     }
   };
 
-  const scrollToBottomIfNearBottom = () => {
+  const handleScroll = () => {
     if (!chatHistoryRef.current) return;
-    const threshold = 50; // px from bottom to still auto-scroll
+    
     const { scrollTop, scrollHeight, clientHeight } = chatHistoryRef.current;
-    // If user is within threshold px of the bottom, scroll to bottom
-    if (scrollHeight - scrollTop - clientHeight < threshold) {
+    const distanceFromBottom = scrollHeight - scrollTop - clientHeight;
+    const scrollDirection = scrollTop > prevScrollTop ? 'down' : 'up';
+    
+    if (scrollDirection === 'up' && distanceFromBottom > 0) {
+      // Any upward scroll = disable auto-scroll immediately
+      setShouldAutoScroll(false);
+    } else if (scrollDirection === 'down' && distanceFromBottom < 5) {
+      // Downward scroll near bottom = enable auto-scroll
+      setShouldAutoScroll(true);
+    }
+    
+    setPrevScrollTop(scrollTop);
+  };
+
+  const scrollToBottomIfShouldAutoScroll = () => {
+    if (!chatHistoryRef.current) return;
+    
+    // Check scroll position in real-time to avoid race conditions
+    const { scrollTop, scrollHeight, clientHeight } = chatHistoryRef.current;
+    const distanceFromBottom = scrollHeight - scrollTop - clientHeight;
+    const isCurrentlyAtBottom = distanceFromBottom < 50; // Use original threshold during streaming
+    
+    if (isCurrentlyAtBottom) {
       scrollToBottom();
     }
   };
 
+  const handleScrollToBottomClick = () => {
+    scrollToBottom();
+    setShouldAutoScroll(true);
+  };
+
+  // Attach scroll event listener
+  useEffect(() => {
+    const chatContainer = chatHistoryRef.current;
+    if (!chatContainer) return;
+
+    chatContainer.addEventListener('scroll', handleScroll);
+    return () => chatContainer.removeEventListener('scroll', handleScroll);
+  }, [shouldAutoScroll, prevScrollTop]);
+
+  // Handle new messages - always scroll to bottom and enable auto-scroll
   useLayoutEffect(() => {
-    // const lastMessage = messages[messages.length - 1];
-    // if (lastMessage?.status === ChatStatus.Generating) {
-    //   scrollToBottomIfNearBottom();
-    // } else {
-      scrollToBottom();
-    // }
+    setShouldAutoScroll(true);
+    scrollToBottom();
   }, [messages]);
 
   return (
@@ -39,9 +73,14 @@ const ChatHistory = () => {
         <ChatMessage
           key={message.id}
           message={message}
-          onStreamingChunk={scrollToBottomIfNearBottom}
+          onStreamingChunk={scrollToBottomIfShouldAutoScroll}
         />
       ))}
+      
+      <ScrollToBottomButton 
+        chatContainerRef={chatHistoryRef}
+        onScrollToBottom={handleScrollToBottomClick}
+      />
     </div>
   );
 };
