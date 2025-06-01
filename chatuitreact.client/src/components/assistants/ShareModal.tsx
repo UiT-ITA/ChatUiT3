@@ -8,13 +8,15 @@ interface ShareModalProps {
   assistant: PrivateAssistantDto | null;
   onClose: () => void;
   onCopyLink: (assistantId: string) => void;
+  onCopyGuid: (assistantId: string) => void;
 }
 
 const ShareModal: React.FC<ShareModalProps> = ({
   isOpen,
   assistant,
   onClose,
-  onCopyLink
+  onCopyLink,
+  onCopyGuid
 }) => {
   if (!isOpen || !assistant) return null;
 
@@ -28,22 +30,44 @@ const ShareModal: React.FC<ShareModalProps> = ({
         </div>
         
         <div className="modal-body">
-          <p>Share "{assistant.name}" with others by copying this link:</p>
+          <p>Share "{assistant.name}" with others:</p>
           
-          <div className="share-link-container">
-            <input
-              type="text"
-              value={shareUrl}
-              readOnly
-              className="form-input"
-            />
-            <button
-              onClick={() => onCopyLink(assistant.id)}
-              className="button primary"
-              title="Copy link"
-            >
-              <MdContentCopy size={16} />
-            </button>
+          <div className="share-option">
+            <label>Share Link:</label>
+            <div className="share-link-container">
+              <input
+                type="text"
+                value={shareUrl}
+                readOnly
+                className="form-input"
+              />
+              <button
+                onClick={() => onCopyLink(assistant.id)}
+                className="button primary"
+                title="Copy link"
+              >
+                <MdContentCopy size={16} />
+              </button>
+            </div>
+          </div>
+
+          <div className="share-option">
+            <label>Assistant ID:</label>
+            <div className="share-link-container">
+              <input
+                type="text"
+                value={assistant.id}
+                readOnly
+                className="form-input"
+              />
+              <button
+                onClick={() => onCopyGuid(assistant.id)}
+                className="button primary"
+                title="Copy ID"
+              >
+                <MdContentCopy size={16} />
+              </button>
+            </div>
           </div>
         </div>
 

@@ -1,7 +1,9 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { MdAdd } from 'react-icons/md';
+import { useSearchParams } from 'react-router-dom';
 import { PrivateAssistantDto, CreateAssistantDto, UpdateAssistantDto, ReasoningEffort } from '../types/dtos';
 import { useAssistants } from '../hooks/useAssistants';
+import { useSignalR } from '../contexts/SignalRContext';
 
 import { enhanceModelsWithCapabilities, EnhancedModel } from '../utils/modelUtils';
 import AssistantCard from '../components/assistants/AssistantCard';
@@ -12,8 +14,10 @@ import './AssistantsPage.css';
 
 const AssistantsPage: React.FC = () => {
   const { assistantList, createAssistant, updateAssistant, deleteAssistant, toggleVisibility, addSharedAssistant, getAvailableModels } = useAssistants();
+  const { isConnected } = useSignalR();
+  const [searchParams, setSearchParams] = useSearchParams();
+  const [pendingAssistantId, setPendingAssistantId] = useState<string | null>(null);
 
-  
   const [models, setModels] = useState<EnhancedModel[]>([]);
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [editingAssistant, setEditingAssistant] = useState<PrivateAssistantDto | null>(null);
@@ -28,6 +32,29 @@ const AssistantsPage: React.FC = () => {
     temperature: 0.7,
     reasoningEffort: ReasoningEffort.None
   });
+
+  // Handle URL parameter for adding shared assistant
+  useEffect(() => {
+    const addId = searchParams.get('add');
+    if (addId) {
+      if (isConnected) {
+        handleAddExternal(addId);
+      } else {
+        setPendingAssistantId(addId);
+      }
+      const newParams = new URLSearchParams(searchParams);
+      newParams.delete('add');
+      setSearchParams(newParams, { replace: true });
+    }
+  }, [searchParams, setSearchParams, isConnected]);
+
+  // Process pending assistant add when connection becomes available
+  useEffect(() => {
+    if (isConnected && pendingAssistantId) {
+      handleAddExternal(pendingAssistantId);
+      setPendingAssistantId(null);
+    }
+  }, [isConnected, pendingAssistantId]);
 
   const loadModels = async () => {
     const rawModels = await getAvailableModels();
@@ -90,6 +117,10 @@ const AssistantsPage: React.FC = () => {
   };
 
   const handleAddExternal = async (assistantId: string) => {
+    if (!isConnected) {
+      setPendingAssistantId(assistantId);
+      return;
+    }
     await addSharedAssistant(assistantId);
   };
 
@@ -100,6 +131,10 @@ const AssistantsPage: React.FC = () => {
   const copyShareLink = (assistantId: string) => {
     const shareUrl = `${window.location.origin}/assistants?add=${assistantId}`;
     navigator.clipboard.writeText(shareUrl);
+  };
+
+  const copyGuid = (assistantId: string) => {
+    navigator.clipboard.writeText(assistantId);
   };
 
   const resetForm = () => {
@@ -135,6 +170,12 @@ const AssistantsPage: React.FC = () => {
       </div>
 
       <AddExternalAssistant onAddExternal={handleAddExternal} />
+
+      {pendingAssistantId && !isConnected && (
+        <div className="loading-message">
+          Connecting to add shared assistant...
+        </div>
+      )}
 
       <div className="assistants-section">
         <h2 className="assistants-section-title">My Assistants</h2>
@@ -210,6 +251,7 @@ const AssistantsPage: React.FC = () => {
         assistant={shareModalAssistant}
         onClose={() => setShareModalAssistant(null)}
         onCopyLink={copyShareLink}
+        onCopyGuid={copyGuid}
       />
     </div>
   );

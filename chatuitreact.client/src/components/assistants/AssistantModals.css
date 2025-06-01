@@ -155,10 +155,22 @@
   border-color: var(--border-hover);
 }
 
+.share-option {
+  margin-bottom: var(--margin-xl);
+}
+
+.share-option label {
+  display: block;
+  font-size: var(--font-sm);
+  font-weight: 500;
+  color: var(--text-primary);
+  margin-bottom: var(--margin-sm);
+}
+
 .share-link-container {
   display: flex;
   gap: var(--margin-sm);
-  margin-top: var(--margin-lg);
+  margin-top: var(--margin-sm);
   padding: var(--padding-lg);
   background: var(--bg-quaternary);
   border-radius: var(--border-radius);
