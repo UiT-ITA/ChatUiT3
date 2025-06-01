@@ -70,6 +70,7 @@ const ChatPage = () => {
             <ChatInput
                 onSendMessage={handleSendMessage}
                 initialAssistantId={initialAssistantId}
+                chatId={chatId}
             />
         </div>
     );

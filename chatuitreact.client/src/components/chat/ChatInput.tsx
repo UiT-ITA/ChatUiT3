@@ -10,9 +10,10 @@ import { useAssistants } from '../../hooks/useAssistants';
 interface ChatInputProps {
   onSendMessage: (text: string, assistantId?: string) => void;
   initialAssistantId?: string;
+  chatId?: string;
 }
 
-const ChatInput = ({ onSendMessage, initialAssistantId }: ChatInputProps) => {
+const ChatInput = ({ onSendMessage, initialAssistantId, chatId }: ChatInputProps) => {
   const { t } = useTranslation();
   const [message, setMessage] = useState('');
   const [isToolbarExpanded, setIsToolbarExpanded] = useState(false);
@@ -44,6 +45,13 @@ const ChatInput = ({ onSendMessage, initialAssistantId }: ChatInputProps) => {
     }
   }, [selectedAssistantId, visibleAssistants]);
 
+  // Focus input field when component mounts or when chatId changes
+  useEffect(() => {
+    if (textareaRef.current) {
+      textareaRef.current.focus();
+    }
+  }, [chatId]);
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     
@@ -56,6 +64,7 @@ const ChatInput = ({ onSendMessage, initialAssistantId }: ChatInputProps) => {
       // Reset textarea height
       if (textareaRef.current) {
         textareaRef.current.style.height = 'auto';
+        textareaRef.current.focus();
       }
     }
   };
