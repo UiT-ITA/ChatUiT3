@@ -1,8 +1,6 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect } from 'react';
 import { chatStore } from '../stores/ChatStore';
 import { CachedChatItem, Message } from '../types/chatModels';
-import { useAssistants } from './useAssistants';
-import { AnyAssistantDto } from '../types/dtos';
 
 export function useChatList(): CachedChatItem[] {
   const [chatList, setChatList] = useState<CachedChatItem[]>(() => chatStore.getChatList());
