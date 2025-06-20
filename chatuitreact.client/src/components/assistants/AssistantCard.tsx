@@ -5,6 +5,7 @@ import { AnyAssistantDto, PrivateAssistantDto } from '../../types/dtos';
 interface AssistantCardProps {
   assistant: AnyAssistantDto;
   variant: 'owned' | 'system' | 'shared';
+  isFirstSystem?: boolean;
   onToggleFavorite: (id: string) => void;
   onShare?: (assistant: PrivateAssistantDto) => void;
   onEdit?: (assistant: PrivateAssistantDto) => void;
@@ -14,6 +15,7 @@ interface AssistantCardProps {
 const AssistantCard: React.FC<AssistantCardProps> = ({
   assistant,
   variant,
+  isFirstSystem = false,
   onToggleFavorite,
   onShare,
   onEdit,
@@ -34,13 +36,15 @@ const AssistantCard: React.FC<AssistantCardProps> = ({
           <p className="assistant-card-description">{assistant.description}</p>
         </div>
         <div className="assistant-card-actions">
-          <button
-            onClick={() => onToggleFavorite(assistant.id)}
-            className={`assistant-card-button favorite ${assistant.isVisible ? 'active' : ''}`}
-            title={assistant.isVisible ? 'Hide from selector' : 'Show in selector'}
-          >
-            {assistant.isVisible ? <MdVisibility size={20} /> : <MdVisibilityOff size={20} />}
-          </button>
+          {!(variant === 'system' && isFirstSystem) && (
+            <button
+              onClick={() => onToggleFavorite(assistant.id)}
+              className={`assistant-card-button favorite ${assistant.isVisible ? 'active' : ''}`}
+              title={assistant.isVisible ? 'Hide from selector' : 'Show in selector'}
+            >
+              {assistant.isVisible ? <MdVisibility size={20} /> : <MdVisibilityOff size={20} />}
+            </button>
+          )}
           
           {variant === 'owned' && onShare && (
             <button

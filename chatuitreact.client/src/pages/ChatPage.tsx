@@ -14,11 +14,11 @@ const ChatPage = () => {
     const { chatId } = useParams<{ chatId: string }>();
     const { loadChat, sendMessage, streamMessage, isConnected, onChatCreated } = useSignalR();
     // const activeChat = useActiveChat();
-    const [initialAssistantId, setInitialAssistantId] = useState<string | undefined>();
     const navigate = useNavigate();
 
     useEffect(() => {
         if (chatId && chatId !== 'new' && chatId !== '404' && isConnected) {
+            chatStore.setActiveChatId(chatId);
             loadChat(chatId, () => navigate('/c/404'));
         }
     }, [chatId, loadChat, isConnected, navigate]);
@@ -45,7 +45,7 @@ const ChatPage = () => {
     };
 
     const handleSelectAssistant = (assistantId: string) => {
-        setInitialAssistantId(assistantId);
+        chatStore.setCurrentAssistantId(assistantId);
     };
 
     const isNewChat = !chatId || chatId === 'new' || chatId === '404';
@@ -60,7 +60,6 @@ const ChatPage = () => {
                         </div>
                     )}
                     <NewChatWelcome
-                        initialAssistantId={initialAssistantId}
                         onSelectAssistant={handleSelectAssistant}
                     />
                 </>
@@ -69,7 +68,6 @@ const ChatPage = () => {
             )}
             <ChatInput
                 onSendMessage={handleSendMessage}
-                initialAssistantId={initialAssistantId}
                 chatId={chatId}
             />
         </div>

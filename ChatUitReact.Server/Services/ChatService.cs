@@ -16,6 +16,7 @@ public class ChatService : IChatService
     private readonly IDatabaseService _databaseService;
     private readonly StreamingMessageService _streamingMessageService;
     private readonly IAssistantService _assistantService;
+    private readonly IModelService _modelService;
 
     public ChatService(
         AzureOpenAiService azureOpenAiService,
@@ -23,7 +24,8 @@ public class ChatService : IChatService
         ILogger<ChatService> logger,
         IDatabaseService databaseService,
         StreamingMessageService streamingMessageService,
-        IAssistantService assistantService)
+        IAssistantService assistantService,
+        IModelService modelService)
     {
         _azureOpenAiService = azureOpenAiService;
         _hubContext = hubContext;
@@ -31,6 +33,7 @@ public class ChatService : IChatService
         _databaseService = databaseService;
         _streamingMessageService = streamingMessageService;
         _assistantService = assistantService;
+        _modelService = modelService;
     }
 
     #region Chat management
@@ -167,7 +170,22 @@ public class ChatService : IChatService
                 var effectiveAssistantId = assistantId ?? chat?.AssistantId;
                 var settings = await GetChatSettingsFromAssistant(userId, effectiveAssistantId);
                 
-                var openAiStream = _azureOpenAiService.GetChatCompletionStreamingAsync(messages);
+                // Validate provider and get endpoint information
+                var modelWithEndpoint = await _modelService.GetModelWithEndpointAsync(settings.Model.Id);
+                if (modelWithEndpoint == null)
+                {
+                    throw new InvalidOperationException($"Model {settings.Model.Id} not found or has no endpoint configured");
+                }
+                
+                var (endpoint, model) = modelWithEndpoint.Value;
+                
+                // Validate that we're using Azure OpenAI provider
+                if (endpoint.EndpointType != EndpointType.AzureOpenAI)
+                {
+                    throw new NotSupportedException($"Provider {endpoint.EndpointType} is not supported. Only Azure OpenAI is currently supported.");
+                }
+                
+                var openAiStream = _azureOpenAiService.GetChatCompletionStreamingAsync(messages, settings.Model, settings);
                 
                 // Create our custom streaming channel
                 var chunkChannel = new StreamingChunkChannel();
@@ -276,28 +294,40 @@ public class ChatService : IChatService
     {
         if (!string.IsNullOrEmpty(assistantId))
         {
-            try
+            var assistant = await _assistantService.GetAssistantByIdAsync(assistantId, userId);
+            if (assistant == null)
             {
-                var assistant = await _assistantService.GetAssistantByIdAsync(assistantId, userId);
-                if (assistant?.Model != null)
-                {
-                    return new ChatSettings 
-                    { 
-                        Model = assistant.Model,
-                        SystemPrompt = assistant.ChatSettings?.SystemPrompt ?? string.Empty,
-                        Temperature = assistant.ChatSettings?.Temperature ?? 0.7f,
-                        ReasoningEffort = assistant.ChatSettings?.ReasoningEffort ?? ReasoningEffort.Medium
-                    };
-                }
+                throw new InvalidOperationException($"Assistant {assistantId} not found for user {userId}");
             }
-            catch (Exception ex)
+            
+            if (assistant.Model == null)
             {
-                _logger.LogWarning(ex, "Failed to get assistant {AssistantId} for user {UserId}, using default settings", assistantId, userId);
+                throw new InvalidOperationException($"Assistant {assistantId} has no model configured");
+            }
+            
+            return new ChatSettings 
+            { 
+                Model = assistant.Model,
+                SystemPrompt = assistant.ChatSettings?.SystemPrompt ?? string.Empty,
+                Temperature = assistant.ChatSettings?.Temperature ?? 0.7f,
+                ReasoningEffort = assistant.ChatSettings?.ReasoningEffort ?? ReasoningEffort.Medium
+            };
+        }
+        
+        // Get default model for when no assistant is specified
+        var defaultModels = await _modelService.GetAllModelsAsync();
+        var defaultModel = defaultModels.FirstOrDefault(m => m.ModelName == "gpt-4o");
+        
+        if (defaultModel == null)
+        {
+            defaultModel = defaultModels.FirstOrDefault();
+            if (defaultModel == null)
+            {
+                throw new InvalidOperationException("No models available in the system");
             }
         }
         
-        // Fallback to default settings
-        return new ChatSettings { Model = new Model { ModelName = "gpt-4o" } };
+        return new ChatSettings { Model = defaultModel };
     }
 
     #endregion Private helper methods

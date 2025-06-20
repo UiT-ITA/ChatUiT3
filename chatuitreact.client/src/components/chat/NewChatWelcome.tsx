@@ -1,24 +1,42 @@
-import React, { useState } from 'react';
+import React, { useEffect } from 'react';
 import { useAssistants } from '../../hooks/useAssistants';
+import { useCurrentAssistant } from '../../hooks/useChatData';
 import AssistantSelector from './AssistantSelector';
 import './NewChatWelcome.css';
 import { useTranslation } from 'react-i18next';
+import { chatStore } from '../../stores/ChatStore';
 
 interface NewChatWelcomeProps {
-  initialAssistantId?: string;
   onSelectAssistant: (assistantId: string) => void;
 }
 
-const NewChatWelcome: React.FC<NewChatWelcomeProps> = ({ 
-  initialAssistantId, 
-  onSelectAssistant 
-}) => {
+const NewChatWelcome: React.FC<NewChatWelcomeProps> = ({ onSelectAssistant }) => {
   const { t } = useTranslation();
-  const { visibleAssistants } = useAssistants();
-  const [selectedAssistantId, setSelectedAssistantId] = useState<string | undefined>(initialAssistantId);
+  const { assistantList, visibleAssistants, allAssistants } = useAssistants();
+  const selectedAssistantId = useCurrentAssistant();
+  
+  
+  let assistantsForSelector = [...visibleAssistants];
+  if (selectedAssistantId) {
+    const selectedAssistant = allAssistants.find(a => a.id === selectedAssistantId);
+    if (selectedAssistant && !selectedAssistant.isVisible && !assistantsForSelector.find(a => a.id === selectedAssistantId)) {
+      assistantsForSelector.push(selectedAssistant);
+    }
+  }
+
+  
+  useEffect(() => {
+    if (!selectedAssistantId) {
+      if (assistantList?.system?.[0]) {
+        chatStore.setCurrentAssistantId(assistantList.system[0].id);
+      } else if (assistantsForSelector.length > 0) {
+        chatStore.setCurrentAssistantId(assistantsForSelector[0].id);
+      }
+    }
+  }, [selectedAssistantId, assistantList, assistantsForSelector]);
 
   const handleSelectAssistant = (assistantId: string) => {
-    setSelectedAssistantId(assistantId);
+    chatStore.setCurrentAssistantId(assistantId);
     onSelectAssistant(assistantId);
   };
 
@@ -30,8 +48,8 @@ const NewChatWelcome: React.FC<NewChatWelcomeProps> = ({
 
         <div className="welcome-assistant-selector">
           <AssistantSelector 
-            assistants={visibleAssistants}
-            selectedAssistantId={selectedAssistantId}
+            assistants={assistantsForSelector}
+            selectedAssistantId={selectedAssistantId || undefined}
             onSelectAssistant={handleSelectAssistant}
           />
         </div>

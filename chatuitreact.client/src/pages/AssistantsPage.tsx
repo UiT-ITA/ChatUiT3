@@ -204,11 +204,12 @@ const AssistantsPage: React.FC = () => {
       <div className="assistants-section">
         <h2 className="assistants-section-title">System Assistants</h2>
         <div className="assistants-grid">
-          {systemAssistants.map(assistant => (
+          {systemAssistants.map((assistant, index) => (
             <AssistantCard
               key={assistant.id}
               assistant={assistant}
               variant="system"
+              isFirstSystem={index === 0}
               onToggleFavorite={handleToggleVisibility}
             />
           ))}

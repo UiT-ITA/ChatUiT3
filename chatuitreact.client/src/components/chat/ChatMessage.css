@@ -95,12 +95,16 @@
   align-items: center;
   justify-content: center;
   padding: 0;
-  transition: color var(--transition-base), background-color var(--transition-base);
+  transition: color var(--transition-base), background-color var(--transition-base), transform 0.15s ease;
 }
 
 .message-action-button:hover {
   color: var(--accent-primary);
   /* background-color: rgba(23, 93, 220, 0.1); */
+}
+
+.message-action-button:active {
+  transform: scale(0.95);
 }
 
 /* Styles for code blocks within messages */

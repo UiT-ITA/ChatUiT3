@@ -15,7 +15,6 @@ export const useAssistants = () => {
     getAvailableModels
   } = useSignalR();
 
-  // Flatten all assistants into a single array for components that need it
   const allAssistants = useMemo((): AnyAssistantDto[] => {
     if (!assistantList) return [];
     return [
@@ -25,8 +24,9 @@ export const useAssistants = () => {
     ];
   }, [assistantList]);
 
-  // Get only visible assistants
   const visibleAssistants = useMemo((): AnyAssistantDto[] => {
+    if (!assistantList) return [];
+    
     return allAssistants.filter(assistant => assistant.isVisible);
   }, [allAssistants]);
 

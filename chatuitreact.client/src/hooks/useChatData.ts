@@ -1,6 +1,8 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { chatStore } from '../stores/ChatStore';
 import { CachedChatItem, Message } from '../types/chatModels';
+import { useAssistants } from './useAssistants';
+import { AnyAssistantDto } from '../types/dtos';
 
 export function useChatList(): CachedChatItem[] {
   const [chatList, setChatList] = useState<CachedChatItem[]>(() => chatStore.getChatList());
@@ -47,6 +49,20 @@ export function useStreamingContent(messageId: string): string {
 
   return content;
 }
+
+export function useCurrentAssistant(): string | null {
+  const [currentAssistantId, setCurrentAssistantId] = useState<string | null>(() => chatStore.getCurrentAssistantId());
+
+  useEffect(() => {
+    const unsubscribe = chatStore.subscribeToAssistantUpdates(() => {
+      setCurrentAssistantId(chatStore.getCurrentAssistantId());
+    });
+    return unsubscribe;
+  }, []);
+
+  return currentAssistantId;
+}
+
 
 export function useMessageContent(messageId: string): string {
   const activeChat = useActiveChat();

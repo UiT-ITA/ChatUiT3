@@ -8,44 +8,7 @@ namespace ChatUitReact.Server.Hubs
         public async Task GetUserAssistants()
         {
             var userId = GetCurrentUserId();
-            var result = await _assistantService.GetUserAssistantsAsync(userId);
-
-            var assistants = new AssistantListDto
-            {
-                Owned = result.Owned.Select(assistant => new PrivateAssistantDto
-                {
-                    Id = assistant.Id,
-                    Name = assistant.Name,
-                    Description = assistant.Description,
-                    Tags = assistant.Tags,
-                    Model = assistant.Model,
-                    SystemPrompt = assistant.ChatSettings.SystemPrompt,
-                    Temperature = assistant.ChatSettings.Temperature,
-                    ReasoningEffort = assistant.ChatSettings.ReasoningEffort,
-                    IsVisible = true
-                }).ToList(),
-
-                System = result.System.Select(assistant => new SystemAssistantDto
-                {
-                    Id = assistant.Id,
-                    Name = assistant.Name,
-                    Description = assistant.Description,
-                    Tags = assistant.Tags,
-                    ModelName = assistant.Model.ModelName,
-                    IsVisible = true
-                }).ToList(),
-
-                Shared = result.Shared.Select(assistant => new SharedAssistantDto
-                {
-                    Id = assistant.Id,
-                    Name = assistant.Name,
-                    Description = assistant.Description,
-                    Tags = assistant.Tags,
-                    ModelName = assistant.Model.ModelName,
-                    IsVisible = true
-                }).ToList()
-            };
-
+            var assistants = await _assistantService.GetUserAssistantsDtoAsync(userId);
             await Clients.Caller.UserAssistants(assistants);
         }
 

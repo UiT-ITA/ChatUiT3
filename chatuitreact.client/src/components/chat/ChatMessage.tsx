@@ -1,6 +1,6 @@
-import React, { useLayoutEffect } from 'react';
+import React, { useLayoutEffect, useState, useRef } from 'react';
 import './ChatMessage.css';
-import { MdRefresh, MdEdit, MdContentCopy, MdCallSplit } from 'react-icons/md';
+import { MdRefresh, MdEdit, MdContentCopy, MdCallSplit, MdCheck } from 'react-icons/md';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import remarkMath from 'remark-math';
@@ -13,6 +13,7 @@ import 'katex/dist/katex.min.css';
 import { ChatRole, ChatStatus, Message } from '../../types/chatModels';
 import { useMessageContent, useStreamingContent } from '../../hooks/useChatData';
 import { useTheme } from '../../contexts/ThemeContext';
+import { markdownToHtml } from '../../utils/markdownUtils';
 
 interface ChatMessageProps {
   message: Message;
@@ -27,6 +28,8 @@ const ChatMessage = ({ message, onStreamingChunk }: ChatMessageProps) => {
   const isStreaming = message.status === ChatStatus.Generating;
   const isFileMessage = message.role === ChatRole.System;
   const { theme, markdownEnabled } = useTheme();
+  const [isCopied, setIsCopied] = useState(false);
+  const messageContentRef = useRef<HTMLDivElement>(null);
 
   // Select syntax highlighting theme based on current theme
   const getSyntaxHighlighterStyle = () => {
@@ -47,9 +50,33 @@ const ChatMessage = ({ message, onStreamingChunk }: ChatMessageProps) => {
       .catch(err => console.error('Failed to copy code:', err));
   };
 
-  const handleCopyMessage = () => {
-    navigator.clipboard.writeText(message.content)
-      .catch(err => console.error('Failed to copy message:', err));
+  const handleCopyMessage = async () => {
+    try {
+      setIsCopied(true);
+      
+      if (markdownEnabled) {
+        // Convert markdown to clean HTML
+        const htmlContent = markdownToHtml(content);
+        const plainTextContent = content;
+        
+        // Create clipboard item with both HTML and plain text
+        const clipboardItem = new ClipboardItem({
+          'text/html': new Blob([htmlContent], { type: 'text/html' }),
+          'text/plain': new Blob([plainTextContent], { type: 'text/plain' })
+        });
+        
+        await navigator.clipboard.write([clipboardItem]);
+      } else {
+        // Fallback to plain text if markdown is disabled
+        await navigator.clipboard.writeText(content);
+      }
+      
+      // Reset the copied state after 2 seconds
+      setTimeout(() => setIsCopied(false), 2000);
+    } catch (err) {
+      console.error('Failed to copy message:', err);
+      setIsCopied(false);
+    }
   };
 
   const handleRetry = () => {
@@ -116,7 +143,7 @@ const ChatMessage = ({ message, onStreamingChunk }: ChatMessageProps) => {
 
   return (
     <div className={`chat-message ${isUser ? 'user-message' : isFileMessage ? 'file-message' : 'assistant-message'} ${isStreaming ? 'streaming' : ''}`}>
-      <div className="message-content">
+      <div className="message-content" ref={messageContentRef}>
         {markdownEnabled ? (
           <ReactMarkdown
             remarkPlugins={[remarkGfm, remarkMath]}
@@ -147,7 +174,7 @@ const ChatMessage = ({ message, onStreamingChunk }: ChatMessageProps) => {
                 <MdEdit size="20px" />
               </button>
               <button className="message-action-button" title="Copy" onClick={handleCopyMessage}>
-                <MdContentCopy size="20px" />
+                {isCopied ? <MdCheck size="20px" /> : <MdContentCopy size="20px" />}
               </button>
             </div>
           </>
@@ -155,7 +182,7 @@ const ChatMessage = ({ message, onStreamingChunk }: ChatMessageProps) => {
           <>
             <div className="message-actions">
               <button className="message-action-button" title="Copy" onClick={handleCopyMessage}>
-                <MdContentCopy size="20px" />
+                {isCopied ? <MdCheck size="20px" /> : <MdContentCopy size="20px" />}
               </button>
               {!isFileMessage && (
                 <>

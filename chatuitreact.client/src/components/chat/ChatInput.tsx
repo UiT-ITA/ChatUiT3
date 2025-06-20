@@ -6,14 +6,15 @@ import { useTranslation } from 'react-i18next';
 import ToolbarTool from './ToolbarTool';
 import AssistantSelector from './AssistantSelector';
 import { useAssistants } from '../../hooks/useAssistants';
+import { useCurrentAssistant } from '../../hooks/useChatData';
+import { chatStore } from '../../stores/ChatStore';
 
 interface ChatInputProps {
   onSendMessage: (text: string, assistantId?: string) => void;
-  initialAssistantId?: string;
   chatId?: string;
 }
 
-const ChatInput = ({ onSendMessage, initialAssistantId, chatId }: ChatInputProps) => {
+const ChatInput = ({ onSendMessage, chatId }: ChatInputProps) => {
   const { t } = useTranslation();
   const [message, setMessage] = useState('');
   const [isToolbarExpanded, setIsToolbarExpanded] = useState(false);
@@ -23,11 +24,20 @@ const ChatInput = ({ onSendMessage, initialAssistantId, chatId }: ChatInputProps
   });
   const [temperature, setTemperature] = useState<number>(0.7);
   const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
-  const [selectedAssistantId, setSelectedAssistantId] = useState<string | undefined>(initialAssistantId);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   
   // Load all available assistants
-  const { visibleAssistants } = useAssistants();
+  const { assistantList, visibleAssistants, allAssistants } = useAssistants();
+  const selectedAssistantId = useCurrentAssistant();
+  
+  // Manually combine visible assistants + current selected (if hidden)
+  let assistantsForSelector = [...visibleAssistants];
+  if (selectedAssistantId) {
+    const selectedAssistant = allAssistants.find(a => a.id === selectedAssistantId);
+    if (selectedAssistant && !selectedAssistant.isVisible && !assistantsForSelector.find(a => a.id === selectedAssistantId)) {
+      assistantsForSelector.push(selectedAssistant);
+    }
+  }
 
   // Auto-resize textarea based on content
   useEffect(() => {
@@ -40,10 +50,14 @@ const ChatInput = ({ onSendMessage, initialAssistantId, chatId }: ChatInputProps
 
   // Set default assistant if none selected and assistants are available
   useEffect(() => {
-    if (!selectedAssistantId && visibleAssistants.length > 0) {
-      setSelectedAssistantId(visibleAssistants[0].id);
+    if (!selectedAssistantId) {
+      if (assistantList?.system?.[0]) {
+        chatStore.setCurrentAssistantId(assistantList.system[0].id);
+      } else if (assistantsForSelector.length > 0) {
+        chatStore.setCurrentAssistantId(assistantsForSelector[0].id);
+      }
     }
-  }, [selectedAssistantId, visibleAssistants]);
+  }, [selectedAssistantId, assistantList, assistantsForSelector]);
 
   // Focus input field when component mounts or when chatId changes
   useEffect(() => {
@@ -56,7 +70,7 @@ const ChatInput = ({ onSendMessage, initialAssistantId, chatId }: ChatInputProps
     e.preventDefault();
     
     if (message.trim()) {
-      onSendMessage(message, selectedAssistantId);
+      onSendMessage(message, selectedAssistantId || undefined);
       console.log('Submitting files:', selectedFiles);
       setSelectedFiles([]);
       setMessage('');
@@ -192,9 +206,9 @@ const ChatInput = ({ onSendMessage, initialAssistantId, chatId }: ChatInputProps
             </button>
             
             <AssistantSelector 
-              assistants={visibleAssistants}
-              selectedAssistantId={selectedAssistantId}
-              onSelectAssistant={setSelectedAssistantId}
+              assistants={assistantsForSelector}
+              selectedAssistantId={selectedAssistantId || undefined}
+              onSelectAssistant={(assistantId) => chatStore.setCurrentAssistantId(assistantId)}
             />
             
             <ToolbarTool 

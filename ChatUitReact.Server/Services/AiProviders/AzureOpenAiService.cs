@@ -97,8 +97,8 @@ public class AzureOpenAiService
         }
     }
 
-    // Streaming chat completion - returns collected chunks to avoid yielding in try-catch
-    public AsyncCollectionResult<StreamingChatCompletionUpdate> GetChatCompleteionStreamingAsync(
+    
+    public AsyncCollectionResult<StreamingChatCompletionUpdate> GetChatCompletionStreamingAsync(
         List<Models.ChatMessage> messages,
         Model model,
         ChatSettings settings,
@@ -110,7 +110,13 @@ public class AzureOpenAiService
         {
             var chatClient = _client.GetChatClient(model.ModelName);
             var chatMessages = ConvertToChatMessages(messages);
+            if (!string.IsNullOrEmpty(settings.SystemPrompt))
+            {
+                chatMessages.Insert(0, new SystemChatMessage(settings.SystemPrompt));
+            }
             var options = BuildCompletionOptions(settings);
+
+            Console.WriteLine($"Streaming chat completion with model: {model.ModelName}, messages count: {chatMessages.Count}");
 
             return chatClient.CompleteChatStreamingAsync(chatMessages, options, cancellationToken);
         }

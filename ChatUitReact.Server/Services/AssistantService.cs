@@ -192,12 +192,12 @@ namespace ChatUitReact.Server.Services
             return $"/assistants?add={assistantId}";
         }
 
-        private async Task NotifyAssistantsUpdated(string userId)
+        public async Task<AssistantListDto> GetUserAssistantsDtoAsync(string userId)
         {
             var result = await GetUserAssistantsAsync(userId);
             var user = await _databaseService.GetUserAsync(userId);
             
-            var assistants = new AssistantListDto
+            return new AssistantListDto
             {
                 Owned = result.Owned.Select(assistant => new PrivateAssistantDto
                 {
@@ -232,7 +232,11 @@ namespace ChatUitReact.Server.Services
                     IsVisible = user?.Preferences.VisibleAssistantIds.Contains(assistant.Id) ?? false
                 }).ToList()
             };
-            
+        }
+
+        private async Task NotifyAssistantsUpdated(string userId)
+        {
+            var assistants = await GetUserAssistantsDtoAsync(userId);
             await _hubContext.Clients.Group(userId).SendAsync("UserAssistants", assistants);
         }
     }
