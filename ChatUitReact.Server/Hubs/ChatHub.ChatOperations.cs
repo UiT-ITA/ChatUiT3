@@ -17,8 +17,6 @@ public partial class ChatHub
 
         var groupName = $"{userId}:{chatId}";
         await Groups.AddToGroupAsync(Context.ConnectionId, groupName);
-
-        await Clients.Caller.ChatUpdated(chat);
     }
 
     public async Task LeaveChat(string chatId)
@@ -37,43 +35,4 @@ public partial class ChatHub
             async (cId, mId, chunk) => await _hubContext.Clients.Client(clientId).SendAsync("ReceiveMessageChunk", cId, mId, chunk));
     }
 
-    public async Task SendMessage(string chatId, string content, string? assistantId = null)
-    {
-        // Console.WriteLine($"SendMessage called with chatId: {chatId}, content: {content}, assistantId: {assistantId}");
-        var userId = GetCurrentUserId();
-        
-        if (chatId == "new")
-        {
-            var messages = new List<ChatMessage>
-            {
-                new ChatMessage
-                {
-                    Role = AiChatRole.User,
-                    Content = content,
-                    Status = AiChatStatus.Success
-                }
-            };
-            
-            var chat = await _chatService.CreateChatAsync(userId, assistantId, messages);
-            _logger.LogInformation("Created new chat with ID: {ChatId}", chat.Id);
-            await Groups.AddToGroupAsync(Context.ConnectionId, $"{userId}:{chat.Id}");
-            await Clients.Caller.ChatCreated(chat.Id);
-        }
-        else
-        {
-            await Groups.AddToGroupAsync(Context.ConnectionId, $"{userId}:{chatId}");
-            await _chatService.SendStreamingMessageAsync(userId, chatId, new ChatMessage
-            {
-                Role = AiChatRole.User,
-                Content = content,
-                Status = AiChatStatus.Success
-            }, assistantId);
-
-            var chat = await _chatService.GetChatByIdAsync(userId, chatId);
-            if (chat != null)
-            {
-                await Clients.Group($"{userId}:{chatId}").ChatUpdated(chat);
-            }
-        }
-    }
 }

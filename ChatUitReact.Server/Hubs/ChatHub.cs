@@ -8,11 +8,10 @@ namespace ChatUitReact.Server.Hubs;
 
 public interface IChatHubClient
 {
-    Task ChatListUpdated(List<ChatHeader> chats);
-    Task ChatUpdated(Chat chat);
     Task ReceiveMessageChunk(string chatId, string messageId, string chunk);
-    Task ChatCreated(string chatId);
-    Task UserAssistants(AssistantListDto assistants);
+    Task ChatUpdated(string chatId);
+    Task ChatListUpdated();
+    Task AssistantsChanged();
     Task Error(string message);
 }
 
@@ -48,25 +47,11 @@ public partial class ChatHub : Hub<IChatHubClient>
         throw new UnauthorizedAccessException("User must be authenticated");
     }
 
-    public async Task<ModelDto[]> GetAvailableModels()
-    {
-        // For now, just return all models. In a real system, you'd filter by user roles
-        var models = await _modelService.GetAllModelsAsync();
-        return models.Select(m => new ModelDto
-        {
-            Id = m.Id,
-            ModelName = m.ModelName,
-            EndpointId = m.EndpointId,
-            AllowedRoles = m.AllowedRoles
-        }).ToArray();
-    }
 
     public override async Task OnConnectedAsync()
     {
         var userId = GetCurrentUserId();
         await Groups.AddToGroupAsync(Context.ConnectionId, userId);
-        var chats = await _chatService.GetChatListAsync(userId);
-        await Clients.Caller.ChatListUpdated(chats);
         _connections.Add(Context.ConnectionId, userId);
         await base.OnConnectedAsync();
     }

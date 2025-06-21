@@ -1,4 +1,4 @@
-import React, { useLayoutEffect, useState, useRef } from 'react';
+import React, { useLayoutEffect, useState, useRef, useEffect } from 'react';
 import './ChatMessage.css';
 import { MdRefresh, MdEdit, MdContentCopy, MdCallSplit, MdCheck } from 'react-icons/md';
 import ReactMarkdown from 'react-markdown';
@@ -11,9 +11,10 @@ import { oneLight } from 'react-syntax-highlighter/dist/esm/styles/prism';
 import { dracula } from 'react-syntax-highlighter/dist/esm/styles/prism';
 import 'katex/dist/katex.min.css';
 import { ChatRole, ChatStatus, Message } from '../../types/chatModels';
-import { useMessageContent, useStreamingContent } from '../../hooks/useChatData';
 import { useTheme } from '../../contexts/ThemeContext';
 import { markdownToHtml } from '../../utils/markdownUtils';
+import { useStreamingContent, useChatData } from '../../contexts/ChatDataProvider';
+import FilePreview from './FilePreview';
 
 interface ChatMessageProps {
   message: Message;
@@ -21,9 +22,20 @@ interface ChatMessageProps {
 }
 
 const ChatMessage = ({ message, onStreamingChunk }: ChatMessageProps) => {
-  const staticContent = useMessageContent(message.id);
-  const streamingContent = useStreamingContent(message.id);
-  const content = message.status === ChatStatus.Generating ? streamingContent : staticContent;
+  const { content: streamingContent, subscribe } = useStreamingContent(message.id);
+  const [localStreamingContent, setLocalStreamingContent] = useState<string>(streamingContent || '');
+  const { getStreamingContent } = useChatData();
+
+  useEffect(() => {
+    const unsubscribe = subscribe(message.id, () => {
+      const newContent = getStreamingContent(message.id) || '';
+      setLocalStreamingContent(newContent);
+    });
+    return unsubscribe;
+  }, [message.id, subscribe, getStreamingContent]);
+
+  const staticContent = message.content;
+  const content = message.status === ChatStatus.Generating ? (getStreamingContent(message.id) || '') : staticContent;
   const isUser = message.role === ChatRole.User;
   const isStreaming = message.status === ChatStatus.Generating;
   const isFileMessage = message.role === ChatRole.System;
@@ -143,6 +155,11 @@ const ChatMessage = ({ message, onStreamingChunk }: ChatMessageProps) => {
 
   return (
     <div className={`chat-message ${isUser ? 'user-message' : isFileMessage ? 'file-message' : 'assistant-message'} ${isStreaming ? 'streaming' : ''}`}>
+      {message.files && message.files.length > 0 && (
+        <div className="message-files">
+          <FilePreview files={message.files} readonly={true} />
+        </div>
+      )}
       <div className="message-content" ref={messageContentRef}>
         {markdownEnabled ? (
           <ReactMarkdown

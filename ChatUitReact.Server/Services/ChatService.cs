@@ -352,7 +352,7 @@ public class ChatService : IChatService
 
         if (chat != null)
         {
-            await _hubContext.Clients.Group($"{userId}:{chatId}").SendAsync("ChatUpdated", chat);
+            await _hubContext.Clients.Group($"{userId}:{chatId}").SendAsync("ChatUpdated", chatId);
         }
     }
 

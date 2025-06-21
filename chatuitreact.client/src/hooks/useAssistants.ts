@@ -1,19 +1,27 @@
 import { useMemo } from 'react';
-import { useSignalR } from '../contexts/SignalRContext';
+import { useAuth } from '../contexts/AuthContext';
+import { 
+  useAssistantsQuery,
+  useCreateAssistant,
+  useUpdateAssistant,
+  useDeleteAssistant,
+  useToggleAssistantVisibility,
+  useAddSharedAssistant,
+  useGenerateShareLink,
+  useGetAvailableModels
+} from './useAssistantsQuery';
 import { CreateAssistantDto, UpdateAssistantDto, AnyAssistantDto } from '../types/dtos';
 
 export const useAssistants = () => {
-  const { 
-    assistantList,
-    isLoadingAssistants: isLoading,
-    getUserAssistants, 
-    createAssistant: createAssistantSignalR, 
-    updateAssistant: updateAssistantSignalR, 
-    deleteAssistant: deleteAssistantSignalR, 
-    toggleAssistantVisibility, 
-    addSharedAssistant: addSharedAssistantSignalR,
-    getAvailableModels
-  } = useSignalR();
+  const { isAuthenticated, isInitializing } = useAuth();
+  const { data: assistantList, isLoading } = useAssistantsQuery(!isInitializing && isAuthenticated);
+  const createMutation = useCreateAssistant();
+  const updateMutation = useUpdateAssistant();
+  const deleteMutation = useDeleteAssistant();
+  const toggleVisibilityMutation = useToggleAssistantVisibility();
+  const addSharedMutation = useAddSharedAssistant();
+  const generateShareLinkMutation = useGenerateShareLink();
+  const getAvailableModelsMutation = useGetAvailableModels();
 
   const allAssistants = useMemo((): AnyAssistantDto[] => {
     if (!assistantList) return [];
@@ -31,23 +39,31 @@ export const useAssistants = () => {
   }, [allAssistants]);
 
   const createAssistant = async (createDto: CreateAssistantDto) => {
-    await createAssistantSignalR(createDto);
+    await createMutation.mutateAsync(createDto);
   };
 
   const updateAssistant = async (updateDto: UpdateAssistantDto) => {
-    await updateAssistantSignalR(updateDto);
+    await updateMutation.mutateAsync(updateDto);
   };
 
   const deleteAssistant = async (assistantId: string) => {
-    await deleteAssistantSignalR(assistantId);
+    await deleteMutation.mutateAsync(assistantId);
   };
 
   const toggleVisibility = async (assistantId: string) => {
-    await toggleAssistantVisibility(assistantId);
+    await toggleVisibilityMutation.mutateAsync(assistantId);
   };
 
   const addSharedAssistant = async (assistantId: string) => {
-    await addSharedAssistantSignalR(assistantId);
+    await addSharedMutation.mutateAsync(assistantId);
+  };
+
+  const generateShareLink = async (assistantId: string) => {
+    return await generateShareLinkMutation.mutateAsync(assistantId);
+  };
+
+  const getAvailableModels = async () => {
+    return await getAvailableModelsMutation.mutateAsync();
   };
 
   return {
@@ -60,7 +76,7 @@ export const useAssistants = () => {
     deleteAssistant,
     toggleVisibility,
     addSharedAssistant,
-    getUserAssistants,
+    generateShareLink,
     getAvailableModels
   };
 };

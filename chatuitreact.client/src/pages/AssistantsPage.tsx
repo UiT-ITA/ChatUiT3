@@ -3,7 +3,6 @@ import { MdAdd } from 'react-icons/md';
 import { useSearchParams } from 'react-router-dom';
 import { PrivateAssistantDto, CreateAssistantDto, UpdateAssistantDto, ReasoningEffort } from '../types/dtos';
 import { useAssistants } from '../hooks/useAssistants';
-import { useSignalR } from '../contexts/SignalRContext';
 
 import { enhanceModelsWithCapabilities, EnhancedModel } from '../utils/modelUtils';
 import AssistantCard from '../components/assistants/AssistantCard';
@@ -14,9 +13,7 @@ import './AssistantsPage.css';
 
 const AssistantsPage: React.FC = () => {
   const { assistantList, createAssistant, updateAssistant, deleteAssistant, toggleVisibility, addSharedAssistant, getAvailableModels } = useAssistants();
-  const { isConnected } = useSignalR();
   const [searchParams, setSearchParams] = useSearchParams();
-  const [pendingAssistantId, setPendingAssistantId] = useState<string | null>(null);
 
   const [models, setModels] = useState<EnhancedModel[]>([]);
   const [showCreateModal, setShowCreateModal] = useState(false);
@@ -37,24 +34,12 @@ const AssistantsPage: React.FC = () => {
   useEffect(() => {
     const addId = searchParams.get('add');
     if (addId) {
-      if (isConnected) {
-        handleAddExternal(addId);
-      } else {
-        setPendingAssistantId(addId);
-      }
+      handleAddExternal(addId);
       const newParams = new URLSearchParams(searchParams);
       newParams.delete('add');
       setSearchParams(newParams, { replace: true });
     }
-  }, [searchParams, setSearchParams, isConnected]);
-
-  // Process pending assistant add when connection becomes available
-  useEffect(() => {
-    if (isConnected && pendingAssistantId) {
-      handleAddExternal(pendingAssistantId);
-      setPendingAssistantId(null);
-    }
-  }, [isConnected, pendingAssistantId]);
+  }, [searchParams, setSearchParams]);
 
   const loadModels = async () => {
     const rawModels = await getAvailableModels();
@@ -117,10 +102,6 @@ const AssistantsPage: React.FC = () => {
   };
 
   const handleAddExternal = async (assistantId: string) => {
-    if (!isConnected) {
-      setPendingAssistantId(assistantId);
-      return;
-    }
     await addSharedAssistant(assistantId);
   };
 
@@ -170,12 +151,6 @@ const AssistantsPage: React.FC = () => {
       </div>
 
       <AddExternalAssistant onAddExternal={handleAddExternal} />
-
-      {pendingAssistantId && !isConnected && (
-        <div className="loading-message">
-          Connecting to add shared assistant...
-        </div>
-      )}
 
       <div className="assistants-section">
         <h2 className="assistants-section-title">My Assistants</h2>

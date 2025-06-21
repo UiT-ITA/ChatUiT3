@@ -26,6 +26,28 @@ export interface Message {
     timestamp: Date;
     content: string;
     status: ChatStatus;
+    files: ChatFile[];
+}
+
+export interface ChatFile {
+    id: string;
+    filename?: string;
+    type: ContentType;
+}
+
+export interface ChatFileText extends ChatFile {
+    type: ContentType.Text;
+    content: string;
+}
+
+export interface ChatFileImage extends ChatFile {
+    type: ContentType.Image;
+    content: string;
+}
+
+export interface ChatFileMixed extends ChatFile {
+    type: ContentType.Mixed;
+    chunks: ChatFile[];
 }
 
 export enum ChatRole {
@@ -41,6 +63,9 @@ export enum ContentType {
     Image = 'Image',
     Mixed = 'Mixed',
 }
+
+// Alias for compatibility with server enum naming
+export type AiContentType = ContentType;
 
 export enum ChatStatus {
     New = 'New',

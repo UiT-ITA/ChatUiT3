@@ -1,11 +1,16 @@
 import React, { useLayoutEffect, useRef, useState, useEffect } from 'react';
+import { useParams } from 'react-router-dom';
+import { useAuth } from '../../contexts/AuthContext';
+import { useChat } from '../../hooks/useChats';
 import ChatMessage from './ChatMessage';
 import ScrollToBottomButton from './ScrollToBottomButton';
 import './ChatHistory.css';
-import { useActiveChatMessages } from '../../hooks/useChatData';
 
 const ChatHistory = () => {
-  const messages = useActiveChatMessages();
+  const { chatId } = useParams<{ chatId: string }>();
+  const { isAuthenticated, isInitializing } = useAuth();
+  const { data: chat } = useChat(chatId || null, !isInitializing && isAuthenticated && !!chatId);
+  const messages = chat?.messages || [];
   const chatHistoryRef = useRef<HTMLDivElement>(null);
   const [shouldAutoScroll, setShouldAutoScroll] = useState(true);
   const [prevScrollTop, setPrevScrollTop] = useState(0);

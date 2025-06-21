@@ -77,7 +77,8 @@ public partial class MockDatabaseService
                 Role = m.Role,
                 Timestamp = m.Timestamp,
                 Content = m.Content,
-                Status = m.Status
+                Status = m.Status,
+                Files = m.Files
             }).ToList()
         };
     }

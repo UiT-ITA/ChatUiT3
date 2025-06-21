@@ -1,4 +1,9 @@
 /* Base message styling */
+.message-files {
+    margin-bottom: 8px;
+    padding-bottom: 8px;
+}
+
 .chat-message {
   width: 100%;
   /* padding: 0.5rem 1rem; */

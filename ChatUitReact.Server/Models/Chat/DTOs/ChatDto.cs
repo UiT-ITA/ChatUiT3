@@ -25,6 +25,16 @@ public class ChatMessageDto
     public DateTime Timestamp { get; set; }
     public string Content { get; set; } = string.Empty;
     public AiChatStatus Status { get; set; }
+    public List<ChatFileDto> Files { get; set; } = new List<ChatFileDto>();
+}
+
+public class ChatFileDto
+{
+    public string Id { get; set; } = string.Empty;
+    public string? Filename { get; set; }
+    public AiContentType Type { get; set; }
+    public string Content { get; set; } = string.Empty;
+    public List<ChatFileDto>? Chunks { get; set; }
 }
 
 public class CreateChatDto
@@ -36,5 +46,6 @@ public class CreateChatDto
 public class SendMessageDto
 {
     public string Content { get; set; } = string.Empty;
+    public List<ChatFileDto>? Files { get; set; }
     public string? AssistantId { get; set; }
 }

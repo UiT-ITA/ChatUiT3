@@ -1,12 +1,14 @@
 ﻿using ChatUitReact.Server.Models;
 using System.Collections.Concurrent;
 using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.Logging;
 
 namespace ChatUitReact.Server.Services;
 
 public partial class MockDatabaseService : IDatabaseService
 {
     private readonly IConfiguration _configuration;
+    private readonly ILogger<MockDatabaseService> _logger;
     
     // Per-user storage instead of shared data
     private readonly ConcurrentDictionary<string, UserInfo> _userInfoStorage = new();
@@ -16,9 +18,10 @@ public partial class MockDatabaseService : IDatabaseService
     private ConcurrentDictionary<string, ModelEndpoint> _endpoints = new();
     private ConcurrentDictionary<string, Model> _models = new();
 
-    public MockDatabaseService(IConfiguration configuration)
+    public MockDatabaseService(IConfiguration configuration, ILogger<MockDatabaseService> logger)
     {
         _configuration = configuration;
+        _logger = logger;
         InitializeDummyData();
     }
 

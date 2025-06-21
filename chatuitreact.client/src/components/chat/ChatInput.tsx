@@ -5,12 +5,14 @@ import { MdSend, MdKeyboardArrowDown, MdKeyboardArrowUp, MdSearch, MdCloud, MdTu
 import { useTranslation } from 'react-i18next';
 import ToolbarTool from './ToolbarTool';
 import AssistantSelector from './AssistantSelector';
+import FilePreview from './FilePreview';
 import { useAssistants } from '../../hooks/useAssistants';
-import { useCurrentAssistant } from '../../hooks/useChatData';
-import { chatStore } from '../../stores/ChatStore';
+import { useCurrentAssistant } from '../../contexts/ChatDataProvider';
+import { ChatFile } from '../../types/chatModels';
+import { FileProcessingService } from '../../services/fileProcessingService';
 
 interface ChatInputProps {
-  onSendMessage: (text: string, assistantId?: string) => void;
+  onSendMessage: (text: string, files?: ChatFile[], assistantId?: string) => void;
   chatId?: string;
 }
 
@@ -28,13 +30,13 @@ const ChatInput = ({ onSendMessage, chatId }: ChatInputProps) => {
   
   // Load all available assistants
   const { assistantList, visibleAssistants, allAssistants } = useAssistants();
-  const selectedAssistantId = useCurrentAssistant();
+  const { currentAssistantId, setCurrentAssistantId } = useCurrentAssistant();
   
   // Manually combine visible assistants + current selected (if hidden)
   let assistantsForSelector = [...visibleAssistants];
-  if (selectedAssistantId) {
-    const selectedAssistant = allAssistants.find(a => a.id === selectedAssistantId);
-    if (selectedAssistant && !selectedAssistant.isVisible && !assistantsForSelector.find(a => a.id === selectedAssistantId)) {
+  if (currentAssistantId) {
+    const selectedAssistant = allAssistants.find(a => a.id === currentAssistantId);
+    if (selectedAssistant && !selectedAssistant.isVisible && !assistantsForSelector.find(a => a.id === currentAssistantId)) {
       assistantsForSelector.push(selectedAssistant);
     }
   }
@@ -50,14 +52,14 @@ const ChatInput = ({ onSendMessage, chatId }: ChatInputProps) => {
 
   // Set default assistant if none selected and assistants are available
   useEffect(() => {
-    if (!selectedAssistantId) {
+    if (!currentAssistantId) {
       if (assistantList?.system?.[0]) {
-        chatStore.setCurrentAssistantId(assistantList.system[0].id);
+        setCurrentAssistantId(assistantList.system[0].id);
       } else if (assistantsForSelector.length > 0) {
-        chatStore.setCurrentAssistantId(assistantsForSelector[0].id);
+        setCurrentAssistantId(assistantsForSelector[0].id);
       }
     }
-  }, [selectedAssistantId, assistantList, assistantsForSelector]);
+  }, [currentAssistantId, assistantList, assistantsForSelector, setCurrentAssistantId]);
 
   // Focus input field when component mounts or when chatId changes
   useEffect(() => {
@@ -66,12 +68,24 @@ const ChatInput = ({ onSendMessage, chatId }: ChatInputProps) => {
     }
   }, [chatId]);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
     if (message.trim()) {
-      onSendMessage(message, selectedAssistantId || undefined);
-      console.log('Submitting files:', selectedFiles);
+      let processedFiles: ChatFile[] = [];
+      
+      if (selectedFiles.length > 0) {
+        try {
+          processedFiles = await Promise.all(
+            selectedFiles.map(file => FileProcessingService.processFile(file))
+          );
+        } catch (error) {
+          console.error('Error processing files:', error);
+          return;
+        }
+      }
+      
+      onSendMessage(message, processedFiles, currentAssistantId || undefined);
       setSelectedFiles([]);
       setMessage('');
       
@@ -98,7 +112,7 @@ const ChatInput = ({ onSendMessage, chatId }: ChatInputProps) => {
   const toggleTool = (toolName: string) => {
     setActiveTools(prev => {
       const newState = { ...prev, [toolName]: !prev[toolName] };
-      console.log('Tool state changed:', newState);
+      // console.log('Tool state changed:', newState);
       return newState;
     });
   };
@@ -106,7 +120,7 @@ const ChatInput = ({ onSendMessage, chatId }: ChatInputProps) => {
   const handleTemperatureChange = (e: ChangeEvent<HTMLInputElement>) => {
     const value = parseFloat(e.target.value);
     setTemperature(value);
-    console.log('Temperature changed:', value);
+    // console.log('Temperature changed:', value);
   };
 
   const handleFileUpload = () => {
@@ -120,9 +134,6 @@ const ChatInput = ({ onSendMessage, chatId }: ChatInputProps) => {
         .filter(file =>
           ['text/plain','text/csv','application/json','image/jpeg','image/png'].includes(file.type)
         );
-      fileArray.forEach(file => {
-        console.log('File:', file.name, file.size);
-      });
       setSelectedFiles(prev => {
         const combined = [...prev, ...fileArray].slice(0, 10);
         return combined;
@@ -141,25 +152,10 @@ const ChatInput = ({ onSendMessage, chatId }: ChatInputProps) => {
   return (
     <div className="chat-input-outer-container">
     <div className={`chat-input-inner-container ${isToolbarExpanded ? 'toolbar-expanded' : ''}`}>
-      {selectedFiles.length > 0 && (
-        <div className="file-thumbnails">
-          {selectedFiles.map((file, index) => (
-            <div key={index} className={`thumbnail ${file.type.startsWith('image/') ? 'image' : 'text'}`}>
-              {file.type.startsWith('image/') ? (
-                <img src={URL.createObjectURL(file)} alt={file.name} />
-              ) : (
-                <div className="file-icon">
-                  <div className="file-name">{file.name}</div>
-                  <div className="file-type">
-                    {file.name.split('.').pop()?.toUpperCase()} file
-                  </div>
-                </div>
-              )}
-              <button type="button" className="remove-btn" onClick={() => removeFile(index)}>×</button>
-            </div>
-          ))}
-        </div>
-      )}
+      <FilePreview 
+        files={selectedFiles} 
+        onRemove={removeFile}
+      />
         <form className="chat-input" onSubmit={handleSubmit}>
           {!isToolbarExpanded && (
             <button 
@@ -207,8 +203,8 @@ const ChatInput = ({ onSendMessage, chatId }: ChatInputProps) => {
             
             <AssistantSelector 
               assistants={assistantsForSelector}
-              selectedAssistantId={selectedAssistantId || undefined}
-              onSelectAssistant={(assistantId) => chatStore.setCurrentAssistantId(assistantId)}
+              selectedAssistantId={currentAssistantId || undefined}
+              onSelectAssistant={(assistantId) => setCurrentAssistantId(assistantId)}
             />
             
             <ToolbarTool 

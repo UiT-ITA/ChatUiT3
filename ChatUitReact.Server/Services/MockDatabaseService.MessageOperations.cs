@@ -27,6 +27,12 @@ public partial class MockDatabaseService
             {
                 existingMessage.Content = message.Content;
                 existingMessage.Timestamp = message.Timestamp;
+                existingMessage.Status = message.Status;
+                // CRITICAL FIX: Preserve files when updating message
+                if (message.Files != null && message.Files.Count > 0)
+                {
+                    existingMessage.Files = message.Files;
+                }
             }
             chat.UpdatedAt = DateTime.Now;
         }

@@ -1,7 +1,8 @@
 import React, { useEffect, useState } from "react";
 import ReactDOM from "react-dom";
-import { useChatList } from "../../hooks/useChatData";
-import { CachedChatItem } from "../../types/chatModels";
+import { useAuth } from "../../contexts/AuthContext";
+import { useChats } from "../../hooks/useChats";
+import { Chat } from "../../types/chatModels";
 import { useNavigate, useParams } from "react-router-dom";
 import { FaStar, FaEdit, FaTrash } from "react-icons/fa";
 import { MdMoreVert } from "react-icons/md";
@@ -12,9 +13,10 @@ import { useTranslation } from "react-i18next";
 
 export const ChatList = React.memo(() => {
   const { t } = useTranslation();
-  const chatList = useChatList();
+  const { isAuthenticated, isInitializing } = useAuth();
+  const { data: chatList = [] } = useChats(!isInitializing && isAuthenticated);
   const [menu, setMenu] = useState<{
-    chat: CachedChatItem;
+    chat: Chat;
     x: number;
     y: number;
   } | null>(null);
@@ -23,9 +25,9 @@ export const ChatList = React.memo(() => {
   const { chatId: activeChatId } = useParams<{ chatId: string }>();
 
   const contextMenuOptions = [
-    { label: t('sidebar.favorite'), icon: <FaStar />, action: (chat: CachedChatItem) => console.log(`Favorite clicked for ${chat.name}`) },
-    { label: t('sidebar.rename'), icon: <FaEdit />, action: (chat: CachedChatItem) => console.log(`Rename clicked for ${chat.name}`) },
-    { label: t('sidebar.delete'), icon: <FaTrash />, action: (chat: CachedChatItem) => console.log(`Delete clicked for ${chat.name}`) },
+    { label: t('sidebar.favorite'), icon: <FaStar />, action: (chat: Chat) => console.log(`Favorite clicked for ${chat.name}`) },
+    { label: t('sidebar.rename'), icon: <FaEdit />, action: (chat: Chat) => console.log(`Rename clicked for ${chat.name}`) },
+    { label: t('sidebar.delete'), icon: <FaTrash />, action: (chat: Chat) => console.log(`Delete clicked for ${chat.name}`) },
   ];
   
   useEffect(() => {
@@ -43,19 +45,19 @@ export const ChatList = React.memo(() => {
     return () => document.removeEventListener("mousedown", handleClick);
   }, [menu]);
 
-  const handleMenuClick = (option: typeof contextMenuOptions[0], chat: CachedChatItem) => {
+  const handleMenuClick = (option: typeof contextMenuOptions[0], chat: Chat) => {
     option.action(chat);
     setMenu(null);
   };
 
-  const handleChatClick = (chat: CachedChatItem) => {
+  const handleChatClick = (chat: Chat) => {
     setImmediateActiveId(chat.id);
     navigate(`/c/${chat.id}`);
   };
 
   const handleMoreClick = (
     e: React.MouseEvent<HTMLSpanElement, MouseEvent>,
-    chat: CachedChatItem
+    chat: Chat
   ) => {
     e.stopPropagation();
 
@@ -80,7 +82,7 @@ export const ChatList = React.memo(() => {
       {chatList.length === 0 ? (
         <div className="chat-list-empty">{t('sidebar.noChats')}</div>
       ) : (
-        chatList.map((chat: CachedChatItem) => (
+        chatList.map((chat: Chat) => (
           <div
             key={chat.id}
             className={`chat-item${isActiveChat(chat.id) ? " chat-item-active" : ""}`}

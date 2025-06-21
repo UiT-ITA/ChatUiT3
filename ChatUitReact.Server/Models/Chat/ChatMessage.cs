@@ -9,7 +9,5 @@ public class ChatMessage
     public DateTime Timestamp { get; set; } = DateTime.UtcNow;
     public string Content { get; set; } = string.Empty;
     public AiChatStatus Status { get; set; } = AiChatStatus.Success;
-
-    // Will be added later for file support
-    //public List<AiChatFile> Files { get; set; } = new List<AiChatFile>();
+    public List<ChatFile> Files { get; set; } = new List<ChatFile>();
 }
