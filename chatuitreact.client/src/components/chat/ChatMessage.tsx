@@ -23,16 +23,14 @@ interface ChatMessageProps {
 
 const ChatMessage = ({ message, onStreamingChunk }: ChatMessageProps) => {
   const { content: streamingContent, subscribe } = useStreamingContent(message.id);
-  const [localStreamingContent, setLocalStreamingContent] = useState<string>(streamingContent || '');
   const { getStreamingContent } = useChatData();
 
   useEffect(() => {
     const unsubscribe = subscribe(message.id, () => {
-      const newContent = getStreamingContent(message.id) || '';
-      setLocalStreamingContent(newContent);
+      // Content is managed by the streaming context
     });
     return unsubscribe;
-  }, [message.id, subscribe, getStreamingContent]);
+  }, [message.id, subscribe]);
 
   const staticContent = message.content;
   const content = message.status === ChatStatus.Generating ? (getStreamingContent(message.id) || '') : staticContent;
