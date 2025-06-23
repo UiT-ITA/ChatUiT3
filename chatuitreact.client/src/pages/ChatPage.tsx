@@ -6,7 +6,7 @@ import ChatInput from '../components/chat/ChatInput';
 import NewChatWelcome from '../components/chat/NewChatWelcome';
 import { useSignalR } from '../contexts/SignalRContext';
 import { useSendMessage } from '../hooks/useChats';
-import { useCurrentAssistant } from '../contexts/ChatDataProvider';
+import { useCurrentAssistant, useChatData } from '../contexts/ChatDataProvider';
 import { ChatFile } from '../types/chatModels';
 import './ChatPage.css';
 
@@ -15,6 +15,7 @@ const ChatPage = () => {
     const { chatId } = useParams<{ chatId: string }>();
     const { loadChat, isConnected, onChatCreated } = useSignalR();
     const sendMessageMutation = useSendMessage();
+    const { setCurrentChatId } = useChatData();
     const navigate = useNavigate();
 
     useEffect(() => {
@@ -22,6 +23,15 @@ const ChatPage = () => {
             loadChat(chatId, () => navigate('/c/404'));
         }
     }, [chatId, loadChat, isConnected, navigate]);
+
+    // Set current chat ID when chat changes
+    useEffect(() => {
+        if (chatId && chatId !== 'new' && chatId !== '404') {
+            setCurrentChatId(chatId);
+        } else {
+            setCurrentChatId(null);
+        }
+    }, [chatId, setCurrentChatId]);
 
     useEffect(() => {
         onChatCreated((chatId: string) => {
