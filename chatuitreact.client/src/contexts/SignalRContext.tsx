@@ -91,7 +91,7 @@ export const SignalRProvider: React.FC<{ children: React.ReactNode }> = ({ child
         connectionRef.current.stop();
       }
     };
-  }, [getAccessToken, isInitializing]);
+  }, [getAccessToken, isInitializing, updateMessageChunk]);
 
   const loadChat = useCallback((chatId: string, onNotFound?: () => void) => {
     connectionRef.current?.invoke("JoinChat", chatId)
@@ -107,6 +107,7 @@ export const SignalRProvider: React.FC<{ children: React.ReactNode }> = ({ child
   const streamMessage = useCallback((chatId: string, messageId: string) => {
     connectionRef.current?.invoke("StreamMessage", chatId, messageId);
   }, []);
+
 
   return (
     <SignalRContext.Provider value={{ 

@@ -31,10 +31,14 @@ public class StreamingMessageService
                 {
                     streamingMessage.AppendChunk(chunk);
                 }
+                
+                // Mark streaming as complete
+                streamingMessage.Complete();
             }
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error processing stream for {StreamKey}", streamKey);
+                streamingMessage.Complete(); // Also complete on error
             }
             finally
             {

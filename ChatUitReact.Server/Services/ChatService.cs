@@ -216,7 +216,6 @@ public class ChatService : IChatService
                 
                 // Update assistant message with complete response
                 assistantMessage.Content = content.ToString();
-                
                 assistantMessage.Status = AiChatStatus.Success;
                 await _databaseService.UpdateMessageAsync(userId, chatId, assistantMessage);
                 

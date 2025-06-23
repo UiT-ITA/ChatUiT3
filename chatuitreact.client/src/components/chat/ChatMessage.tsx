@@ -14,6 +14,7 @@ import { ChatRole, ChatStatus, Message } from '../../types/chatModels';
 import { useTheme } from '../../contexts/ThemeContext';
 import { markdownToHtml } from '../../utils/markdownUtils';
 import { useStreamingContent, useChatData } from '../../contexts/ChatDataProvider';
+import { useSignalR } from '../../contexts/SignalRContext';
 import FilePreview from './FilePreview';
 
 interface ChatMessageProps {
@@ -23,7 +24,9 @@ interface ChatMessageProps {
 
 const ChatMessage = ({ message, onStreamingChunk }: ChatMessageProps) => {
   const { content: streamingContent, subscribe } = useStreamingContent(message.id);
-  const { getStreamingContent } = useChatData();
+  const { getStreamingContent, currentChatId } = useChatData();
+  const { streamMessage } = useSignalR();
+  const requestedStreamingRef = useRef(new Set<string>());
 
   useEffect(() => {
     const unsubscribe = subscribe(message.id, () => {
@@ -31,6 +34,17 @@ const ChatMessage = ({ message, onStreamingChunk }: ChatMessageProps) => {
     });
     return unsubscribe;
   }, [message.id, subscribe]);
+
+  // Render-driven streaming trigger - the core of the solution
+  useEffect(() => {
+    if (message.status === ChatStatus.Generating && 
+        currentChatId && 
+        !requestedStreamingRef.current.has(message.id)) {
+      
+      requestedStreamingRef.current.add(message.id);
+      streamMessage(currentChatId, message.id);
+    }
+  }, [message.status, message.id, currentChatId, streamMessage]);
 
   const staticContent = message.content;
   const content = message.status === ChatStatus.Generating ? (getStreamingContent(message.id) || '') : staticContent;
