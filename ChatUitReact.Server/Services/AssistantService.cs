@@ -34,17 +34,9 @@ namespace ChatUitReact.Server.Services
             };
         }
 
-        public async Task<Assistant?> GetAssistantByIdAsync(string assistantId, string userId)
+        public async Task<Assistant?> GetAssistantByIdAsync(string assistantId)
         {
-            var assistant = await _databaseService.GetAssistantByIdAsync(assistantId);
-            if (assistant == null) return null;
-
-            if (assistant.OwnerId != userId && assistant.OwnerId != "System")
-            {
-                return null;
-            }
-
-            return assistant;
+            return await _databaseService.GetAssistantByIdAsync(assistantId);
         }
 
         public async Task<bool> CreateAssistantAsync(CreateAssistantDto createDto, string userId)

@@ -294,7 +294,7 @@ public class ChatService : IChatService
     {
         if (!string.IsNullOrEmpty(assistantId))
         {
-            var assistant = await _assistantService.GetAssistantByIdAsync(assistantId, userId);
+            var assistant = await _assistantService.GetAssistantByIdAsync(assistantId);
             if (assistant == null)
             {
                 throw new InvalidOperationException($"Assistant {assistantId} not found for user {userId}");
