@@ -3,7 +3,6 @@ import { MdAdd } from 'react-icons/md';
 import { useSearchParams } from 'react-router-dom';
 import { PrivateAssistantDto, CreateAssistantDto, UpdateAssistantDto, ReasoningEffort } from '../types/dtos';
 import { useAssistants } from '../hooks/useAssistants';
-
 import { enhanceModelsWithCapabilities, EnhancedModel } from '../utils/modelUtils';
 import AssistantCard from '../components/assistants/AssistantCard';
 import AssistantModal from '../components/assistants/AssistantModal';
@@ -66,13 +65,13 @@ const AssistantsPage: React.FC = () => {
     });
   };
 
-  const handleCreateAssistant = async () => {
-    await createAssistant(formData);
+  const handleCreateAssistant = () => {
+    createAssistant(formData);
     setShowCreateModal(false);
     resetForm();
   };
 
-  const handleUpdateAssistant = async () => {
+  const handleUpdateAssistant = () => {
     if (!editingAssistant) return;
     
     const updateData: UpdateAssistantDto = {
@@ -86,7 +85,7 @@ const AssistantsPage: React.FC = () => {
       reasoningEffort: formData.reasoningEffort
     };
 
-    await updateAssistant(updateData);
+    updateAssistant(updateData);
     setEditingAssistant(null);
     resetForm();
   };

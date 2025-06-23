@@ -2,8 +2,6 @@ import { useMemo } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { 
   useAssistantsQuery,
-  useCreateAssistant,
-  useUpdateAssistant,
   useDeleteAssistant,
   useToggleAssistantVisibility,
   useAddSharedAssistant,
@@ -11,12 +9,11 @@ import {
   useGetAvailableModels
 } from './useAssistantsQuery';
 import { CreateAssistantDto, UpdateAssistantDto, AnyAssistantDto } from '../types/dtos';
+import { apiService } from '../services/apiService';
 
 export const useAssistants = () => {
   const { isAuthenticated, isInitializing } = useAuth();
   const { data: assistantList, isLoading } = useAssistantsQuery(!isInitializing && isAuthenticated);
-  const createMutation = useCreateAssistant();
-  const updateMutation = useUpdateAssistant();
   const deleteMutation = useDeleteAssistant();
   const toggleVisibilityMutation = useToggleAssistantVisibility();
   const addSharedMutation = useAddSharedAssistant();
@@ -38,12 +35,12 @@ export const useAssistants = () => {
     return allAssistants.filter(assistant => assistant.isVisible);
   }, [allAssistants]);
 
-  const createAssistant = async (createDto: CreateAssistantDto) => {
-    await createMutation.mutateAsync(createDto);
+  const createAssistant = (createDto: CreateAssistantDto) => {
+    apiService.createAssistant(createDto);
   };
 
-  const updateAssistant = async (updateDto: UpdateAssistantDto) => {
-    await updateMutation.mutateAsync(updateDto);
+  const updateAssistant = (updateDto: UpdateAssistantDto) => {
+    apiService.updateAssistant(updateDto);
   };
 
   const deleteAssistant = async (assistantId: string) => {
