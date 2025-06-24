@@ -63,7 +63,7 @@
     }
     
     .layout.mobile-layout .content-area {
-        height: calc(100vh - 48px);
+        flex: 1;
         margin-top: 0;
     }
     
