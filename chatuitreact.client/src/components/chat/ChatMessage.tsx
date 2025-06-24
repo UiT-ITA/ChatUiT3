@@ -42,7 +42,7 @@ const ChatMessage = ({ message, onStreamingChunk }: ChatMessageProps) => {
         !requestedStreamingRef.current.has(message.id)) {
       
       requestedStreamingRef.current.add(message.id);
-      streamMessage(currentChatId, message.id);
+      streamMessage(message.id);
     }
   }, [message.status, message.id, currentChatId, streamMessage]);
 

@@ -9,7 +9,7 @@ namespace ChatUitReact.Server.Hubs;
 
 public interface IChatHubClient
 {
-    Task ReceiveMessageChunk(string chatId, string messageId, string chunk);
+    Task ReceiveMessageChunk(string messageId, string chunk);
     Task ChatUpdated(string chatId);
     Task ChatListUpdated();
     Task AssistantsChanged();
@@ -22,18 +22,18 @@ public partial class ChatHub : Hub<IChatHubClient>
     private readonly UserService _userService;
     private readonly ILogger<ChatHub> _logger;
     private readonly IChatService _chatService;
-    private readonly StreamingMessageService _streamingMessageService;
+    private readonly StreamingService _streamingService;
     private readonly IHubContext<ChatHub> _hubContext;
     private readonly IAssistantService _assistantService;
     private readonly IModelService _modelService;
     private static readonly ConcurrentDictionary<string, string> _connections = new ConcurrentDictionary<string, string>();
 
-    public ChatHub(UserService userService, ILogger<ChatHub> logger, IChatService chatService, StreamingMessageService streamingMessageService, IHubContext<ChatHub> hubContext, IAssistantService assistantService, IModelService modelService)
+    public ChatHub(UserService userService, ILogger<ChatHub> logger, IChatService chatService, StreamingService streamingService, IHubContext<ChatHub> hubContext, IAssistantService assistantService, IModelService modelService)
     {
         _userService = userService;
         _logger = logger;
         _chatService = chatService;
-        _streamingMessageService = streamingMessageService;
+        _streamingService = streamingService;
         _hubContext = hubContext;
         _assistantService = assistantService;
         _modelService = modelService;
@@ -62,16 +62,16 @@ public partial class ChatHub : Hub<IChatHubClient>
         var userId = GetCurrentUserId();
         await Groups.RemoveFromGroupAsync(Context.ConnectionId, userId);
         _connections.TryRemove(Context.ConnectionId, out _);
-        _streamingMessageService.CancelClientStream(Context.ConnectionId);
         await base.OnDisconnectedAsync(exception);
     }
 
-    public void StreamMessage(string chatId, string messageId)
+    public Task StreamMessage(string messageId)
     {
         var userId = GetCurrentUserId();
         var clientId = Context.ConnectionId;
-
-        _ = _streamingMessageService.StreamToClient(clientId, userId, chatId, messageId, 
-            async (cId, mId, chunk) => await _hubContext.Clients.Client(clientId).SendAsync("ReceiveMessageChunk", cId, mId, chunk));
+        
+        _streamingService.StartClientStream(clientId, userId, messageId);
+        
+        return Task.CompletedTask;
     }
 }

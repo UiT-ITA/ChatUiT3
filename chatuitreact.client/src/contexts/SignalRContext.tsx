@@ -8,7 +8,7 @@ import { chatKeys } from "../hooks/useChats";
 import { assistantKeys } from "../hooks/useAssistantsQuery";
 
 interface SignalRContextType {
-  streamMessage: (chatId: string, messageId: string) => void;
+  streamMessage: (messageId: string) => void;
   isConnected: boolean;
   onChatCreated: (callback: (chatId: string) => void) => void;
 }
@@ -55,7 +55,7 @@ export const SignalRProvider: React.FC<{ children: React.ReactNode }> = ({ child
         queryClient.invalidateQueries({ queryKey: assistantKeys.lists() });
       });
 
-      connection.on("ReceiveMessageChunk", (_chatId: string, messageId: string, chunk: string) => {
+      connection.on("ReceiveMessageChunk", (messageId: string, chunk: string) => {
         // Handle message streaming via ChatDataProvider
         updateMessageChunk(messageId, chunk);
       });
@@ -92,8 +92,8 @@ export const SignalRProvider: React.FC<{ children: React.ReactNode }> = ({ child
     };
   }, [getAccessToken, isInitializing, updateMessageChunk]);
 
-  const streamMessage = useCallback((chatId: string, messageId: string) => {
-    connectionRef.current?.invoke("StreamMessage", chatId, messageId);
+  const streamMessage = useCallback((messageId: string) => {
+    connectionRef.current?.invoke("StreamMessage", messageId);
   }, []);
 
 
