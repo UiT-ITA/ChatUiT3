@@ -26,7 +26,7 @@ export const SignalRProvider: React.FC<{ children: React.ReactNode }> = ({ child
     
     const connect = async () => {
       const connection = await createSignalRConnection(getAccessToken);
-      if (!connection) return;
+      if (!connection || !isMounted) return;
 
       // Set up notification event listeners
       connection.on("ChatUpdated", (chatId: string) => {
@@ -51,6 +51,8 @@ export const SignalRProvider: React.FC<{ children: React.ReactNode }> = ({ child
       });
 
       await connection.start();
+      if (!isMounted) return;
+      
       connectionRef.current = connection;
       setIsConnected(true);
     };

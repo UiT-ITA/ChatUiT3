@@ -28,7 +28,6 @@ const ChatMessage = ({ message, onStreamingChunk }: ChatMessageProps) => {
   const streamingContent = useStreamingContent(message.id);
   const { currentChatId } = useChatData();
   const { streamMessage, isConnected } = useSignalR();
-  const requestedStreamingRef = useRef(new Set<string>());
 
   useEffect(() => {
     if (message.status === ChatStatus.Generating && 
