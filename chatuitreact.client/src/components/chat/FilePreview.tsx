@@ -1,5 +1,7 @@
+import { useState } from 'react';
 import { ChatFile, ChatFileImage, ContentType } from '../../types/chatModels';
 import { getFileIcon, formatFileSize } from '../../utils/fileUtils';
+import FilePreviewModal from './FilePreviewModal';
 import './FilePreview.css';
 
 interface FilePreviewProps {
@@ -9,7 +11,13 @@ interface FilePreviewProps {
 }
 
 const FilePreview = ({ files, readonly = false, onRemove }: FilePreviewProps) => {
+  const [selectedFile, setSelectedFile] = useState<File | ChatFile | null>(null);
+
   if (files.length === 0) return null;
+
+  const handleFileClick = (file: File | ChatFile) => {
+    setSelectedFile(file);
+  };
 
   const renderFilePreview = (file: File | ChatFile, index: number) => {
     const isFile = file instanceof File;
@@ -28,7 +36,11 @@ const FilePreview = ({ files, readonly = false, onRemove }: FilePreviewProps) =>
     };
 
     return (
-      <div key={index} className={`file-thumbnail ${isImage ? 'image' : 'text'}`}>
+      <div 
+        key={index} 
+        className={`file-thumbnail ${isImage ? 'image' : 'text'} clickable`}
+        onClick={() => handleFileClick(file)}
+      >
         {isImage ? (
           <img 
             src={getImageSrc()}
@@ -48,7 +60,10 @@ const FilePreview = ({ files, readonly = false, onRemove }: FilePreviewProps) =>
           <button 
             type="button" 
             className="remove-btn" 
-            onClick={() => onRemove(index)}
+            onClick={(e) => {
+              e.stopPropagation();
+              onRemove(index);
+            }}
             aria-label={`Remove ${filename}`}
           >
             ×
@@ -59,9 +74,15 @@ const FilePreview = ({ files, readonly = false, onRemove }: FilePreviewProps) =>
   };
 
   return (
-    <div className="file-preview-container">
-      {files.map(renderFilePreview)}
-    </div>
+    <>
+      <div className="file-preview-container">
+        {files.map(renderFilePreview)}
+      </div>
+      <FilePreviewModal 
+        file={selectedFile} 
+        onClose={() => setSelectedFile(null)} 
+      />
+    </>
   );
 };
 

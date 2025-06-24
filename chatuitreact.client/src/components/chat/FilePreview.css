@@ -15,6 +15,16 @@
     max-height: 120px;
 }
 
+.file-thumbnail.clickable {
+    cursor: pointer;
+    transition: transform 0.1s ease, box-shadow 0.2s ease;
+}
+
+.file-thumbnail.clickable:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+}
+
 .file-thumbnail.image {
     width: 80px;
     height: 80px;
