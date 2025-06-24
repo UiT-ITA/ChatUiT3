@@ -39,26 +39,14 @@ export const useMessages = (chatId: string | null, page = 1, size = 50, enabled 
   });
 };
 
-// Create new chat
 export const useCreateChat = () => {
-  const queryClient = useQueryClient();
-  
   return useMutation({
     mutationFn: ({ assistantId, initialMessages }: { assistantId?: string; initialMessages?: Message[] }) =>
       apiService.createChat(assistantId, initialMessages),
-    onSuccess: (newChat) => {
-      // Add to chats list
-      queryClient.setQueryData(chatKeys.lists(), (old: Chat[] = []) => [newChat, ...old]);
-      // Cache the new chat
-      queryClient.setQueryData(chatKeys.detail(newChat.id), newChat);
-    },
   });
 };
 
-// Send message
 export const useSendMessage = () => {
-  const queryClient = useQueryClient();
-  
   return useMutation({
     mutationFn: ({ chatId, content, files, assistantId }: { 
       chatId: string; 
@@ -66,18 +54,6 @@ export const useSendMessage = () => {
       files?: ChatFile[]; 
       assistantId?: string; 
     }) => apiService.sendMessage(chatId, content, files, assistantId),
-    onSuccess: (response: any, variables) => {
-      if (variables.chatId === 'new' && response.chatId) {
-        // New chat was created, invalidate chats list
-        queryClient.invalidateQueries({ queryKey: chatKeys.lists() });
-        // Cache the response to avoid immediate refetch
-        queryClient.setQueryData(chatKeys.detail(response.chatId), null);
-      } else {
-        // Existing chat, invalidate to get fresh data
-        queryClient.invalidateQueries({ queryKey: chatKeys.messages(variables.chatId) });
-        queryClient.invalidateQueries({ queryKey: chatKeys.detail(variables.chatId) });
-      }
-    },
   });
 };
 

@@ -4,7 +4,6 @@ import { useTranslation } from 'react-i18next';
 import ChatHistory from '../components/chat/ChatHistory';
 import ChatInput from '../components/chat/ChatInput';
 import NewChatWelcome from '../components/chat/NewChatWelcome';
-import { useSignalR } from '../contexts/SignalRContext';
 import { useSendMessage } from '../hooks/useChats';
 import { useCurrentAssistant, useChatData } from '../contexts/ChatDataProvider';
 import { ChatFile } from '../types/chatModels';
@@ -13,7 +12,6 @@ import './ChatPage.css';
 const ChatPage = () => {
     const { t } = useTranslation('chat');
     const { chatId } = useParams<{ chatId: string }>();
-    const { isConnected, onChatCreated } = useSignalR();
     const sendMessageMutation = useSendMessage();
     const { setCurrentChatId } = useChatData();
     const navigate = useNavigate();
@@ -26,14 +24,6 @@ const ChatPage = () => {
             setCurrentChatId(null);
         }
     }, [chatId, setCurrentChatId]);
-
-    useEffect(() => {
-        onChatCreated((chatId: string) => {
-            console.log("Navigating to new chat:", chatId);
-            navigate(`/c/${chatId}`);
-        });
-    }, [navigate, onChatCreated]);
-
 
     const handleSendMessage = (text: string, files?: ChatFile[], assistantId?: string) => {
         if (!text.trim()) return;
@@ -48,9 +38,8 @@ const ChatPage = () => {
                 assistantId 
             },
             {
-                onSuccess: (response) => {
+                onSuccess: (response: any) => {
                     if (targetChatId === 'new' && response.chatId) {
-                        // Navigate to the new chat
                         navigate(`/c/${response.chatId}`);
                     }
                 },

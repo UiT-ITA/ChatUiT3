@@ -8,9 +8,9 @@ namespace ChatUitReact.Server.Services
     {
         private readonly IDatabaseService _databaseService;
         private readonly IModelService _modelService;
-        private readonly IHubContext<ChatHub> _hubContext;
+        private readonly IHubContext<ChatHub, IChatHubClient> _hubContext;
 
-        public AssistantService(IDatabaseService databaseService, IModelService modelService, IHubContext<ChatHub> hubContext)
+        public AssistantService(IDatabaseService databaseService, IModelService modelService, IHubContext<ChatHub, IChatHubClient> hubContext)
         {
             _databaseService = databaseService;
             _modelService = modelService;
@@ -228,8 +228,7 @@ namespace ChatUitReact.Server.Services
 
         private async Task NotifyAssistantsUpdated(string userId)
         {
-            var assistants = await GetUserAssistantsDtoAsync(userId);
-            await _hubContext.Clients.Group(userId).SendAsync("UserAssistants", assistants);
+            await _hubContext.Clients.Group(userId).AssistantsUpdated();
         }
     }
 }

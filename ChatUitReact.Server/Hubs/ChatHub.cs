@@ -12,7 +12,7 @@ public interface IChatHubClient
     Task ReceiveMessageChunk(string messageId, string chunk);
     Task ChatUpdated(string chatId);
     Task ChatListUpdated();
-    Task AssistantsChanged();
+    Task AssistantsUpdated();
     Task Error(string message);
 }
 
