@@ -27,18 +27,19 @@ interface ChatMessageProps {
 const ChatMessage = ({ message, onStreamingChunk }: ChatMessageProps) => {
   const streamingContent = useStreamingContent(message.id);
   const { currentChatId } = useChatData();
-  const { streamMessage } = useSignalR();
+  const { streamMessage, isConnected } = useSignalR();
   const requestedStreamingRef = useRef(new Set<string>());
 
   useEffect(() => {
     if (message.status === ChatStatus.Generating && 
         currentChatId && 
+        isConnected &&
         !streamingService.hasStream(message.id)) {
       
       streamingService.startStream(message.id);
       streamMessage(message.id);
     }
-  }, [message.status, message.id, currentChatId, streamMessage]);
+  }, [message.status, message.id, currentChatId, streamMessage, isConnected]);
 
   useEffect(() => {
     if (message.status === ChatStatus.Success) {

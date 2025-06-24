@@ -1,4 +1,5 @@
 using System.Collections.Concurrent;
+using System.Threading.Channels;
 using Microsoft.Extensions.Logging;
 using Microsoft.AspNetCore.SignalR;
 using ChatUitReact.Server.Hubs;
@@ -49,7 +50,7 @@ public class StreamingService
         
         if (_activeStreams.TryGetValue(streamKey, out var stream))
         {
-            stream.AddChunk(chunk);
+            stream.Publish(chunk);
         }
         else
         {
@@ -95,25 +96,9 @@ public class StreamingService
 
         try
         {
-            var chunkIndex = 0;
-            
-            while (true)
+            await foreach (var chunk in stream.GetReader())
             {
-                // Get next chunk if available
-                var chunk = stream.GetChunk(chunkIndex);
-                if (chunk != null)
-                {
-                    await _hubContext.Clients.Client(clientId).ReceiveMessageChunk(messageId, chunk);
-                    chunkIndex++;
-                    continue;
-                }
-                
-                // If stream is complete and no more chunks, exit
-                if (stream.IsComplete)
-                    break;
-                    
-                // Wait for new chunks
-                await stream.WaitForNewChunk();
+                await _hubContext.Clients.Client(clientId).ReceiveMessageChunk(messageId, chunk);
             }
         }
         catch (Exception ex)
@@ -127,11 +112,10 @@ public class StreamingService
 
 internal class MessageStream : IDisposable
 {
-    private readonly List<string> _chunks = new();
-    private readonly SemaphoreSlim _newChunkSignal = new(0);
+    private readonly List<string> _buffer = new();
+    private readonly List<Channel<string>> _channels = new();
     private readonly object _lock = new();
     private bool _isComplete = false;
-    private bool _disposed = false;
 
     public string UserId { get; }
     public string MessageId { get; }
@@ -153,17 +137,18 @@ internal class MessageStream : IDisposable
         }
     }
 
-    public void AddChunk(string chunk)
+    public void Publish(string chunk)
     {
         lock (_lock)
         {
-            if (_isComplete || _disposed) return;
+            if (_isComplete) return;
             
-            _chunks.Add(chunk);
+            _buffer.Add(chunk);
+            foreach (var channel in _channels)
+            {
+                channel.Writer.TryWrite(chunk);
+            }
         }
-        
-        // Signal waiting clients
-        _newChunkSignal.Release();
     }
 
     public void Complete()
@@ -171,37 +156,59 @@ internal class MessageStream : IDisposable
         lock (_lock)
         {
             _isComplete = true;
+            foreach (var channel in _channels)
+            {
+                channel.Writer.TryComplete();
+            }
         }
-        
-        // Release all waiting clients
-        _newChunkSignal.Release(1000); // Large number to release all waiting
     }
 
-    public string? GetChunk(int index)
+    public IAsyncEnumerable<string> GetReader()
     {
+        var channel = Channel.CreateUnbounded<string>();
         lock (_lock)
         {
-            return index < _chunks.Count ? _chunks[index] : null;
+            // Replay all existing chunks to new reader
+            foreach (var chunk in _buffer)
+            {
+                channel.Writer.TryWrite(chunk);
+            }
+            
+            // If already complete, close this channel too
+            if (_isComplete)
+            {
+                channel.Writer.TryComplete();
+            }
+            else
+            {
+                // Add to active channels for future chunks
+                _channels.Add(channel);
+            }
         }
+
+        return ReadAll(channel.Reader);
     }
 
-    public async Task WaitForNewChunk()
+    private async IAsyncEnumerable<string> ReadAll(ChannelReader<string> reader)
     {
-        if (_disposed) return;
-        
-        try
+        while (await reader.WaitToReadAsync())
         {
-            await _newChunkSignal.WaitAsync(TimeSpan.FromSeconds(30));
-        }
-        catch (ObjectDisposedException)
-        {
-            // Expected during cleanup
+            while (reader.TryRead(out var chunk))
+            {
+                yield return chunk;
+            }
         }
     }
 
     public void Dispose()
     {
-        _disposed = true;
-        _newChunkSignal?.Dispose();
+        lock (_lock)
+        {
+            foreach (var channel in _channels)
+            {
+                channel.Writer.TryComplete();
+            }
+            _channels.Clear();
+        }
     }
 }
