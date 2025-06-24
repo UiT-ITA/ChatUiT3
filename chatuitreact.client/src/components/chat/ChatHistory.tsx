@@ -31,7 +31,7 @@ const ChatHistory = () => {
     if (scrollDirection === 'up' && distanceFromBottom > 0) {
       // Any upward scroll = disable auto-scroll immediately
       setShouldAutoScroll(false);
-    } else if (scrollDirection === 'down' && distanceFromBottom < 5) {
+    } else if (scrollDirection === 'down' && distanceFromBottom < 50) {
       // Downward scroll near bottom = enable auto-scroll
       setShouldAutoScroll(true);
     }

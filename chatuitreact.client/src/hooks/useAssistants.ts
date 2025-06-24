@@ -1,67 +1,53 @@
 import { useMemo } from 'react';
+import { useQuery } from '@tanstack/react-query';
 import { useAuth } from '../contexts/AuthContext';
-import { 
-  useAssistantsQuery,
-  useDeleteAssistant,
-  useToggleAssistantVisibility,
-  useAddSharedAssistant,
-  useGenerateShareLink,
-  useGetAvailableModels
-} from './useAssistantsQuery';
-import { CreateAssistantDto, UpdateAssistantDto, AnyAssistantDto } from '../types/dtos';
 import { apiService } from '../services/apiService';
+import { CreateAssistantDto, UpdateAssistantDto, AnyAssistantDto } from '../types/dtos';
+
+export const assistantKeys = {
+  all: ['assistants'] as const,
+  lists: () => [...assistantKeys.all, 'list'] as const,
+};
 
 export const useAssistants = () => {
   const { isAuthenticated, isInitializing } = useAuth();
-  const { data: assistantList, isLoading } = useAssistantsQuery(!isInitializing && isAuthenticated);
-  const deleteMutation = useDeleteAssistant();
-  const toggleVisibilityMutation = useToggleAssistantVisibility();
-  const addSharedMutation = useAddSharedAssistant();
-  const generateShareLinkMutation = useGenerateShareLink();
-  const getAvailableModelsMutation = useGetAvailableModels();
+  
+  const { data: assistantList, isLoading } = useQuery({
+    queryKey: assistantKeys.lists(),
+    queryFn: () => apiService.getAssistants(),
+    staleTime: 10 * 60 * 1000,
+    enabled: !isInitializing && isAuthenticated,
+  });
 
   const allAssistants = useMemo((): AnyAssistantDto[] => {
     if (!assistantList) return [];
-    return [
-      ...assistantList.owned,
-      ...assistantList.system,
-      ...assistantList.shared
-    ];
+    return [...assistantList.owned, ...assistantList.system, ...assistantList.shared];
   }, [assistantList]);
 
   const visibleAssistants = useMemo((): AnyAssistantDto[] => {
-    if (!assistantList) return [];
-    
     return allAssistants.filter(assistant => assistant.isVisible);
   }, [allAssistants]);
 
-  const createAssistant = (createDto: CreateAssistantDto) => {
+  const createAssistant = (createDto: CreateAssistantDto) => 
     apiService.createAssistant(createDto);
-  };
 
-  const updateAssistant = (updateDto: UpdateAssistantDto) => {
+  const updateAssistant = (updateDto: UpdateAssistantDto) => 
     apiService.updateAssistant(updateDto);
-  };
 
-  const deleteAssistant = async (assistantId: string) => {
-    await deleteMutation.mutateAsync(assistantId);
-  };
+  const deleteAssistant = (assistantId: string) => 
+    apiService.deleteAssistant(assistantId);
 
-  const toggleVisibility = async (assistantId: string) => {
-    await toggleVisibilityMutation.mutateAsync(assistantId);
-  };
+  const toggleVisibility = (assistantId: string) => 
+    apiService.toggleAssistantVisibility(assistantId);
 
-  const addSharedAssistant = async (assistantId: string) => {
-    await addSharedMutation.mutateAsync(assistantId);
-  };
+  const addSharedAssistant = (assistantId: string) => 
+    apiService.addSharedAssistant(assistantId);
 
-  const generateShareLink = async (assistantId: string) => {
-    return await generateShareLinkMutation.mutateAsync(assistantId);
-  };
+  const generateShareLink = (assistantId: string) => 
+    apiService.generateShareLink(assistantId);
 
-  const getAvailableModels = async () => {
-    return await getAvailableModelsMutation.mutateAsync();
-  };
+  const getAvailableModels = () => 
+    apiService.getAvailableModels();
 
   return {
     assistantList,

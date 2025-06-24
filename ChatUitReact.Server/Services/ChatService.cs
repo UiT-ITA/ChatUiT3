@@ -11,19 +11,19 @@ namespace ChatUitReact.Server.Services;
 public class ChatService : IChatService
 {
     private readonly AzureOpenAiService _azureOpenAiService;
-    private readonly IHubContext<ChatHub> _hubContext;
+    private readonly IHubContext<ChatHub, IChatHubClient> _hubContext;
     private readonly ILogger<ChatService> _logger;
     private readonly IDatabaseService _databaseService;
-    private readonly StreamingMessageService _streamingMessageService;
+    private readonly StreamingService _streamingService;
     private readonly IAssistantService _assistantService;
     private readonly IModelService _modelService;
 
     public ChatService(
         AzureOpenAiService azureOpenAiService,
-        IHubContext<ChatHub> hubContext,
+        IHubContext<ChatHub, IChatHubClient> hubContext,
         ILogger<ChatService> logger,
         IDatabaseService databaseService,
-        StreamingMessageService streamingMessageService,
+        StreamingService streamingService,
         IAssistantService assistantService,
         IModelService modelService)
     {
@@ -31,7 +31,7 @@ public class ChatService : IChatService
         _hubContext = hubContext;
         _logger = logger;
         _databaseService = databaseService;
-        _streamingMessageService = streamingMessageService;
+        _streamingService = streamingService;
         _assistantService = assistantService;
         _modelService = modelService;
     }
@@ -144,56 +144,45 @@ public class ChatService : IChatService
 
     public async Task SendStreamingMessageAsync(string userId, string chatId, Models.ChatMessage userMessage, string? assistantId)
     {
-        // Add user message to database
         await _databaseService.AddMessageAsync(userId, chatId, userMessage);
         
-        // Create placeholder for assistant's response
+        var chat = await GetChatByIdAsync(userId, chatId);
+        var messages = chat?.Messages ?? new();
+        
+        var effectiveAssistantId = assistantId ?? chat?.AssistantId;
+        var settings = await GetChatSettingsFromAssistant(userId, effectiveAssistantId);
+        
+        var modelWithEndpoint = await _modelService.GetModelWithEndpointAsync(settings.Model.Id);
+        if (modelWithEndpoint == null)
+        {
+            throw new InvalidOperationException($"Model {settings.Model.Id} not found or has no endpoint configured");
+        }
+        
+        var (endpoint, model) = modelWithEndpoint.Value;
+        
+        if (endpoint.EndpointType != EndpointType.AzureOpenAI)
+        {
+            throw new NotSupportedException($"Provider {endpoint.EndpointType} is not supported. Only Azure OpenAI is currently supported.");
+        }
+        
+        var openAiStream = _azureOpenAiService.GetChatCompletionStreamingAsync(messages, settings.Model, settings);
+        
         var assistantMessage = new Models.ChatMessage
         {
             Role = AiChatRole.Assistant,
             Status = AiChatStatus.Generating
         };
+        
+        _streamingService.StartMessage(userId, assistantMessage.Id);
+        
         await _databaseService.AddMessageAsync(userId, chatId, assistantMessage);
         
-        // Notify all clients about new messages
         NotifyChatUpdated(userId, chatId);
 
-        // Get AI response (fire and forget)
         _ = Task.Run(async () =>
         {
             try 
             {
-                var chat = await GetChatByIdAsync(userId, chatId);
-                var messages = chat?.Messages ?? new();
-                
-                // Get AI settings - use the assistant from the chat or the provided one
-                var effectiveAssistantId = assistantId ?? chat?.AssistantId;
-                var settings = await GetChatSettingsFromAssistant(userId, effectiveAssistantId);
-                
-                // Validate provider and get endpoint information
-                var modelWithEndpoint = await _modelService.GetModelWithEndpointAsync(settings.Model.Id);
-                if (modelWithEndpoint == null)
-                {
-                    throw new InvalidOperationException($"Model {settings.Model.Id} not found or has no endpoint configured");
-                }
-                
-                var (endpoint, model) = modelWithEndpoint.Value;
-                
-                // Validate that we're using Azure OpenAI provider
-                if (endpoint.EndpointType != EndpointType.AzureOpenAI)
-                {
-                    throw new NotSupportedException($"Provider {endpoint.EndpointType} is not supported. Only Azure OpenAI is currently supported.");
-                }
-                
-                var openAiStream = _azureOpenAiService.GetChatCompletionStreamingAsync(messages, settings.Model, settings);
-                
-                // Create our custom streaming channel
-                var chunkChannel = new StreamingChunkChannel();
-                
-                // Start the streaming service with our custom stream
-                _streamingMessageService.StartStream(userId, chatId, assistantMessage.Id, chunkChannel.ReadAllChunks());
-                
-                // Process incoming chunks from OpenAI and write to our channel
                 var content = new StringBuilder();
                 await foreach (var chunk in openAiStream)
                 {
@@ -202,25 +191,18 @@ public class ChatService : IChatService
                         var text = chunk.ContentUpdate[0].Text;
                         if (!string.IsNullOrEmpty(text))
                         {
-                            // Write to our channel for streaming clients
-                            await chunkChannel.WriteChunk(text);
-                            
-                            // Collect for database storage
+                            _streamingService.AddChunk(userId, assistantMessage.Id, text);
                             content.Append(text);
                         }
                     }
                 }
                 
-                // Mark the channel as complete
-                chunkChannel.Complete();
+                _streamingService.CompleteMessage(userId, assistantMessage.Id);
                 
-                // Update assistant message with complete response
                 assistantMessage.Content = content.ToString();
-                
                 assistantMessage.Status = AiChatStatus.Success;
                 await _databaseService.UpdateMessageAsync(userId, chatId, assistantMessage);
                 
-                // Notify all clients about updated message
                 NotifyChatUpdated(userId, chatId);
             }
             catch (Exception ex)
@@ -342,18 +324,12 @@ public class ChatService : IChatService
 
     private async void NotifyChatListUpdated(string userId)
     {
-        var chatList = await GetChatListAsync(userId);
-        await _hubContext.Clients.Group(userId).SendAsync("ChatListUpdated", chatList);
+        await _hubContext.Clients.Group(userId).ChatListUpdated();
     }
 
     private async void NotifyChatUpdated(string userId, string chatId)
     {
-        var chat = await GetChatByIdAsync(userId, chatId);
-
-        if (chat != null)
-        {
-            await _hubContext.Clients.Group($"{userId}:{chatId}").SendAsync("ChatUpdated", chatId);
-        }
+        await _hubContext.Clients.Group(userId).ChatUpdated(chatId);
     }
 
     #endregion Internal methods

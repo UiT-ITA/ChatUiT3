@@ -39,8 +39,13 @@ class ApiService {
       throw new Error(`API Error: ${response.status} ${response.statusText}`);
     }
 
-    const data = await response.json();
-    return this.parseDates(data);
+    const contentType = response.headers.get('content-type');
+    if (contentType && contentType.includes('application/json')) {
+      const data = await response.json();
+      return this.parseDates(data);
+    }
+    
+    return null as T;
   }
 
   // Parse ISO date strings to Date objects

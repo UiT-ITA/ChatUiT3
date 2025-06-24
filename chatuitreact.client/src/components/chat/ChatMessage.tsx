@@ -13,27 +13,42 @@ import 'katex/dist/katex.min.css';
 import { ChatRole, ChatStatus, Message } from '../../types/chatModels';
 import { useTheme } from '../../contexts/ThemeContext';
 import { markdownToHtml } from '../../utils/markdownUtils';
-import { useStreamingContent, useChatData } from '../../contexts/ChatDataProvider';
+import { useChatData } from '../../contexts/ChatDataProvider';
+import { useSignalR } from '../../contexts/SignalRContext';
+import { useStreamingContent } from '../../hooks/useStreamingContent';
+import { streamingService } from '../../services/streamingService';
 import FilePreview from './FilePreview';
 
 interface ChatMessageProps {
   message: Message;
-  onStreamingChunk?: () => void; // <-- add this prop
+  onStreamingChunk?: () => void;
 }
 
 const ChatMessage = ({ message, onStreamingChunk }: ChatMessageProps) => {
-  const { content: streamingContent, subscribe } = useStreamingContent(message.id);
-  const { getStreamingContent } = useChatData();
+  const streamingContent = useStreamingContent(message.id);
+  const { currentChatId } = useChatData();
+  const { streamMessage, isConnected } = useSignalR();
+  const requestedStreamingRef = useRef(new Set<string>());
 
   useEffect(() => {
-    const unsubscribe = subscribe(message.id, () => {
-      // Content is managed by the streaming context
-    });
-    return unsubscribe;
-  }, [message.id, subscribe]);
+    if (message.status === ChatStatus.Generating && 
+        currentChatId && 
+        isConnected &&
+        !streamingService.hasStream(message.id)) {
+      
+      streamingService.startStream(message.id);
+      streamMessage(message.id);
+    }
+  }, [message.status, message.id, currentChatId, streamMessage, isConnected]);
+
+  useEffect(() => {
+    if (message.status === ChatStatus.Success) {
+      streamingService.cleanup(message.id);
+    }
+  }, [message.status, message.id]);
 
   const staticContent = message.content;
-  const content = message.status === ChatStatus.Generating ? (getStreamingContent(message.id) || '') : staticContent;
+  const content = message.status === ChatStatus.Generating ? streamingContent : staticContent;
   const isUser = message.role === ChatRole.User;
   const isStreaming = message.status === ChatStatus.Generating;
   const isFileMessage = message.role === ChatRole.System;
@@ -41,7 +56,6 @@ const ChatMessage = ({ message, onStreamingChunk }: ChatMessageProps) => {
   const [isCopied, setIsCopied] = useState(false);
   const messageContentRef = useRef<HTMLDivElement>(null);
 
-  // Select syntax highlighting theme based on current theme
   const getSyntaxHighlighterStyle = () => {
     switch (theme) {
       case 'light':
@@ -65,11 +79,9 @@ const ChatMessage = ({ message, onStreamingChunk }: ChatMessageProps) => {
       setIsCopied(true);
       
       if (markdownEnabled) {
-        // Convert markdown to clean HTML
         const htmlContent = markdownToHtml(content);
         const plainTextContent = content;
         
-        // Create clipboard item with both HTML and plain text
         const clipboardItem = new ClipboardItem({
           'text/html': new Blob([htmlContent], { type: 'text/html' }),
           'text/plain': new Blob([plainTextContent], { type: 'text/plain' })
@@ -77,11 +89,9 @@ const ChatMessage = ({ message, onStreamingChunk }: ChatMessageProps) => {
         
         await navigator.clipboard.write([clipboardItem]);
       } else {
-        // Fallback to plain text if markdown is disabled
         await navigator.clipboard.writeText(content);
       }
       
-      // Reset the copied state after 2 seconds
       setTimeout(() => setIsCopied(false), 2000);
     } catch (err) {
       console.error('Failed to copy message:', err);

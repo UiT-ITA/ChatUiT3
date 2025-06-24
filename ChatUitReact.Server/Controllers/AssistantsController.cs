@@ -62,7 +62,7 @@ public class AssistantsController : ControllerBase
             await _assistantService.CreateAssistantAsync(createDto, userId);
             
             // Notify all clients that assistant data has changed
-            await _hubContext.Clients.Group(userId).AssistantsChanged();
+            await _hubContext.Clients.Group(userId).AssistantsUpdated();
             
             return Ok();
         }
@@ -82,7 +82,7 @@ public class AssistantsController : ControllerBase
             await _assistantService.UpdateAssistantAsync(updateDto, userId);
             
             // Notify all clients that assistant data has changed
-            await _hubContext.Clients.Group(userId).AssistantsChanged();
+            await _hubContext.Clients.Group(userId).AssistantsUpdated();
             
             return Ok();
         }
@@ -102,7 +102,7 @@ public class AssistantsController : ControllerBase
             await _assistantService.DeleteAssistantAsync(assistantId, userId);
             
             // Notify all clients that assistant data has changed
-            await _hubContext.Clients.Group(userId).AssistantsChanged();
+            await _hubContext.Clients.Group(userId).AssistantsUpdated();
             
             return Ok();
         }
@@ -122,7 +122,7 @@ public class AssistantsController : ControllerBase
             await _assistantService.ToggleAssistantVisibilityAsync(assistantId, userId);
             
             // Notify all clients that assistant data has changed
-            await _hubContext.Clients.Group(userId).AssistantsChanged();
+            await _hubContext.Clients.Group(userId).AssistantsUpdated();
             
             return Ok();
         }
@@ -142,7 +142,7 @@ public class AssistantsController : ControllerBase
             await _assistantService.AddSharedAssistantAsync(assistantId, userId);
             
             // Notify all clients that assistant data has changed
-            await _hubContext.Clients.Group(userId).AssistantsChanged();
+            await _hubContext.Clients.Group(userId).AssistantsUpdated();
             
             return Ok();
         }

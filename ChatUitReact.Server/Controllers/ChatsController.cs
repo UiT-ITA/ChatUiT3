@@ -172,7 +172,7 @@ public class ChatsController : ControllerBase
                 await _chatService.SendStreamingMessageAsync(userId, chatId, message, request.AssistantId);
                 
                 // Notify that this specific chat has been updated
-                await _hubContext.Clients.Group($"{userId}:{chatId}").ChatUpdated(chatId);
+                await _hubContext.Clients.Group(userId).ChatUpdated(chatId);
                 
                 return Ok(new { success = true });
             }

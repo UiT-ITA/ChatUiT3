@@ -76,7 +76,7 @@ builder.Services.AddSignalR();
 
 // Register services
 builder.Services.AddScoped<UserService>();
-builder.Services.AddSingleton<StreamingMessageService>();
+builder.Services.AddSingleton<StreamingService>();
 builder.Services.AddSingleton<IDatabaseService, MockDatabaseService>();
 builder.Services.AddSingleton<IModelService, ModelService>();
 builder.Services.AddSingleton<IChatService, ChatService>();
