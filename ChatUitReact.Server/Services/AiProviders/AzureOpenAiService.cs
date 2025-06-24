@@ -188,7 +188,26 @@ public class AzureOpenAiService
             switch (message.Role)
             {
                 case AiChatRole.User:
-                    result.Add(new UserChatMessage(message.Content));
+                    if (message.Files?.Any() == true)
+                    {
+                        var contentParts = new List<ChatMessageContentPart>();
+                        
+                        // Add main text content first
+                        if (!string.IsNullOrEmpty(message.Content))
+                            contentParts.Add(ChatMessageContentPart.CreateTextPart(message.Content));
+                        
+                        // Process all files
+                        foreach (var file in message.Files)
+                        {
+                            ProcessFileRecursively(file, contentParts);
+                        }
+                        
+                        result.Add(new UserChatMessage(contentParts));
+                    }
+                    else
+                    {
+                        result.Add(new UserChatMessage(message.Content));
+                    }
                     break;
                 case AiChatRole.Assistant:
                     result.Add(new AssistantChatMessage(message.Content));
@@ -200,6 +219,90 @@ public class AzureOpenAiService
         }
         
         return result;
+    }
+
+    private void ProcessFileRecursively(ChatFile file, List<ChatMessageContentPart> contentParts)
+    {
+        try
+        {
+            switch (file)
+            {
+                case ChatFileText textFile:
+                    contentParts.Add(ChatMessageContentPart.CreateTextPart(
+                        $"\n--- FILE: {textFile.Filename} (Text) ---\n{textFile.Content}\n--- END FILE ---\n"
+                    ));
+                    break;
+                    
+                case ChatFileImage imageFile:
+                    // Add text header for the image
+                    contentParts.Add(ChatMessageContentPart.CreateTextPart(
+                        $"\n--- FILE: {imageFile.Filename} (Image) ---"
+                    ));
+                    
+                    // Add the actual image
+                    var imageBytes = Convert.FromBase64String(imageFile.Content);
+                    var imageBinaryData = BinaryData.FromBytes(imageBytes);
+                    contentParts.Add(ChatMessageContentPart.CreateImagePart(imageBinaryData, "image/jpeg"));
+                    
+                    // Add closing header
+                    contentParts.Add(ChatMessageContentPart.CreateTextPart(
+                        "--- END FILE ---\n"
+                    ));
+                    break;
+                    
+                case ChatFileMixed mixedFile:
+                    // Start of mixed file
+                    contentParts.Add(ChatMessageContentPart.CreateTextPart(
+                        $"\n--- FILE: {mixedFile.Filename} (Mixed Document) ---\n"
+                    ));
+                    
+                    // Process each chunk with chunk numbering
+                    for (int i = 0; i < mixedFile.Chunks.Count; i++)
+                    {
+                        var chunk = mixedFile.Chunks[i];
+                        
+                        // Add chunk header
+                        contentParts.Add(ChatMessageContentPart.CreateTextPart(
+                            $"[CHUNK {i + 1}/{mixedFile.Chunks.Count}] ({chunk.Type})\n"
+                        ));
+                        
+                        // Process the chunk content
+                        switch (chunk)
+                        {
+                            case ChatFileText textChunk:
+                                contentParts.Add(ChatMessageContentPart.CreateTextPart(
+                                    textChunk.Content + "\n"
+                                ));
+                                break;
+                                
+                            case ChatFileImage imageChunk:
+                                var chunkImageBytes = Convert.FromBase64String(imageChunk.Content);
+                                var chunkImageData = BinaryData.FromBytes(chunkImageBytes);
+                                contentParts.Add(ChatMessageContentPart.CreateImagePart(chunkImageData, "image/jpeg"));
+                                contentParts.Add(ChatMessageContentPart.CreateTextPart("\n"));
+                                break;
+                                
+                            case ChatFileMixed nestedMixed:
+                                // Recursive call for nested mixed files
+                                ProcessFileRecursively(nestedMixed, contentParts);
+                                break;
+                        }
+                    }
+                    
+                    // End of mixed file
+                    contentParts.Add(ChatMessageContentPart.CreateTextPart(
+                        $"--- END FILE: {mixedFile.Filename} ---\n"
+                    ));
+                    break;
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error processing file {FileName} of type {FileType}", file.Filename, file.Type);
+            contentParts.Add(ChatMessageContentPart.CreateTextPart(
+                $"\n--- ERROR: Could not process file {file.Filename} ({file.Type}) ---\n"
+            ));
+        }
     }
 
     private ChatCompletionOptions BuildCompletionOptions(ChatSettings? settings)
