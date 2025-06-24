@@ -4,7 +4,6 @@ import Sidebar from './Sidebar';
 import AppBar from './AppBar';
 import { ChatList } from '../chat/ChatList';
 import useMediaQuery from '../../hooks/useMediaQuery';
-import useVisualViewport from '../../hooks/useVisualViewport';
 import './MainLayout.css';
 
 
@@ -14,7 +13,6 @@ const MainLayout: React.FC = () => {
   const location = useLocation();
   const navigate = useNavigate();
   const isMobile = useMediaQuery('(max-width: 799px)');
-  const { viewportHeight, isKeyboardOpen } = useVisualViewport(isMobile);
 
   const renderSidebarContent = () => {
     if (location.pathname.startsWith('/help')) {
@@ -48,13 +46,11 @@ const MainLayout: React.FC = () => {
 
   if (isMobile) {
     return (
-      <div className="layout mobile-layout" style={{ height: `${viewportHeight}px` }}>
-        {!isKeyboardOpen && (
-          <AppBar 
-            onMenuClick={handleMobileMenuClick}
-            onNewChatClick={handleNewChatClick}
-          />
-        )}
+      <div className="layout mobile-layout">
+        <AppBar 
+          onMenuClick={handleMobileMenuClick}
+          onNewChatClick={handleNewChatClick}
+        />
         {isMobileMenuOpen && (
           <div className="mobile-backdrop" onClick={handleMobileClose} />
         )}
@@ -65,7 +61,6 @@ const MainLayout: React.FC = () => {
           isMobile={isMobile}
           isMobileMenuOpen={isMobileMenuOpen}
           onMobileClose={handleMobileClose}
-          isKeyboardOpen={isKeyboardOpen}
         />
         <div className="content-area">
           <main className="main-content">
