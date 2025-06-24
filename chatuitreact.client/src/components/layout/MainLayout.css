@@ -41,3 +41,33 @@
 .main-content::-webkit-scrollbar-thumb:hover {
     background-color: var(--scrollbar-thumb-hover);
 }
+
+/* Mobile layout styles */
+.layout.mobile-layout {
+    flex-direction: column;
+}
+
+.mobile-backdrop {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-color: rgba(0, 0, 0, 0.5);
+    z-index: 999;
+}
+
+@media (max-width: 799px) {
+    .layout {
+        flex-direction: column;
+    }
+    
+    .layout.mobile-layout .content-area {
+        height: calc(100vh - 48px);
+        margin-top: 0;
+    }
+    
+    .layout.mobile-layout .main-content {
+        height: 100%;
+    }
+}

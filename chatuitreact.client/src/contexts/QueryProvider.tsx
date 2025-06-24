@@ -31,7 +31,8 @@ export const QueryProvider: React.FC<QueryProviderProps> = ({ children }) => {
     <QueryClientProvider client={queryClient}>
       {children}
       {/* Only show devtools in development */}
-      {process.env.NODE_ENV === 'development' && <ReactQueryDevtools initialIsOpen={false} />}
+      {/* Tool is hidden by default, uncomment to enable */}
+      {process.env.NODE_ENV === 'development' && false && <ReactQueryDevtools initialIsOpen={false} />}
     </QueryClientProvider>
   );
 };

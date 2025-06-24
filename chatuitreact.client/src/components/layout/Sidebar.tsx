@@ -16,17 +16,34 @@ interface SidebarProps {
   onToggleSidebar: () => void;
   isNarrow: boolean;
   content: React.ReactNode;
+  isMobile?: boolean;
+  isMobileMenuOpen?: boolean;
+  onMobileClose?: () => void;
 }
 
-const Sidebar = ({ onToggleSidebar, isNarrow, content}: SidebarProps) => {
+const Sidebar = ({ onToggleSidebar, isNarrow, content, isMobile, isMobileMenuOpen, onMobileClose}: SidebarProps) => {
   const { t } = useTranslation();
   const navigate = useNavigate();
   const { isAdmin, isAuthenticated, login, logout } = useAuth();
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
 
+  const getSidebarClass = () => {
+    if (isMobile) {
+      return `sidebar mobile-sidebar ${isMobileMenuOpen ? 'mobile-open' : 'mobile-closed'}`;
+    }
+    return `sidebar ${isNarrow ? 'narrow' : 'wide'}`;
+  };
+
+  const handleNavigation = (path: string) => {
+    navigate(path);
+    if (isMobile && onMobileClose) {
+      onMobileClose();
+    }
+  };
+
   return (
     <>
-      <div className={`sidebar ${isNarrow ? 'narrow' : 'wide'}`}>
+      <div className={getSidebarClass()}>
         <div className="sidebar-top">
           <button className="icon-button sidebar-toggle" onClick={onToggleSidebar} title={isNarrow ? t('sidebar.expand') : t('sidebar.collapse')}>
             <PiSidebarSimple size={"24px"} />
@@ -52,7 +69,7 @@ const Sidebar = ({ onToggleSidebar, isNarrow, content}: SidebarProps) => {
           <SidebarButton
             icon={<GrHelpBook size={24} />}
             text={t('sidebar.help')}
-            onClick={() => navigate('/help')}
+            onClick={() => handleNavigation('/help')}
             isNarrow={isNarrow}
           />
 
@@ -67,7 +84,7 @@ const Sidebar = ({ onToggleSidebar, isNarrow, content}: SidebarProps) => {
             <SidebarButton
               icon={<RiAdminLine size={24} />}
               text={t('sidebar.admin')}
-              onClick={() => navigate('/admin')}
+              onClick={() => handleNavigation('/admin')}
               isNarrow={isNarrow}
             />
           )}
@@ -75,14 +92,14 @@ const Sidebar = ({ onToggleSidebar, isNarrow, content}: SidebarProps) => {
           <SidebarButton
             icon={<RiRobot2Line size={24} />}
             text={t('sidebar.assistants')}
-            onClick={() => navigate('/assistants')}
+            onClick={() => handleNavigation('/assistants')}
             isNarrow={isNarrow}
           />
 
           <SidebarButton
             icon={<RiUserLine size={24} />}
             text={t('sidebar.profile')}
-            onClick={() => navigate('/profile')}
+            onClick={() => handleNavigation('/profile')}
             isNarrow={isNarrow}
           />
 
