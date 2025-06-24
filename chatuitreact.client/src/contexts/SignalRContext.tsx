@@ -8,7 +8,6 @@ import { chatKeys } from "../hooks/useChats";
 import { assistantKeys } from "../hooks/useAssistantsQuery";
 
 interface SignalRContextType {
-  loadChat: (chatId: string, onNotFound?: () => void) => void;
   streamMessage: (chatId: string, messageId: string) => void;
   isConnected: boolean;
   onChatCreated: (callback: (chatId: string) => void) => void;
@@ -93,17 +92,6 @@ export const SignalRProvider: React.FC<{ children: React.ReactNode }> = ({ child
     };
   }, [getAccessToken, isInitializing, updateMessageChunk]);
 
-  const loadChat = useCallback((chatId: string, onNotFound?: () => void) => {
-    connectionRef.current?.invoke("JoinChat", chatId)
-      .catch(error => {
-        if (error.message.includes("ChatNotFound")) {
-          onNotFound?.();
-        } else {
-          console.error("Error loading chat:", error);
-        }
-      });
-  }, []);
-
   const streamMessage = useCallback((chatId: string, messageId: string) => {
     connectionRef.current?.invoke("StreamMessage", chatId, messageId);
   }, []);
@@ -111,7 +99,6 @@ export const SignalRProvider: React.FC<{ children: React.ReactNode }> = ({ child
 
   return (
     <SignalRContext.Provider value={{ 
-      loadChat,
       streamMessage,
       isConnected,
       onChatCreated

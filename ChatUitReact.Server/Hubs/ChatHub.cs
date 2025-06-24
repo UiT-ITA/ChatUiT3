@@ -65,4 +65,13 @@ public partial class ChatHub : Hub<IChatHubClient>
         _streamingMessageService.CancelClientStream(Context.ConnectionId);
         await base.OnDisconnectedAsync(exception);
     }
+
+    public void StreamMessage(string chatId, string messageId)
+    {
+        var userId = GetCurrentUserId();
+        var clientId = Context.ConnectionId;
+
+        _ = _streamingMessageService.StreamToClient(clientId, userId, chatId, messageId, 
+            async (cId, mId, chunk) => await _hubContext.Clients.Client(clientId).SendAsync("ReceiveMessageChunk", cId, mId, chunk));
+    }
 }

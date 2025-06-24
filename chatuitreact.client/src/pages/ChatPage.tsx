@@ -13,16 +13,10 @@ import './ChatPage.css';
 const ChatPage = () => {
     const { t } = useTranslation('chat');
     const { chatId } = useParams<{ chatId: string }>();
-    const { loadChat, isConnected, onChatCreated } = useSignalR();
+    const { isConnected, onChatCreated } = useSignalR();
     const sendMessageMutation = useSendMessage();
     const { setCurrentChatId } = useChatData();
     const navigate = useNavigate();
-
-    useEffect(() => {
-        if (chatId && chatId !== 'new' && chatId !== '404' && isConnected) {
-            loadChat(chatId, () => navigate('/c/404'));
-        }
-    }, [chatId, loadChat, isConnected, navigate]);
 
     // Set current chat ID when chat changes
     useEffect(() => {
