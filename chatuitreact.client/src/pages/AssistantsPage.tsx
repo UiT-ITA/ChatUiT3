@@ -9,6 +9,7 @@ import AssistantModal from '../components/assistants/AssistantModal';
 import ShareModal from '../components/assistants/ShareModal';
 import AddExternalAssistant from '../components/assistants/AddExternalAssistant';
 import './AssistantsPage.css';
+import { useTranslation } from 'react-i18next';
 
 const AssistantsPage: React.FC = () => {
   const { assistantList, createAssistant, updateAssistant, deleteAssistant, toggleVisibility, addSharedAssistant, getAvailableModels } = useAssistants();
@@ -18,6 +19,8 @@ const AssistantsPage: React.FC = () => {
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [editingAssistant, setEditingAssistant] = useState<PrivateAssistantDto | null>(null);
   const [shareModalAssistant, setShareModalAssistant] = useState<PrivateAssistantDto | null>(null);
+
+  const { t } = useTranslation();
 
   const [formData, setFormData] = useState<CreateAssistantDto>({
     name: '',
@@ -91,7 +94,7 @@ const AssistantsPage: React.FC = () => {
   };
 
   const handleDeleteAssistant = async (id: string) => {
-    if (window.confirm('Are you sure you want to delete this assistant?')) {
+    if (window.confirm(t('assistants.deleteConfirmation'))) {
       await deleteAssistant(id);
     }
   };
@@ -143,16 +146,16 @@ const AssistantsPage: React.FC = () => {
   return (
     <div className="assistants-page">
       <div className="assistants-header">
-        <h1 className="assistants-title">My Assistants</h1>
+        <h1 className="assistants-title"> {t('assistants.title')} </h1>
         <button onClick={handleOpenCreateModal} className="create-assistant-button">
-          <MdAdd size={20} /> Create Assistant
+          <MdAdd size={20} /> {t('assistants.create')}
         </button>
       </div>
 
       <AddExternalAssistant onAddExternal={handleAddExternal} />
 
       <div className="assistants-section">
-        <h2 className="assistants-section-title">My Assistants</h2>
+        <h2 className="assistants-section-title">{t('assistants.myAssistants')}</h2>
         <div className="assistants-grid">
           {ownedAssistants.length > 0 ? (
             ownedAssistants.map(assistant => (
@@ -168,15 +171,15 @@ const AssistantsPage: React.FC = () => {
             ))
           ) : (
             <div className="empty-state">
-              <div className="empty-state-title">No assistants yet</div>
-              <div className="empty-state-description">Create your first assistant to get started</div>
+              <div className="empty-state-title">{t('assistants.myAssistantsEmpty1')}</div>
+              <div className="empty-state-description">{t('assistants.myAssistantsEmpty2')}</div>
             </div>
           )}
         </div>
       </div>
 
       <div className="assistants-section">
-        <h2 className="assistants-section-title">System Assistants</h2>
+        <h2 className="assistants-section-title">{t('assistants.systemAssistants')}</h2>
         <div className="assistants-grid">
           {systemAssistants.map((assistant, index) => (
             <AssistantCard
@@ -191,7 +194,7 @@ const AssistantsPage: React.FC = () => {
       </div>
 
       <div className="assistants-section">
-        <h2 className="assistants-section-title">Shared Assistants</h2>
+        <h2 className="assistants-section-title">{t('assistants.sharedAssistants')}</h2>
         <div className="assistants-grid">
           {sharedAssistants.length > 0 ? (
             sharedAssistants.map(assistant => (
@@ -204,8 +207,8 @@ const AssistantsPage: React.FC = () => {
             ))
           ) : (
             <div className="empty-state">
-              <div className="empty-state-title">No shared assistants</div>
-              <div className="empty-state-description">Shared assistants from other users will appear here</div>
+              <div className="empty-state-title">{t('assistants.sharedAssistantsEmpty1')}</div>
+              <div className="empty-state-description">{t('assistants.sharedAssistantsEmpty2')}</div>
             </div>
           )}
         </div>

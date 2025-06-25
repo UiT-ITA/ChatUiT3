@@ -33,6 +33,7 @@
         "chatSettings": "Chat Innstillinger",
         "settings": "Innstillinger",
         "admin": "Admin",
+        "assistants": "Assistenter",
         "profile": "Profil",
         "logout": "Logg ut",
         "login": "Logg inn",
@@ -126,7 +127,45 @@
             }
         }
     },
+    "assistants": {
+        "deleteConfirmation": "Er du sikker på at du vil slette denne assistenten?",
+        "title": "Assistenter",
+        "create": "Opprett Assistent",
+        "myAssistants": "Mine Assistenter",
+        "myAssistantsEmpty1": "Ingen assistenter ennå",
+        "myAssistantsEmpty2": "Opprett din første assistent for å komme i gang!",
+        "systemAssistants": "UiT Assistenter",
+        "sharedAssistants": "Delte Assistenter",
+        "sharedAssistantsEmpty1": "Ingen delte assistenter",
+        "sharedAssistantsEmpty2": "Delte assistenter fra andre brukere vil vises her",
+        "addSharedAssistant": "Legg til Delt Assistent",
+        "addSharedAssistantDescription": "Lim inn en assistent-ID for å legge til en delt assistent i samlingen din",
+        "addSharedAssistantPlaceholder": "Skriv inn assistent-ID her...",
+        "createAssistantTitle": "Opprett Assistent",
+        "editAssistantTitle": "Rediger Assistent",
+        "namePlaceholder": "Navn på assistenten din",
+        "description": "Beskrivelse",
+        "descriptionPlaceholder": "Beskrivelse av assistenten din",
+        "tags": "Tags (komma-separert)",
+        "tagsPlaceholder": "Hjelpsom, kreativ, morsom",
+        "model": "Modell",
+        "modelPlaceholder": "Velg en modell",
+        "modelContext": "Kontekst",
+        "modelOutput": "Utdata",
+        "modelKnowledge": "Kunnskap",
+        "systemPrompt": "System Prompt",
+        "systemPromptPlaceholder": "Du er en hjelpsom assistent som...",
+        "temperature": "Temperatur",
+        "reasoning": "Resonnering",
+        "reasoningNotSupported": "Ikke støttet",
+        "reasoningNone": "Ingen",
+        "reasoningLow": "Lav",
+        "reasoningMedium": "Moderat",
+        "reasoningHigh": "Høy"
+    },
     "common": {
-        "close": "Lukk"
+        "close": "Lukk",
+        "add": "Legg til",
+        "cancel": "Avbryt"
     }
 }

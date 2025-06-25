@@ -3,6 +3,7 @@ import { MdImage, MdPublic, MdPsychology, MdExpandMore, MdExpandLess } from 'rea
 import { CreateAssistantDto, PrivateAssistantDto, ReasoningEffort } from '../../types/dtos';
 import { EnhancedModel } from '../../utils/modelUtils';
 import './AssistantModals.css';
+import { useTranslation } from 'react-i18next';
 
 interface AssistantModalProps {
   isOpen: boolean;
@@ -25,6 +26,7 @@ const AssistantModal: React.FC<AssistantModalProps> = ({
 }) => {
   const [isModelDropdownOpen, setIsModelDropdownOpen] = useState(false);
   const modelDropdownRef = useRef<HTMLDivElement>(null);
+  const { t } = useTranslation();
 
   // Get the currently selected model
   const selectedModel = models.find(m => m.id === formData.modelId);
@@ -96,45 +98,45 @@ const AssistantModal: React.FC<AssistantModalProps> = ({
       <div className="modal-content">
         <div className="modal-header">
           <h2 className="modal-title">
-            {editingAssistant ? 'Edit Assistant' : 'Create Assistant'}
+            {editingAssistant ? t('assistants.editAssistantTitle') : t('assistants.createAssistantTitle')}  
           </h2>
         </div>
         
         <div className="modal-body">
           <div className="form-group">
-            <label className="form-label">Name</label>
+            <label className="form-label">{t('common.name')}</label>
             <input
               type="text"
               value={formData.name}
               onChange={(e) => handleChange('name', e.target.value)}
               className="form-input"
-              placeholder="Enter assistant name"
+              placeholder={t('assistants.namePlaceholder')}
             />
           </div>
 
           <div className="form-group">
-            <label className="form-label">Description</label>
+            <label className="form-label">{t('assistants.description')}</label>
             <textarea
               value={formData.description}
               onChange={(e) => handleChange('description', e.target.value)}
               className="form-textarea"
-              placeholder="Describe what this assistant does"
+              placeholder={t('assistants.descriptionPlaceholder')}
             />
           </div>
 
           <div className="form-group">
-            <label className="form-label">Tags (comma separated)</label>
+            <label className="form-label">{t('assistants.tags')}</label>
             <input
               type="text"
               value={formData.tags.join(', ')}
               onChange={(e) => handleChange('tags', e.target.value.split(',').map(t => t.trim()).filter(t => t))}
               className="form-input"
-              placeholder="coding, helper, creative"
+              placeholder={t('assistants.tagsPlaceholder')}
             />
           </div>
 
           <div className="form-group">
-            <label className="form-label">Model</label>
+            <label className="form-label">{t('assistants.model')}</label>
             <div className="custom-dropdown" ref={modelDropdownRef}>
               <button
                 type="button"
@@ -142,7 +144,7 @@ const AssistantModal: React.FC<AssistantModalProps> = ({
                 onClick={() => setIsModelDropdownOpen(!isModelDropdownOpen)}
               >
                 <span className="dropdown-text">
-                  {selectedModel ? selectedModel.displayName : 'Select a model...'}
+                  {selectedModel ? selectedModel.displayName : t('assistants.modelPlaceholder')}
                 </span>
                 {isModelDropdownOpen ? <MdExpandLess size="20px" /> : <MdExpandMore size="20px" />}
               </button>
@@ -165,9 +167,9 @@ const AssistantModal: React.FC<AssistantModalProps> = ({
                       </div>
                       <div className="model-description-inline">{model.description}</div>
                       <div className="model-specs-inline">
-                        <span>Context: {model.capabilities.contextSize.toLocaleString()}</span>
-                        <span>Output: {model.capabilities.maxOutputTokens.toLocaleString()}</span>
-                        <span>Knowledge: {model.capabilities.knowledgeCutoff}</span>
+                        <span>{t('assistants.modelContext')}: {model.capabilities.contextSize.toLocaleString()}</span>
+                        <span>{t('assistants.modelOutput')}: {model.capabilities.maxOutputTokens.toLocaleString()}</span>
+                        <span>{t('assistants.modelKnowledge')}: {model.capabilities.knowledgeCutoff}</span>
                       </div>
                     </div>
                   ))}
@@ -190,18 +192,18 @@ const AssistantModal: React.FC<AssistantModalProps> = ({
           </div>
 
           <div className="form-group">
-            <label className="form-label">System Prompt</label>
+            <label className="form-label">{t('assistants.systemPrompt')}</label>
             <textarea
               value={formData.systemPrompt}
               onChange={(e) => handleChange('systemPrompt', e.target.value)}
               className="form-textarea large"
-              placeholder="You are a helpful assistant that..."
+              placeholder={t('assistants.systemPromptPlaceholder')}
             />
           </div>
 
           <div className="form-row">
             <div className="form-group">
-              <label className="form-label">Temperature</label>
+              <label className="form-label">{t('assistants.temperature')}</label>
               <input
                 type="number"
                 min="0"
@@ -215,9 +217,9 @@ const AssistantModal: React.FC<AssistantModalProps> = ({
 
             <div className="form-group">
               <label className="form-label">
-                Reasoning Effort
+                {t('assistants.reasoning')}
                 {selectedModel && !selectedModel.capabilities.reasoning && (
-                  <span className="disabled-reason"> (Model does not support reasoning)</span>
+                  <span className="disabled-reason"> ({t('assistants.reasoningNotSupported')})</span>
                 )}
               </label>
               <select
@@ -225,12 +227,12 @@ const AssistantModal: React.FC<AssistantModalProps> = ({
                 onChange={(e) => handleChange('reasoningEffort', e.target.value as ReasoningEffort)}
                 className="form-select"
                 disabled={selectedModel && !selectedModel.capabilities.reasoning}
-                title={selectedModel && !selectedModel.capabilities.reasoning ? 'This model does not support reasoning' : ''}
+                title={selectedModel && !selectedModel.capabilities.reasoning ? t('assistants.reasoningNotSupported') : ''}
               >
-                <option value={ReasoningEffort.None}>None</option>
-                <option value={ReasoningEffort.Low}>Low</option>
-                <option value={ReasoningEffort.Medium}>Medium</option>
-                <option value={ReasoningEffort.High}>High</option>
+                <option value={ReasoningEffort.None}>{t('assistants.reasoningNone')}</option>
+                <option value={ReasoningEffort.Low}>{t('assistants.reasoningLow')}</option>
+                <option value={ReasoningEffort.Medium}>{t('assistants.reasoningMedium')}</option>
+                <option value={ReasoningEffort.High}>{t('assistants.reasoningHigh')}</option>
               </select>
             </div>
           </div>

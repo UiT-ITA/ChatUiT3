@@ -127,7 +127,56 @@
             }
         }
     },
+    "assistants": {
+        "deleteConfirmation": "Are you sure you want to delete this assistant?",
+        "title": "Assistants",
+        "create": "Create Assistant",
+        "myAssistants": "My Assistants",
+        "myAssistantsEmpty1": "No assistants yet",
+        "myAssistantsEmpty2": "Create your first assistant to get started!",
+        "systemAssistants": "UiT Assistants",
+        "sharedAssistants": "Shared Assistants",
+        "sharedAssistantsEmpty1": "No shared assistants",
+        "sharedAssistantsEmpty2": "Shared assistants from other users will appear here",
+        "addSharedAssistant": "Add Shared Assistant",
+        "addSharedAssistantDescription": "Paste an assistant ID to add a shared assistant to your collection",
+        "addSharedAssistantPlaceholder": "Enter assistant ID here...",
+        "createAssistantTitle": "Create Assistant",
+        "editAssistantTitle": "Edit Assistant",
+        "namePlaceholder": "Name of your assistant",
+        "description": "Description",
+        "descriptionPlaceholder": "Description of your assistant",
+        "tags": "Tags (comma-separated)",
+        "tagsPlaceholder": "Helpful, creative, funny",
+        "model": "Model",
+        "modelPlaceholder": "Select a model",
+        "modelContext": "Context",
+        "modelOutput": "Output",
+        "modelKnowledge": "Knowledge",
+        "systemPrompt": "System Prompt",
+        "systemPromptPlaceholder": "You are a helpful assistant that...",
+        "temperature": "Temperature",
+        "reasoning": "Reasoning Effort",
+        "reasoningNotSupported": "Not supported",
+        "reasoningNone": "None",
+        "reasoningLow": "Low",
+        "reasoningMedium": "Medium",
+        "reasoningHigh": "High",
+
+
+
+
+
+
+
+
+        "test": "test"
+
+    },
     "common": {
-        "close": "Close"
+        "close": "Close",
+        "add": "Add",
+        "cancel": "Cancel",
+        "name": "Name"
     }
 }
