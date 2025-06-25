@@ -36,6 +36,10 @@ class ApiService {
       if (response.status === 401) {
         throw new Error('Unauthorized - Please login again');
       }
+      if (response.status === 404) {
+        window.location.replace('/c/new');
+      }
+
       throw new Error(`API Error: ${response.status} ${response.statusText}`);
     }
 
