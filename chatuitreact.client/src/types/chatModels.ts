@@ -1,76 +1,65 @@
-// AI Chat Models (from AiChatModels.cs)
+export type AiChatRole =
+  | "User"
+  | "Assistant"
+  | "System"
+  | "ToolRequest"
+  | "ToolResponse";
 
-export interface ChatListItem {
-    id: string;
-    name: string;
-    createdAt: Date;
-    updatedAt: Date;
-    status: ChatStatus;
+export type AiChatStatus =
+  | "New"
+  | "Generating"
+  | "Success"
+  | "Error"
+  | "Cancelled";
+
+export type AiContentType = "Text" | "Image" | "Mixed";
+
+export interface ChatFileDto {
+  id: string;
+  filename?: string | null;
+  type: AiContentType;
+  content: string;
+  chunks?: any[] | null;
 }
 
-export interface Chat extends ChatListItem {
-    assistantId: string;
-    messages: Message[];
+export interface ChatMessageDto {
+  id: string;
+  role: AiChatRole;
+  timestamp: string;
+  content: string;
+  status: AiChatStatus;
+  files: ChatFileDto[];
 }
 
-// Extended chat list item that can optionally contain full chat data for caching
-export interface CachedChatItem extends ChatListItem {
-    assistantId?: string;
-    messages?: Message[];
-    lastViewed?: Date;
+export interface ChatHeaderDto {
+  id: string;
+  assistantId?: string | null;
+  name: string;
+  createdAt: string;
+  updatedAt: string;
+  status: AiChatStatus;
 }
 
-export interface Message {
-    id: string;
-    role: ChatRole;
-    timestamp: Date;
-    content: string;
-    status: ChatStatus;
-    files: ChatFile[];
+export interface ChatDto extends ChatHeaderDto {
+  messages: ChatMessageDto[];
 }
 
-export interface ChatFile {
-    id: string;
-    filename?: string;
-    type: ContentType;
+export interface CreateChatFileDto {
+  filename?: string | null;
+  type: AiContentType;
+  content: string;
+  chunks?: any[] | null;
 }
 
-export interface ChatFileText extends ChatFile {
-    type: ContentType.Text;
-    content: string;
+export interface SendMessageDto {
+  role?: AiChatRole;
+  content: string;
+  files?: CreateChatFileDto[] | null;
+  assistantId?: string | null;
 }
 
-export interface ChatFileImage extends ChatFile {
-    type: ContentType.Image;
-    content: string;
-}
 
-export interface ChatFileMixed extends ChatFile {
-    type: ContentType.Mixed;
-    chunks: ChatFile[];
-}
-
-export enum ChatRole {
-    User = 'User',
-    Assistant = 'Assistant',
-    System = 'System',
-    ToolRequest = 'ToolRequest',
-    ToolResponse = 'ToolResponse',
-}
-
-export enum ContentType {
-    Text = 'Text',
-    Image = 'Image',
-    Mixed = 'Mixed',
-}
-
-// Alias for compatibility with server enum naming
-export type AiContentType = ContentType;
-
-export enum ChatStatus {
-    New = 'New',
-    Generating = 'Generating',
-    Success = 'Success',
-    Error = 'Error',
-    Cancelled = 'Cancelled',
+export interface CreateChatDto {
+  assistantId?: string;
+  messages: SendMessageDto[];
 }

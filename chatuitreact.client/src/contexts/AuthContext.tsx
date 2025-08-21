@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { AccountInfo } from '@azure/msal-browser';
 import authService from '../services/authService';
+import signalrService from '../services/signalrService';
 
 // Define the shape of our auth context
 interface AuthContextType {
@@ -42,7 +43,9 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         if (currentAccount) {
           setAccount(currentAccount);
           setIsAuthenticated(true);
-          
+
+          signalrService.startConnection();
+
           // Extract roles from the account claims
           const userRoles: string[] = [];
           
@@ -60,11 +63,8 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
             role.toLowerCase() === 'admin' || 
             role.toLowerCase() === 'administrator'
           );
-          
           setIsAdmin(hasAdminRole);
           
-          // For development testing, you can uncomment this to always be admin
-          // setIsAdmin(true);
         }
       } catch (error) {
         console.error('Authentication initialization error:', error);

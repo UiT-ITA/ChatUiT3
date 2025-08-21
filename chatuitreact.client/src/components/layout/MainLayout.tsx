@@ -2,7 +2,6 @@ import { useState/*, useEffect*/ } from 'react';
 import { Outlet, useLocation, useNavigate } from 'react-router-dom';
 import Sidebar from './Sidebar';
 import AppBar from './AppBar';
-import { ChatList } from '../chat/ChatList';
 import useMediaQuery from '../../hooks/useMediaQuery';
 import './MainLayout.css';
 
@@ -14,15 +13,6 @@ const MainLayout: React.FC = () => {
   const navigate = useNavigate();
   const isMobile = useMediaQuery('(max-width: 799px)');
 
-  const renderSidebarContent = () => {
-    if (location.pathname.startsWith('/help')) {
-      //return <HelpChapters />;
-      return <ChatList />;
-    } else if (location.pathname.startsWith('/c')) {
-      return <ChatList />;
-    }
-    return <ChatList />;
-  };
 
 
   const toggleSidebar = () => {
@@ -57,7 +47,6 @@ const MainLayout: React.FC = () => {
         <Sidebar
           onToggleSidebar={toggleSidebar}
           isNarrow={false}
-          content={renderSidebarContent()}
           isMobile={isMobile}
           isMobileMenuOpen={isMobileMenuOpen}
           onMobileClose={handleMobileClose}
@@ -76,7 +65,6 @@ const MainLayout: React.FC = () => {
       <Sidebar
         onToggleSidebar={toggleSidebar}
         isNarrow={isNarrow}
-        content={renderSidebarContent()}
       />
       <div className="content-area">
         <main className="main-content">

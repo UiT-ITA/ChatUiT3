@@ -9,19 +9,17 @@ import { MdOutlineVpnKey } from "react-icons/md";
 
 import { useAuth } from '../../contexts/AuthContext';
 import { useTranslation } from 'react-i18next';
-import SettingsModal from '../settings/SettingsModal';
-// import { ChatList } from '../chat/ChatList';
+ import { ChatList } from '../chat/ChatList';
 
 interface SidebarProps {
   onToggleSidebar: () => void;
   isNarrow: boolean;
-  content: React.ReactNode;
   isMobile?: boolean;
   isMobileMenuOpen?: boolean;
   onMobileClose?: () => void;
 }
 
-const Sidebar = ({ onToggleSidebar, isNarrow, content, isMobile, isMobileMenuOpen, onMobileClose}: SidebarProps) => {
+const Sidebar = ({ onToggleSidebar, isNarrow, isMobile, isMobileMenuOpen, onMobileClose}: SidebarProps) => {
   const { t } = useTranslation();
   const navigate = useNavigate();
   const { isAdmin, isAuthenticated, login, logout } = useAuth();
@@ -60,7 +58,7 @@ const Sidebar = ({ onToggleSidebar, isNarrow, content, isMobile, isMobileMenuOpe
 
         <div className="sidebar-content">
           <div className="sidebar-content-inner">
-            { content }
+            <ChatList />
           </div>
         </div>
 
@@ -120,11 +118,6 @@ const Sidebar = ({ onToggleSidebar, isNarrow, content, isMobile, isMobileMenuOpe
           )}
         </div>
       </div>
-
-      <SettingsModal 
-        isOpen={isSettingsOpen} 
-        onClose={() => setIsSettingsOpen(false)} 
-      />
     </>
   );
 };

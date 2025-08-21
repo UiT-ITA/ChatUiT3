@@ -9,10 +9,16 @@
     <BuildOutputFolder>$(MSBuildProjectDirectory)\dist</BuildOutputFolder>
   </PropertyGroup>
   <ItemGroup>
-    <Folder Include="src\components\admin\" />
-    <Folder Include="src\components\help\" />
+    <None Remove="src\components\help\**" />
+    <None Remove="src\stores\**" />
+    <TypeScriptConfiguration Remove="src\components\help\**" />
+    <TypeScriptConfiguration Remove="src\stores\**" />
+  </ItemGroup>
+  <ItemGroup>
+    <Folder Include="src\components\chat\" />
     <Folder Include="src\hooks\" />
-    <Folder Include="src\stores\" />
+    <Folder Include="src\pages\" />
+    <Folder Include="src\types\" />
     <Folder Include="src\utils\" />
   </ItemGroup>
 </Project>
