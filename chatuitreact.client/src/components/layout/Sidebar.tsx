@@ -6,7 +6,18 @@ import { Icon } from '../common/Icon';
 
 import { useAuth } from '../../contexts/AuthContext';
 import { useTranslation } from 'react-i18next';
- import { ChatList } from '../chat/ChatList';
+import { ChatList } from '../chat/ChatList';
+import { useState as useThemeState, useEffect } from 'react';
+import { 
+  ThemeName, 
+  SizeName, 
+  THEME_OPTIONS, 
+  SIZE_OPTIONS, 
+  setTheme, 
+  setSize, 
+  getCurrentTheme, 
+  getCurrentSize 
+} from '../../utils/themeUtils';
 
 interface SidebarProps {
   onToggleSidebar: () => void;
@@ -21,6 +32,25 @@ const Sidebar = ({ onToggleSidebar, isNarrow, isMobile, isMobileMenuOpen, onMobi
   const navigate = useNavigate();
   const { isAdmin, isAuthenticated, login, logout } = useAuth();
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
+  
+  // Theme and size state
+  const [currentTheme, setCurrentTheme] = useThemeState<ThemeName>(getCurrentTheme);
+  const [currentSize, setCurrentSize] = useThemeState<SizeName>(getCurrentSize);
+
+  useEffect(() => {
+    setCurrentTheme(getCurrentTheme());
+    setCurrentSize(getCurrentSize());
+  }, []);
+
+  const handleThemeChange = (newTheme: ThemeName) => {
+    setTheme(newTheme);
+    setCurrentTheme(newTheme);
+  };
+
+  const handleSizeChange = (newSize: SizeName) => {
+    setSize(newSize);
+    setCurrentSize(newSize);
+  };
 
   const getSidebarClass = () => {
     if (isMobile) {
@@ -60,6 +90,72 @@ const Sidebar = ({ onToggleSidebar, isNarrow, isMobile, isMobileMenuOpen, onMobi
         </div>
 
         <div className="sidebar-divider" />
+        
+        {/* Temporary theme and size selectors for testing */}
+        {!isNarrow && (
+          <div style={{ padding: '0.5rem', borderBottom: '1px solid var(--border-primary)' }}>
+            <div style={{ marginBottom: '0.5rem' }}>
+              <label style={{ 
+                display: 'block', 
+                fontSize: '0.75rem', 
+                color: 'var(--text-secondary)',
+                marginBottom: '0.25rem'
+              }}>
+                Theme
+              </label>
+              <select
+                value={currentTheme}
+                onChange={(e) => handleThemeChange(e.target.value as ThemeName)}
+                style={{
+                  width: '100%',
+                  padding: '0.25rem',
+                  backgroundColor: 'var(--bg-input)',
+                  color: 'var(--text-primary)',
+                  border: '1px solid var(--border-primary)',
+                  borderRadius: '0.25rem',
+                  fontSize: '0.75rem'
+                }}
+              >
+                {THEME_OPTIONS.map((option) => (
+                  <option key={option.value} value={option.value}>
+                    {option.label}
+                  </option>
+                ))}
+              </select>
+            </div>
+            
+            <div>
+              <label style={{ 
+                display: 'block', 
+                fontSize: '0.75rem', 
+                color: 'var(--text-secondary)',
+                marginBottom: '0.25rem'
+              }}>
+                Size
+              </label>
+              <select
+                value={currentSize}
+                onChange={(e) => handleSizeChange(e.target.value as SizeName)}
+                style={{
+                  width: '100%',
+                  padding: '0.25rem',
+                  backgroundColor: 'var(--bg-input)',
+                  color: 'var(--text-primary)',
+                  border: '1px solid var(--border-primary)',
+                  borderRadius: '0.25rem',
+                  fontSize: '0.75rem'
+                }}
+              >
+                {SIZE_OPTIONS.map((option) => (
+                  <option key={option.value} value={option.value}>
+                    {option.label}
+                  </option>
+                ))}
+              </select>
+            </div>
+          </div>
+        )}
+        
         <div className="sidebar-bottom">
           <SidebarButton
             icon={<Icon name="help" size={1.5} />}

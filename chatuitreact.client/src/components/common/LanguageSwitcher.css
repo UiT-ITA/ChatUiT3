@@ -1,18 +1,18 @@
 .language-switcher {
   display: flex;
-  gap: calc(4px * var(--scale-factor));
-  margin: calc(8px * var(--scale-factor)) 0;
+  gap: 0.25rem;
+  margin: 0.5rem 0;
 }
 
 .language-btn {
-  padding: calc(6px * var(--scale-factor)) calc(12px * var(--scale-factor));
+  padding: 0.375rem 0.75rem;
   border: 1px solid var(--border-primary);
   background: var(--bg-secondary);
   color: var(--text-primary);
   border-radius: var(--border-radius-sm);
   cursor: pointer;
   transition: all var(--transition-base);
-  font-size: calc(12px * var(--scale-factor));
+  font-size: 0.75rem;
   font-weight: 500;
 }
 

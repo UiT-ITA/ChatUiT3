@@ -2,8 +2,8 @@
     position: relative;
     border-radius: 0.5rem;
     overflow: visible;
-    border: 1px solid var(--color-border);
-    background: var(--color-bg-secondary);
+    border: 1px solid var(--border-primary);
+    background: var(--bg-secondary);
     max-width: 7.5rem;
     max-height: 7.5rem;
 }
@@ -58,7 +58,7 @@
 .file-name {
     font-size: 0.75rem;
     font-weight: 500;
-    color: var(--color-text-primary);
+    color: var(--text-primary);
     word-break: break-word;
     line-height: 1.2;
     max-height: 2.4em;
@@ -71,7 +71,7 @@
 
 .file-info {
     font-size: 0.625rem;
-    color: var(--color-text-secondary);
+    color: var(--text-secondary);
     line-height: 1;
 }
 
@@ -83,8 +83,8 @@
     height: 1.25rem;
     border: none;
     border-radius: 50%;
-    background: var(--color-error);
-    color: var(--color-text-primary);
+    background: var(--accent-error);
+    color: var(--text-primary);
     font-size: 0.875rem;
     font-weight: bold;
     cursor: pointer;
@@ -101,6 +101,6 @@
 }
 
 .remove-btn:focus {
-    outline: 0.125rem solid var(--color-primary);
+    outline: 0.125rem solid var(--accent-primary);
     outline-offset: 0.0625rem;
 }

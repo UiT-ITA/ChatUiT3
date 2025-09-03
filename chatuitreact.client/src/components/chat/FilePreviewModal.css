@@ -14,8 +14,8 @@
 }
 
 .file-modal {
-    background: var(--color-bg-secondary);
-    border: 1px solid var(--color-border);
+    background: var(--bg-secondary);
+    border: 1px solid var(--border-primary);
     border-radius: 0.5rem;
     max-width: 90vw;
     max-height: 90vh;
@@ -29,13 +29,13 @@
     justify-content: space-between;
     align-items: center;
     padding: 1rem 1.25rem;
-    border-bottom: 1px solid var(--color-border);
-    background: var(--color-bg-modal);
+    border-bottom: 1px solid var(--border-primary);
+    background: var(--bg-modal);
 }
 
 .file-modal-header h3 {
     margin: 0;
-    color: var(--color-text-primary);
+    color: var(--text-primary);
     font-size: 1.125rem;
     font-weight: 500;
 }
@@ -43,7 +43,7 @@
 .file-modal-close {
     background: none;
     border: none;
-    color: var(--color-text-secondary);
+    color: var(--text-secondary);
     font-size: 1.5rem;
     cursor: pointer;
     padding: 0.25rem;
@@ -53,8 +53,8 @@
 }
 
 .file-modal-close:hover {
-    color: var(--color-text-primary);
-    background: var(--color-toolbar-hover);
+    color: var(--text-primary);
+    background: var(--bg-toolbar-hover);
 }
 
 .file-modal-content {
@@ -73,15 +73,15 @@
 }
 
 .modal-text {
-    background: var(--color-code-bg);
-    color: var(--color-text-primary);
+    background: var(--bg-code);
+    color: var(--text-primary);
     padding: 1rem;
     border-radius: 0.25rem;
     font-size: 0.875rem;
     line-height: 1.5;
     white-space: pre-wrap;
     margin: 0;
-    border: 1px solid var(--color-border);
+    border: 1px solid var(--border-primary);
     max-height: 70vh;
     overflow: auto;
 }
