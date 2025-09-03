@@ -2,10 +2,7 @@ import { useState } from 'react';
 import './Sidebar.css';
 import SidebarButton from './SidebarButton';
 import { NavLink, useNavigate } from 'react-router-dom';
-import { PiSidebarSimple } from "react-icons/pi";
-import { RiSettings3Line, RiChatAiLine, RiAdminLine, RiUserLine, RiRobot2Line } from 'react-icons/ri';
-import { GrHelpBook } from "react-icons/gr";
-import { MdOutlineVpnKey } from "react-icons/md";
+import { Icon } from '../common/Icon';
 
 import { useAuth } from '../../contexts/AuthContext';
 import { useTranslation } from 'react-i18next';
@@ -44,13 +41,13 @@ const Sidebar = ({ onToggleSidebar, isNarrow, isMobile, isMobileMenuOpen, onMobi
       <div className={getSidebarClass()}>
         <div className="sidebar-top">
           <button className="icon-button sidebar-toggle" onClick={onToggleSidebar} title={isNarrow ? t('sidebar.expand') : t('sidebar.collapse')}>
-            <PiSidebarSimple size={"24px"} />
+            <Icon name="sidebarToggle" size={1.5} />
           </button>
 
           <div className="sidebar-title">ChatUiT</div>
 
           <NavLink to="/chat/new" className="icon-button" title={t('sidebar.newChat')}>
-            <RiChatAiLine size={"24px"} />
+            <Icon name="chat" size={1.5} />
           </NavLink>
         </div>
 
@@ -65,14 +62,14 @@ const Sidebar = ({ onToggleSidebar, isNarrow, isMobile, isMobileMenuOpen, onMobi
         <div className="sidebar-divider" />
         <div className="sidebar-bottom">
           <SidebarButton
-            icon={<GrHelpBook size={24} />}
+            icon={<Icon name="help" size={1.5} />}
             text={t('sidebar.help')}
             onClick={() => handleNavigation('/help')}
             isNarrow={isNarrow}
           />
 
           <SidebarButton
-            icon={<RiSettings3Line size={24} />}
+            icon={<Icon name="settings" size={1.5} />}
             text={t('sidebar.settings')}
             onClick={() => setIsSettingsOpen(true)}
             isNarrow={isNarrow}
@@ -80,7 +77,7 @@ const Sidebar = ({ onToggleSidebar, isNarrow, isMobile, isMobileMenuOpen, onMobi
 
           {isAdmin && (
             <SidebarButton
-              icon={<RiAdminLine size={24} />}
+              icon={<Icon name="admin" size={1.5} />}
               text={t('sidebar.admin')}
               onClick={() => handleNavigation('/admin')}
               isNarrow={isNarrow}
@@ -88,14 +85,14 @@ const Sidebar = ({ onToggleSidebar, isNarrow, isMobile, isMobileMenuOpen, onMobi
           )}
 
           <SidebarButton
-            icon={<RiRobot2Line size={24} />}
+            icon={<Icon name="assistants" size={1.5} />}
             text={t('sidebar.assistants')}
             onClick={() => handleNavigation('/assistants')}
             isNarrow={isNarrow}
           />
 
           <SidebarButton
-            icon={<RiUserLine size={24} />}
+            icon={<Icon name="user" size={1.5} />}
             text={t('sidebar.profile')}
             onClick={() => handleNavigation('/profile')}
             isNarrow={isNarrow}
@@ -103,14 +100,14 @@ const Sidebar = ({ onToggleSidebar, isNarrow, isMobile, isMobileMenuOpen, onMobi
 
           {isAuthenticated ? (
             <SidebarButton
-              icon={<MdOutlineVpnKey size={24} />}
+              icon={<Icon name="key" size={1.5} />}
               text={t('sidebar.logout')}
               onClick={logout}
               isNarrow={isNarrow}
             />
           ) : (
             <SidebarButton
-              icon={<MdOutlineVpnKey size={24} />}
+              icon={<Icon name="key" size={1.5} />}
               text={t('sidebar.login')}
               onClick={login}
               isNarrow={isNarrow}

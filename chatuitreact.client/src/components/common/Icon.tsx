@@ -1,12 +1,14 @@
-// import { PiSidebarSimple, PiSidebarSimpleFill } from "react-icons/pi";
+import { PiSidebarSimple } from "react-icons/pi";
 import { VscLayoutSidebarLeft, VscLayoutSidebarLeftOff  } from "react-icons/vsc";
-import { RiSettings3Line, RiChatAiLine, RiAdminLine, RiUserLine, RiRobot2Line } from 'react-icons/ri';
+import { RiSettings3Line, RiChatAiLine, RiAdminLine, RiUserLine, RiRobot2Line, RiMenuLine } from 'react-icons/ri';
 import { GrHelpBook } from "react-icons/gr";
-import { MdOutlineVpnKey, MdContentCopy, MdCheck, MdRefresh, MdEdit, MdCallSplit, MdKeyboardArrowDown, MdMoreHoriz, MdAttachFile, MdSend, MdKeyboardArrowUp, MdInfo, MdRemoveRedEye, MdPublic, MdPsychology } from "react-icons/md";
+import { MdOutlineVpnKey, MdContentCopy, MdCheck, MdRefresh, MdEdit, MdCallSplit, MdKeyboardArrowDown, MdMoreHoriz, MdAttachFile, MdSend, MdKeyboardArrowUp, MdInfo, MdRemoveRedEye, MdPublic, MdPsychology, MdMoreVert } from "react-icons/md";
+import { FaStar, FaTrash } from "react-icons/fa";
 
 const iconMap = {
-  sidebar:  VscLayoutSidebarLeftOff,
-  sidebarOpen: VscLayoutSidebarLeft,
+  sidebar:  VscLayoutSidebarLeftOff, // Not in use
+  sidebarOpen: VscLayoutSidebarLeft, // Not in use
+  sidebarToggle: PiSidebarSimple,
   settings: RiSettings3Line,
   chat: RiChatAiLine,
   admin: RiAdminLine,
@@ -28,6 +30,10 @@ const iconMap = {
   eye: MdRemoveRedEye,
   globe: MdPublic,
   brain: MdPsychology,
+  menu: RiMenuLine,
+  star: FaStar,
+  trash: FaTrash,
+  moreVert: MdMoreVert,
 } as const;
 
 interface IconProps {
