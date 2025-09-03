@@ -3,8 +3,8 @@
   align-items: center;
   justify-content: space-between;
   height: 3rem;
-  padding: 0 var(--padding-base);
-  background-color: var(--bg-tertiary);
+  padding: 0 1rem;
+  background-color: var(--bg-sidebar);
   border-bottom: 1px solid var(--border-primary);
   position: relative;
   z-index: 100;
