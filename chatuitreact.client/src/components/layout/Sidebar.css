@@ -91,7 +91,7 @@
 }
 
 .sidebar-content-inner {
-
+    display: block;
 }
 
 .sidebar.narrow .sidebar-content-inner {
