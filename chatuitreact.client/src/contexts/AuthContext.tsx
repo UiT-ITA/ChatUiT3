@@ -1,7 +1,7 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { AccountInfo } from '@azure/msal-browser';
 import authService from '../services/authService';
-import signalrService from '../services/signalrService2';
+import signalrService from '../services/signalrService';
 
 // Define the shape of our auth context
 interface AuthContextType {
