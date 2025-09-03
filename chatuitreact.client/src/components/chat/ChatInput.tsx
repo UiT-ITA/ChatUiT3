@@ -6,7 +6,7 @@ import { FileProcessingService } from '../../services/fileProcessingService';
 import { Icon } from '../common/Icon';
 import AssistantSelector from '../common/AssistantSelector';
 import FilePreview from './FilePreview';
-import type { CreateChatFileDto } from '../../models/chatModels';
+import type { CreateChatFileDto } from '../../types/chatModels';
 import { useNavigate } from 'react-router-dom';
 
 export default function ChatInput() {

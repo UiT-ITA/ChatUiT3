@@ -5,7 +5,8 @@ import MainLayout from './components/layout/MainLayout';
 import ProtectedRoute from './components/common/ProtectedRoute';
 import LoadingIndicator from './components/common/LoadingIndicator';
 import './App.css';
-import './styles/themes.css';
+import './styles/themes.css'; // look at later
+import './styles/theme.css';
 import ChatPage from './components/chat/ChatPage';
 
 const Home = () => {

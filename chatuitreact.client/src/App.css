@@ -65,3 +65,29 @@ th, td {
   color: var(--text-secondary);
   line-height: 1.6;
 }
+
+
+/* Custom Scrollbars */
+::-webkit-scrollbar {
+    width: 0.5rem;
+}
+
+::-webkit-scrollbar-track {
+    background: var(--color-scrollbar-track);
+}
+
+::-webkit-scrollbar-thumb {
+    background: var(--color-scrollbar-thumb);
+    border-radius: 0.25rem;
+}
+
+::-webkit-scrollbar-thumb:hover {
+    background: var(--color-scrollbar-thumb-hover);
+}
+
+@-moz-document url-prefix() {
+    * {
+        scrollbar-color: var(--color-scrollbar-thumb) var(--color-scrollbar-track);
+        /* No scrollbar-width = keeps default thickness & usability */
+    }
+}

@@ -1,7 +1,7 @@
 .icon-button {
     background: none;
     border: none;
-    color: var(--text-secondary);
+    color: var(--color-text-secondary);
     cursor: pointer;
     width: 32px;
     height: 32px;
@@ -20,7 +20,7 @@
 
 /* Sidebar styles */
 .sidebar {
-    background-color: var(--bg-tertiary);
+    background-color: var(--color-bg-sidebar);
     flex-shrink: 0;
     transition: width var(--transition-slow);
     border-right: 1px solid var(--border-primary);
@@ -53,7 +53,7 @@
 
 .sidebar-title {
     font-size: 24px;
-    color: var(--text-secondary);
+    color: var(--color-text-primary);
     font-weight: 500;
     padding: var(--padding-base);
     display: flex;
@@ -113,7 +113,7 @@
 
 .section-title {
     font-size: 12px;
-    color: var(--text-tertiary);
+    color: var(--color-text-secondary);
     margin: 4px 0;
     padding: 0 var(--padding-base);
     font-weight: 500;

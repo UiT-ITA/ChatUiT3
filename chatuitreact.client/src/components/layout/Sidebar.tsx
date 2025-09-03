@@ -49,7 +49,7 @@ const Sidebar = ({ onToggleSidebar, isNarrow, isMobile, isMobileMenuOpen, onMobi
 
           <div className="sidebar-title">ChatUiT</div>
 
-          <NavLink to="/c/new" className="icon-button" title={t('sidebar.newChat')}>
+          <NavLink to="/chat/new" className="icon-button" title={t('sidebar.newChat')}>
             <RiChatAiLine size={"24px"} />
           </NavLink>
         </div>

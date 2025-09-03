@@ -1,5 +1,5 @@
 import { useEffect } from 'react';
-import type { ChatFileDto, CreateChatFileDto } from '../../models/chatModels';
+import type { ChatFileDto, CreateChatFileDto } from '../../types/chatModels';
 import './FilePreviewModal.css';
 
 interface FilePreviewModalProps {

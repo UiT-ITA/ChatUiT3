@@ -2,7 +2,7 @@ import './ChatMessage.css';
 import { useSignals } from '@preact/signals-react/runtime';
 import { useMemo, useState, useLayoutEffect } from 'react';
 import { getStreamSignal } from '../../services/chatService';
-import type { ChatMessageDto } from '../../models/chatModels';
+import type { ChatMessageDto } from '../../types/chatModels';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import remarkMath from 'remark-math';

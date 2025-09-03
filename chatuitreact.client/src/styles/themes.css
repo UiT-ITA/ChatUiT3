@@ -107,9 +107,9 @@
   --shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
   --shadow-lg: 0 4px 6px rgba(0, 0, 0, 0.1);
   
-  --scrollbar-track: transparent;
+  /* --scrollbar-track: transparent;
   --scrollbar-thumb: rgba(0, 0, 0, 0.2);
-  --scrollbar-thumb-hover: rgba(0, 0, 0, 0.3);
+  --scrollbar-thumb-hover: rgba(0, 0, 0, 0.3); */
   
   /* Additional light theme specific colors */
   --input-bg: #ffffff;
@@ -156,9 +156,9 @@
   --shadow: 0 1px 3px rgba(0, 0, 0, 0.4);
   --shadow-lg: 0 4px 6px rgba(0, 0, 0, 0.5);
   
-  --scrollbar-track: transparent;
+  /* --scrollbar-track: transparent;
   --scrollbar-thumb: rgba(255, 255, 255, 0.1);
-  --scrollbar-thumb-hover: rgba(255, 255, 255, 0.2);
+  --scrollbar-thumb-hover: rgba(255, 255, 255, 0.2); */
   
   /* Additional dark theme specific colors */
   --input-bg: #292929;
@@ -205,9 +205,9 @@
   --shadow: 0 1px 3px rgba(0, 0, 0, 0.5);
   --shadow-lg: 0 4px 6px rgba(0, 0, 0, 0.6);
   
-  --scrollbar-track: transparent;
+  /* --scrollbar-track: transparent;
   --scrollbar-thumb: rgba(240, 242, 245, 0.15);
-  --scrollbar-thumb-hover: rgba(240, 242, 245, 0.25);
+  --scrollbar-thumb-hover: rgba(240, 242, 245, 0.25); */
   
   /* Additional alt dark theme specific colors */
   --input-bg: #2d2e3f;
@@ -222,7 +222,7 @@
 }
 
 /* Base scrollbar styling */
-* {
+/* * {
   scrollbar-width: thin;
   scrollbar-color: var(--scrollbar-thumb) var(--scrollbar-track);
 }
@@ -243,4 +243,4 @@
 
 *::-webkit-scrollbar-thumb:hover {
   background: var(--scrollbar-thumb-hover);
-}
+} */

@@ -3,7 +3,7 @@ import { useSignals } from '@preact/signals-react/runtime';
 import { Icon } from './Icon';
 import { getSelectableAssistants, getCurrentAssistantId, setUserSelectedAssistantId } from '../../services/chatService';
 import { getAssistantCapabilities } from '../../utils/modelUtils';
-import type { AssistantDto } from '../../models/assistantModels';
+import type { AssistantDto } from '../../types/assistantModels';
 import './AssistantSelector.css';
 
 interface AssistantSelectorProps {

@@ -10,7 +10,8 @@
     overflow: hidden;
     width: 100%;
     position: relative;
-    background-color: var(--bg-secondary);
+    /* background-color: var(--bg-secondary); */
+    background-color: var(--color-bg);
 }
 
 .main-content {
