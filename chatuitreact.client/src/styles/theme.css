@@ -1,0 +1,164 @@
+:root {
+  /* Default theme: dark/blue */
+  --color-bg: #262631;
+  --color-bg-secondary: #1a1d2b;
+  --color-bg-modal: #262631;
+
+  --color-bg-sidebar: #0f1015;
+  --color-bg-sidebar-hover: hsl(from var(--color-bg-sidebar) h s calc(l + 5));
+
+  --color-bg-menu: #1a1d2b;
+  --color-bg-menu-selected: hsl(from var(--color-bg-menu) h s calc(l + 5));
+  --color-bg-menu-hover: hsl(from var(--color-bg-menu) h s calc(l + 10));
+
+  --color-bg-tooltip: #1a1d2b;
+
+  --color-input:#3b3b46;
+  /* --color-input: #083449; */
+  --color-input-hover: hsl(from var(--color-input) h s calc(l + 5));
+  --color-input-border: hsl(from var(--color-input) h s l / 0.5);
+
+  --color-text-primary: #f5f6fa;
+  --color-text-secondary: #a0a0b0;
+
+  --color-border: #3d4250;
+  --color-border-accent: #3ea6ff;
+
+  --color-primary: #017396;
+  --color-primary-hover: #60b8ff;
+
+  --color-secondary: #59BEC9;
+  --color-secondary-hover: #7ed3d9;
+
+  --color-warning: #ffc107;
+  --color-error: #ff5c5c;
+  --color-success: #3fe87a;
+
+  --color-code-bg: #2e2e3e;
+  --color-code-header: #3b3b3f;
+  --color-code-button: #2a2a2a;
+
+  --color-toolbar-hover: rgba(23, 93, 220, 0.1);
+  --color-toolbar-active: rgba(23, 93, 220, 0.2);
+
+  --color-scrollbar-thumb: rgba(255, 255, 255, 0.2);
+  --color-scrollbar-thumb-hover: rgba(255, 255, 255, 0.3);
+  --color-scrollbar-track: transparent;
+}
+
+/* Light/blue theme */
+[data-theme="light-blue"] {
+  --color-bg: #f4f6fa;
+  --color-bg-secondary: #e9edf5;
+  --color-bg-modal: #f0f2f6;
+
+  --color-bg-sidebar: #e9edf5;
+
+  --color-bg-menu: #e9edf5;
+
+  --color-input: #d6e9ff;
+  --color-input-hover: hsl(from var(--color-input) h s calc(l - 5));
+
+  --color-text-primary: #111827;
+  --color-text-secondary: #5a5f72;
+
+  --color-border: #ccd2e0;
+  --color-border-accent: #007acc;
+
+  --color-primary: #007acc;
+  --color-primary-hover: #2196f3;
+
+  --color-warning: #eab308;
+  --color-error: #dc2626;
+  --color-success: #16a34a;
+
+  --color-code-bg: #f0f4fa;
+  --color-code-header: #dde5ee;
+  --color-code-button: #d4e0f0;
+
+  --color-toolbar-hover: rgba(0, 122, 204, 0.08);
+  --color-toolbar-active: rgba(0, 122, 204, 0.2);
+
+  --color-scrollbar-thumb: rgba(0, 0, 0, 0.2);
+  --color-scrollbar-thumb-hover: rgba(0, 0, 0, 0.3);
+  --color-scrollbar-track: transparent;
+}
+
+/* Dark/green theme */
+[data-theme="dark-green"] {
+  --color-bg: #0f1a12;
+  --color-bg-secondary: #1a2b1d;
+  --color-bg-modal: #151a16;
+
+  --color-bg-sidebar: hsl(140, 83%, 5%);
+
+  --color-bg-menu: #1a2b1d;
+
+  --color-input: #084935;
+  --color-input-hover: hsl(from var(--color-input) h s calc(l + 5));
+
+  --color-text-primary: #f5faf6;
+  --color-text-secondary: #a0b0a5;
+
+  --color-border: #3d5042;
+  --color-border-accent: #3eff6a;
+
+  --color-primary: #009647;
+  --color-primary-hover: #60ff8a;
+
+  --color-secondary: #59C982;
+  --color-secondary-hover: #7ed99c;
+
+  --color-warning: #ffc107;
+  --color-error: #ff5c5c;
+  --color-success: #3fe87a;
+
+  --color-code-bg: #2e3e32;
+  --color-code-header: #3b4f3e;
+  --color-code-button: #2a3a2d;
+
+  --color-toolbar-hover: rgba(23, 220, 93, 0.1);
+  --color-toolbar-active: rgba(23, 220, 93, 0.2);
+
+  --color-scrollbar-thumb: rgba(255, 255, 255, 0.2);
+  --color-scrollbar-thumb-hover: rgba(255, 255, 255, 0.3);
+  --color-scrollbar-track: transparent;
+}
+
+/* Light/green theme */
+[data-theme="light-green"] {
+  --color-bg: #f4faf6;
+  --color-bg-secondary: #e9f5ed;
+  --color-bg-modal: #f0faf2;
+
+  --color-bg-sidebar: #e9f5ed;
+
+  --color-bg-menu: #e9f5ed;
+
+  --color-input: #d6ffd9;
+  --color-input-hover: hsl(from var(--color-input) h s calc(l - 5));
+
+  --color-text-primary: #112718;
+  --color-text-secondary: #5a725f;
+
+  --color-border: #cce0d2;
+  --color-border-accent: #00cc47;
+
+  --color-primary: #00cc47;
+  --color-primary-hover: #21f356;
+
+  --color-warning: #eab308;
+  --color-error: #dc2626;
+  --color-success: #16a34a;
+
+  --color-code-bg: #f0faf4;
+  --color-code-header: #ddeee5;
+  --color-code-button: #d4f0de;
+
+  --color-toolbar-hover: rgba(0, 204, 71, 0.08);
+  --color-toolbar-active: rgba(0, 204, 71, 0.2);
+
+  --color-scrollbar-thumb: rgba(0, 0, 0, 0.2);
+  --color-scrollbar-thumb-hover: rgba(0, 0, 0, 0.3);
+  --color-scrollbar-track: transparent;
+}

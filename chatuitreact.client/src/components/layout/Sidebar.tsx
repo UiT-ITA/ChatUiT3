@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import './Sidebar.css';
 import SidebarButton from './SidebarButton';
 import { NavLink, useNavigate } from 'react-router-dom';
@@ -118,6 +118,12 @@ const Sidebar = ({ onToggleSidebar, isNarrow, isMobile, isMobileMenuOpen, onMobi
           )}
         </div>
       </div>
+      {isSettingsOpen && (
+        <div className="settings-modal">
+          <h2>{t('sidebar.settings')}</h2>
+          {/* Settings content goes here */}
+        </div>
+      )}
     </>
   );
 };

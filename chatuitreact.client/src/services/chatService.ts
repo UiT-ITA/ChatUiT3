@@ -52,8 +52,9 @@ export async function createChat(content: string, assistantId: string, files?: C
       }]
     };
 
-    const response = await apiService.post<{ chatId: string }>("/api/Chats", createChatDto);
-    return response.chatId;
+    const response = await apiService.post<ChatDto>("/api/Chats", createChatDto);
+    console.log("Chat created:", response);
+    return response.id;
 
   } catch (error) {
     console.error("Error creating chat:", error);

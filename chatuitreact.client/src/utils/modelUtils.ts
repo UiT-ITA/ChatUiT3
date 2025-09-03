@@ -1,4 +1,4 @@
-import type { UserModelDto } from '../models/modelModels';
+import type { UserModelDto } from '../types/modelModels';
 import { modelCapabilities } from '../data/modelCapabilities';
 
 export interface EnhancedModel extends UserModelDto {

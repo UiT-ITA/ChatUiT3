@@ -1,5 +1,5 @@
 import { useState/*, useEffect*/ } from 'react';
-import { Outlet, useLocation, useNavigate } from 'react-router-dom';
+import { Outlet, useNavigate } from 'react-router-dom';
 import Sidebar from './Sidebar';
 import AppBar from './AppBar';
 import useMediaQuery from '../../hooks/useMediaQuery';
@@ -9,7 +9,7 @@ import './MainLayout.css';
 const MainLayout: React.FC = () => {
   const [isNarrow, setIsNarrow] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
-  const location = useLocation();
+  // const location = useLocation();
   const navigate = useNavigate();
   const isMobile = useMediaQuery('(max-width: 799px)');
 
