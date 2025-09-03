@@ -1,15 +1,15 @@
-import React, { useState, useEffect } from 'react';
-import { MdKeyboardArrowDown } from 'react-icons/md';
+import { useState, useEffect } from 'react';
+import { Icon } from '../common/Icon';
 
 interface ScrollToBottomButtonProps {
   chatContainerRef: React.RefObject<HTMLDivElement | null>;
   onScrollToBottom: () => void;
 }
 
-const ScrollToBottomButton: React.FC<ScrollToBottomButtonProps> = ({
+const ScrollToBottomButton = ({
   chatContainerRef,
   onScrollToBottom,
-}) => {
+}: ScrollToBottomButtonProps) => {
   const [isVisible, setIsVisible] = useState(false);
 
   useEffect(() => {
@@ -37,7 +37,7 @@ const ScrollToBottomButton: React.FC<ScrollToBottomButtonProps> = ({
       onClick={onScrollToBottom}
       title="Scroll to bottom"
     >
-      <MdKeyboardArrowDown size="20px" />
+      <Icon name="arrowDown" size={1.25} />
     </button>
   );
 };

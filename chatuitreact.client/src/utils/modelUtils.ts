@@ -1,7 +1,7 @@
-import { ModelDto } from '../types/dtos';
+import type { UserModelDto } from '../types/modelModels';
 import { modelCapabilities } from '../data/modelCapabilities';
 
-export interface EnhancedModel extends ModelDto {
+export interface EnhancedModel extends UserModelDto {
   displayName: string;
   description: string;
   capabilities: {
@@ -14,7 +14,7 @@ export interface EnhancedModel extends ModelDto {
   };
 }
 
-export function enhanceModelsWithCapabilities(models: ModelDto[]): EnhancedModel[] {
+export function enhanceModelsWithCapabilities(models: UserModelDto[]): EnhancedModel[] {
   return models.map(model => {
     const capability = modelCapabilities.find(cap => cap.id === model.modelName);
     

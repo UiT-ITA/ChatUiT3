@@ -1,7 +1,7 @@
-import { ChatFile, ChatFileText, ChatFileImage, ContentType } from '../types/chatModels';
+import type { CreateChatFileDto, AiContentType } from '../types/chatModels';
 
 export class FileProcessingService {
-    static async processFile(file: File): Promise<ChatFile> {
+    static async processFile(file: File): Promise<CreateChatFileDto> {
         if (this.isImageFile(file)) {
             return this.processImageFile(file);
         } else if (this.isTextFile(file)) {
@@ -20,7 +20,8 @@ export class FileProcessingService {
         return ['text/plain', 'text/csv', 'application/json'].includes(file.type);
     }
 
-    private static async processImageFile(file: File): Promise<ChatFileImage> {
+
+    private static async processImageFile(file: File): Promise<CreateChatFileDto> {
         const processedBase64 = await this.resizeAndConvertImage(file);
         
         // Change extension to .jpg
@@ -28,20 +29,18 @@ export class FileProcessingService {
         const filename = `${nameWithoutExt}.jpg`;
         
         return {
-            id: crypto.randomUUID(),
             filename: filename,
-            type: ContentType.Image,
+            type: "Image" as AiContentType,
             content: processedBase64
         };
     }
 
-    private static async processTextFile(file: File): Promise<ChatFileText> {
+    private static async processTextFile(file: File): Promise<CreateChatFileDto> {
         const textContent = await this.readTextFile(file);
         
         return {
-            id: crypto.randomUUID(),
             filename: file.name,
-            type: ContentType.Text,
+            type: "Text" as AiContentType,
             content: textContent
         };
     }

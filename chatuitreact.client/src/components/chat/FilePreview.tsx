@@ -1,49 +1,52 @@
 import { useState } from 'react';
-import { ChatFile, ChatFileImage, ContentType } from '../../types/chatModels';
-import { getFileIcon, formatFileSize } from '../../utils/fileUtils';
+import type { ChatFileDto, CreateChatFileDto } from '../../types/chatModels';
+import { getFileIcon } from '../../utils/fileUtils';
 import FilePreviewModal from './FilePreviewModal';
 import './FilePreview.css';
 
 interface FilePreviewProps {
-  files: (File | ChatFile)[];
-  readonly?: boolean;
-  onRemove?: (index: number) => void;
+  file: ChatFileDto | CreateChatFileDto;
+  onRemove?: () => void;
+  showRemoveButton?: boolean;
 }
 
-const FilePreview = ({ files, readonly = false, onRemove }: FilePreviewProps) => {
-  const [selectedFile, setSelectedFile] = useState<File | ChatFile | null>(null);
+const FilePreview = ({ file, onRemove, showRemoveButton = false }: FilePreviewProps) => {
+  const [selectedFile, setSelectedFile] = useState<ChatFileDto | CreateChatFileDto | null>(null);
 
-  if (files.length === 0) return null;
-
-  const handleFileClick = (file: File | ChatFile) => {
+  const handleFileClick = () => {
     setSelectedFile(file);
   };
 
-  const renderFilePreview = (file: File | ChatFile, index: number) => {
-    const isFile = file instanceof File;
-    const filename = isFile ? file.name : file.filename || '';
-    const isImage = isFile 
-      ? file.type.startsWith('image/') 
-      : (file as ChatFile).type === ContentType.Image;
+  const handleRemove = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    onRemove?.();
+  };
 
-    const getImageSrc = () => {
-      if (isFile) {
-        return URL.createObjectURL(file as File);
-      } else {
-        const imageFile = file as ChatFileImage;
-        return `data:image/jpeg;base64,${imageFile.content}`;
-      }
-    };
+  const filename = file.filename || 'Unknown file';
+  const isImage = file.type === 'Image';
 
-    return (
+  return (
+    <>
       <div 
-        key={index} 
         className={`file-thumbnail ${isImage ? 'image' : 'text'} clickable`}
-        onClick={() => handleFileClick(file)}
+        onClick={handleFileClick}
       >
+        {showRemoveButton && (
+          <button 
+            className="remove-btn" 
+            onClick={handleRemove}
+            title="Remove file"
+          >
+            ×
+          </button>
+        )}
+        
         {isImage ? (
           <img 
-            src={getImageSrc()}
+            src={file.content.startsWith('data:') 
+              ? file.content 
+              : `data:image/jpeg;base64,${file.content}`
+            }
             alt={filename} 
             className="file-image"
           />
@@ -51,33 +54,11 @@ const FilePreview = ({ files, readonly = false, onRemove }: FilePreviewProps) =>
           <div className="file-icon">
             <div className="file-emoji">{getFileIcon(filename)}</div>
             <div className="file-name">{filename}</div>
-            <div className="file-info">
-              {isFile ? formatFileSize((file as File).size) : 'Text file'}
-            </div>
+            <div className="file-info">Text file</div>
           </div>
         )}
-        {!readonly && onRemove && (
-          <button 
-            type="button" 
-            className="remove-btn" 
-            onClick={(e) => {
-              e.stopPropagation();
-              onRemove(index);
-            }}
-            aria-label={`Remove ${filename}`}
-          >
-            ×
-          </button>
-        )}
       </div>
-    );
-  };
-
-  return (
-    <>
-      <div className="file-preview-container">
-        {files.map(renderFilePreview)}
-      </div>
+      
       <FilePreviewModal 
         file={selectedFile} 
         onClose={() => setSelectedFile(null)} 

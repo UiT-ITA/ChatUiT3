@@ -1,5 +1,5 @@
 import React from 'react';
-import { RiMenuLine, RiChatAiLine } from 'react-icons/ri';
+import { Icon } from '../common/Icon';
 import './AppBar.css';
 
 interface AppBarProps {
@@ -11,13 +11,13 @@ const AppBar: React.FC<AppBarProps> = ({ onMenuClick, onNewChatClick }) => {
   return (
     <div className="app-bar">
       <button className="icon-button" onClick={onMenuClick} title="Menu">
-        <RiMenuLine size="24px" />
+        <Icon name="menu" size={1.5} />
       </button>
       
       <div className="app-bar-title">ChatUiT</div>
       
       <button className="icon-button" onClick={onNewChatClick} title="New Chat">
-        <RiChatAiLine size="24px" />
+        <Icon name="chat" size={1.5} />
       </button>
     </div>
   );

@@ -6,29 +6,29 @@
     border: none;
     color: var(--text-secondary);
     cursor: pointer;
-    height: 32px;
-    border-radius: 4px;
-    transition: background-color var(--transition-base), color var(--transition-base);
+    height: 2rem;
+    border-radius: 0.25rem;
+    transition: background-color 0.2s ease, color 0.2s ease;
     width: 100%;
-    padding: 8px;
+    padding: 0.5rem;
 }
 
 .sidebar-button:hover {
-    color: var(--accent-primary);
+    color: var(--text-primary);
 }
 
 .icon-container {
     display: flex;
     align-items: center;
     justify-content: center;
-    height: 32px;
-    width: 32px;
+    height: 2rem;
+    width: 2rem;
 }
 
 .button-text {
-    padding-left: 4px;
-    padding-bottom: 4px;
-    font-size: 20px;
+    padding-left: 0.25rem;
+    padding-bottom: 0.25rem;
+    font-size: 1.25rem;
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
@@ -39,5 +39,5 @@
 }
 
 .sidebar.narrow .sidebar-button {
-    width: 48px;
+    width: 3rem;
 }

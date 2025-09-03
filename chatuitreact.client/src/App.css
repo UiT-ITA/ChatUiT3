@@ -65,3 +65,29 @@ th, td {
   color: var(--text-secondary);
   line-height: 1.6;
 }
+
+
+/* Custom Scrollbars */
+::-webkit-scrollbar {
+    width: 0.5rem;
+}
+
+::-webkit-scrollbar-track {
+    background: var(--scrollbar-track);
+}
+
+::-webkit-scrollbar-thumb {
+    background: var(--scrollbar-thumb);
+    border-radius: 0.25rem;
+}
+
+::-webkit-scrollbar-thumb:hover {
+    background: var(--scrollbar-thumb-hover);
+}
+
+@-moz-document url-prefix() {
+    * {
+        scrollbar-color: var(--scrollbar-thumb) var(--scrollbar-track);
+        /* No scrollbar-width = keeps default thickness & usability */
+    }
+}

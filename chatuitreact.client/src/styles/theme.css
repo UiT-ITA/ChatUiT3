@@ -1,0 +1,213 @@
+/* =============================================================================
+   UNIFIED THEME SYSTEM
+   - Size control via root font-size
+   - Semantic color variables
+   - Three themes: Light, Dim (default), Dark
+============================================================================= */
+
+/* =============================================================================
+   SIZE CONTROL SYSTEM
+============================================================================= */
+:root {
+  font-size: 16px; /* Default/Medium size */
+}
+
+[data-size="small"] {
+  font-size: 14px;
+}
+
+[data-size="large"] {
+  font-size: 18px;
+}
+
+[data-size="xl"] {
+  font-size: 20px;
+}
+
+/* =============================================================================
+   DIM THEME (DEFAULT) - Based on current dark-blue theme
+============================================================================= */
+:root,
+[data-theme="dim"] {
+  /* Main backgrounds */
+  --bg-main-page: #262631;
+  --bg-secondary: #1a1d2b;
+  --bg-modal: #262631;
+
+  /* Sidebar */
+  --bg-sidebar: #0f1015;
+  --bg-sidebar-hover: hsl(from var(--bg-sidebar) h s calc(l + 5));
+
+  /* Menus and dropdowns */
+  --bg-menu: #1a1d2b;
+  --bg-menu-selected: hsl(from var(--bg-menu) h s calc(l + 5));
+  --bg-menu-hover: hsl(from var(--bg-menu) h s calc(l + 10));
+
+  /* Tooltips */
+  --bg-tooltip: #1a1d2b;
+
+  /* Inputs and form elements */
+  --bg-input: #014f70;
+  --bg-input-hover: hsl(from var(--bg-input) h s calc(l + 5));
+  --border-input: hsl(from var(--bg-input) h s l / 0.5);
+
+  /* Text colors */
+  --text-primary: #f5f6fa;
+  --text-secondary: #a0a0b0;
+  --text-on-accent: #ffffff;
+
+  /* Borders */
+  --border-primary: #3d4250;
+  --border-accent: #3ea6ff;
+
+  /* Accent colors */
+  --accent-primary: #017396;
+  --accent-primary-hover: #60b8ff;
+  --accent-secondary: #59BEC9;
+  --accent-secondary-hover: #7ed3d9;
+
+  /* Semantic colors */
+  --color-warning: #ffc107;
+  --color-error: #ff5c5c;
+  --color-success: #3fe87a;
+
+  /* Code blocks */
+  --bg-code-block: #2e2e3e;
+  --bg-code-header: #3b3b3f;
+  --bg-code-button: #2a2a2a;
+
+  /* Interactive states */
+  --bg-toolbar-hover: rgba(23, 93, 220, 0.1);
+  --bg-toolbar-active: rgba(23, 93, 220, 0.2);
+
+  /* Scrollbars */
+  --scrollbar-thumb: rgba(255, 255, 255, 0.2);
+  --scrollbar-thumb-hover: rgba(255, 255, 255, 0.3);
+  --scrollbar-track: transparent;
+
+}
+
+/* =============================================================================
+   LIGHT THEME - Blue color scheme in light mode
+============================================================================= */
+[data-theme="light"] {
+  /* Main backgrounds */
+  --bg-main-page: #f4f6fa;
+  --bg-secondary: #e9edf5;
+  --bg-modal: #f0f2f6;
+
+  /* Sidebar */
+  --bg-sidebar: #e9edf5;
+  --bg-sidebar-hover: #dde5ee;
+
+  /* Menus and dropdowns */
+  --bg-menu: #e9edf5;
+  --bg-menu-selected: #dde5ee;
+  --bg-menu-hover: #d4e0f0;
+
+  /* Tooltips */
+  --bg-tooltip: #ffffff;
+
+  /* Inputs and form elements */
+  --bg-input: #d6e9ff;
+  --bg-input-hover: hsl(from var(--bg-input) h s calc(l - 5));
+  --border-input: #b3d9ff;
+
+  /* Text colors */
+  --text-primary: #111827;
+  --text-secondary: #5a5f72;
+  --text-on-accent: #ffffff;
+
+  /* Borders */
+  --border-primary: #ccd2e0;
+  --border-accent: #007acc;
+
+  /* Accent colors */
+  --accent-primary: #007acc;
+  --accent-primary-hover: #2196f3;
+  --accent-secondary: #0ea5e9;
+  --accent-secondary-hover: #38bdf8;
+
+  /* Semantic colors */
+  --color-warning: #eab308;
+  --color-error: #dc2626;
+  --color-success: #16a34a;
+
+  /* Code blocks */
+  --bg-code-block: #f0f4fa;
+  --bg-code-header: #dde5ee;
+  --bg-code-button: #d4e0f0;
+
+  /* Interactive states */
+  --bg-toolbar-hover: rgba(0, 122, 204, 0.08);
+  --bg-toolbar-active: rgba(0, 122, 204, 0.2);
+
+  /* Scrollbars */
+  --scrollbar-thumb: rgba(0, 0, 0, 0.2);
+  --scrollbar-thumb-hover: rgba(0, 0, 0, 0.3);
+  --scrollbar-track: transparent;
+
+}
+
+/* =============================================================================
+   DARK THEME - High contrast dark blue theme
+============================================================================= */
+[data-theme="dark"] {
+  /* Main backgrounds */
+  --bg-main-page: #0a0a0f;
+  --bg-secondary: #12121a;
+  --bg-modal: #0a0a0f;
+
+  /* Sidebar */
+  --bg-sidebar: #050508;
+  --bg-sidebar-hover: #0f0f15;
+
+  /* Menus and dropdowns */
+  --bg-menu: #12121a;
+  --bg-menu-selected: #1a1a25;
+  --bg-menu-hover: #222230;
+
+  /* Tooltips */
+  --bg-tooltip: #12121a;
+
+  /* Inputs and form elements */
+  --bg-input: #1e1e2e;
+  --bg-input-hover: #252538;
+  --border-input: rgba(96, 184, 255, 0.3);
+
+  /* Text colors */
+  --text-primary: #ffffff;
+  --text-secondary: #b0b0c0;
+  --text-on-accent: #ffffff;
+
+  /* Borders */
+  --border-primary: #2a2a3a;
+  --border-accent: #60b8ff;
+
+  /* Accent colors */
+  --accent-primary: #60b8ff;
+  --accent-primary-hover: #80c8ff;
+  --accent-secondary: #7ed3d9;
+  --accent-secondary-hover: #9ee0e5;
+
+  /* Semantic colors */
+  --color-warning: #ffd700;
+  --color-error: #ff6b6b;
+  --color-success: #51f584;
+
+  /* Code blocks */
+  --bg-code-block: #1a1a2e;
+  --bg-code-header: #252540;
+  --bg-code-button: #1e1e35;
+
+  /* Interactive states */
+  --bg-toolbar-hover: rgba(96, 184, 255, 0.15);
+  --bg-toolbar-active: rgba(96, 184, 255, 0.25);
+
+  /* Scrollbars */
+  --scrollbar-thumb: rgba(255, 255, 255, 0.3);
+  --scrollbar-thumb-hover: rgba(255, 255, 255, 0.4);
+  --scrollbar-track: transparent;
+
+}
+

@@ -1,277 +1,155 @@
-import { useState, useRef, useEffect } from 'react';
-import type { ChangeEvent } from 'react';
 import './ChatInput.css';
-import { MdSend, MdKeyboardArrowDown, MdKeyboardArrowUp, MdSearch, MdCloud, MdTune, MdAttachFile  } from "react-icons/md";
-import { useTranslation } from 'react-i18next';
-import ToolbarTool from './ToolbarTool';
-import AssistantSelector from './AssistantSelector';
-import FilePreview from './FilePreview';
-import { useAssistants } from '../../hooks/useAssistants';
-import { useCurrentAssistant } from '../../contexts/ChatDataProvider';
-import { ChatFile } from '../../types/chatModels';
+import { useState, useRef } from 'react';
+import { useSignals } from '@preact/signals-react/runtime';
+import { sendMessage, getCurrentChatId, getCurrentAssistantId, createChat } from '../../services/chatService';
 import { FileProcessingService } from '../../services/fileProcessingService';
+import { Icon } from '../common/Icon';
+import AssistantSelector from '../common/AssistantSelector';
+import FilePreview from './FilePreview';
+import type { CreateChatFileDto } from '../../types/chatModels';
+import { useNavigate } from 'react-router-dom';
 
-interface ChatInputProps {
-  onSendMessage: (text: string, files?: ChatFile[], assistantId?: string) => void;
-  chatId?: string;
-}
+export default function ChatInput() {
+  useSignals();
+  const navigate = useNavigate();
 
-const ChatInput = ({ onSendMessage, chatId }: ChatInputProps) => {
-  const { t } = useTranslation();
-  const [message, setMessage] = useState('');
-  const [isToolbarExpanded, setIsToolbarExpanded] = useState(false);
-  const [activeTools, setActiveTools] = useState<{[key: string]: boolean}>({
-    search: false,
-    cloud: false
-  });
-  const [temperature, setTemperature] = useState<number>(0.7);
-  const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
+  const [selectedFiles, setSelectedFiles] = useState<CreateChatFileDto[]>([]);
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
-  
-  // Load all available assistants
-  const { assistantList, visibleAssistants, allAssistants } = useAssistants();
-  const { currentAssistantId, setCurrentAssistantId } = useCurrentAssistant();
-  
-  // Manually combine visible assistants + current selected (if hidden)
-  let assistantsForSelector = [...visibleAssistants];
-  if (currentAssistantId) {
-    const selectedAssistant = allAssistants.find(a => a.id === currentAssistantId);
-    if (selectedAssistant && !selectedAssistant.isVisible && !assistantsForSelector.find(a => a.id === currentAssistantId)) {
-      assistantsForSelector.push(selectedAssistant);
-    }
-  }
 
-  // Auto-resize textarea based on content
-  useEffect(() => {
-    const textarea = textareaRef.current;
-    if (textarea) {
-      textarea.style.height = 'auto';
-      textarea.style.height = `${textarea.scrollHeight}px`;
-    }
-  }, [message]);
+  const currentChatId = getCurrentChatId();
+  const currentAssistantId = getCurrentAssistantId();
+  const chatId = currentChatId.value;
 
-  // Set default assistant if none selected and assistants are available
-  useEffect(() => {
-    if (!currentAssistantId) {
-      if (assistantList?.system?.[0]) {
-        setCurrentAssistantId(assistantList.system[0].id);
-      } else if (assistantsForSelector.length > 0) {
-        setCurrentAssistantId(assistantsForSelector[0].id);
+  const handleSendMessage = async (e: React.FormEvent) => {
+    e.preventDefault();
+
+    const message = textareaRef.current?.value?.trim() || '';
+
+    if (!message && selectedFiles.length === 0) {
+      console.warn('No message or files to send');
+      return;
+    }
+
+    try {
+      if (chatId !== undefined) {
+        await sendMessage(chatId, message, selectedFiles);
+      } else {
+        const newChatId = await createChat(message, currentAssistantId.value!, selectedFiles);
+
+        if (!newChatId) {
+          console.error('Failed to create new chat');
+          return;
+        }
+
+        console.log('New chat created with ID:', newChatId);
+        navigate('/chat/' + newChatId);
       }
-    }
-  }, [currentAssistantId, assistantList, assistantsForSelector, setCurrentAssistantId]);
 
-  // Focus input field when component mounts or when chatId changes
-  useEffect(() => {
+      handleCleanup();
+    } catch (error) {
+      console.error('Failed to send message:', error);
+    }
+
+  };
+
+  const handleCleanup = () => {
+    if (textareaRef.current) {
+      textareaRef.current.value = '';
+    }
+    setSelectedFiles([]);
+
     if (textareaRef.current) {
       textareaRef.current.focus();
     }
-  }, [chatId]);
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    
-    if (message.trim()) {
-      let processedFiles: ChatFile[] = [];
-      
-      if (selectedFiles.length > 0) {
-        try {
-          processedFiles = await Promise.all(
-            selectedFiles.map(file => FileProcessingService.processFile(file))
-          );
-        } catch (error) {
-          console.error('Error processing files:', error);
-          return;
-        }
-      }
-      
-      onSendMessage(message, processedFiles, currentAssistantId || undefined);
-      setSelectedFiles([]);
-      setMessage('');
-      
-      // Reset textarea height
-      if (textareaRef.current) {
-        textareaRef.current.style.height = 'auto';
-        textareaRef.current.focus();
-      }
-    }
-  };
+  }
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault();
-      handleSubmit(e);
+      handleSendMessage(e);
     }
-  };
-
-  const toggleToolbar = () => {
-    setIsToolbarExpanded(!isToolbarExpanded);
-  };
-  const fileInputRef = useRef<HTMLInputElement>(null);
-  
-  const toggleTool = (toolName: string) => {
-    setActiveTools(prev => {
-      const newState = { ...prev, [toolName]: !prev[toolName] };
-      // console.log('Tool state changed:', newState);
-      return newState;
-    });
-  };
-
-  const handleTemperatureChange = (e: ChangeEvent<HTMLInputElement>) => {
-    const value = parseFloat(e.target.value);
-    setTemperature(value);
-    // console.log('Temperature changed:', value);
   };
 
   const handleFileUpload = () => {
     fileInputRef.current?.click();
   };
 
-  const handleFileChange = (e: ChangeEvent<HTMLInputElement>) => {
+  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
     if (files) {
-      const fileArray = Array.from(files)
-        .filter(file =>
-          ['text/plain','text/csv','application/json','image/jpeg','image/png'].includes(file.type)
-        );
-      setSelectedFiles(prev => {
-        const combined = [...prev, ...fileArray].slice(0, 10);
-        return combined;
-      });
+      const fileArray = Array.from(files).filter(file =>
+        FileProcessingService.isImageFile(file) || FileProcessingService.isTextFile(file)
+      );
+
+      const convertedFiles = await Promise.all(
+        fileArray.map(file => FileProcessingService.processFile(file))
+      );
+
+      setSelectedFiles(prev => [...prev, ...convertedFiles].slice(0, 10));
     }
   };
 
   const removeFile = (index: number) => {
-    setSelectedFiles(prev => {
-      const updated = [...prev];
-      updated.splice(index, 1);
-      return updated;
-    });
+    setSelectedFiles(prev => prev.filter((_, i) => i !== index));
   };
 
   return (
-    <div className="chat-input-outer-container">
-    <div className={`chat-input-inner-container ${isToolbarExpanded ? 'toolbar-expanded' : ''}`}>
-      <FilePreview 
-        files={selectedFiles} 
-        onRemove={removeFile}
-      />
-        <form className="chat-input" onSubmit={handleSubmit}>
-          {!isToolbarExpanded && (
-            <button 
-              type="button"
-              className="chat-input-button toggle-toolbar-button" 
-              onClick={toggleToolbar}
-              title="Expand toolbar"
-            >
-              <MdKeyboardArrowDown size={"24px"} />
-            </button>
-          )}
-
-          <textarea
-            ref={textareaRef}
-            value={message}
-            onChange={(e) => setMessage(e.target.value)}
-            onKeyDown={handleKeyDown}
-            placeholder={t('chat.messagePlaceholder')}
-            rows={1}
-            className={isToolbarExpanded ? 'full-width' : ''}
-          />
-
-          {!isToolbarExpanded && (
-            <button 
-              type="submit"
-              className="chat-input-button" 
-              disabled={!message.trim()}
-              title={t('chat.sendMessage')}
-            >
-              <MdSend size={"24px"} />
-            </button>
-          )}
-        </form>
-        
-        {isToolbarExpanded && (
-          <div className="chat-input-toolbar">
-            <button 
-              type="button"
-              className="chat-input-button toggle-toolbar-button" 
-              onClick={toggleToolbar}
-              title="Collapse toolbar"
-            >
-              <MdKeyboardArrowUp size={"24px"} />
-            </button>
-            
-            <AssistantSelector 
-              assistants={assistantsForSelector}
-              selectedAssistantId={currentAssistantId || undefined}
-              onSelectAssistant={(assistantId) => setCurrentAssistantId(assistantId)}
-            />
-            
-            <ToolbarTool 
-              icon={<MdAttachFile size={"20px"} />} 
-              label="Upload File" 
-              onClick={handleFileUpload}
-            />
-            <input
-              type="file"
-              ref={fileInputRef}
-              onChange={handleFileChange}
-              style={{ display: 'none' }}
-              multiple
-              accept=".txt,.csv,.json,image/jpeg,image/png"
-            />
-            <div className="toolbar-tools">
-              <ToolbarTool 
-                icon={<MdSearch size={"20px"} />} 
-                label="Search" 
-                isToggleable={true}
-                isActive={activeTools.search}
-                onClick={() => toggleTool('search')}
+    <div className="chat-input">
+      <div className="outer-container">
+        {selectedFiles.length > 0 && (
+          <div className="input-file-previews">
+            {selectedFiles.map((file, index) => (
+              <FilePreview
+                key={`${file.filename}-${index}`}
+                file={file}
+                onRemove={() => removeFile(index)}
+                showRemoveButton={true}
               />
-              <ToolbarTool 
-                icon={<MdCloud size={"20px"} />} 
-                label="Save to Cloud" 
-                isToggleable={true}
-                isActive={activeTools.cloud}
-                onClick={() => toggleTool('cloud')}
-              />
-              <ToolbarTool 
-                icon={<MdTune size={"20px"} />} 
-                label="Temperature" 
-                onClick={() => {}}
-                hideLabel={true}
-              >
-                <div className="temperature-slider-container">
-                  <input
-                    type="range"
-                    min="0"
-                    max="1"
-                    step="0.1"
-                    value={temperature}
-                    onChange={handleTemperatureChange}
-                    className="temperature-slider"
-                  />
-                  <span className="temperature-value">{temperature.toFixed(1)}</span>
-                </div>
-              </ToolbarTool>
-            </div>
-            
-            <button 
-              className="chat-input-button send-button-toolbar" 
-              disabled={!message.trim()}
-              onClick={handleSubmit}
-              title={t('sendMessage')}
-            >
-              <MdSend size={"24px"} />
-            </button>
+            ))}
           </div>
         )}
+
+        <form className="inner-container" onSubmit={handleSendMessage}>
+          <div className="tools-container">
+            <div className="spacer-div"></div>
+            <div className="tools-expand">
+              <Icon name="more" size={1.75} className="icon" />
+            </div>
+            <button type="button" className="attach" onClick={handleFileUpload}>
+              <Icon name="attach" size={1.75} className="icon" />
+            </button>
+            <div className="assistant-selector-wrapper">
+              <AssistantSelector />
+            </div>
+          </div>
+
+          <div className="input-container">
+            <textarea
+              ref={textareaRef}
+              className="input-box"
+              placeholder="Type a message..."
+              onKeyDown={handleKeyDown}
+            />
+          </div>
+            <button
+              type="submit"
+              className="send-container"
+              title="Send message"
+            >
+              <Icon name="send" size={1.75} className="icon" />
+            </button>
+
+          <input
+            type="file"
+            ref={fileInputRef}
+            onChange={handleFileChange}
+            style={{ display: 'none' }}
+            multiple
+            accept=".txt,.csv,.json,image/jpeg,image/png"
+          />
+        </form>
       </div>
-      {/* <div className="chat-input-footer">
-        ChatGPT can make mistakes. Consider checking important information.
-      </div> */}
     </div>
   );
-};
-
-export default ChatInput;
+}

@@ -1,16 +1,18 @@
-import React, { useLayoutEffect, useRef, useState, useEffect } from 'react';
-import { useParams } from 'react-router-dom';
-import { useAuth } from '../../contexts/AuthContext';
-import { useChat } from '../../hooks/useChats';
+import './ChatHistory.css'
+import { getChat, getCurrentChatId } from '../../services/chatService'
+import { useSignals } from '@preact/signals-react/runtime';
+import { useLayoutEffect, useRef, useState, useEffect } from 'react';
 import ChatMessage from './ChatMessage';
 import ScrollToBottomButton from './ScrollToBottomButton';
-import './ChatHistory.css';
 
-const ChatHistory = () => {
-  const { chatId } = useParams<{ chatId: string }>();
-  const { isAuthenticated, isInitializing } = useAuth();
-  const { data: chat } = useChat(chatId || null, !isInitializing && isAuthenticated && !!chatId);
-  const messages = chat?.messages || [];
+export default function ChatHistory() {
+  useSignals();
+  
+  const currentChatId = getCurrentChatId();
+  const chatId = currentChatId.value;
+  const chat = chatId ? getChat(chatId) : { value: undefined };
+  const messages = chat.value?.messages || [];
+  
   const chatHistoryRef = useRef<HTMLDivElement>(null);
   const [shouldAutoScroll, setShouldAutoScroll] = useState(true);
   const [prevScrollTop, setPrevScrollTop] = useState(0);
@@ -31,7 +33,7 @@ const ChatHistory = () => {
     if (scrollDirection === 'up' && distanceFromBottom > 0) {
       // Any upward scroll = disable auto-scroll immediately
       setShouldAutoScroll(false);
-    } else if (scrollDirection === 'down' && distanceFromBottom < 50) {
+    } else if (scrollDirection === 'down' && distanceFromBottom < 100) {
       // Downward scroll near bottom = enable auto-scroll
       setShouldAutoScroll(true);
     }
@@ -72,22 +74,38 @@ const ChatHistory = () => {
     scrollToBottom();
   }, [messages]);
 
+  if (!chatId) {
+    return (
+      <div className="chat-history">
+        <div>Please select a chat to view its history.</div>
+      </div>
+    );
+  }
+
+  if (chat.value === undefined) {
+    return (
+      <div className="chat-history">
+        <div>Loading chat...</div>
+      </div>
+    );
+  }
+
   return (
     <div className="chat-history" ref={chatHistoryRef}>
-      {messages.map((message) => (
-        <ChatMessage
-          key={message.id}
-          message={message}
-          onStreamingChunk={scrollToBottomIfShouldAutoScroll}
-        />
-      ))}
+      <div className="chat-history-messages">
+        {messages.map((message) => (
+          <ChatMessage
+            key={message.id}
+            message={message}
+            onStreamingChunk={scrollToBottomIfShouldAutoScroll}
+          />
+        ))}
+      </div>
       
       <ScrollToBottomButton 
         chatContainerRef={chatHistoryRef}
         onScrollToBottom={handleScrollToBottomClick}
       />
     </div>
-  );
-};
-
-export default React.memo(ChatHistory);
+  )
+}

@@ -69,6 +69,11 @@ class AuthService {
     * Get an access token silently, or redirect to login if necessary
     */
     public async getAccessToken(): Promise<string | null> {
+
+        if (!this.initialized) {
+            await this.initialize();
+        }
+
         this.ensureInitialized();
 
         const account = this.getAccount();
