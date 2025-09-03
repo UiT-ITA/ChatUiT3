@@ -6,6 +6,7 @@ import ProtectedRoute from './components/common/ProtectedRoute';
 import LoadingIndicator from './components/common/LoadingIndicator';
 import './App.css';
 import './styles/themes.css';
+import ChatPage from './components/chat/ChatPage';
 
 const Home = () => {
   const { isAuthenticated, isInitializing, account } = useAuth();
@@ -39,6 +40,9 @@ const App: React.FC = () => {
       <Routes>
         <Route element={<MainLayout />}>
           <Route path="/" element={<Home />} />
+          <Route path="/chat" element={<ChatPage />} />
+          <Route path="/chat/new" element={<ChatPage />} />
+          <Route path="/chat/:chatId" element={<ChatPage />} />
           <Route 
             path="/admin" 
             element={

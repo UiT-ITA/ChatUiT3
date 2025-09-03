@@ -3,7 +3,7 @@ import authService from "./authService";
 import { invalidateChat, invalidateChats, receiveMessageChunk } from "./chatService";
 import { invalidateAssistants } from "./assistantService";
 
-class SignalRService {
+class SignalrService {
     private connection: signalR.HubConnection | null = null;
     private isConnecting: boolean = false;
     private handlersRegistered: boolean = false;
@@ -102,5 +102,5 @@ class SignalRService {
     }
 }
 
-const signalrService = new SignalRService();
+const signalrService = new SignalrService();
 export default signalrService;
