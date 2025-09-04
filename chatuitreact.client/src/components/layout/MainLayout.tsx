@@ -24,7 +24,7 @@ const MainLayout: React.FC = () => {
   };
 
   const handleNewChatClick = () => {
-    navigate('/c/new');
+    navigate('/chat/new');
     if (isMobile) {
       setIsMobileMenuOpen(false);
     }
