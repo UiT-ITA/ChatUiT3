@@ -1,0 +1,185 @@
+/* Main assistants page - scrolling container with background */
+.assistants-page {
+  width: 100%;
+  height: 100%;
+  background-color: var(--bg-main-page);
+  overflow-y: auto;
+}
+
+/* Inner content container */
+.assistants-page-content {
+  display: flex;
+  flex-direction: column;
+  max-width: 75rem;
+  margin: 0 auto;
+  padding: 1.5rem;
+  color: var(--text-primary);
+  box-sizing: border-box;
+}
+
+.assistants-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 1.5rem;
+  padding-bottom: 1rem;
+  border-bottom: 1px solid var(--border-primary);
+}
+
+.assistants-title {
+  font-size: 1.5rem;
+  font-weight: 600;
+  color: var(--text-primary);
+  margin: 0;
+}
+
+.create-assistant-button {
+  display: flex;
+  align-items: center;
+  gap: 0.375rem;
+  background-color: var(--accent-primary);
+  color: var(--text-on-accent);
+  border: none;
+  border-radius: 0.375rem;
+  padding: 0.75rem 1rem;
+  font-size: 0.875rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background-color 0.2s ease;
+}
+
+.create-assistant-button:hover {
+  background-color: var(--accent-primary-hover);
+}
+
+.assistants-section {
+  margin-bottom: 1.5rem;
+}
+
+.assistants-section-title {
+  font-size: 1.25rem;
+  font-weight: 600;
+  color: var(--text-primary);
+  margin: 0 0 1rem 0;
+  padding-bottom: 0.375rem;
+  border-bottom: 1px solid var(--border-primary);
+}
+
+.assistants-grid {
+  display: grid;
+  gap: 0.75rem;
+}
+
+.empty-state {
+  text-align: center;
+  padding: 1.5rem;
+  color: var(--text-secondary);
+}
+
+.empty-state-title {
+  font-size: 1.125rem;
+  font-weight: 600;
+  margin: 0 0 0.375rem 0;
+}
+
+.empty-state-description {
+  font-size: 0.875rem;
+  margin: 0;
+}
+
+.add-external-placeholder {
+  background-color: var(--bg-secondary);
+  border: 2px dashed var(--border-primary);
+  border-radius: 0.5rem;
+  padding: 1rem;
+  text-align: center;
+  margin-bottom: 1.5rem;
+  color: var(--text-secondary);
+}
+
+/* Legacy form styles for detail/create pages */
+.assistant-page {
+  padding: 1.25rem;
+  max-width: 50rem;
+  margin: 0 auto;
+}
+
+.assistant-page h1 {
+  color: var(--text-primary);
+  margin-bottom: 1.25rem;
+}
+
+.assistant-page .form-group {
+  margin-bottom: 0.9375rem;
+}
+
+.assistant-page label {
+  display: block;
+  margin-bottom: 0.3125rem;
+  font-weight: bold;
+  color: var(--text-primary);
+}
+
+.assistant-page input[type="text"],
+.assistant-page input[type="number"],
+.assistant-page select,
+.assistant-page textarea {
+  width: 100%;
+  padding: 0.625rem;
+  border: 1px solid var(--border-primary);
+  border-radius: 0.3125rem;
+  background-color: var(--bg-input);
+  color: var(--text-primary);
+  font-size: 1rem;
+  transition: border-color 0.2s ease, background-color 0.2s ease;
+}
+
+.assistant-page input[type="text"]:focus,
+.assistant-page input[type="number"]:focus,
+.assistant-page select:focus,
+.assistant-page textarea:focus {
+  outline: none;
+  border-color: var(--border-accent);
+  background-color: var(--bg-input-hover);
+}
+
+.assistant-page textarea {
+  min-height: 6.25rem;
+  resize: vertical;
+}
+
+.assistant-page button {
+  padding: 0.625rem 1.25rem;
+  border: none;
+  border-radius: 0.3125rem;
+  background-color: var(--accent-primary);
+  color: var(--text-on-accent);
+  font-size: 1rem;
+  cursor: pointer;
+  margin-right: 0.625rem;
+  transition: background-color 0.2s ease;
+}
+
+.assistant-page button:hover {
+  background-color: var(--accent-primary-hover);
+}
+
+.assistant-page button.delete-button {
+  background-color: var(--color-error);
+}
+
+.assistant-page button.delete-button:hover {
+  background-color: var(--color-error);
+  opacity: 0.9;
+}
+
+.assistant-page button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.assistant-form {
+  padding: 1.25rem;
+  max-width: 50rem;
+  margin: 0 auto;
+}

@@ -1,0 +1,102 @@
+.add-external-assistant {
+  background-color: var(--bg-secondary);
+  border: 2px dashed var(--border-primary);
+  border-radius: 0.5rem;
+  padding: 1rem;
+  text-align: center;
+  margin-bottom: 1.5rem;
+  color: var(--text-primary);
+  box-sizing: border-box;
+  transition: border-color 0.2s ease;
+}
+
+.add-external-assistant:hover {
+  border-color: var(--border-accent);
+}
+
+.add-external-assistant-title {
+  font-size: 1.125rem;
+  font-weight: 600;
+  color: var(--text-primary);
+  margin: 0 0 0.375rem 0;
+}
+
+.add-external-assistant-description {
+  color: var(--text-secondary);
+  font-size: 0.875rem;
+  margin: 0 0 1rem 0;
+}
+
+.add-external-assistant-form {
+  display: flex;
+  gap: 0.75rem;
+  max-width: 25rem;
+  margin: 0 auto;
+  align-items: center;
+}
+
+.add-external-assistant-input {
+  flex: 1;
+  background-color: var(--bg-input);
+  border: 1px solid var(--border-input);
+  border-radius: 0.375rem;
+  padding: 0.5rem 0.75rem;
+  color: var(--text-primary);
+  font-size: 0.875rem;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+  box-sizing: border-box;
+}
+
+.add-external-assistant-input:focus {
+  outline: none;
+  border-color: var(--border-accent);
+  box-shadow: 0 0 0 0.1875rem hsl(from var(--border-accent) h s l / 0.2);
+}
+
+.add-external-assistant-input::placeholder {
+  color: var(--text-secondary);
+}
+
+.add-external-assistant-input:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.add-external-assistant-button {
+  background-color: var(--accent-primary);
+  color: var(--text-on-accent);
+  border: none;
+  border-radius: 0.375rem;
+  padding: 0.5rem 1rem;
+  font-size: 0.875rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background-color 0.2s ease;
+  white-space: nowrap;
+}
+
+.add-external-assistant-button:hover:not(:disabled) {
+  background-color: var(--accent-primary-hover);
+}
+
+.add-external-assistant-button:disabled {
+  background-color: var(--border-primary);
+  color: var(--text-secondary);
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+@media (max-width: 480px) {
+  .add-external-assistant-form {
+    flex-direction: column;
+    max-width: none;
+  }
+  
+  .add-external-assistant-input {
+    width: 100%;
+  }
+  
+  .add-external-assistant-button {
+    width: 100%;
+  }
+}

@@ -74,6 +74,7 @@ class SignalrService {
         });
 
         this.connection.on("ReceiveMessageChunk", (messageId: string, chunk: string) => {
+            console.log("Received message chunk:", { messageId, chunk });
             receiveMessageChunk(messageId, chunk);
         });
 

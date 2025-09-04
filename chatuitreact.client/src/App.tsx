@@ -9,6 +9,7 @@ import './styles/theme.css';
 import ChatPage from './components/chat/ChatPage';
 import { useEffect } from 'react';
 import { initializeTheme } from './utils/themeUtils';
+import AssistantsPage from './components/assistants/AssistantsPage';
 
 const Home = () => {
   const { isAuthenticated, isInitializing, account } = useAuth();
@@ -49,6 +50,7 @@ const App: React.FC = () => {
           <Route path="/chat" element={<ChatPage />} />
           <Route path="/chat/new" element={<ChatPage />} />
           <Route path="/chat/:chatId" element={<ChatPage />} />
+          <Route path="/assistants" element={<AssistantsPage />} />
           <Route 
             path="/admin" 
             element={
