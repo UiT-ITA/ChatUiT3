@@ -54,7 +54,7 @@ export default defineConfig({
                 changeOrigin: true,
                 rewrite: (path) => path
             },
-            '^/chatHub': {
+            '^/chathub': {
                 target,
                 secure: false,
                 ws: true,
