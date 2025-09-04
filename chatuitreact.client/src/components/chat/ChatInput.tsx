@@ -41,8 +41,6 @@ export default function ChatInput() {
           console.error('Failed to create new chat');
           return;
         }
-
-        console.log('New chat created with ID:', newChatId);
         navigate('/chat/' + newChatId);
       }
 
