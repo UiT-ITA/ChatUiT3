@@ -14,7 +14,11 @@ const chatCache = new Map<string, Signal<ChatDto | undefined>>();
 const messageStreamCache = new Map<string, Signal<string>>();
 
 let chatListLoadingPromise: Promise<void> | null = null;
+let streamMessageCallback: ((messageId: string) => void) | null = null;
 
+export function setStreamMessageCallback(callback: (messageId: string) => void): void {
+    streamMessageCallback = callback;
+}
 
 export function getChats(): Signal<ChatHeaderDto[] | undefined> {
   if (chatListSignal.value === undefined && !chatListLoadingPromise) {
@@ -128,6 +132,10 @@ export function getStreamSignal(messageId: string): Signal<string> {
   if (!streamSignal) {
     streamSignal = signal<string>("");
     messageStreamCache.set(messageId, streamSignal);
+
+    if (streamMessageCallback) {
+      streamMessageCallback(messageId);
+    }
   }
   
   return streamSignal;
