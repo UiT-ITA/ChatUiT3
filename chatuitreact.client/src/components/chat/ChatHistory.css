@@ -60,3 +60,11 @@
   opacity: 0;
   visibility: hidden;
 }
+
+.chat-history-loading {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  min-height: 200px;
+}

@@ -4,6 +4,7 @@ import { useSignals } from '@preact/signals-react/runtime';
 import { useLayoutEffect, useRef, useState, useEffect } from 'react';
 import ChatMessage from './ChatMessage';
 import ScrollToBottomButton from './ScrollToBottomButton';
+import LoadingIndicator from '../common/LoadingIndicator';
 
 export default function ChatHistory() {
   useSignals();
@@ -85,7 +86,9 @@ export default function ChatHistory() {
   if (chat.value === undefined) {
     return (
       <div className="chat-history">
-        <div>Loading chat...</div>
+        <div className="chat-history-loading">
+          <LoadingIndicator text="Loading chat..." />
+        </div>
       </div>
     );
   }
