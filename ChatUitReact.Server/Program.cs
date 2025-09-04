@@ -17,13 +17,20 @@ builder.Services.AddCors(options =>
 {
     options.AddPolicy("AllowReactApp", policy =>
     {
-        string[] allowedOrigins = builder.Configuration.GetSection("AllowedOrigins").Get<string[]>()
-            ?? new[] { "https://localhost:54979" };
+        if (builder.Environment.IsDevelopment())
+        {
+            string[] allowedOrigins = builder.Configuration.GetSection("AllowedOrigins").Get<string[]>()
+                ?? new[] { "https://localhost:54979" };
 
-        policy.WithOrigins(allowedOrigins)
-            .AllowAnyHeader()
+            policy.WithOrigins(allowedOrigins);
+        }
+        else
+        {
+            policy.SetIsOriginAllowed(origin => true);
+        }
+        policy.AllowAnyHeader()
             .AllowAnyMethod()
-            .AllowCredentials(); // This is critical for SignalR
+            .AllowCredentials();
     });
 });
 
@@ -55,12 +62,6 @@ builder.Services.Configure<JwtBearerOptions>(JwtBearerDefaults.AuthenticationSch
                     context.Token = accessToken;
                 }
 
-                // Also handle streaming endpoints
-                //if (path.StartsWithSegments("/api/chats") && path.Value!.Contains("/stream"))
-                //{
-                //    // Set the token for authentication for EventSource requests
-                //    context.Token = accessToken;
-                //}
             }
 
             return Task.CompletedTask;
