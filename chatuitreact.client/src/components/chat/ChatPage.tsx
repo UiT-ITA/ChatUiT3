@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react'
 import { useParams } from 'react-router-dom'
 import ChatHistory from './ChatHistory'
 import ChatInput from './ChatInput'
+import NewChatWelcome from './NewChatWelcome'
 import './ChatPage.css'
 import { clearSidebarContent, setChatSidebar } from '../../services/sidebarService'
 import { getCurrentChatId, setCurrentChatId } from '../../services/chatService'
@@ -43,7 +44,7 @@ const ChatPage: React.FC = () => {
           <LoadingIndicator text="Switching chat..." />
         </div>
       ) : currentChatId.value === undefined ? (
-        <div style={{display: "flex", flexDirection: "column", height: "100%"}}> new chat </div>
+        <NewChatWelcome />
       ) : (
         <ChatHistory />
       )}

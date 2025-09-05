@@ -1,0 +1,131 @@
+.new-chat-welcome {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  height: 100%;
+  padding: 1rem;
+}
+
+.welcome-container {
+  max-width: 62.5rem;
+  margin: auto;
+  text-align: center;
+  background-color: var(--bg-secondary);
+  border-radius: 1rem;
+  padding: 2rem;
+  box-shadow: 0 0 0 1px var(--border-primary);
+  color: var(--text-primary);
+}
+
+.welcome-container h1 {
+  margin: 0 0 1rem 0;
+  color: var(--text-primary);
+}
+
+.welcome-container p {
+  margin: 0 0 2rem 0;
+  color: var(--text-secondary);
+}
+
+.assistant-section {
+  margin: 2rem 0;
+  position: relative;
+}
+
+.assistant-section label {
+  display: block;
+  margin-bottom: 0.5rem;
+  color: var(--text-primary);
+}
+
+.assistant-dropdown-container {
+  position: relative;
+  display: inline-block;
+  margin: 0 auto;
+}
+
+.assistant-dropdown-button {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background-color: var(--bg-input);
+  border: none;
+  border-radius: 0.5rem;
+  padding: 0.75rem 1rem;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  box-shadow: 0 0 0 1px var(--border-primary);
+  min-width: 15rem;
+  height: 2.75rem;
+  white-space: nowrap;
+  color: var(--text-primary);
+}
+
+.assistant-dropdown-button:hover {
+  background-color: var(--bg-input-hover);
+}
+
+.assistant-dropdown-button .assistant-name {
+  flex: 1;
+  text-align: left;
+  font-size: 1rem;
+  font-weight: 500;
+  padding: 0;
+  line-height: normal;
+  opacity: 1;
+  visibility: visible;
+}
+
+.assistant-dropdown-button .expand-icon {
+  opacity: 1;
+  visibility: visible;
+  position: static;
+  margin-left: 0.5rem;
+}
+
+.tips-section h3 {
+  margin: 0 0 1.5rem 0;
+  color: var(--text-primary);
+}
+
+.tips-container {
+  display: flex;
+  gap: 1rem;
+  justify-content: center;
+  flex-wrap: nowrap;
+}
+
+.tip-card {
+  flex: 1;
+  min-width: 0;
+  background-color: var(--bg-input);
+  border-radius: 0.5rem;
+  padding: 1rem;
+  box-shadow: 0 0 0 1px var(--border-primary);
+  text-align: left;
+}
+
+@media (max-width: 48rem) {
+  .tips-container {
+    flex-direction: column;
+    align-items: center;
+  }
+  
+  .tip-card {
+    width: 100%;
+    max-width: 20rem;
+  }
+}
+
+.tip-card strong {
+  display: block;
+  margin-bottom: 0.5rem;
+  color: var(--text-primary);
+}
+
+.tip-card p {
+  margin: 0;
+  color: var(--text-secondary);
+  font-size: 0.875rem;
+}

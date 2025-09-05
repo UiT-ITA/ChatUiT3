@@ -1,9 +1,8 @@
 import { useState, useRef, useEffect } from 'react';
 import { useSignals } from '@preact/signals-react/runtime';
 import { Icon } from './Icon';
-import { getSelectableAssistants, getCurrentAssistantId, setUserSelectedAssistantId } from '../../services/chatService';
-import { getAssistantCapabilities } from '../../utils/modelUtils';
-import type { AssistantDto } from '../../types/assistantModels';
+import { getSelectableAssistants, getCurrentAssistantId } from '../../services/chatService';
+import AssistantDropdown from './AssistantDropdown';
 import './AssistantSelector.css';
 
 interface AssistantSelectorProps {
@@ -41,30 +40,6 @@ export default function AssistantSelector({ className }: AssistantSelectorProps)
     setIsOpen(!isOpen);
   };
 
-  const handleSelectAssistant = (assistant: AssistantDto) => {
-    setUserSelectedAssistantId(assistant.id);
-    setIsOpen(false);
-  };
-
-  const renderCapabilityIcon = (capability: string, enabled: boolean) => {
-    if (!enabled) return null;
-    
-    const iconProps = {
-      size: 1,
-      className: "capability-icon"
-    };
-    
-    switch (capability) {
-      case 'vision':
-        return <Icon key="vision" name="eye" {...iconProps} title="Vision" />;
-      case 'tools':
-        return <Icon key="tools" name="globe" {...iconProps} title="Tools" />;
-      case 'reasoning':
-        return <Icon key="reasoning" name="brain" {...iconProps} title="Reasoning" />;
-      default:
-        return null;
-    }
-  };
 
   return (
     <div className={`assistant-selector-container ${className || ''}`} ref={selectorRef}>
@@ -85,41 +60,11 @@ export default function AssistantSelector({ className }: AssistantSelectorProps)
         />
       </button>
 
-      {isOpen && (
-        <div className="assistant-dropdown">
-          {selectableAssistants.map((assistant) => {
-            const capabilities = getAssistantCapabilities(assistant);
-            
-            return (
-              <div 
-                key={assistant.id}
-                className={`assistant-option ${selectedAssistant?.id === assistant.id ? 'selected' : ''}`}
-                onClick={() => handleSelectAssistant(assistant)}
-              >
-                <div className="assistant-info">
-                  <span className="assistant-option-name">{assistant.name}</span>
-                  {assistant.type === 'system' && (
-                    <span className="system-badge">System</span>
-                  )}
-                  <div className="info-tooltip-container">
-                    <Icon 
-                      name="info" 
-                      size={1} 
-                      className="info-icon" 
-                    />
-                    <div className="info-tooltip">{assistant.description || 'No description available'}</div>
-                  </div>
-                </div>
-                <div className="assistant-capabilities">
-                  {renderCapabilityIcon('vision', capabilities.vision)}
-                  {renderCapabilityIcon('tools', capabilities.tools)}
-                  {renderCapabilityIcon('reasoning', capabilities.reasoning)}
-                </div>
-              </div>
-            );
-          })}
-        </div>
-      )}
+      <AssistantDropdown 
+        isOpen={isOpen}
+        direction="above"
+        onClose={() => setIsOpen(false)}
+      />
     </div>
   );
 }
