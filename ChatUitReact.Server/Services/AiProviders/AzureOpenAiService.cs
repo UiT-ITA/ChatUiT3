@@ -104,8 +104,6 @@ public class AzureOpenAiService
         ChatSettings settings,
         CancellationToken cancellationToken = default)
     {
-        var results = new List<string>();
-
         try
         {
             var chatClient = _client.GetChatClient(model.ModelName);
@@ -117,6 +115,17 @@ public class AzureOpenAiService
             var options = BuildCompletionOptions(settings);
 
             Console.WriteLine($"Streaming chat completion with model: {model.ModelName}, messages count: {chatMessages.Count}");
+
+            // foreach (var msg in chatMessages)
+            // {
+            //     var role = "Unknown";
+            //     if (msg is SystemChatMessage) role = "System";
+            //     else if (msg is UserChatMessage) role = "User";
+            //     else if (msg is AssistantChatMessage) role = "Assistant";
+            //     else if (msg is ToolChatMessage) role = "Tool";
+
+            //     Console.WriteLine($"Message Role: {role}, Content Parts: {msg.Content[0].Text}");
+            // }
 
             return chatClient.CompleteChatStreamingAsync(chatMessages, options, cancellationToken);
         }
@@ -132,8 +141,6 @@ public class AzureOpenAiService
     List<Models.ChatMessage> messages,
     CancellationToken cancellationToken = default)
     {
-        var results = new List<string>();
-
         try
         {
             var chatClient = _client.GetChatClient("gpt-4o");
