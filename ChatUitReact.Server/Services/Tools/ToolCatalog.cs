@@ -7,10 +7,10 @@ namespace ChatUitReact.Server.Services;
 
 public static class ToolCatalog
 {
-  public static readonly ChatTool[] Tools = new ChatTool[]
-  {
+  public static readonly ChatTool[] Tools =
+  [
     new WeatherTool()
-  };
+  ];
 
   private static readonly IReadOnlyDictionary<string, ChatTool> ByFunctionName =
     Tools.ToDictionary(t => t.FunctionName, StringComparer.OrdinalIgnoreCase);
