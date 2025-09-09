@@ -47,9 +47,14 @@
   --bg-tooltip: #1a1d2b;
 
   /* Inputs and form elements */
-  --bg-input: #014f70;
+  --bg-input: #242d30;
   --bg-input-hover: hsl(from var(--bg-input) h s calc(l + 5));
   --border-input: hsl(from var(--bg-input) h s l / 0.5);
+
+    /* user */
+  --bg-user: #003349;
+  --bg-user-hover: hsl(from var(--bg-user) h s calc(l + 5));
+  --border-user: hsl(from var(--bg-user) h s l / 0.5);
 
   /* Text colors */
   --text-primary: #f5f6fa;

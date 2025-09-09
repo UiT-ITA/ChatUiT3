@@ -64,7 +64,7 @@
 
 .chat-item-active {
     color: var(--accent-primary);
-    background-color: var(--bg-menu-selected);
+    /* background-color: var(--bg-menu-selected); */
 }
 
 .chat-item-more:hover {
