@@ -83,6 +83,7 @@ builder.Services.AddSingleton<IModelService, ModelService>();
 builder.Services.AddSingleton<IChatService, ChatService>();
 builder.Services.AddSingleton<IAssistantService, AssistantService>();
 builder.Services.AddSingleton<AzureOpenAiService>();
+builder.Services.AddSingleton<IToolService, ToolService>();
 
 var app = builder.Build();
 

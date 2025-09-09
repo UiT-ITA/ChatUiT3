@@ -29,6 +29,7 @@ public class WeatherTool : ChatTool
   public override List<string> RequiredParameters => new List<string> { "location" };
   public override async Task<string> ExecuteAsync(JsonElement args, ToolContext ctx, CancellationToken ct)
   {
+    Console.WriteLine($"Executing WeatherTool with args: {args}");
     if (!args.TryGetProperty("location", out var loc) || loc.ValueKind != JsonValueKind.String)
       return """{"error":"Missing required argument: location"}""";
 

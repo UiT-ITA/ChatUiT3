@@ -5,23 +5,29 @@ using Azure.AI.OpenAI;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 using ChatUitReact.Server.Models;
+using ChatUitReact.Server.Services.Tools;
 using System;
 using System.Collections.Generic;
 using System.Threading.Tasks;
 using System.Threading;
 using OpenAI.Chat;
 using System.ClientModel;
+using System.Text;
+using System.Text.Json;
+using System.Runtime.CompilerServices;
 
 public class AzureOpenAiService
 {
     private readonly AzureOpenAIClient _client; // ONLY used for development
     private readonly ILogger<AzureOpenAiService> _logger;
     private readonly IAssistantService _assistantService;
+    private readonly IToolService _toolService;
 
-    public AzureOpenAiService(IConfiguration configuration, ILogger<AzureOpenAiService> logger, IAssistantService assistantService)
+    public AzureOpenAiService(IConfiguration configuration, ILogger<AzureOpenAiService> logger, IAssistantService assistantService, IToolService toolService)
     {
         _logger = logger;
         _assistantService = assistantService;
+        _toolService = toolService;
 
         // Get Azure OpenAI configuration
         // Will be replaced with propper configuration management
@@ -71,32 +77,6 @@ public class AzureOpenAiService
         }
     }
     
-    // Used for testing purposes
-    public async Task<string> GetChatCompletionAsync(
-        List<Models.ChatMessage> messages,
-        CancellationToken cancellationToken = default)
-    {
-        try
-        {
-            var chatClient = _client.GetChatClient("gpt-4o-mini");
-            var chatMessages = ConvertToChatMessages(messages);
-            var options = BuildCompletionOptions(null);
-
-            var completion = await chatClient.CompleteChatAsync(chatMessages, options, cancellationToken);
-
-            var response = completion.Value.Content[0].Text;
-
-            _logger.LogInformation("Chat completion response: {Response}", response);
-
-            return response;
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Error getting chat completion");
-            throw;
-        }
-    }
-
     
     public AsyncCollectionResult<StreamingChatCompletionUpdate> GetChatCompletionStreamingAsync(
         List<Models.ChatMessage> messages,
@@ -116,17 +96,6 @@ public class AzureOpenAiService
 
             Console.WriteLine($"Streaming chat completion with model: {model.ModelName}, messages count: {chatMessages.Count}");
 
-            // foreach (var msg in chatMessages)
-            // {
-            //     var role = "Unknown";
-            //     if (msg is SystemChatMessage) role = "System";
-            //     else if (msg is UserChatMessage) role = "User";
-            //     else if (msg is AssistantChatMessage) role = "Assistant";
-            //     else if (msg is ToolChatMessage) role = "Tool";
-
-            //     Console.WriteLine($"Message Role: {role}, Content Parts: {msg.Content[0].Text}");
-            // }
-
             return chatClient.CompleteChatStreamingAsync(chatMessages, options, cancellationToken);
         }
         catch (Exception ex)
@@ -136,27 +105,117 @@ public class AzureOpenAiService
         }
     }
     
-    // Used for testing purposes
-        public AsyncCollectionResult<StreamingChatCompletionUpdate> GetChatCompletionStreamingAsync(
-    List<Models.ChatMessage> messages,
-    CancellationToken cancellationToken = default)
+   
+   
+    public async IAsyncEnumerable<ChatResponseChunk> StreamChatAsync(
+        List<Models.ChatMessage> messages,
+        ChatSettings settings,
+        string userId,
+        string chatId,
+        [EnumeratorCancellation] CancellationToken cancellationToken = default)
     {
+        var chatClient = _client.GetChatClient(settings.Model.ModelName);
+        var chatMessages = ConvertToChatMessages(messages);
+        if (!string.IsNullOrEmpty(settings.SystemPrompt))
+        {
+            chatMessages.Insert(0, new SystemChatMessage(settings.SystemPrompt));
+        }
+        var options = BuildCompletionOptions(settings);
+
+        AsyncCollectionResult<StreamingChatCompletionUpdate> openAiStream;
+        var content = new StringBuilder();
+        var toolCallsBuilder = new StreamingChatToolCallsBuilder();
+
         try
         {
-            var chatClient = _client.GetChatClient("gpt-4o");
-            var chatMessages = ConvertToChatMessages(messages);
-            var options = BuildCompletionOptions(null);
-
-            return chatClient.CompleteChatStreamingAsync(chatMessages, options, cancellationToken);
+            openAiStream = chatClient.CompleteChatStreamingAsync(chatMessages, options, cancellationToken);
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error streaming chat completion");
+            _logger.LogError(ex, "Error starting chat completion stream");
             throw;
         }
+
+        // Stream initial response and collect tool calls
+        await foreach (var chunk in openAiStream)
+        {
+            if (chunk.ContentUpdate?.Count > 0)
+            {
+                var text = chunk.ContentUpdate[0].Text;
+                if (!string.IsNullOrEmpty(text))
+                {
+                    content.Append(text);
+                    yield return new ChatResponseChunk { Content = text };
+                }
+            }
+
+            foreach (var toolCallUpdate in chunk.ToolCallUpdates)
+            {
+                toolCallsBuilder.Append(toolCallUpdate);
+            }
+        }
+
+        var toolCalls = toolCallsBuilder.Build();
+        
+        if (toolCalls.Count > 0)
+        {
+            // Add assistant message with tool calls to conversation history
+            var assistantMessageWithTools = new AssistantChatMessage(content.ToString());
+            foreach (var toolCall in toolCalls)
+            {
+                assistantMessageWithTools.ToolCalls.Add(ChatToolCall.CreateFunctionToolCall(
+                    toolCall.Id, 
+                    toolCall.FunctionName, 
+                    BinaryData.FromString(toolCall.FunctionArguments.ToString())));
+            }
+            chatMessages.Add(assistantMessageWithTools);
+            
+            // Execute tools and add tool documentation to response
+            foreach (var toolCall in toolCalls)
+            {
+                string toolDoc;
+                try
+                {
+                    var toolContext = _toolService.CreateToolContext(userId, chatId, toolCall.Id);
+                    var argumentsJson = JsonDocument.Parse(toolCall.FunctionArguments.ToString()).RootElement;
+                    var toolResult = await _toolService.ExecuteToolCallAsync(toolCall.FunctionName, argumentsJson, toolContext);
+                    
+                    // Format tool call documentation
+                    toolDoc = $"\n<ToolCall>\n{toolCall.FunctionName}({toolCall.FunctionArguments})\n{toolResult}\n</ToolCall>\n";
+                    
+                    // Add tool response to conversation history
+                    chatMessages.Add(new ToolChatMessage(toolCall.Id, toolResult));
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex, "Error executing tool {ToolName}", toolCall.FunctionName);
+                    toolDoc = $"\n<ToolCall>\n{toolCall.FunctionName}({toolCall.FunctionArguments})\nError: {ex.Message}\n</ToolCall>\n";
+                }
+                
+                content.Append(toolDoc);
+                yield return new ChatResponseChunk { Content = toolDoc };
+            }
+            
+            // Continue conversation with tool results
+            var continuationStream = chatClient.CompleteChatStreamingAsync(chatMessages, options, cancellationToken);
+            
+            await foreach (var chunk in continuationStream)
+            {
+                if (chunk.ContentUpdate?.Count > 0)
+                {
+                    var text = chunk.ContentUpdate[0].Text;
+                    if (!string.IsNullOrEmpty(text))
+                    {
+                        content.Append(text);
+                        yield return new ChatResponseChunk { Content = text };
+                    }
+                }
+            }
+        }
+
+        yield return new ChatResponseChunk { Content = "", IsComplete = true };
     }
 
-   
     public async Task<string> GetChatName(string prompt)
     {
         try
@@ -314,11 +373,16 @@ public class AzureOpenAiService
 
     private ChatCompletionOptions BuildCompletionOptions(ChatSettings? settings)
     {
-        // Create options with available properties in the current version
         var options = new ChatCompletionOptions
         {
             Temperature = settings?.Temperature ?? 0.5f
         };
+        
+        var availableTools = _toolService.GetToolsForChat(settings ?? new ChatSettings());
+        foreach (var tool in availableTools)
+        {
+            options.Tools.Add(tool);
+        }
         
         return options;
     }

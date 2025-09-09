@@ -1,10 +1,7 @@
 ﻿using Microsoft.AspNetCore.SignalR;
-using Microsoft.Extensions.Logging;
 using ChatUitReact.Server.Hubs;
 using ChatUitReact.Server.Models;
 using System.Text;
-using System.ClientModel;
-using OpenAI.Chat;
 
 namespace ChatUitReact.Server.Services;
 
@@ -17,6 +14,7 @@ public class ChatService : IChatService
     private readonly StreamingService _streamingService;
     private readonly IAssistantService _assistantService;
     private readonly IModelService _modelService;
+    private readonly IToolService _toolService;
 
     public ChatService(
         AzureOpenAiService azureOpenAiService,
@@ -25,7 +23,8 @@ public class ChatService : IChatService
         IDatabaseService databaseService,
         StreamingService streamingService,
         IAssistantService assistantService,
-        IModelService modelService)
+        IModelService modelService,
+        IToolService toolService)
     {
         _azureOpenAiService = azureOpenAiService;
         _hubContext = hubContext;
@@ -34,6 +33,7 @@ public class ChatService : IChatService
         _streamingService = streamingService;
         _assistantService = assistantService;
         _modelService = modelService;
+        _toolService = toolService;
     }
 
     #region Chat management
@@ -165,8 +165,6 @@ public class ChatService : IChatService
             throw new NotSupportedException($"Provider {endpoint.EndpointType} is not supported. Only Azure OpenAI is currently supported.");
         }
         
-        var openAiStream = _azureOpenAiService.GetChatCompletionStreamingAsync(messages, settings.Model, settings);
-        
         var assistantMessage = new Models.ChatMessage
         {
             Role = AiChatRole.Assistant,
@@ -184,22 +182,19 @@ public class ChatService : IChatService
             try 
             {
                 var content = new StringBuilder();
-                await foreach (var chunk in openAiStream)
+
+                await foreach (var chunk in _azureOpenAiService.StreamChatAsync(messages, settings, userId, chatId))
                 {
-                    if (chunk.ContentUpdate?.Count > 0)
+                    if (!chunk.IsComplete)
                     {
-                        var text = chunk.ContentUpdate[0].Text;
-                        if (!string.IsNullOrEmpty(text))
-                        {
-                            _streamingService.AddChunk(userId, assistantMessage.Id, text);
-                            content.Append(text);
-                        }
+                        _streamingService.AddChunk(userId, assistantMessage.Id, chunk.Content);
+                        content.Append(chunk.Content);
                     }
                 }
                 
+                assistantMessage.Content = content.ToString();
                 _streamingService.CompleteMessage(userId, assistantMessage.Id);
                 
-                assistantMessage.Content = content.ToString();
                 assistantMessage.Status = AiChatStatus.Success;
                 await _databaseService.UpdateMessageAsync(userId, chatId, assistantMessage);
                 
