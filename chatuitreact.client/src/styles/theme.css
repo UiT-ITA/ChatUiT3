@@ -118,6 +118,10 @@
   --bg-input-hover: hsl(from var(--bg-input) h s calc(l - 5));
   --border-input: #b3d9ff;
 
+  --bg-user: #00b3ff;
+  --bg-user-hover: hsl(from var(--bg-user) h s calc(l + 5));
+  --border-user: hsl(from var(--bg-user) h s l / 0.5);
+
   /* Text colors */
   --text-primary: #111827;
   --text-secondary: #5a5f72;
@@ -179,6 +183,10 @@
   --bg-input: #1e1e2e;
   --bg-input-hover: #252538;
   --border-input: rgba(96, 184, 255, 0.3);
+
+  --bg-user: #003349;
+  --bg-user-hover: hsl(from var(--bg-user) h s calc(l + 5));
+  --border-user: hsl(from var(--bg-user) h s l / 0.5);
 
   /* Text colors */
   --text-primary: #ffffff;
