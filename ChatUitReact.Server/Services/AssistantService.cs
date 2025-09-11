@@ -58,7 +58,8 @@ namespace ChatUitReact.Server.Services
                     SystemPrompt = createDto.SystemPrompt,
                     Temperature = createDto.Temperature,
                     ReasoningEffort = createDto.ReasoningEffort,
-                    Model = model
+                    Model = model,
+                    AvailableToolIds = createDto.AvailableToolIds ?? new List<string>()
                 },
                 OwnerId = userId
             };
@@ -94,7 +95,8 @@ namespace ChatUitReact.Server.Services
                 SystemPrompt = updateDto.SystemPrompt,
                 Temperature = updateDto.Temperature,
                 ReasoningEffort = updateDto.ReasoningEffort,
-                Model = model
+                Model = model,
+                AvailableToolIds = updateDto.AvailableToolIds ?? new List<string>()
             };
 
             var updatedAssistant = await _databaseService.UpdateAssistantAsync(assistant);
@@ -201,6 +203,7 @@ namespace ChatUitReact.Server.Services
                     SystemPrompt = assistant.ChatSettings.SystemPrompt,
                     Temperature = assistant.ChatSettings.Temperature,
                     ReasoningEffort = assistant.ChatSettings.ReasoningEffort,
+                    AvailableToolIds = assistant.ChatSettings.AvailableToolIds,
                     IsVisible = user?.Preferences.VisibleAssistantIds.Contains(assistant.Id) ?? false
                 }).ToList(),
 

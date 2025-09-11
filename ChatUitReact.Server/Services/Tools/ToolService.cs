@@ -6,6 +6,17 @@ namespace ChatUitReact.Server.Services
 {
     public class ToolService : IToolService
     {
+        public async Task<IEnumerable<ChatToolDto>> GetAvailableToolDtos()
+        {
+            await Task.CompletedTask;
+            return ToolCatalog.All.Select(t => new ChatToolDto
+            {
+                Id = t.Id,
+                Name = t.Name,
+                Description = t.Description
+            });
+        }
+
         public IEnumerable<OpenAI.Chat.ChatTool> GetAvailableTools()
         {
             return ToolCatalog.All.Select(ConvertToAzureOpenAITool);
@@ -13,7 +24,14 @@ namespace ChatUitReact.Server.Services
 
         public IEnumerable<OpenAI.Chat.ChatTool> GetToolsForChat(ChatSettings settings)
         {
-            return GetAvailableTools();
+            if (settings?.AvailableToolIds == null || settings.AvailableToolIds.Count == 0)
+            {
+                return Enumerable.Empty<OpenAI.Chat.ChatTool>();
+            }
+
+            return ToolCatalog.All
+                .Where(tool => settings.AvailableToolIds.Contains(tool.Id))
+                .Select(ConvertToAzureOpenAITool);
         }
 
         public async Task<string> ExecuteToolCallAsync(string functionName, JsonElement arguments, ToolContext context, CancellationToken cancellationToken = default)

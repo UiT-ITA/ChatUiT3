@@ -19,6 +19,7 @@ public class PrivateAssistantDto
     public string SystemPrompt { get; set; } = string.Empty;
     public float Temperature { get; set; } = 0.7f;
     public ReasoningEffort ReasoningEffort { get; set; } = ReasoningEffort.None;
+    public List<string> AvailableToolIds { get; set; } = new List<string>();
     public bool IsVisible { get; set; }
 }
 
@@ -53,6 +54,7 @@ public class CreateAssistantDto
     public string SystemPrompt { get; set; } = string.Empty;
     public float Temperature { get; set; } = 0.7f;
     public ReasoningEffort ReasoningEffort { get; set; } = ReasoningEffort.None;
+    public List<string> AvailableToolIds { get; set; } = new List<string>();
 }
 
 public class UpdateAssistantDto
@@ -68,4 +70,5 @@ public class UpdateAssistantDto
     public string SystemPrompt { get; set; } = string.Empty;
     public float Temperature { get; set; } = 0.7f;
     public ReasoningEffort ReasoningEffort { get; set; } = ReasoningEffort.None;
+    public List<string> AvailableToolIds { get; set; } = new List<string>();
 }

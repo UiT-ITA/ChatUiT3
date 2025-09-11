@@ -7,6 +7,7 @@ namespace ChatUitReact.Server.Services.Tools;
 
 public class WeatherTool : ChatTool
 {
+  public new string Id { get; set; } = "weather_tool";
   public override string Name => "Get Weather";
   public override string Description => "Get the current weather for a specified location.";
   public override string FunctionName => "get_weather";

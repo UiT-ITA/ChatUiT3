@@ -49,3 +49,10 @@ public class SendMessageDto
     public List<ChatFileDto>? Files { get; set; }
     public string? AssistantId { get; set; }
 }
+
+public class ChatToolDto
+{
+    public string Id { get; set; } = string.Empty;
+    public string Name { get; set; } = string.Empty;
+    public string Description { get; set; } = string.Empty;
+}

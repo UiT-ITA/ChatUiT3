@@ -44,7 +44,8 @@ public partial class MockDatabaseService
                 SystemPrompt = assistant.ChatSettings.SystemPrompt,
                 Temperature = assistant.ChatSettings.Temperature,
                 ReasoningEffort = assistant.ChatSettings.ReasoningEffort,
-                Model = DeepCopyModel(assistant.ChatSettings.Model)
+                Model = DeepCopyModel(assistant.ChatSettings.Model),
+                AvailableToolIds = new List<string>(assistant.ChatSettings.AvailableToolIds)
             },
             OwnerId = assistant.OwnerId
         };

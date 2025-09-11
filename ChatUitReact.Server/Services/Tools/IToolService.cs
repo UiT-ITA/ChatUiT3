@@ -6,6 +6,7 @@ namespace ChatUitReact.Server.Services
 {
     public interface IToolService
     {
+        Task<IEnumerable<ChatToolDto>> GetAvailableToolDtos();
         IEnumerable<OpenAI.Chat.ChatTool> GetAvailableTools();
         IEnumerable<OpenAI.Chat.ChatTool> GetToolsForChat(ChatSettings settings);
         Task<string> ExecuteToolCallAsync(string functionName, JsonElement arguments, ToolContext context, CancellationToken cancellationToken = default);

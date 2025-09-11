@@ -16,6 +16,7 @@ public class AssistantsController : ControllerBase
     private readonly UserService _userService;
     private readonly ILogger<AssistantsController> _logger;
     private readonly IModelService _modelService;
+    private readonly IToolService _toolService;
     private readonly IHubContext<ChatHub, IChatHubClient> _hubContext;
 
     public AssistantsController(
@@ -23,12 +24,14 @@ public class AssistantsController : ControllerBase
         UserService userService,
         ILogger<AssistantsController> logger,
         IModelService modelService,
+        IToolService toolService,
         IHubContext<ChatHub, IChatHubClient> hubContext)
     {
         _assistantService = assistantService;
         _userService = userService;
         _logger = logger;
         _modelService = modelService;
+        _toolService = toolService;
         _hubContext = hubContext;
     }
 
@@ -60,10 +63,10 @@ public class AssistantsController : ControllerBase
         {
             var userId = GetCurrentUserId();
             await _assistantService.CreateAssistantAsync(createDto, userId);
-            
+
             // Notify all clients that assistant data has changed
             await _hubContext.Clients.Group(userId).AssistantsUpdated();
-            
+
             return Ok();
         }
         catch (Exception ex)
@@ -80,10 +83,10 @@ public class AssistantsController : ControllerBase
         {
             var userId = GetCurrentUserId();
             await _assistantService.UpdateAssistantAsync(updateDto, userId);
-            
+
             // Notify all clients that assistant data has changed
             await _hubContext.Clients.Group(userId).AssistantsUpdated();
-            
+
             return Ok();
         }
         catch (Exception ex)
@@ -100,10 +103,10 @@ public class AssistantsController : ControllerBase
         {
             var userId = GetCurrentUserId();
             await _assistantService.DeleteAssistantAsync(assistantId, userId);
-            
+
             // Notify all clients that assistant data has changed
             await _hubContext.Clients.Group(userId).AssistantsUpdated();
-            
+
             return Ok();
         }
         catch (Exception ex)
@@ -120,10 +123,10 @@ public class AssistantsController : ControllerBase
         {
             var userId = GetCurrentUserId();
             await _assistantService.ToggleAssistantVisibilityAsync(assistantId, userId);
-            
+
             // Notify all clients that assistant data has changed
             await _hubContext.Clients.Group(userId).AssistantsUpdated();
-            
+
             return Ok();
         }
         catch (Exception ex)
@@ -140,10 +143,10 @@ public class AssistantsController : ControllerBase
         {
             var userId = GetCurrentUserId();
             await _assistantService.AddSharedAssistantAsync(assistantId, userId);
-            
+
             // Notify all clients that assistant data has changed
             await _hubContext.Clients.Group(userId).AssistantsUpdated();
-            
+
             return Ok();
         }
         catch (Exception ex)
@@ -187,6 +190,21 @@ public class AssistantsController : ControllerBase
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error getting available models");
+            return StatusCode(500, "Internal server error");
+        }
+    }
+
+    [HttpGet("tools")]
+    public async Task<ActionResult<object>> GetAvailableTools()
+    {
+        try
+        {
+            var tools = await _toolService.GetAvailableToolDtos();
+            return Ok(tools.ToArray());
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error getting available tools");
             return StatusCode(500, "Internal server error");
         }
     }

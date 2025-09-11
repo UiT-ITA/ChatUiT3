@@ -287,7 +287,8 @@ public class ChatService : IChatService
                 Model = assistant.Model,
                 SystemPrompt = assistant.ChatSettings?.SystemPrompt ?? string.Empty,
                 Temperature = assistant.ChatSettings?.Temperature ?? 0.7f,
-                ReasoningEffort = assistant.ChatSettings?.ReasoningEffort ?? ReasoningEffort.Medium
+                ReasoningEffort = assistant.ChatSettings?.ReasoningEffort ?? ReasoningEffort.Medium,
+            AvailableToolIds = assistant.ChatSettings.AvailableToolIds ?? new List<string>()
             };
         }
         

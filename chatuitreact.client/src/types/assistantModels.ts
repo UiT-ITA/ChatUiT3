@@ -10,6 +10,7 @@ export interface PrivateAssistantDto {
     systemPrompt?: string;
     temperature: number;
     reasoningEffort: ReasoningEffort;
+    availableToolIds: string[];
     isVisible: boolean;
 }
 
@@ -59,6 +60,7 @@ export interface CreateAssistantDto {
     systemPrompt?: string;
     temperature?: number;
     reasoningEffort?: ReasoningEffort;
+    availableToolIds?: string[];
 }
 
 export interface UpdateAssistantDto {
@@ -70,6 +72,7 @@ export interface UpdateAssistantDto {
     systemPrompt?: string;
     temperature?: number;
     reasoningEffort?: ReasoningEffort;
+    availableToolIds?: string[];
 }
 
 // export enum ReasoningEffort {
@@ -86,3 +89,9 @@ export type ReasoningEffort =
     | "Low" 
     | "Medium" 
     | "High";
+
+export interface ChatToolDto {
+    id: string;
+    name: string;
+    description: string;
+}

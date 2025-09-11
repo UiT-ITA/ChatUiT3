@@ -1,8 +1,9 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { MdImage, MdPublic, MdPsychology, MdExpandMore, MdExpandLess } from 'react-icons/md';
 import { useSignals } from '@preact/signals-react/runtime';
-import type { CreateAssistantDto, PrivateAssistantDto, ReasoningEffort } from '../../types/assistantModels';
+import type { CreateAssistantDto, PrivateAssistantDto, ReasoningEffort, ChatToolDto } from '../../types/assistantModels';
 import { getModels } from '../../services/modelService';
+import { getTools } from '../../services/toolService';
 import { enhanceModelsWithCapabilities, type EnhancedModel } from '../../utils/modelUtils';
 import { createAssistant, updateAssistant } from '../../services/assistantService';
 import './AssistantModal.css';
@@ -20,8 +21,10 @@ const AssistantModal: React.FC<AssistantModalProps> = ({
 }) => {
   useSignals();
   const modelsSignal = getModels();
+  const toolsSignal = getTools();
   const [isModelDropdownOpen, setIsModelDropdownOpen] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [selectedToolIds, setSelectedToolIds] = useState<string[]>([]);
   const modelDropdownRef = useRef<HTMLDivElement>(null);
 
   // Form state
@@ -38,6 +41,9 @@ const AssistantModal: React.FC<AssistantModalProps> = ({
   // Enhanced models
   const models: EnhancedModel[] = modelsSignal.value ? enhanceModelsWithCapabilities(modelsSignal.value) : [];
   const selectedModel = models.find(m => m.id === formData.modelId);
+  
+  // Available tools from service
+  const availableTools: ChatToolDto[] = toolsSignal.value || [];
 
   // Initialize form data when editing
   useEffect(() => {
@@ -49,8 +55,10 @@ const AssistantModal: React.FC<AssistantModalProps> = ({
         modelId: editingAssistant.model.id,
         systemPrompt: editingAssistant.systemPrompt || '',
         temperature: editingAssistant.temperature,
-        reasoningEffort: editingAssistant.reasoningEffort
+        reasoningEffort: editingAssistant.reasoningEffort,
+        availableToolIds: editingAssistant.availableToolIds || []
       });
+      setSelectedToolIds(editingAssistant.availableToolIds || []);
     } else {
       setFormData({
         name: '',
@@ -59,8 +67,10 @@ const AssistantModal: React.FC<AssistantModalProps> = ({
         modelId: '',
         systemPrompt: '',
         temperature: 0.7,
-        reasoningEffort: 'None'
+        reasoningEffort: 'None',
+        availableToolIds: []
       });
+      setSelectedToolIds([]);
     }
   }, [editingAssistant, isOpen]);
 
@@ -101,6 +111,18 @@ const AssistantModal: React.FC<AssistantModalProps> = ({
       handleChange('modelId', modelId);
     }
     setIsModelDropdownOpen(false);
+  };
+
+  const handleToolSelection = (toolId: string, isSelected: boolean) => {
+    let newSelectedIds: string[];
+    if (isSelected) {
+      newSelectedIds = [...selectedToolIds, toolId];
+    } else {
+      newSelectedIds = selectedToolIds.filter(id => id !== toolId);
+    }
+    
+    setSelectedToolIds(newSelectedIds);
+    handleChange('availableToolIds', newSelectedIds);
   };
 
   const handleSubmit = async () => {
@@ -258,6 +280,34 @@ const AssistantModal: React.FC<AssistantModalProps> = ({
               placeholder="Enter system prompt (optional)"
               disabled={loading}
             />
+          </div>
+
+          <div className="form-group">
+            <label className="form-label">Available Tools</label>
+            {availableTools.length > 0 ? (
+              <div className="tools-selection">
+                {availableTools.map(tool => (
+                  <div key={tool.id} className="tool-option">
+                    <label className="tool-checkbox-label">
+                      <input
+                        type="checkbox"
+                        checked={selectedToolIds.includes(tool.id)}
+                        onChange={(e) => handleToolSelection(tool.id, e.target.checked)}
+                        disabled={loading}
+                      />
+                      <div className="tool-info">
+                        <span className="tool-name">{tool.name}</span>
+                        <span className="tool-description">{tool.description}</span>
+                      </div>
+                    </label>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className="no-tools-message">
+                No tools available
+              </div>
+            )}
           </div>
 
           <div className="form-row">
