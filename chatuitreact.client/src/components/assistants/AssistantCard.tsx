@@ -2,6 +2,7 @@ import React from 'react';
 import { MdEdit, MdDelete, MdShare, MdVisibility, MdVisibilityOff, MdImage, MdPublic, MdPsychology } from 'react-icons/md';
 import type { PrivateAssistantDto, SystemAssistantDto, SharedAssistantDto } from '../../types/assistantModels';
 import { getAssistantCapabilities, getModelNameFromAssistant } from '../../utils/modelUtils';
+import TagField from '../common/TagField';
 import './AssistantCard.css';
 
 type AssistantType = PrivateAssistantDto | SystemAssistantDto | SharedAssistantDto;
@@ -41,7 +42,13 @@ const AssistantCard: React.FC<AssistantCardProps> = ({
     <div className="assistant-card">
       <div className="assistant-card-header">
         <div className="assistant-card-info">
-          <h3 className="assistant-card-title">{assistant.name}</h3>
+          <div className="assistant-card-title-row">
+            <h3 className="assistant-card-title">{assistant.name}</h3>
+            <TagField
+              tags={assistant.tags}
+              readonly={true}
+            />
+          </div>
           <p className="assistant-card-description">{assistant.description}</p>
         </div>
         
@@ -89,17 +96,6 @@ const AssistantCard: React.FC<AssistantCardProps> = ({
       </div>
       
       <div className="assistant-card-meta">
-        <div className="assistant-card-tags">
-          <span className={`assistant-type-badge ${variant}`}>
-            {variant.toUpperCase()}
-          </span>
-          {assistant.tags.map((tag, index) => (
-            <span key={index} className="assistant-tag">
-              {tag}
-            </span>
-          ))}
-        </div>
-        
         <div className="assistant-card-footer">
           <div className="assistant-capabilities">
             {renderCapabilityIcon(capabilities.vision, <MdImage size={16} />, 'Vision')}
