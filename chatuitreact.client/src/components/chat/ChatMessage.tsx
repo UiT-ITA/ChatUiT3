@@ -14,6 +14,8 @@ import { atomDark } from 'react-syntax-highlighter/dist/esm/styles/prism';
 import 'katex/dist/katex.min.css';
 import { Icon } from '../common/Icon';
 import FilePreview from './FilePreview';
+import { segmentToolCalls } from '../../utils/toolCallParser';
+import ToolCallBlock from './ToolCallBlock';
 
 interface ChatMessageProps {
   message: ChatMessageDto;
@@ -47,6 +49,8 @@ export default function ChatMessage({ message, onStreamingChunk }: ChatMessagePr
       setIsCopied(false);
     }
   };
+
+  const segments = useMemo(() => segmentToolCalls(displayContent), [displayContent]);
 
   const handleRetry = () => {
     try {
@@ -133,15 +137,27 @@ export default function ChatMessage({ message, onStreamingChunk }: ChatMessagePr
       )}
 
       <div className="message-content">
-        <ReactMarkdown
-          remarkPlugins={[remarkGfm, remarkMath]}
-          rehypePlugins={[rehypeKatex]}
-          components={markdownComponents}
-        >
-          {displayContent}
-        </ReactMarkdown>
-
-        {/* {isStreaming && <span className="streaming-indicator">▋</span>} */}
+        {segments.map((seg, i) => (
+          seg.type === 'text' ? (
+            <ReactMarkdown
+              key={i}
+              remarkPlugins={[remarkGfm, remarkMath]}
+              rehypePlugins={[rehypeKatex]}
+              components={markdownComponents}
+            >
+              {seg.text}
+            </ReactMarkdown>
+          ) : (
+            <ToolCallBlock
+              key={i}
+              functionLine={seg.functionLine}
+              functionName={seg.functionName}
+              argsText={seg.argsText}
+              resultText={seg.resultText}
+              isComplete={seg.isComplete}
+            />
+          )
+        ))}
       </div>
 
       <div className="message-toolbar">

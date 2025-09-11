@@ -173,27 +173,32 @@ public class AzureOpenAiService
             // Execute tools and add tool documentation to response
             foreach (var toolCall in toolCalls)
             {
-                string toolDoc;
+                var argsText = toolCall.FunctionArguments.ToString();
+                var header = $"\n<ToolCall>\n{toolCall.FunctionName}({argsText})\n";
+                content.Append(header);
+                yield return new ChatResponseChunk { Content = header };
+                
+                string resultChunk;
                 try
                 {
                     var toolContext = _toolService.CreateToolContext(userId, chatId, toolCall.Id);
-                    var argumentsJson = JsonDocument.Parse(toolCall.FunctionArguments.ToString()).RootElement;
+                    using var doc = JsonDocument.Parse(argsText);
+                    var argumentsJson = doc.RootElement;
+
                     var toolResult = await _toolService.ExecuteToolCallAsync(toolCall.FunctionName, argumentsJson, toolContext);
-                    
-                    // Format tool call documentation
-                    toolDoc = $"\n<ToolCall>\n{toolCall.FunctionName}({toolCall.FunctionArguments})\n{toolResult}\n</ToolCall>\n";
-                    
-                    // Add tool response to conversation history
+
                     chatMessages.Add(new ToolChatMessage(toolCall.Id, toolResult));
+
+                    resultChunk = $"{toolResult}\n</ToolCall>\n";
                 }
                 catch (Exception ex)
                 {
                     _logger.LogError(ex, "Error executing tool {ToolName}", toolCall.FunctionName);
-                    toolDoc = $"\n<ToolCall>\n{toolCall.FunctionName}({toolCall.FunctionArguments})\nError: {ex.Message}\n</ToolCall>\n";
+                    resultChunk = $"Error: {ex.Message}\n</ToolCall>\n";
                 }
                 
-                content.Append(toolDoc);
-                yield return new ChatResponseChunk { Content = toolDoc };
+                content.Append(resultChunk);
+                yield return new ChatResponseChunk { Content = resultChunk };
             }
             
             // Continue conversation with tool results

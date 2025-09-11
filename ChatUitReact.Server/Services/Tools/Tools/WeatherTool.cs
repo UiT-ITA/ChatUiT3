@@ -36,7 +36,7 @@ public class WeatherTool : ChatTool
     var units = args.TryGetProperty("units", out var u) && u.ValueKind == JsonValueKind.String
         ? u.GetString() ?? "metric" : "metric";
 
-    await Task.Yield();
+    await Task.Delay(1000, ct); // Simulate async work
     return $$"""{"location":"{{loc.GetString()}}","temperature":"31","units":"{{units}}"}""";
   }
 }

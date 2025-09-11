@@ -1,0 +1,72 @@
+.toolcall {
+  border: 1px solid rgba(127, 127, 127, 0.3);
+  border-radius: 8px;
+  margin: 10px 0;
+  overflow: hidden;
+}
+
+.toolcall-summary {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  padding: 8px 12px;
+  cursor: pointer;
+  user-select: none;
+}
+
+.toolcall-name {
+  font-weight: 600;
+}
+
+.toolcall-args-inline {
+  opacity: 0.85;
+}
+
+.toolcall-status {
+  margin-left: auto;
+  font-size: 0.9em;
+  opacity: 0.9;
+}
+
+.toolcall.running .toolcall-status {
+  color: #d79a00;
+}
+
+.toolcall.complete .toolcall-status {
+  color: #2aa745;
+}
+
+.toolcall-body {
+  padding: 8px 12px 12px;
+}
+
+.toolcall-section {
+  margin-top: 6px;
+}
+
+.toolcall-title {
+  font-size: 0.85em;
+  opacity: 0.9;
+  margin-bottom: 4px;
+}
+
+.toolcall-pre {
+  margin: 0;
+  padding: 8px;
+  background: rgba(127, 127, 127, 0.08);
+  border: 1px solid rgba(127, 127, 127, 0.2);
+  border-radius: 6px;
+  white-space: pre-wrap;
+  word-break: break-word;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+  font-size: 0.9em;
+}
+
+/* Ensure summary title truncates with ellipsis */
+.toolcall-title-clip {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
