@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { createPortal } from "react-dom";
 import { useNavigate } from "react-router-dom";
+import { useTranslation } from 'react-i18next';
 import { Icon } from "../common/Icon";
 import { getCurrentChatId } from "../../services/chatService";
 import { useSignals } from "@preact/signals-react/runtime";
@@ -18,14 +19,15 @@ interface MenuState {
 
 export function ChatItem({ chat }: ChatItemProps) {
   useSignals();
+  const { t } = useTranslation();
   const [menu, setMenu] = useState<MenuState | null>(null);
   const navigate = useNavigate();
   const currentChatId = getCurrentChatId();
 
   const contextMenuOptions = [
-    { label: 'Favorite', icon: <Icon name="star" size={1} />, action: (chat: ChatHeaderDto) => console.log(`Favorite clicked for ${chat.name}`) },
-    { label: 'Rename', icon: <Icon name="edit" size={1} />, action: (chat: ChatHeaderDto) => console.log(`Rename clicked for ${chat.name}`) },
-    { label: 'Delete', icon: <Icon name="trash" size={1} />, action: (chat: ChatHeaderDto) => console.log(`Delete clicked for ${chat.name}`) },
+    { label: t('sidebar.favorite'), icon: <Icon name="star" size={1} />, action: (chat: ChatHeaderDto) => console.log(`Favorite clicked for ${chat.name}`) },
+    { label: t('sidebar.rename'), icon: <Icon name="edit" size={1} />, action: (chat: ChatHeaderDto) => console.log(`Rename clicked for ${chat.name}`) },
+    { label: t('sidebar.delete'), icon: <Icon name="trash" size={1} />, action: (chat: ChatHeaderDto) => console.log(`Delete clicked for ${chat.name}`) },
   ];
 
   useEffect(() => {
@@ -81,7 +83,7 @@ export function ChatItem({ chat }: ChatItemProps) {
         <span
           className="chat-item-more"
           onClick={e => handleMoreClick(e, chat)}
-          title="More options"
+          title={t('sidebar.moreOptions')}
         >
           <Icon name="moreVert" size={1} />
         </span>

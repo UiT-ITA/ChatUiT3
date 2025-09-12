@@ -1,4 +1,5 @@
 import React from 'react';
+import { useTranslation } from 'react-i18next';
 import { MdEdit, MdDelete, MdShare, MdVisibility, MdVisibilityOff, MdImage, MdPublic, MdPsychology } from 'react-icons/md';
 import type { PrivateAssistantDto, SystemAssistantDto, SharedAssistantDto } from '../../types/assistantModels';
 import { getAssistantCapabilities, getModelNameFromAssistant } from '../../utils/modelUtils';
@@ -26,6 +27,7 @@ const AssistantCard: React.FC<AssistantCardProps> = ({
   onEdit,
   onDelete
 }) => {
+  const { t } = useTranslation();
   const modelName = getModelNameFromAssistant(assistant);
   const capabilities = getAssistantCapabilities(assistant);
 
@@ -57,7 +59,7 @@ const AssistantCard: React.FC<AssistantCardProps> = ({
             <button
               onClick={() => onToggleFavorite(assistant.id)}
               className={`assistant-card-button ${assistant.isVisible ? 'active' : ''}`}
-              title={assistant.isVisible ? 'Hide from selector' : 'Show in selector'}
+              title={assistant.isVisible ? t('assistants.actions.hideFromSelector') : t('assistants.actions.showInSelector')}
             >
               {assistant.isVisible ? <MdVisibility size={20} /> : <MdVisibilityOff size={20} />}
             </button>
@@ -67,7 +69,7 @@ const AssistantCard: React.FC<AssistantCardProps> = ({
             <button
               onClick={() => onShare(assistant as PrivateAssistantDto)}
               className="assistant-card-button"
-              title="Share assistant"
+              title={t('assistants.actions.shareAssistant')}
             >
               <MdShare size={20} />
             </button>
@@ -77,7 +79,7 @@ const AssistantCard: React.FC<AssistantCardProps> = ({
             <button
               onClick={() => onEdit(assistant as PrivateAssistantDto)}
               className="assistant-card-button"
-              title="Edit assistant"
+              title={t('assistants.actions.editAssistant')}
             >
               <MdEdit size={20} />
             </button>
@@ -87,7 +89,7 @@ const AssistantCard: React.FC<AssistantCardProps> = ({
             <button
               onClick={() => onDelete(assistant.id)}
               className="assistant-card-button danger"
-              title="Delete assistant"
+              title={t('assistants.actions.deleteAssistant')}
             >
               <MdDelete size={20} />
             </button>
@@ -98,9 +100,9 @@ const AssistantCard: React.FC<AssistantCardProps> = ({
       <div className="assistant-card-meta">
         <div className="assistant-card-footer">
           <div className="assistant-capabilities">
-            {renderCapabilityIcon(capabilities.vision, <MdImage size={16} />, 'Vision')}
-            {renderCapabilityIcon(capabilities.tools, <MdPublic size={16} />, 'Tools')}
-            {renderCapabilityIcon(capabilities.reasoning, <MdPsychology size={16} />, 'Reasoning')}
+            {renderCapabilityIcon(capabilities.vision, <MdImage size={16} />, t('assistants.capabilities.vision'))}
+            {renderCapabilityIcon(capabilities.tools, <MdPublic size={16} />, t('assistants.capabilities.tools'))}
+            {renderCapabilityIcon(capabilities.reasoning, <MdPsychology size={16} />, t('assistants.capabilities.reasoning'))}
           </div>
           <div className="assistant-card-model">{modelName}</div>
         </div>

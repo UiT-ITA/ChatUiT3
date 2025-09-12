@@ -1,4 +1,5 @@
 import React, { useState, useRef } from 'react';
+import { useTranslation } from 'react-i18next';
 import { MdClose } from 'react-icons/md';
 import './TagField.css';
 
@@ -14,11 +15,14 @@ const TagField: React.FC<TagFieldProps> = ({
   tags,
   onChange,
   readonly = false,
-  placeholder = "Add tag...",
+  placeholder,
   disabled = false
 }) => {
+  const { t } = useTranslation();
   const [inputValue, setInputValue] = useState('');
   const inputRef = useRef<HTMLInputElement>(null);
+  
+  const defaultPlaceholder = placeholder || t('common.addTag');
 
   const addTag = (tag: string) => {
     const trimmedTag = tag.trim();
@@ -67,7 +71,7 @@ const TagField: React.FC<TagFieldProps> = ({
             </span>
           ))}
           {tags.length === 0 && (
-            <span className="tag-empty">No tags</span>
+            <span className="tag-empty">{t('common.noTags')}</span>
           )}
         </div>
       </div>
@@ -106,7 +110,7 @@ const TagField: React.FC<TagFieldProps> = ({
             onChange={(e) => setInputValue(e.target.value)}
             onKeyDown={handleInputKeyDown}
             onBlur={handleInputBlur}
-            placeholder={tags.length === 0 ? placeholder : ''}
+            placeholder={tags.length === 0 ? defaultPlaceholder : ''}
             className="tag-input"
             disabled={disabled}
           />

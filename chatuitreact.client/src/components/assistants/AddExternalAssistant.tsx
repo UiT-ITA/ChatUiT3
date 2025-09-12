@@ -1,8 +1,10 @@
 import React, { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { addSharedAssistant } from '../../services/assistantService';
 import './AddExternalAssistant.css';
 
 const AddExternalAssistant: React.FC = () => {
+  const { t } = useTranslation();
   const [externalId, setExternalId] = useState('');
   const [loading, setLoading] = useState(false);
 
@@ -22,16 +24,16 @@ const AddExternalAssistant: React.FC = () => {
 
   return (
     <div className="add-external-assistant">
-      <h3 className="add-external-assistant-title">Add Shared Assistant</h3>
+      <h3 className="add-external-assistant-title">{t('assistants.addExternal.title')}</h3>
       <p className="add-external-assistant-description">
-        Enter the ID of a shared assistant to add it to your collection
+        {t('assistants.addSharedAssistantDescription')}
       </p>
       <div className="add-external-assistant-form">
         <input
           type="text"
           value={externalId}
           onChange={(e) => setExternalId(e.target.value)}
-          placeholder="Enter assistant ID"
+          placeholder={t('assistants.addExternal.placeholder')}
           className="add-external-assistant-input"
           disabled={loading}
         />
@@ -40,7 +42,7 @@ const AddExternalAssistant: React.FC = () => {
           disabled={!externalId.trim() || loading}
           className="add-external-assistant-button"
         >
-          {loading ? 'Adding...' : 'Add'}
+          {loading ? t('assistants.addExternal.adding') : t('assistants.addExternal.add')}
         </button>
       </div>
     </div>

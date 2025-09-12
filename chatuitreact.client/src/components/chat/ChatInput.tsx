@@ -1,6 +1,7 @@
 import './ChatInput.css';
 import { useState, useRef } from 'react';
 import { useSignals } from '@preact/signals-react/runtime';
+import { useTranslation } from 'react-i18next';
 import { sendMessage, getCurrentChatId, getCurrentAssistantId, createChat } from '../../services/chatService';
 import { FileProcessingService } from '../../services/fileProcessingService';
 import { Icon } from '../common/Icon';
@@ -11,6 +12,7 @@ import { useNavigate } from 'react-router-dom';
 
 export default function ChatInput() {
   useSignals();
+  const { t } = useTranslation();
   const navigate = useNavigate();
 
   const [selectedFiles, setSelectedFiles] = useState<CreateChatFileDto[]>([]);
@@ -126,14 +128,14 @@ export default function ChatInput() {
             <textarea
               ref={textareaRef}
               className="input-box"
-              placeholder="Type a message..."
+              placeholder={t('chat.messagePlaceholder')}
               onKeyDown={handleKeyDown}
             />
           </div>
             <button
               type="submit"
               className="send-container"
-              title="Send message"
+              title={t('chat.sendMessage')}
             >
               <Icon name="send" size={1.75} className="icon" />
             </button>

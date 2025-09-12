@@ -1,5 +1,6 @@
 import React from 'react';
 import { Navigate } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import { useAuth } from '../../contexts/AuthContext';
 import LoadingIndicator from './LoadingIndicator';
 
@@ -9,6 +10,7 @@ interface ProtectedRouteProps {
 }
 
 const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ children, requiredRole }) => {
+  const { t } = useTranslation();
   const { isAuthenticated, roles, isInitializing } = useAuth();
   
   if (isInitializing) {
@@ -26,8 +28,8 @@ const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ children, requiredRole 
   )) {
     return (
       <div className="unauthorized-content">
-        <h2>Access Denied</h2>
-        <p>You do not have permission to access this page.</p>
+        <h2>{t('auth.accessDenied')}</h2>
+        <p>{t('auth.noPermission')}</p>
       </div>
     );
   }

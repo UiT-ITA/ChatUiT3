@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react'
 import { useParams } from 'react-router-dom'
+import { useTranslation } from 'react-i18next'
 import ChatHistory from './ChatHistory'
 import ChatInput from './ChatInput'
 import NewChatWelcome from './NewChatWelcome'
@@ -11,6 +12,7 @@ import LoadingIndicator from '../common/LoadingIndicator'
 
 const ChatPage: React.FC = () => {
   useSignals()
+  const { t } = useTranslation()
 
   const { chatId } = useParams<{ chatId?: string }>()
   const currentChatId = getCurrentChatId()
@@ -41,7 +43,7 @@ const ChatPage: React.FC = () => {
     <div className="chat-page">
       {isTransitioning ? (
         <div className="chat-page-loading">
-          <LoadingIndicator text="Switching chat..." />
+          <LoadingIndicator text={t('chat.switchingChat')} />
         </div>
       ) : currentChatId.value === undefined ? (
         <NewChatWelcome />

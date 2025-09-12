@@ -1,5 +1,6 @@
 import { useState, useRef, useEffect } from 'react';
 import { useSignals } from '@preact/signals-react/runtime';
+import { useTranslation } from 'react-i18next';
 import { Icon } from './Icon';
 import { getSelectableAssistants, getCurrentAssistantId } from '../../services/chatService';
 import AssistantDropdown from './AssistantDropdown';
@@ -11,6 +12,7 @@ interface AssistantSelectorProps {
 
 export default function AssistantSelector({ className }: AssistantSelectorProps) {
   useSignals();
+  const { t } = useTranslation();
   const [isOpen, setIsOpen] = useState(false);
   const selectorRef = useRef<HTMLDivElement>(null);
 
@@ -47,12 +49,12 @@ export default function AssistantSelector({ className }: AssistantSelectorProps)
         type="button"
         className="assistant-selector-button"
         onClick={toggleDropdown}
-        title="Select AI assistant"
+        title={t('welcome.selectAssistant')}
       >
         <div className="assistant-icon">
           <Icon name="assistants" size={1.75} className="icon" />
         </div>
-        <span className="assistant-name">{selectedAssistant?.name || 'Assistant'}</span>
+        <span className="assistant-name">{selectedAssistant?.name || t('assistants.defaultAssistant')}</span>
         <Icon 
           name={isOpen ? "arrowDown" : "arrowUp"} 
           size={1.25} 

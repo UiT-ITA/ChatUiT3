@@ -2,12 +2,14 @@ import './ChatHistory.css'
 import { getChat, getCurrentChatId } from '../../services/chatService'
 import { useSignals } from '@preact/signals-react/runtime';
 import { useLayoutEffect, useRef, useState, useEffect } from 'react';
+import { useTranslation } from 'react-i18next';
 import ChatMessage from './ChatMessage';
 import ScrollToBottomButton from './ScrollToBottomButton';
 import LoadingIndicator from '../common/LoadingIndicator';
 
 export default function ChatHistory() {
   useSignals();
+  const { t } = useTranslation();
   
   const currentChatId = getCurrentChatId();
   const chatId = currentChatId.value;
@@ -87,7 +89,7 @@ export default function ChatHistory() {
     return (
       <div className="chat-history">
         <div className="chat-history-loading">
-          <LoadingIndicator text="Loading chat..." />
+          <LoadingIndicator text={t('chat.loadingChat')} />
         </div>
       </div>
     );

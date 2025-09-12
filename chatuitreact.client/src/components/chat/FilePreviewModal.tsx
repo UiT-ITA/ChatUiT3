@@ -1,4 +1,5 @@
 import { useEffect } from 'react';
+import { useTranslation } from 'react-i18next';
 import type { ChatFileDto, CreateChatFileDto } from '../../types/chatModels';
 import './FilePreviewModal.css';
 
@@ -8,6 +9,8 @@ interface FilePreviewModalProps {
 }
 
 const FilePreviewModal = ({ file, onClose }: FilePreviewModalProps) => {
+  const { t } = useTranslation();
+  
   useEffect(() => {
     const handleEscape = (e: KeyboardEvent) => {
       if (e.key === 'Escape') onClose();
@@ -19,7 +22,7 @@ const FilePreviewModal = ({ file, onClose }: FilePreviewModalProps) => {
 
   if (!file) return null;
 
-  const filename = file.filename || 'Unknown file';
+  const filename = file.filename || t('files.unknownFile');
   
   const renderContent = () => {
     if (file.type === 'Image') {
@@ -38,7 +41,7 @@ const FilePreviewModal = ({ file, onClose }: FilePreviewModalProps) => {
         <pre className="modal-text">{file.content}</pre>
       );
     }
-    return <div className="modal-text">File type not supported</div>;
+    return <div className="modal-text">{t('files.typeNotSupported')}</div>;
   };
 
   return (

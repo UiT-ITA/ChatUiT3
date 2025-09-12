@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Icon } from '../common/Icon';
 
 interface ScrollToBottomButtonProps {
@@ -10,6 +11,7 @@ const ScrollToBottomButton = ({
   chatContainerRef,
   onScrollToBottom,
 }: ScrollToBottomButtonProps) => {
+  const { t } = useTranslation();
   const [isVisible, setIsVisible] = useState(false);
 
   useEffect(() => {
@@ -35,7 +37,7 @@ const ScrollToBottomButton = ({
     <button 
       className={`scroll-to-bottom-button ${isVisible ? 'visible' : 'hidden'}`}
       onClick={onScrollToBottom}
-      title="Scroll to bottom"
+      title={t('chat.scrollToBottom')}
     >
       <Icon name="arrowDown" size={1.25} />
     </button>

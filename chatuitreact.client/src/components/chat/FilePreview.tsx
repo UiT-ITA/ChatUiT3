@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import type { ChatFileDto, CreateChatFileDto } from '../../types/chatModels';
 import { getFileIcon } from '../../utils/fileUtils';
 import FilePreviewModal from './FilePreviewModal';
@@ -11,6 +12,7 @@ interface FilePreviewProps {
 }
 
 const FilePreview = ({ file, onRemove, showRemoveButton = false }: FilePreviewProps) => {
+  const { t } = useTranslation();
   const [selectedFile, setSelectedFile] = useState<ChatFileDto | CreateChatFileDto | null>(null);
 
   const handleFileClick = () => {
@@ -22,7 +24,7 @@ const FilePreview = ({ file, onRemove, showRemoveButton = false }: FilePreviewPr
     onRemove?.();
   };
 
-  const filename = file.filename || 'Unknown file';
+  const filename = file.filename || t('files.unknownFile');
   const isImage = file.type === 'Image';
 
   return (
@@ -35,7 +37,7 @@ const FilePreview = ({ file, onRemove, showRemoveButton = false }: FilePreviewPr
           <button 
             className="remove-btn" 
             onClick={handleRemove}
-            title="Remove file"
+            title={t('files.removeFile')}
           >
             ×
           </button>
@@ -54,7 +56,7 @@ const FilePreview = ({ file, onRemove, showRemoveButton = false }: FilePreviewPr
           <div className="file-icon">
             <div className="file-emoji">{getFileIcon(filename)}</div>
             <div className="file-name">{filename}</div>
-            <div className="file-info">Text file</div>
+            <div className="file-info">{t('files.types.text')}</div>
           </div>
         )}
       </div>

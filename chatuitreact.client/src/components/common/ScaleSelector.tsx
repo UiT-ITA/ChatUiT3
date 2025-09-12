@@ -1,8 +1,10 @@
 import { useState, useEffect } from 'react';
+import { useTranslation } from 'react-i18next';
 import type { ScaleName } from '../../utils/scaleUtils';
 import { SCALE_OPTIONS, setScale, getCurrentScale } from '../../utils/scaleUtils';
 
 export default function ScaleSelector() {
+  const { t } = useTranslation();
   const [currentScale, setCurrentScale] = useState<ScaleName>(getCurrentScale);
 
   useEffect(() => {
@@ -22,7 +24,7 @@ export default function ScaleSelector() {
         color: 'var(--color-text-secondary)',
         marginBottom: '0.25rem'
       }}>
-        UI Scale
+        {t('settings.textScale.title')}
       </label>
       <select
         id="scale-selector"

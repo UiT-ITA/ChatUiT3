@@ -1,4 +1,5 @@
 import React from 'react';
+import { useTranslation } from 'react-i18next';
 import { MdContentCopy } from 'react-icons/md';
 import type { PrivateAssistantDto } from '../../types/assistantModels';
 import './ShareModal.css';
@@ -18,6 +19,8 @@ const ShareModal: React.FC<ShareModalProps> = ({
   onCopyLink,
   onCopyGuid
 }) => {
+  const { t } = useTranslation();
+  
   if (!isOpen || !assistant) return null;
 
   const shareUrl = `${window.location.origin}/assistants?add=${assistant.id}`;
@@ -26,14 +29,14 @@ const ShareModal: React.FC<ShareModalProps> = ({
     <div className="modal-overlay">
       <div className="modal-content">
         <div className="modal-header">
-          <h2 className="modal-title">Share Assistant</h2>
+          <h2 className="modal-title">{t('assistants.actions.shareAssistant')}</h2>
         </div>
         
         <div className="modal-body">
-          <p>Share "{assistant.name}" with others:</p>
+          <p>{t('assistants.shareDescription', { name: assistant.name })}</p>
           
           <div className="share-option">
-            <label>Share Link:</label>
+            <label>{t('assistants.shareLink')}:</label>
             <div className="share-link-container">
               <input
                 type="text"
@@ -44,7 +47,7 @@ const ShareModal: React.FC<ShareModalProps> = ({
               <button
                 onClick={() => onCopyLink(assistant.id)}
                 className="button primary"
-                title="Copy link"
+                title={t('assistants.actions.copyLink')}
               >
                 <MdContentCopy size={16} />
               </button>
@@ -52,7 +55,7 @@ const ShareModal: React.FC<ShareModalProps> = ({
           </div>
 
           <div className="share-option">
-            <label>Assistant ID:</label>
+            <label>{t('assistants.assistantId')}:</label>
             <div className="share-link-container">
               <input
                 type="text"
@@ -63,7 +66,7 @@ const ShareModal: React.FC<ShareModalProps> = ({
               <button
                 onClick={() => onCopyGuid(assistant.id)}
                 className="button primary"
-                title="Copy ID"
+                title={t('assistants.actions.copyId')}
               >
                 <MdContentCopy size={16} />
               </button>
@@ -76,7 +79,7 @@ const ShareModal: React.FC<ShareModalProps> = ({
             onClick={onClose}
             className="button secondary"
           >
-            Close
+            {t('common.close')}
           </button>
         </div>
       </div>

@@ -1,182 +1,281 @@
 {
-    "welcome": {
-        "header": "Welcome to ChatUiT",
-        "subheader": "Select an assistant and start chatting!",
-        "files": {
-            "title": "Files and Vision",
-            "description": "All models support files uploads, but only some models support images."
-        },
-        "tools": {
-            "title": "Tool Usage",
-            "description": "Some models have access to tools that can be used to enhance the chat experience."
-        },
-        "reasoning": {
-            "title": "Reasoning",
-            "description": "Some models have reasoning capabilities. This can be useful for complex tasks."
-        }
+  "app": {
+    "welcome": "Welcome, {{name}}",
+    "welcomeDefault": "Welcome, User",
+    "signedInMessage": "You are signed in. Select an option from the sidebar to continue.",
+    "unauthenticatedWelcome": "Welcome",
+    "signInPrompt": "Please use the Sign In button in the top bar to access all features."
+  },
+  "auth": {
+    "login": "Login",
+    "logout": "Logout",
+    "profile": "Profile",
+    "accessDenied": "Access Denied",
+    "noPermission": "You do not have permission to access this page."
+  },
+  "navigation": {
+    "menu": "Menu",
+    "newChat": "New Chat"
+  },
+  "sidebar": {
+    "newChat": "New chat",
+    "expand": "Expand sidebar",
+    "collapse": "Collapse sidebar",
+    "help": "Help",
+    "chatSettings": "Chat settings",
+    "settings": "Settings",
+    "admin": "Admin",
+    "assistants": "Assistants",
+    "profile": "Profile",
+    "logout": "Logout",
+    "login": "Login",
+    "noChats": "No chats found",
+    "moreOptions": "More options",
+    "favorite": "Favorite",
+    "rename": "Rename",
+    "delete": "Delete"
+  },
+  "chat": {
+    "sendMessage": "Send message",
+    "chatNotFound": "Chat not found. You can start a new chat below.",
+    "messagePlaceholder": "Type a message...",
+    "loadingChat": "Loading chat...",
+    "switchingChat": "Switching chat...",
+    "loadingChats": "Loading chats...",
+    "noChatsFound": "No chats found.",
+    "scrollToBottom": "Scroll to bottom",
+    "actions": {
+      "copy": "Copy",
+      "retry": "Retry",
+      "edit": "Edit",
+      "branch": "Branch",
+      "copyCode": "Copy code"
     },
-    "chat": {
-        "sendMessage": "Send message",
-        "chatNotFound": "Chat not found. You can start a new chat below.",
-        "messagePlaceholder": "Message ChatUiT..."
+    "status": {
+      "generating": "Generating",
+      "done": "Done",
+      "running": "Running…"
+    },
+    "roles": {
+      "user": "User",
+      "assistant": "Assistant",
+      "system": "System"
+    }
+  },
+  "welcome": {
+    "header": "Welcome to ChatUit",
+    "subheader": "Start a conversation with your AI assistant.",
+    "chooseAssistant": "Choose your assistant:",
+    "selectAssistant": "Select AI assistant",
+    "tips": {
+      "title": "Tips:",
+      "selectAssistant": {
+        "title": "Select the right assistant",
+        "description": "Choose an assistant that fits your needs."
+      },
+      "uploadFiles": {
+        "title": "Upload files",
+        "description": "Drag and drop files into the chat."
+      },
+      "askQuestions": {
+        "title": "Ask clear questions",
+        "description": "Be specific for better responses."
+      }
+    }
+  },
+  "assistants": {
+    "title": "Assistants",
+    "create": "Create Assistant",
+    "createAssistant": "Create Assistant",
+    "editAssistant": "Edit Assistant",
+    "deleteConfirmation": "Are you sure you want to delete this assistant?",
+    "myAssistants": "My Assistants",
+    "systemAssistants": "System Assistants",
+    "sharedAssistants": "Shared Assistants",
+    "emptyStates": {
+      "noPersonalAssistants": "No personal assistants yet",
+      "createFirstAssistant": "Create your first assistant to get started",
+      "noSystemAssistants": "No system assistants",
+      "noSharedAssistants": "No shared assistants",
+      "addSharedAssistants": "Add shared assistants using their ID"
+    },
+    "form": {
+      "name": "Name",
+      "namePlaceholder": "Enter assistant name",
+      "description": "Description",
+      "tags": "Tags",
+      "tagsPlaceholder": "Add tags...",
+      "model": "Model",
+      "selectModel": "Select a model",
+      "systemPrompt": "System Prompt",
+      "temperature": "Temperature",
+      "reasoning": "Reasoning",
+      "reasoningEffort": "Reasoning Effort",
+      "reasoningLevels": {
+        "none": "None",
+        "low": "Low",
+        "medium": "Medium",
+        "high": "High"
+      }
     },
     "capabilities": {
-        "vision": "Vision available",
-        "internet": "Internet access",
-        "reasoning": "Advanced reasoning"
+      "vision": "Vision",
+      "tools": "Tools",
+      "reasoning": "Reasoning"
     },
-    "sidebar": {
-        "newChat": "New chat",
-        "expand": "Expand sidebar",
-        "collapse": "Collapse sidebar",
-        "help": "Help",
-        "chatSettings": "Chat settings",
-        "settings": "Settings",
-        "admin": "Admin",
-        "assistants": "Assistants",
-        "profile": "Profile",
-        "logout": "Logout",
-        "login": "Login",
-        "noChats": "No chats found",
-        "moreOptions": "More options",
-        "favorite": "Favorite",
-        "rename": "Rename",
-        "delete": "Delete"
+    "actions": {
+      "hideFromSelector": "Hide from selector",
+      "showInSelector": "Show in selector",
+      "shareAssistant": "Share assistant",
+      "editAssistant": "Edit assistant",
+      "deleteAssistant": "Delete assistant",
+      "copyLink": "Copy link",
+      "copyId": "Copy ID"
     },
-    "settings": {
-        "title": "Settings",
-        "generalTab": "General",
-        "personalizationTab": "Personalization",
-        "dataTab": "Data Controls",
-        "theme": {
-            "title": "Theme",
-            "light": "Light",
-            "dark": "Dark",
-            "altDark": "Alt Dark"
-        },
-        "textScale": {
-            "title": "Text Scale",
-            "small": "Small",
-            "medium": "Medium",
-            "large": "Large"
-        },
-        "chatWidth": {
-            "title": "Chat Width",
-            "small": "Small (800px)",
-            "medium": "Medium (1000px)",
-            "large": "Large (1200px)",
-            "full": "Full Width"
-        },
-        "markdown": {
-            "title": "Markdown Rendering"
-        },
-        "language": {
-            "title": "Language"
-        },
-        "personalization": {
-            "name": {
-                "title": "Name",
-                "placeholder": "Enter your name"
-            },
-            "jobRole": {
-                "title": "Job Role",
-                "placeholder": "e.g., Software Engineer, Teacher, Student"
-            },
-            "responseStyle": {
-                "title": "Response Style",
-                "creative": "Creative",
-                "balanced": "Balanced",
-                "precise": "Precise"
-            },
-            "responseLength": {
-                "title": "Response Length",
-                "short": "Short",
-                "medium": "Medium",
-                "long": "Long"
-            },
-            "customInstructions": {
-                "title": "Custom Instructions",
-                "placeholder": "Provide additional context or preferences for how the assistant should respond..."
-            }
-        },
-        "dataControl": {
-            "retentionPeriod": {
-                "title": "Chat Retention Period",
-                "1week": "1 Week",
-                "1month": "1 Month",
-                "3months": "3 Months",
-                "1year": "1 Year",
-                "forever": "Forever"
-            },
-            "autoDelete": {
-                "title": "Auto-delete old chats"
-            },
-            "exportFormat": {
-                "title": "Export Format",
-                "json": "JSON",
-                "markdown": "Markdown",
-                "txt": "Plain Text"
-            },
-            "exportData": {
-                "title": "Export Chat History",
-                "button": "Export Data"
-            },
-            "deleteAll": {
-                "title": "Delete All Chats",
-                "button": "Delete All"
-            }
-        }
+    "addExternal": {
+      "title": "Add Shared Assistant",
+      "placeholder": "Enter assistant ID",
+      "add": "Add",
+      "adding": "Adding..."
     },
-    "assistants": {
-        "deleteConfirmation": "Are you sure you want to delete this assistant?",
-        "title": "Assistants",
-        "create": "Create Assistant",
-        "myAssistants": "My Assistants",
-        "myAssistantsEmpty1": "No assistants yet",
-        "myAssistantsEmpty2": "Create your first assistant to get started!",
-        "systemAssistants": "UiT Assistants",
-        "sharedAssistants": "Shared Assistants",
-        "sharedAssistantsEmpty1": "No shared assistants",
-        "sharedAssistantsEmpty2": "Shared assistants from other users will appear here",
-        "addSharedAssistant": "Add Shared Assistant",
-        "addSharedAssistantDescription": "Paste an assistant ID to add a shared assistant to your collection",
-        "addSharedAssistantPlaceholder": "Enter assistant ID here...",
-        "createAssistantTitle": "Create Assistant",
-        "editAssistantTitle": "Edit Assistant",
-        "namePlaceholder": "Name of your assistant",
-        "description": "Description",
-        "descriptionPlaceholder": "Description of your assistant",
-        "tags": "Tags (comma-separated)",
-        "tagsPlaceholder": "Helpful, creative, funny",
-        "model": "Model",
-        "modelPlaceholder": "Select a model",
-        "modelContext": "Context",
-        "modelOutput": "Output",
-        "modelKnowledge": "Knowledge",
-        "systemPrompt": "System Prompt",
-        "systemPromptPlaceholder": "You are a helpful assistant that...",
-        "temperature": "Temperature",
-        "reasoning": "Reasoning Effort",
-        "reasoningNotSupported": "Not supported",
-        "reasoningNone": "None",
-        "reasoningLow": "Low",
-        "reasoningMedium": "Medium",
-        "reasoningHigh": "High",
-
-
-
-
-
-
-
-
-        "test": "test"
-
+    "addSharedAssistantDescription": "Enter the ID of a shared assistant to add it to your collection",
+    "saving": "Saving...",
+    "update": "Update",
+    "defaultAssistant": "Assistant",
+    "noDescriptionAvailable": "No description available",
+    "shareDescription": "Share \"{{name}}\" with others:",
+    "shareLink": "Share Link",
+    "assistantId": "Assistant ID",
+    "systemBadge": "System"
+  },
+  "settings": {
+    "title": "Settings",
+    "categories": {
+      "appearance": "Appearance",
+      "personalization": "Personalization",
+      "dataControl": "Data Control"
     },
-    "common": {
-        "close": "Close",
-        "add": "Add",
-        "cancel": "Cancel",
-        "name": "Name"
+    "language": {
+      "title": "Language"
+    },
+    "theme": {
+      "title": "Theme",
+      "light": "Light",
+      "dark": "Dark",
+      "altDark": "Alt Dark"
+    },
+    "textScale": {
+      "title": "Text Scale",
+      "small": "Small",
+      "medium": "Medium",
+      "large": "Large",
+      "extraLarge": "Extra Large"
+    },
+    "preview": {
+      "sample": "Sample",
+      "sampleText": "Sample Text"
+    },
+    "chatWidth": {
+      "title": "Chat Width",
+      "small": "Small (800px)",
+      "medium": "Medium (1000px)",
+      "large": "Large (1200px)",
+      "full": "Full Width"
+    },
+    "markdown": {
+      "title": "Markdown Rendering"
+    },
+    "personalization": {
+      "name": {
+        "title": "Name",
+        "placeholder": "Enter your name"
+      },
+      "jobRole": {
+        "title": "Job Role",
+        "placeholder": "e.g., Software Engineer, Teacher, Student"
+      },
+      "responseStyle": {
+        "title": "Response Style",
+        "creative": "Creative",
+        "balanced": "Balanced",
+        "precise": "Precise"
+      },
+      "responseLength": {
+        "title": "Response Length",
+        "short": "Short",
+        "medium": "Medium",
+        "long": "Long"
+      },
+      "customInstructions": {
+        "title": "Custom Instructions",
+        "placeholder": "Provide additional context or preferences for how the assistant should respond..."
+      }
+    },
+    "dataControl": {
+      "retentionPeriod": {
+        "title": "Chat Retention Period",
+        "1week": "1 Week",
+        "1month": "1 Month",
+        "3months": "3 Months",
+        "1year": "1 Year",
+        "forever": "Forever"
+      },
+      "autoDelete": {
+        "title": "Auto-delete old chats"
+      },
+      "exportFormat": {
+        "title": "Export Format",
+        "json": "JSON",
+        "markdown": "Markdown",
+        "txt": "Plain Text"
+      },
+      "exportData": {
+        "title": "Export Chat History",
+        "button": "Export Data"
+      },
+      "deleteAll": {
+        "title": "Delete All Chats",
+        "button": "Delete All"
+      }
     }
+  },
+  "files": {
+    "unknownFile": "Unknown file",
+    "removeFile": "Remove file",
+    "typeNotSupported": "File type not supported",
+    "types": {
+      "image": "Image",
+      "text": "Text"
+    }
+  },
+  "common": {
+    "close": "Close",
+    "add": "Add",
+    "cancel": "Cancel",
+    "name": "Name",
+    "loading": "Loading...",
+    "save": "Save",
+    "create": "Create",
+    "update": "Update",
+    "delete": "Delete",
+    "edit": "Edit",
+    "copy": "Copy",
+    "share": "Share",
+    "done": "Done",
+    "none": "None",
+    "yes": "Yes",
+    "no": "No",
+    "addTag": "Add tag...",
+    "noTags": "No tags"
+  },
+  "capabilities": {
+    "vision": "Vision available",
+    "internet": "Internet access",
+    "reasoning": "Advanced reasoning"
+  },
+  "toolCall": {
+    "defaultName": "ToolCall",
+    "arguments": "Arguments",
+    "result": "Result"
+  }
 }

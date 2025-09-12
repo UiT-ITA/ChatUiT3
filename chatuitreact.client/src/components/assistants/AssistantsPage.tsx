@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { useParams } from 'react-router-dom';
 import { MdAdd } from 'react-icons/md';
 import { useSignals } from '@preact/signals-react/runtime';
+import { useTranslation } from 'react-i18next';
 import './AssistantsPage.css';
 import { setAssistantSidebar, clearSidebarContent } from '../../services/sidebarService';
 import { getAssistants, deleteAssistant, toggleVisibility } from '../../services/assistantService';
@@ -13,6 +14,7 @@ import AssistantModal from './AssistantModal';
 
 const AssistantsPage: React.FC = () => {
   useSignals();
+  const { t } = useTranslation();
   const { assistantId } = useParams<{ assistantId?: string }>();
   const assistantList = getAssistants();
   const [shareModalAssistant, setShareModalAssistant] = useState<PrivateAssistantDto | null>(null);
@@ -45,7 +47,7 @@ const AssistantsPage: React.FC = () => {
   };
 
   const handleDeleteAssistant = async (id: string) => {
-    if (!window.confirm('Are you sure you want to delete this assistant?')) return;
+    if (!window.confirm(t('assistants.deleteConfirmation'))) return;
     
     try {
       await deleteAssistant(id);
@@ -74,7 +76,7 @@ const AssistantsPage: React.FC = () => {
 
   if (isListView) {
     if (assistantList.value === undefined) {
-      return <div>Loading assistants...</div>;
+      return <div>{t('common.loading')}</div>;
     }
 
     const { owned, system, shared } = assistantList.value;
@@ -83,17 +85,17 @@ const AssistantsPage: React.FC = () => {
       <div className="assistants-page">
         <div className="assistants-page-content">
           <div className="assistants-header">
-            <h1 className="assistants-title">Assistants</h1>
+            <h1 className="assistants-title">{t('assistants.title')}</h1>
             <button onClick={handleCreateAssistant} className="create-assistant-button">
               <MdAdd size={20} />
-              Create Assistant
+              {t('assistants.create')}
             </button>
           </div>
 
           <AddExternalAssistant />
 
           <div className="assistants-section">
-            <h2 className="assistants-section-title">My Assistants</h2>
+            <h2 className="assistants-section-title">{t('assistants.myAssistants')}</h2>
             <div className="assistants-grid">
               {owned.length > 0 ? (
                 owned.map(assistant => (
@@ -109,15 +111,15 @@ const AssistantsPage: React.FC = () => {
                 ))
               ) : (
                 <div className="empty-state">
-                  <div className="empty-state-title">No personal assistants yet</div>
-                  <div className="empty-state-description">Create your first assistant to get started</div>
+                  <div className="empty-state-title">{t('assistants.emptyStates.noPersonalAssistants')}</div>
+                  <div className="empty-state-description">{t('assistants.emptyStates.createFirstAssistant')}</div>
                 </div>
               )}
             </div>
           </div>
 
           <div className="assistants-section">
-            <h2 className="assistants-section-title">System Assistants</h2>
+            <h2 className="assistants-section-title">{t('assistants.systemAssistants')}</h2>
             <div className="assistants-grid">
               {system.map((assistant, index) => (
                 <AssistantCard
@@ -132,7 +134,7 @@ const AssistantsPage: React.FC = () => {
           </div>
 
           <div className="assistants-section">
-            <h2 className="assistants-section-title">Shared Assistants</h2>
+            <h2 className="assistants-section-title">{t('assistants.sharedAssistants')}</h2>
             <div className="assistants-grid">
               {shared.length > 0 ? (
                 shared.map(assistant => (
@@ -145,8 +147,8 @@ const AssistantsPage: React.FC = () => {
                 ))
               ) : (
                 <div className="empty-state">
-                  <div className="empty-state-title">No shared assistants</div>
-                  <div className="empty-state-description">Add shared assistants using their ID</div>
+                  <div className="empty-state-title">{t('assistants.emptyStates.noSharedAssistants')}</div>
+                  <div className="empty-state-description">{t('assistants.emptyStates.addSharedAssistants')}</div>
                 </div>
               )}
             </div>

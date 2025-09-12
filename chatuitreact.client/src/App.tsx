@@ -1,5 +1,6 @@
 import React from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import { useAuth } from './contexts/AuthContext';
 import { SettingsProvider } from './contexts/SettingsContext';
 import MainLayout from './components/layout/MainLayout';
@@ -13,6 +14,7 @@ import { initializeTheme } from './utils/themeUtils';
 import AssistantsPage from './components/assistants/AssistantsPage';
 
 const Home = () => {
+  const { t } = useTranslation();
   const { isAuthenticated, isInitializing, account } = useAuth();
   
   if (isInitializing) {
@@ -22,15 +24,15 @@ const Home = () => {
   if (isAuthenticated) {
     return (
       <div className="authenticated-content">
-        <h2>Welcome, {account?.name || 'User'}</h2>
-        <p>You are signed in. Select an option from the sidebar to continue.</p>
+        <h2>{t('app.welcome', { name: account?.name || t('app.welcomeDefault') })}</h2>
+        <p>{t('app.signedInMessage')}</p>
       </div>
     );
   } else {
     return (
       <div className="unauthenticated-content">
-        <h2>Welcome</h2>
-        <p>Please use the Sign In button in the top bar to access all features.</p>
+        <h2>{t('app.unauthenticatedWelcome')}</h2>
+        <p>{t('app.signInPrompt')}</p>
       </div>
     );
   }

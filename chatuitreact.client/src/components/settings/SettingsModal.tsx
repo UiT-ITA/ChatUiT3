@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useSettings } from '../../contexts/SettingsContext';
 import { SettingsCategory } from '../../types/settingsModels';
 import { Icon } from '../common/Icon';
@@ -10,6 +11,7 @@ interface SettingsModalProps {
 }
 
 const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose }) => {
+  const { t } = useTranslation();
   const { settings, updateSetting, exportData, deleteAllData } = useSettings();
   const [activeCategory, setActiveCategory] = useState<SettingsCategory>('appearance');
 
@@ -66,25 +68,25 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose }) => {
   if (!isOpen) return null;
 
   const categories = [
-    { id: 'appearance' as SettingsCategory, label: 'Appearance', icon: 'settings' },
-    { id: 'personalization' as SettingsCategory, label: 'Personalization', icon: 'user' },
-    { id: 'dataControl' as SettingsCategory, label: 'Data Control', icon: 'admin' },
+    { id: 'appearance' as SettingsCategory, label: t('settings.categories.appearance'), icon: 'settings' },
+    { id: 'personalization' as SettingsCategory, label: t('settings.categories.personalization'), icon: 'user' },
+    { id: 'dataControl' as SettingsCategory, label: t('settings.categories.dataControl'), icon: 'admin' },
   ];
 
   const renderAppearanceSettings = () => (
     <div className="settings-section">
-      <h3>Appearance</h3>
+      <h3>{t('settings.categories.appearance')}</h3>
       
       <div className="setting-group">
-        <label className="setting-label">Theme</label>
+        <label className="setting-label">{t('settings.theme.title')}</label>
         <div className="theme-selector">
           <div
             className={`theme-option ${settings.theme === 'light' ? 'active' : ''}`}
             onClick={() => updateSetting('theme', 'light')}
             data-theme="light"
           >
-            <div className="theme-preview">Sample</div>
-            <span className="theme-label">Light</span>
+            <div className="theme-preview">{t('settings.preview.sample')}</div>
+            <span className="theme-label">{t('settings.theme.light')}</span>
           </div>
           
           <div
@@ -92,8 +94,8 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose }) => {
             onClick={() => updateSetting('theme', 'dim')}
             data-theme="dim"
           >
-            <div className="theme-preview">Sample</div>
-            <span className="theme-label">Dim</span>
+            <div className="theme-preview">{t('settings.preview.sample')}</div>
+            <span className="theme-label">{t('settings.theme.altDark')}</span>
           </div>
           
           <div
@@ -101,51 +103,51 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose }) => {
             onClick={() => updateSetting('theme', 'dark')}
             data-theme="dark"
           >
-            <div className="theme-preview">Sample</div>
-            <span className="theme-label">Dark</span>
+            <div className="theme-preview">{t('settings.preview.sample')}</div>
+            <span className="theme-label">{t('settings.theme.dark')}</span>
           </div>
         </div>
       </div>
 
       <div className="setting-group">
-        <label className="setting-label">Size</label>
+        <label className="setting-label">{t('settings.textScale.title')}</label>
         <div className="size-selector">
           <div
             className={`size-option ${settings.size === 'small' ? 'active' : ''}`}
             onClick={() => updateSetting('size', 'small')}
           >
-            <div className="size-preview" style={{ fontSize: '14px' }}>Sample Text</div>
-            <span className="size-label">Small</span>
+            <div className="size-preview" style={{ fontSize: '14px' }}>{t('settings.preview.sampleText')}</div>
+            <span className="size-label">{t('settings.textScale.small')}</span>
           </div>
           
           <div
             className={`size-option ${settings.size === 'medium' ? 'active' : ''}`}
             onClick={() => updateSetting('size', 'medium')}
           >
-            <div className="size-preview" style={{ fontSize: '16px' }}>Sample Text</div>
-            <span className="size-label">Medium</span>
+            <div className="size-preview" style={{ fontSize: '16px' }}>{t('settings.preview.sampleText')}</div>
+            <span className="size-label">{t('settings.textScale.medium')}</span>
           </div>
           
           <div
             className={`size-option ${settings.size === 'large' ? 'active' : ''}`}
             onClick={() => updateSetting('size', 'large')}
           >
-            <div className="size-preview" style={{ fontSize: '18px' }}>Sample Text</div>
-            <span className="size-label">Large</span>
+            <div className="size-preview" style={{ fontSize: '18px' }}>{t('settings.preview.sampleText')}</div>
+            <span className="size-label">{t('settings.textScale.large')}</span>
           </div>
           
           <div
             className={`size-option ${settings.size === 'xl' ? 'active' : ''}`}
             onClick={() => updateSetting('size', 'xl')}
           >
-            <div className="size-preview" style={{ fontSize: '20px' }}>Sample Text</div>
-            <span className="size-label">Extra Large</span>
+            <div className="size-preview" style={{ fontSize: '20px' }}>{t('settings.preview.sampleText')}</div>
+            <span className="size-label">{t('settings.textScale.extraLarge')}</span>
           </div>
         </div>
       </div>
 
       <div className="setting-group">
-        <label className="setting-label">Language</label>
+        <label className="setting-label">{t('settings.language.title')}</label>
         <div className="language-selector">
           <div
             className={`language-option ${settings.language === 'en-US' ? 'active' : ''}`}
@@ -160,7 +162,7 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose }) => {
             onClick={() => updateSetting('language', 'no-NB')}
           >
             <img src="/no.svg" alt="Norwegian" className="flag-icon" />
-            <span className="language-label">Norwegian</span>
+            <span className="language-label">Norsk</span>
           </div>
         </div>
       </div>
@@ -169,62 +171,62 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose }) => {
 
   const renderPersonalizationSettings = () => (
     <div className="settings-section">
-      <h3>Personalization</h3>
+      <h3>{t('settings.categories.personalization')}</h3>
       
       <div className="setting-group">
-        <label className="setting-label">Name</label>
+        <label className="setting-label">{t('settings.personalization.name.title')}</label>
         <input
           type="text"
           value={settings.userName}
           onChange={(e) => updateSetting('userName', e.target.value)}
-          placeholder="Enter your name"
+          placeholder={t('settings.personalization.name.placeholder')}
           className="setting-input"
         />
       </div>
 
       <div className="setting-group">
-        <label className="setting-label">Job Role</label>
+        <label className="setting-label">{t('settings.personalization.jobRole.title')}</label>
         <input
           type="text"
           value={settings.jobRole}
           onChange={(e) => updateSetting('jobRole', e.target.value)}
-          placeholder="e.g., Software Engineer, Teacher, Student"
+          placeholder={t('settings.personalization.jobRole.placeholder')}
           className="setting-input"
         />
       </div>
 
       <div className="setting-group">
-        <label className="setting-label">Response Style</label>
+        <label className="setting-label">{t('settings.personalization.responseStyle.title')}</label>
         <select
           value={settings.responseStyle}
           onChange={(e) => updateSetting('responseStyle', e.target.value as any)}
           className="setting-select"
         >
-          <option value="creative">Creative</option>
-          <option value="balanced">Balanced</option>
-          <option value="precise">Precise</option>
+          <option value="creative">{t('settings.personalization.responseStyle.creative')}</option>
+          <option value="balanced">{t('settings.personalization.responseStyle.balanced')}</option>
+          <option value="precise">{t('settings.personalization.responseStyle.precise')}</option>
         </select>
       </div>
 
       <div className="setting-group">
-        <label className="setting-label">Response Length</label>
+        <label className="setting-label">{t('settings.personalization.responseLength.title')}</label>
         <select
           value={settings.responseLength}
           onChange={(e) => updateSetting('responseLength', e.target.value as any)}
           className="setting-select"
         >
-          <option value="short">Short</option>
-          <option value="medium">Medium</option>
-          <option value="long">Long</option>
+          <option value="short">{t('settings.personalization.responseLength.short')}</option>
+          <option value="medium">{t('settings.personalization.responseLength.medium')}</option>
+          <option value="long">{t('settings.personalization.responseLength.long')}</option>
         </select>
       </div>
 
       <div className="setting-group">
-        <label className="setting-label">Custom Instructions</label>
+        <label className="setting-label">{t('settings.personalization.customInstructions.title')}</label>
         <textarea
           value={settings.customInstructions}
           onChange={(e) => updateSetting('customInstructions', e.target.value)}
-          placeholder="Provide additional context or preferences for how the assistant should respond..."
+          placeholder={t('settings.personalization.customInstructions.placeholder')}
           className="setting-textarea"
           rows={4}
         />
@@ -234,20 +236,20 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose }) => {
 
   const renderDataControlSettings = () => (
     <div className="settings-section">
-      <h3>Data Control</h3>
+      <h3>{t('settings.categories.dataControl')}</h3>
       
       <div className="setting-group">
-        <label className="setting-label">Chat Retention Period</label>
+        <label className="setting-label">{t('settings.dataControl.retentionPeriod.title')}</label>
         <select
           value={settings.chatRetentionPeriod}
           onChange={(e) => updateSetting('chatRetentionPeriod', e.target.value as any)}
           className="setting-select"
         >
-          <option value="1week">1 Week</option>
-          <option value="1month">1 Month</option>
-          <option value="3months">3 Months</option>
-          <option value="1year">1 Year</option>
-          <option value="forever">Forever</option>
+          <option value="1week">{t('settings.dataControl.retentionPeriod.1week')}</option>
+          <option value="1month">{t('settings.dataControl.retentionPeriod.1month')}</option>
+          <option value="3months">{t('settings.dataControl.retentionPeriod.3months')}</option>
+          <option value="1year">{t('settings.dataControl.retentionPeriod.1year')}</option>
+          <option value="forever">{t('settings.dataControl.retentionPeriod.forever')}</option>
         </select>
       </div>
 
@@ -259,40 +261,40 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose }) => {
             onChange={(e) => updateSetting('autoDeleteOldChats', e.target.checked)}
             className="setting-checkbox"
           />
-          Auto-delete old chats
+          {t('settings.dataControl.autoDelete.title')}
         </label>
       </div>
 
       <div className="setting-group">
-        <label className="setting-label">Export Format</label>
+        <label className="setting-label">{t('settings.dataControl.exportFormat.title')}</label>
         <select
           value={settings.exportFormat}
           onChange={(e) => updateSetting('exportFormat', e.target.value as any)}
           className="setting-select"
         >
-          <option value="json">JSON</option>
-          <option value="markdown">Markdown</option>
-          <option value="txt">Plain Text</option>
+          <option value="json">{t('settings.dataControl.exportFormat.json')}</option>
+          <option value="markdown">{t('settings.dataControl.exportFormat.markdown')}</option>
+          <option value="txt">{t('settings.dataControl.exportFormat.txt')}</option>
         </select>
       </div>
 
       <div className="setting-group">
-        <label className="setting-label">Export Data</label>
+        <label className="setting-label">{t('settings.dataControl.exportData.title')}</label>
         <button
           onClick={() => exportData(settings.exportFormat)}
           className="setting-button setting-button-primary"
         >
-          Export All Data
+          {t('settings.dataControl.exportData.button')}
         </button>
       </div>
 
       <div className="setting-group">
-        <label className="setting-label">Delete All Data</label>
+        <label className="setting-label">{t('settings.dataControl.deleteAll.title')}</label>
         <button
           onClick={deleteAllData}
           className="setting-button setting-button-danger"
         >
-          Delete All Data
+          {t('settings.dataControl.deleteAll.button')}
         </button>
       </div>
     </div>
@@ -315,7 +317,7 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose }) => {
     <div className="settings-modal-overlay" onClick={onClose}>
       <div className="settings-modal" onClick={(e) => e.stopPropagation()}>
         <div className="settings-modal-header">
-          <h2>Settings</h2>
+          <h2>{t('settings.title')}</h2>
           <button className="settings-close-button" onClick={onClose}>
             <Icon name="close" size={1.5} />
           </button>

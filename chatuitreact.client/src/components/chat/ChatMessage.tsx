@@ -1,6 +1,7 @@
 import './ChatMessage.css';
 import { useSignals } from '@preact/signals-react/runtime';
 import { useMemo, useState, useLayoutEffect } from 'react';
+import { useTranslation } from 'react-i18next';
 import { getStreamSignal } from '../../services/chatService';
 import type { ChatMessageDto } from '../../types/chatModels';
 import ReactMarkdown from 'react-markdown';
@@ -24,6 +25,7 @@ interface ChatMessageProps {
 
 export default function ChatMessage({ message, onStreamingChunk }: ChatMessageProps) {
   useSignals();
+  const { t } = useTranslation();
   const [isCopied, setIsCopied] = useState(false);
 
   const streamSignal = useMemo(() => {
@@ -98,9 +100,9 @@ export default function ChatMessage({ message, onStreamingChunk }: ChatMessagePr
             <button
               className="copy-code-button"
               onClick={() => handleCopyCode(codeText)}
-              title="Copy code"
+              title={t('chat.actions.copyCode')}
             >
-              <Icon name="copy" size={1} /> Copy
+              <Icon name="copy" size={1} /> {t('chat.actions.copyCode')}
             </button>
           </div>
           <SyntaxHighlighter
@@ -167,13 +169,13 @@ export default function ChatMessage({ message, onStreamingChunk }: ChatMessagePr
               {new Date(message.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
             </span>
             <div className="message-actions">
-              <button className="message-action-button" title="Retry" onClick={handleRetry}>
+              <button className="message-action-button" title={t('chat.actions.retry')} onClick={handleRetry}>
                 <Icon name="refresh" size={1.25} />
               </button>
-              <button className="message-action-button" title="Edit" onClick={handleEdit}>
+              <button className="message-action-button" title={t('chat.actions.edit')} onClick={handleEdit}>
                 <Icon name="edit" size={1.25} />
               </button>
-              <button className="message-action-button" title="Copy" onClick={handleCopyMessage}>
+              <button className="message-action-button" title={t('chat.actions.copy')} onClick={handleCopyMessage}>
                 <Icon name={isCopied ? "check" : "copy"} size={1.25} />
               </button>
             </div>
@@ -181,15 +183,15 @@ export default function ChatMessage({ message, onStreamingChunk }: ChatMessagePr
         ) : (
           <>
             <div className="message-actions">
-              <button className="message-action-button" title="Copy" onClick={handleCopyMessage}>
+              <button className="message-action-button" title={t('chat.actions.copy')} onClick={handleCopyMessage}>
                 <Icon name={isCopied ? "check" : "copy"} size={1.25} />
               </button>
               {!isSystem && (
                 <>
-                  <button className="message-action-button" title="Branch" onClick={handleBranch}>
+                  <button className="message-action-button" title={t('chat.actions.branch')} onClick={handleBranch}>
                     <Icon name="branch" size={1.25} />
                   </button>
-                  <button className="message-action-button" title="Retry" onClick={handleRetry}>
+                  <button className="message-action-button" title={t('chat.actions.retry')} onClick={handleRetry}>
                     <Icon name="refresh" size={1.25} />
                   </button>
                 </>

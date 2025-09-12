@@ -1,4 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
+import { useTranslation } from 'react-i18next';
 import { MdImage, MdPublic, MdPsychology, MdExpandMore, MdExpandLess, MdPerson, MdSettings, MdTune, MdLibraryBooks } from 'react-icons/md';
 import { useSignals } from '@preact/signals-react/runtime';
 import type { CreateAssistantDto, PrivateAssistantDto, ReasoningEffort, ChatToolDto } from '../../types/assistantModels';
@@ -23,6 +24,7 @@ const AssistantModal: React.FC<AssistantModalProps> = ({
   onClose
 }) => {
   useSignals();
+  const { t } = useTranslation();
   const modelsSignal = getModels();
   const toolsSignal = getTools();
   const [isModelDropdownOpen, setIsModelDropdownOpen] = useState(false);
@@ -183,7 +185,7 @@ const AssistantModal: React.FC<AssistantModalProps> = ({
       <div className="modal-content">
         <div className="modal-header">
           <h2 className="modal-title">
-            {editingAssistant ? 'Edit Assistant' : 'Create Assistant'}
+            {editingAssistant ? t('assistants.editAssistant') : t('assistants.createAssistant')}
           </h2>
         </div>
         
@@ -205,34 +207,34 @@ const AssistantModal: React.FC<AssistantModalProps> = ({
             {activeSection === 'details' && (
               <div className="accordion-content">
                 <div className="form-group">
-                  <label className="form-label">Name</label>
+                  <label className="form-label">{t('assistants.form.name')}</label>
                   <input
                     type="text"
                     value={formData.name}
                     onChange={(e) => handleChange('name', e.target.value)}
                     className="form-input"
-                    placeholder="Enter assistant name"
+                    placeholder={t('assistants.form.namePlaceholder')}
                     disabled={loading}
                   />
                 </div>
 
                 <div className="form-group">
-                  <label className="form-label">Description</label>
+                  <label className="form-label">{t('assistants.form.description')}</label>
                   <textarea
                     value={formData.description}
                     onChange={(e) => handleChange('description', e.target.value)}
                     className="form-textarea"
-                    placeholder="Enter description (optional)"
+                    placeholder={t('assistants.form.description')}
                     disabled={loading}
                   />
                 </div>
 
                 <div className="form-group">
-                  <label className="form-label">Tags</label>
+                  <label className="form-label">{t('assistants.form.tags')}</label>
                   <TagField
                     tags={formData.tags || []}
                     onChange={(tags) => handleChange('tags', tags)}
-                    placeholder="Add tags..."
+                    placeholder={t('assistants.form.tagsPlaceholder')}
                     disabled={loading}
                   />
                 </div>
@@ -479,14 +481,14 @@ const AssistantModal: React.FC<AssistantModalProps> = ({
             className="button secondary"
             disabled={loading}
           >
-            Cancel
+            {t('common.cancel')}
           </button>
           <button
             onClick={handleSubmit}
             className="button primary"
             disabled={!formData.name.trim() || !formData.modelId || loading}
           >
-            {loading ? 'Saving...' : (editingAssistant ? 'Update' : 'Create')}
+            {loading ? t('assistants.saving') : (editingAssistant ? t('assistants.update') : t('common.create'))}
           </button>
         </div>
       </div>

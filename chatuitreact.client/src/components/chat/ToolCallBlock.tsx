@@ -1,3 +1,4 @@
+import { useTranslation } from 'react-i18next';
 import "./ToolCallBlock.css";
 
 type Props = {
@@ -34,6 +35,7 @@ export default function ToolCallBlock({
   resultText,
   isComplete,
 }: Props) {
+  const { t } = useTranslation();
   const prettyArgs = prettyMaybeJson(argsText);
   const prettyResult = prettyMaybeJson(resultText);
   const argsInline = argsText?.replace(/\s+/g, " ");
@@ -43,25 +45,25 @@ export default function ToolCallBlock({
     <details className={`toolcall ${isComplete ? "complete" : "running"}`}>
       <summary className="toolcall-summary">
         <span className="toolcall-title-clip">
-          <strong className="toolcall-name">{functionName ?? "ToolCall"}</strong>
+          <strong className="toolcall-name">{functionName ?? t('toolCall.defaultName')}</strong>
           {functionName ? (
             <span className="toolcall-args-inline">({argsPreview})</span>
           ) : (
             <span>: {functionLine}</span>
           )}
         </span>
-        <span className="toolcall-status">{isComplete ? "Done" : "Running…"}</span>
+        <span className="toolcall-status">{isComplete ? t('chat.status.done') : t('chat.status.running')}</span>
       </summary>
       <div className="toolcall-body">
         {argsText && (
           <div className="toolcall-section">
-            <div className="toolcall-title">Arguments</div>
+            <div className="toolcall-title">{t('toolCall.arguments')}</div>
             <pre className="toolcall-pre">{prettyArgs}</pre>
           </div>
         )}
         {resultText && (
           <div className="toolcall-section">
-            <div className="toolcall-title">Result</div>
+            <div className="toolcall-title">{t('toolCall.result')}</div>
             <pre className="toolcall-pre">{prettyResult}</pre>
           </div>
         )}

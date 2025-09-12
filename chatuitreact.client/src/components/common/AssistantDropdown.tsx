@@ -1,4 +1,5 @@
 import { useSignals } from '@preact/signals-react/runtime';
+import { useTranslation } from 'react-i18next';
 import { Icon } from './Icon';
 import { getSelectableAssistants, getCurrentAssistantId, setUserSelectedAssistantId } from '../../services/chatService';
 import { getAssistantCapabilities } from '../../utils/modelUtils';
@@ -13,6 +14,7 @@ interface AssistantDropdownProps {
 
 export default function AssistantDropdown({ isOpen, direction, onClose }: AssistantDropdownProps) {
   useSignals();
+  const { t } = useTranslation();
 
   const selectableAssistants = getSelectableAssistants().value || [];
   const currentAssistantId = getCurrentAssistantId().value;
@@ -35,11 +37,11 @@ export default function AssistantDropdown({ isOpen, direction, onClose }: Assist
     
     switch (capability) {
       case 'vision':
-        return <Icon key="vision" name="eye" {...iconProps} title="Vision" />;
+        return <Icon key="vision" name="eye" {...iconProps} title={t('assistants.capabilities.vision')} />;
       case 'tools':
-        return <Icon key="tools" name="globe" {...iconProps} title="Tools" />;
+        return <Icon key="tools" name="globe" {...iconProps} title={t('assistants.capabilities.tools')} />;
       case 'reasoning':
-        return <Icon key="reasoning" name="brain" {...iconProps} title="Reasoning" />;
+        return <Icon key="reasoning" name="brain" {...iconProps} title={t('assistants.capabilities.reasoning')} />;
       default:
         return null;
     }
@@ -63,7 +65,7 @@ export default function AssistantDropdown({ isOpen, direction, onClose }: Assist
             <div className="assistant-info">
               <span className="assistant-option-name">{assistant.name}</span>
               {assistant.type === 'system' && (
-                <span className="system-badge">System</span>
+                <span className="system-badge">{t('assistants.systemBadge')}</span>
               )}
               <div className="info-tooltip-container">
                 <Icon 
@@ -71,7 +73,7 @@ export default function AssistantDropdown({ isOpen, direction, onClose }: Assist
                   size={1} 
                   className="info-icon" 
                 />
-                <div className="info-tooltip">{assistant.description || 'No description available'}</div>
+                <div className="info-tooltip">{assistant.description || t('assistants.noDescriptionAvailable')}</div>
               </div>
             </div>
             <div className="assistant-capabilities">

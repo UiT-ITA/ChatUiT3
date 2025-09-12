@@ -1,5 +1,6 @@
 import { useState, useRef, useEffect } from 'react';
 import { useSignals } from '@preact/signals-react/runtime';
+import { useTranslation } from 'react-i18next';
 import { Icon } from '../common/Icon';
 import { getSelectableAssistants, getCurrentAssistantId } from '../../services/chatService';
 import AssistantDropdown from '../common/AssistantDropdown';
@@ -7,6 +8,7 @@ import './NewChatWelcome.css';
 
 export default function NewChatWelcome() {
   useSignals();
+  const { t } = useTranslation();
   const [isOpen, setIsOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
 
@@ -39,19 +41,19 @@ export default function NewChatWelcome() {
   return (
     <div className="new-chat-welcome">
       <div className="welcome-container">
-        <h1>Welcome to ChatUit</h1>
-        <p>Start a conversation with your AI assistant.</p>
+        <h1>{t('welcome.header')}</h1>
+        <p>{t('welcome.subheader')}</p>
         
         <div className="assistant-section">
-          <label>Choose your assistant:</label>
+          <label>{t('welcome.chooseAssistant')}</label>
           <div className="assistant-dropdown-container" ref={dropdownRef}>
             <button 
               type="button"
               className="assistant-dropdown-button"
               onClick={toggleDropdown}
-              title="Select AI assistant"
+              title={t('welcome.selectAssistant')}
             >
-              <span className="assistant-name">{selectedAssistant?.name || 'Assistant'}</span>
+              <span className="assistant-name">{selectedAssistant?.name || t('assistants.defaultAssistant')}</span>
               <Icon 
                 name={isOpen ? "arrowUp" : "arrowDown"} 
                 size={1.25} 
@@ -67,19 +69,19 @@ export default function NewChatWelcome() {
         </div>
 
         <div className="tips-section">
-          <h3>Tips:</h3>
+          <h3>{t('welcome.tips.title')}</h3>
           <div className="tips-container">
             <div className="tip-card">
-              <strong>Select the right assistant</strong>
-              <p>Choose an assistant that fits your needs.</p>
+              <strong>{t('welcome.tips.selectAssistant.title')}</strong>
+              <p>{t('welcome.tips.selectAssistant.description')}</p>
             </div>
             <div className="tip-card">
-              <strong>Upload files</strong>
-              <p>Drag and drop files into the chat.</p>
+              <strong>{t('welcome.tips.uploadFiles.title')}</strong>
+              <p>{t('welcome.tips.uploadFiles.description')}</p>
             </div>
             <div className="tip-card">
-              <strong>Ask clear questions</strong>
-              <p>Be specific for better responses.</p>
+              <strong>{t('welcome.tips.askQuestions.title')}</strong>
+              <p>{t('welcome.tips.askQuestions.description')}</p>
             </div>
           </div>
         </div>

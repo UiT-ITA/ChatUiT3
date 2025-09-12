@@ -1,19 +1,24 @@
 import { Link } from "react-router-dom";
+import { useTranslation } from 'react-i18next';
 import { getAssistants } from "../../services/assistantService";
 import { useSignals } from "@preact/signals-react/runtime";
 import type { AssistantDto, PrivateAssistantDto, SharedAssistantDto, SystemAssistantDto } from "../../types/assistantModels";
 
 export function AssistantList() {
   useSignals();
+  const { t } = useTranslation();
   const assistantList = getAssistants();
 
   if (assistantList.value === undefined) {
-    return <div>Loading assistants...</div>;
+    return <div>{t('common.loading')}</div>;
   }
 
   const renderAssistantLinks = (assistants: (PrivateAssistantDto | SystemAssistantDto | SharedAssistantDto)[], type: AssistantDto['type']) => {
     if (assistants.length === 0) {
-      return <div>No {type} assistants found.</div>;
+      const emptyStateKey = type === 'owned' ? 'assistants.emptyStates.noPersonalAssistants' :
+                           type === 'system' ? 'assistants.emptyStates.noSystemAssistants' :
+                           'assistants.emptyStates.noSharedAssistants';
+      return <div>{t(emptyStateKey)}</div>;
     }
     return (
       <ul>
@@ -28,13 +33,13 @@ export function AssistantList() {
 
   return (
     <div>
-      <h3>My Assistants</h3>
+      <h3>{t('assistants.myAssistants')}</h3>
       {renderAssistantLinks(assistantList.value.owned, 'owned')}
 
-      <h3>System Assistants</h3>
+      <h3>{t('assistants.systemAssistants')}</h3>
       {renderAssistantLinks(assistantList.value.system, 'system')}
 
-      <h3>Shared Assistants</h3>
+      <h3>{t('assistants.sharedAssistants')}</h3>
       {renderAssistantLinks(assistantList.value.shared, 'shared')}
     </div>
   );
