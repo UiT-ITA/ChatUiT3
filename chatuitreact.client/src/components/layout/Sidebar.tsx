@@ -7,6 +7,7 @@ import { useAuth } from '../../contexts/AuthContext';
 import { useTranslation } from 'react-i18next';
 import { ChatList } from '../chat/ChatList';
 import SettingsModal from '../settings/SettingsModal';
+import { DialogExample } from '../common/Dialog/DialogExample';
 
 interface SidebarProps {
   onToggleSidebar: () => void;
@@ -21,6 +22,7 @@ const Sidebar = ({ onToggleSidebar, isNarrow, isMobile, isMobileMenuOpen, onMobi
   const navigate = useNavigate();
   const { isAdmin, isAuthenticated, login, logout } = useAuth();
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
+  const [isDialogExampleOpen, setIsDialogExampleOpen] = useState(false);
 
   const getSidebarClass = () => {
     if (isMobile) {
@@ -76,6 +78,13 @@ const Sidebar = ({ onToggleSidebar, isNarrow, isMobile, isMobileMenuOpen, onMobi
             isNarrow={isNarrow}
           />
 
+          <SidebarButton
+            icon={<Icon name="eye" size={1.5} />}
+            text="Dialog Examples"
+            onClick={() => setIsDialogExampleOpen(true)}
+            isNarrow={isNarrow}
+          />
+
           {isAdmin && (
             <SidebarButton
               icon={<Icon name="admin" size={1.5} />}
@@ -119,6 +128,10 @@ const Sidebar = ({ onToggleSidebar, isNarrow, isMobile, isMobileMenuOpen, onMobi
       <SettingsModal
         isOpen={isSettingsOpen}
         onClose={() => setIsSettingsOpen(false)}
+      />
+      <DialogExample 
+        isOpen={isDialogExampleOpen}
+        onClose={() => setIsDialogExampleOpen(false)}
       />
     </>
   );

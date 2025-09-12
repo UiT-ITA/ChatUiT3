@@ -1,0 +1,364 @@
+/* Dialog Overlay */
+.dialog-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.5);
+  backdrop-filter: blur(8px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  animation: dialogFadeIn 0.2s ease-out;
+}
+
+@keyframes dialogFadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+/* Dialog Container */
+.dialog-container {
+  background: var(--bg-modal);
+  border: 1px solid var(--border-primary);
+  border-radius: 1rem;
+  display: flex;
+  flex-direction: column;
+  box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+  animation: dialogSlideIn 0.3s ease-out;
+  overflow: hidden;
+}
+
+@keyframes dialogSlideIn {
+  from {
+    opacity: 0;
+    transform: scale(0.95) translateY(-20px);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
+}
+
+/* Dialog Sizes */
+.dialog-size-small {
+  width: 90vw;
+  max-width: 28rem;
+  max-height: 32rem;
+}
+
+.dialog-size-medium {
+  width: 90vw;
+  max-width: 40rem;
+  max-height: 40rem;
+}
+
+.dialog-size-large {
+  width: 90vw;
+  max-width: 64rem;
+  height: 80vh;
+  max-height: 48rem;
+}
+
+.dialog-size-xl {
+  width: 95vw;
+  max-width: 80rem;
+  height: 85vh;
+  max-height: 60rem;
+}
+
+/* Dialog Header */
+.dialog-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 1.5rem 2rem;
+  border-bottom: 1px solid var(--border-primary);
+  background: var(--bg-secondary);
+  flex-shrink: 0;
+}
+
+.dialog-title {
+  margin: 0;
+  font-size: 1.5rem;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.dialog-close-button {
+  background: none;
+  border: none;
+  color: var(--text-secondary);
+  cursor: pointer;
+  padding: 0.5rem;
+  border-radius: 0.5rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s ease;
+}
+
+.dialog-close-button:hover {
+  background: var(--bg-toolbar-hover);
+  color: var(--text-primary);
+}
+
+/* Dialog Content */
+.dialog-content {
+  display: flex;
+  flex: 1;
+  overflow: hidden;
+}
+
+
+/* Dialog Sidebar */
+.dialog-sidebar {
+  width: 12rem;
+  background: var(--bg-sidebar);
+  border-right: 1px solid var(--border-primary);
+  padding: 1rem 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  flex-shrink: 0;
+}
+
+.dialog-sidebar-button {
+  background: none;
+  border: none;
+  color: var(--text-secondary);
+  cursor: pointer;
+  padding: 0.75rem 1.5rem;
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  font-size: 0.875rem;
+  font-weight: 500;
+  transition: all 0.2s ease;
+  text-align: left;
+  width: 100%;
+}
+
+.dialog-sidebar-button:hover {
+  background: var(--bg-sidebar-hover);
+  color: var(--text-primary);
+}
+
+.dialog-sidebar-button.active {
+  background: var(--bg-toolbar-active);
+  color: var(--accent-primary);
+  border-right: 2px solid var(--accent-primary);
+}
+
+.dialog-sidebar-button span {
+  flex: 1;
+}
+
+/* Dialog Main Content */
+.dialog-main {
+  flex: 1;
+  padding: 2rem;
+  overflow-y: auto;
+  background: var(--bg-main-page);
+}
+
+/* For dialogs without sidebar, reduce padding on smaller sizes */
+.dialog-content:not(.with-sidebar) .dialog-main {
+  padding: 1.5rem;
+}
+
+.dialog-size-small .dialog-main,
+.dialog-size-medium .dialog-main {
+  padding: 1.5rem;
+}
+
+/* Dialog Footer */
+.dialog-footer {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 0.75rem;
+  padding: 1.5rem 2rem;
+  border-top: 1px solid var(--border-primary);
+  background: var(--bg-secondary);
+  flex-shrink: 0;
+}
+
+/* Dialog Buttons */
+.dialog-button {
+  padding: 0.75rem 1.5rem;
+  border: none;
+  border-radius: 0.5rem;
+  font-size: 0.875rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  min-width: 4rem;
+  justify-content: center;
+}
+
+.dialog-button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.dialog-button-primary {
+  background: var(--accent-primary);
+  color: var(--text-on-accent);
+}
+
+.dialog-button-primary:hover:not(:disabled) {
+  background: var(--accent-primary-hover);
+}
+
+.dialog-button-secondary {
+  background: var(--bg-input);
+  color: var(--text-primary);
+  border: 1px solid var(--border-input);
+}
+
+.dialog-button-secondary:hover:not(:disabled) {
+  background: var(--bg-input-hover);
+}
+
+.dialog-button-danger {
+  background: var(--color-error);
+  color: var(--text-on-accent);
+}
+
+.dialog-button-danger:hover:not(:disabled) {
+  background: #ff4444;
+}
+
+/* Mobile Responsive */
+@media (max-width: 768px) {
+  .dialog-container {
+    width: 95vw;
+    height: 90vh;
+    margin: 1rem;
+  }
+
+  .dialog-size-small,
+  .dialog-size-medium,
+  .dialog-size-large,
+  .dialog-size-xl {
+    width: 95vw;
+    height: 90vh;
+    max-height: none;
+  }
+
+  .dialog-content.with-sidebar {
+    flex-direction: column;
+  }
+
+  .dialog-sidebar {
+    width: 100%;
+    flex-direction: row;
+    overflow-x: auto;
+    padding: 0.5rem;
+    border-right: none;
+    border-bottom: 1px solid var(--border-primary);
+  }
+
+  .dialog-sidebar-button {
+    white-space: nowrap;
+    padding: 0.5rem 1rem;
+    border-right: none;
+    border-radius: 0.5rem;
+    flex-shrink: 0;
+  }
+
+  .dialog-sidebar-button.active {
+    border-right: none;
+    border-bottom: 2px solid var(--accent-primary);
+  }
+
+  .dialog-main {
+    padding: 1rem;
+  }
+
+  .dialog-header {
+    padding: 1rem;
+  }
+
+  .dialog-footer {
+    padding: 1rem;
+    flex-direction: column-reverse;
+  }
+
+  .dialog-button {
+    width: 100%;
+  }
+}
+
+/* Scrollbar Styling */
+.dialog-main::-webkit-scrollbar {
+  width: 0.5rem;
+}
+
+.dialog-main::-webkit-scrollbar-track {
+  background: var(--scrollbar-track);
+}
+
+.dialog-main::-webkit-scrollbar-thumb {
+  background: var(--scrollbar-thumb);
+  border-radius: 0.25rem;
+}
+
+.dialog-main::-webkit-scrollbar-thumb:hover {
+  background: var(--scrollbar-thumb-hover);
+}
+
+.dialog-sidebar::-webkit-scrollbar {
+  height: 0.5rem;
+}
+
+.dialog-sidebar::-webkit-scrollbar-track {
+  background: var(--scrollbar-track);
+}
+
+.dialog-sidebar::-webkit-scrollbar-thumb {
+  background: var(--scrollbar-thumb);
+  border-radius: 0.25rem;
+}
+
+.dialog-sidebar::-webkit-scrollbar-thumb:hover {
+  background: var(--scrollbar-thumb-hover);
+}
+
+/* Focus management */
+.dialog-container {
+  outline: none;
+}
+
+.dialog-close-button:focus,
+.dialog-sidebar-button:focus,
+.dialog-button:focus {
+  outline: 2px solid var(--accent-primary);
+  outline-offset: 2px;
+}
+
+/* Animation for page transitions */
+.dialog-main {
+  animation: dialogContentFadeIn 0.2s ease-out;
+}
+
+@keyframes dialogContentFadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
