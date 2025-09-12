@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
-import { MdImage, MdPublic, MdPsychology, MdExpandMore, MdExpandLess, MdPerson, MdSettings, MdTune, MdLibraryBooks } from 'react-icons/md';
+import { MdImage, MdPublic, MdPsychology, MdExpandMore, MdExpandLess } from 'react-icons/md';
 import { useSignals } from '@preact/signals-react/runtime';
 import type { CreateAssistantDto, PrivateAssistantDto, ReasoningEffort, ChatToolDto } from '../../types/assistantModels';
 import { getModels } from '../../services/modelService';
