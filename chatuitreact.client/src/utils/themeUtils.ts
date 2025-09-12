@@ -16,7 +16,6 @@ export const SIZE_OPTIONS = [
 
 export function setTheme(themeName: ThemeName): void {
   document.documentElement.dataset.theme = themeName;
-  localStorage.setItem('theme', themeName);
 }
 
 export function setSize(sizeName: SizeName): void {
@@ -25,7 +24,6 @@ export function setSize(sizeName: SizeName): void {
   } else {
     document.documentElement.dataset.size = sizeName;
   }
-  localStorage.setItem('size', sizeName);
 }
 
 export function getCurrentTheme(): ThemeName {
@@ -34,21 +32,4 @@ export function getCurrentTheme(): ThemeName {
 
 export function getCurrentSize(): SizeName {
   return (document.documentElement.dataset.size as SizeName) || 'medium';
-}
-
-export function getStoredTheme(): ThemeName {
-  const stored = localStorage.getItem('theme') as ThemeName;
-  return stored && THEME_OPTIONS.some(option => option.value === stored) ? stored : 'dim';
-}
-
-export function getStoredSize(): SizeName {
-  const stored = localStorage.getItem('size') as SizeName;
-  return stored && SIZE_OPTIONS.some(option => option.value === stored) ? stored : 'medium';
-}
-
-export function initializeTheme(): void {
-  const savedTheme = getStoredTheme();
-  const savedSize = getStoredSize();
-  setTheme(savedTheme);
-  setSize(savedSize);
 }

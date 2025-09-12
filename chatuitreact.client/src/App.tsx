@@ -9,8 +9,6 @@ import LoadingIndicator from './components/common/LoadingIndicator';
 import './App.css';
 import './styles/theme.css';
 import ChatPage from './components/chat/ChatPage';
-import { useEffect } from 'react';
-import { initializeTheme } from './utils/themeUtils';
 import AssistantsPage from './components/assistants/AssistantsPage';
 
 const Home = () => {
@@ -41,10 +39,6 @@ const Home = () => {
 
 
 const App: React.FC = () => {
-  useEffect(() => {
-    initializeTheme();
-  }, []);
-
   return (
     <SettingsProvider>
       <BrowserRouter>

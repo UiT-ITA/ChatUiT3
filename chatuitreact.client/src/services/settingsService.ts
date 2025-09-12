@@ -1,5 +1,6 @@
 import { AppSettings, DEFAULT_SETTINGS } from '../types/settingsModels';
 import { setTheme, setSize } from '../utils/themeUtils';
+import { setScale } from '../utils/scaleUtils';
 import i18n from '../i18n';
 
 const SETTINGS_STORAGE_KEY = 'chatuit-settings';
@@ -9,7 +10,14 @@ export class SettingsService {
     try {
       const stored = localStorage.getItem(SETTINGS_STORAGE_KEY);
       if (!stored) {
-        return DEFAULT_SETTINGS;
+        // No stored settings - detect browser language and create initial settings
+        const browserLanguage = this.detectBrowserLanguage();
+        const initialSettings = {
+          ...DEFAULT_SETTINGS,
+          language: browserLanguage,
+        };
+        this.saveSettings(initialSettings);
+        return initialSettings;
       }
 
       const parsed = JSON.parse(stored);
@@ -27,6 +35,18 @@ export class SettingsService {
     }
   }
 
+  private static detectBrowserLanguage(): 'en-US' | 'no-NB' {
+    const browserLang = navigator.language || navigator.languages?.[0] || 'en-US';
+    
+    // Check if browser language matches our supported languages
+    if (browserLang.startsWith('no') || browserLang.startsWith('nb')) {
+      return 'no-NB';
+    }
+    
+    // Default to English for all other languages
+    return 'en-US';
+  }
+
   static saveSettings(settings: AppSettings): void {
     try {
       localStorage.setItem(SETTINGS_STORAGE_KEY, JSON.stringify(settings));
@@ -39,8 +59,9 @@ export class SettingsService {
     // Apply theme
     setTheme(settings.theme);
     
-    // Apply size
+    // Apply size (which is also used as scale)
     setSize(settings.size);
+    setScale(settings.size);
     
     // Apply language
     if (i18n.language !== settings.language) {
