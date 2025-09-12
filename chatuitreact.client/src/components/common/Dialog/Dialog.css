@@ -241,18 +241,29 @@
 
 /* Mobile Responsive */
 @media (max-width: 768px) {
+  .dialog-overlay {
+    display: block;
+  }
+
   .dialog-container {
-    width: 95vw;
-    height: 90vh;
-    margin: 1rem;
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100vw;
+    height: 100dvh;
+    margin: 0;
+    border-radius: 0;
+    border: none;
+    box-shadow: none;
   }
 
   .dialog-size-small,
   .dialog-size-medium,
   .dialog-size-large,
   .dialog-size-xl {
-    width: 95vw;
-    height: 90vh;
+    width: 100vw;
+    height: 100dvh;
+    max-width: none;
     max-height: none;
   }
 
@@ -276,6 +287,7 @@
     border-radius: 0.5rem;
     flex-shrink: 0;
     width: auto;
+    border-bottom: 2px solid transparent;
   }
 
   .dialog-sidebar-button.active {
