@@ -4,10 +4,11 @@
   align-items: center;
   height: 100%;
   padding: 1rem;
+
 }
 
 .welcome-container {
-  max-width: 62.5rem;
+  max-width: 40rem;
   margin: auto;
   text-align: center;
   background-color: var(--bg-secondary);

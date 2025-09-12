@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef } from 'react';
 import { MdClose } from 'react-icons/md';
 import './TagField.css';
 
