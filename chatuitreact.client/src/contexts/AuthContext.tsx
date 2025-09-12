@@ -35,7 +35,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     const initializeAuth = async () => {
       try {
         // Handle redirect from Microsoft login
-        await authService.initialize();
+        const result = await authService.initialize();
         
         // Check if we have a user account
         const currentAccount = authService.getAccount();
@@ -44,7 +44,12 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
           setAccount(currentAccount);
           setIsAuthenticated(true);
 
-          signalrService.startConnection();
+          // Only start SignalR if we're actually authenticated
+          try {
+            signalrService.startConnection();
+          } catch (signalrError) {
+            console.warn('Failed to start SignalR connection:', signalrError);
+          }
 
           // Extract roles from the account claims
           const userRoles: string[] = [];
@@ -64,10 +69,20 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
             role.toLowerCase() === 'administrator'
           );
           setIsAdmin(hasAdminRole);
-          
+        } else {
+          // No account found, ensure we're in unauthenticated state
+          setAccount(null);
+          setIsAuthenticated(false);
+          setRoles([]);
+          setIsAdmin(false);
         }
       } catch (error) {
         console.error('Authentication initialization error:', error);
+        // Reset to unauthenticated state on error
+        setAccount(null);
+        setIsAuthenticated(false);
+        setRoles([]);
+        setIsAdmin(false);
       } finally {
         setIsInitializing(false);
       }

@@ -4,6 +4,7 @@ import { msalConfig, loginRequest, apiRequest } from "../authConfig";
 class AuthService {
     private msalInstance: PublicClientApplication;
     private initialized: boolean = false;
+    private isInteractionInProgress: boolean = false;
   
     constructor() {
         this.msalInstance = new PublicClientApplication(msalConfig);
@@ -19,9 +20,17 @@ class AuthService {
             this.initialized = true;
 
             // Handle the redirect flow if coming back from login
-            return await this.msalInstance.handleRedirectPromise();
+            const result = await this.msalInstance.handleRedirectPromise();
+            
+            // Reset interaction flag after handling redirect
+            if (result) {
+                this.isInteractionInProgress = false;
+            }
+            
+            return result;
         } catch (error) {
             console.error("Error during MSAL initialization:", error);
+            this.isInteractionInProgress = false; // Reset on error
             return null;
         }
     }
@@ -78,10 +87,20 @@ class AuthService {
 
         const account = this.getAccount();
         if (!account) {
+            // Check if we're already trying to authenticate
+            if (this.isInteractionInProgress) {
+                console.log("Authentication already in progress, skipping login attempt");
+                return null;
+            }
+            
             // No account found, user needs to login
+            this.isInteractionInProgress = true;
             this.login();
             return null;
         }
+
+        // Reset the flag if we have an account
+        this.isInteractionInProgress = false;
 
         try {
             // Try to get token silently
@@ -94,7 +113,14 @@ class AuthService {
         } catch (error) {
             // If silent token acquisition fails, try interactive method
             if (error instanceof InteractionRequiredAuthError) {
-                this.msalInstance.acquireTokenRedirect(loginRequest);
+                // Check if we're already trying to authenticate
+                if (this.isInteractionInProgress) {
+                    console.log("Authentication already in progress, skipping redirect attempt");
+                    return null;
+                }
+                
+                this.isInteractionInProgress = true;
+                this.msalInstance.acquireTokenRedirect(apiRequest);
             }
             console.error("Error getting access token:", error);
             return null;
@@ -120,4 +146,3 @@ class AuthService {
 // Export a singleton instance
 const authService = new AuthService();
 export default authService;
-

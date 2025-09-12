@@ -16,6 +16,10 @@ async function apiService<T>(
   if (token) {
     headers.set("Authorization", `Bearer ${token}`);
   } else {
+    // If no token and user is not authenticated, throw an error to prevent unauthorized API calls
+    if (!authService.isAuthenticated()) {
+      throw new Error(`Authentication required for API call to ${endpoint}`);
+    }
     console.log("No token found, proceeding without authorization header.");
   }
 
@@ -25,6 +29,10 @@ async function apiService<T>(
   });
 
   if (!response.ok) {
+    // If we get a 401 and the user should be authenticated, it might be a token issue
+    if (response.status === 401 && authService.isAuthenticated()) {
+      console.warn("Received 401 despite being authenticated. Token may have expired.");
+    }
     throw new Error(`API call failed: ${response.status} ${response.statusText}`);
   }
 
