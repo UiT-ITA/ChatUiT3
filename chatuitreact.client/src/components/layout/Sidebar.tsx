@@ -78,12 +78,12 @@ const Sidebar = ({ onToggleSidebar, isNarrow, isMobile, isMobileMenuOpen, onMobi
             isNarrow={isNarrow}
           />
 
-          <SidebarButton
+          {/* <SidebarButton
             icon={<Icon name="eye" size={1.5} />}
             text="Dialog Examples"
             onClick={() => setIsDialogExampleOpen(true)}
             isNarrow={isNarrow}
-          />
+          /> */}
 
           {isAdmin && (
             <SidebarButton

@@ -1,7 +1,8 @@
 import React from 'react';
 import { useTranslation } from 'react-i18next';
-import { MdContentCopy } from 'react-icons/md';
 import type { PrivateAssistantDto } from '../../types/assistantModels';
+import { Dialog } from '../common/Dialog';
+import { Icon } from '../common/Icon';
 import './ShareModal.css';
 
 interface ShareModalProps {
@@ -26,64 +27,56 @@ const ShareModal: React.FC<ShareModalProps> = ({
   const shareUrl = `${window.location.origin}/assistants?add=${assistant.id}`;
 
   return (
-    <div className="modal-overlay">
-      <div className="modal-content">
-        <div className="modal-header">
-          <h2 className="modal-title">{t('assistants.actions.shareAssistant')}</h2>
-        </div>
+    <Dialog
+      isOpen={isOpen}
+      onClose={onClose}
+      title={t('assistants.actions.shareAssistant')}
+      size="medium"
+    >
+      <div className="share-content">
+        <p className="share-description">
+          {t('assistants.shareDescription', { name: assistant.name })}
+        </p>
         
-        <div className="modal-body">
-          <p>{t('assistants.shareDescription', { name: assistant.name })}</p>
-          
-          <div className="share-option">
-            <label>{t('assistants.shareLink')}:</label>
-            <div className="share-link-container">
-              <input
-                type="text"
-                value={shareUrl}
-                readOnly
-                className="form-input"
-              />
-              <button
-                onClick={() => onCopyLink(assistant.id)}
-                className="button primary"
-                title={t('assistants.actions.copyLink')}
-              >
-                <MdContentCopy size={16} />
-              </button>
-            </div>
-          </div>
-
-          <div className="share-option">
-            <label>{t('assistants.assistantId')}:</label>
-            <div className="share-link-container">
-              <input
-                type="text"
-                value={assistant.id}
-                readOnly
-                className="form-input"
-              />
-              <button
-                onClick={() => onCopyGuid(assistant.id)}
-                className="button primary"
-                title={t('assistants.actions.copyId')}
-              >
-                <MdContentCopy size={16} />
-              </button>
-            </div>
+        <div className="share-option">
+          <label className="share-label">{t('assistants.shareLink')}:</label>
+          <div className="share-link-container">
+            <input
+              type="text"
+              value={shareUrl}
+              readOnly
+              className="share-input"
+            />
+            <button
+              onClick={() => onCopyLink(assistant.id)}
+              className="share-copy-button"
+              title={t('assistants.actions.copyLink')}
+            >
+              <Icon name="copy" size={1} />
+            </button>
           </div>
         </div>
 
-        <div className="modal-footer">
-          <button
-            onClick={onClose}
-            className="button secondary"
-          >
-            {t('common.close')}
-          </button>
+        <div className="share-option">
+          <label className="share-label">{t('assistants.assistantId')}:</label>
+          <div className="share-link-container">
+            <input
+              type="text"
+              value={assistant.id}
+              readOnly
+              className="share-input"
+            />
+            <button
+              onClick={() => onCopyGuid(assistant.id)}
+              className="share-copy-button"
+              title={t('assistants.actions.copyId')}
+            >
+              <Icon name="copy" size={1} />
+            </button>
+          </div>
         </div>
       </div>
-    </div>
+    </Dialog>
   );
 };
 

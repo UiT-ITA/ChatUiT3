@@ -1,6 +1,6 @@
-import { useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import type { ChatFileDto, CreateChatFileDto } from '../../types/chatModels';
+import { Dialog } from '../common/Dialog';
 import './FilePreviewModal.css';
 
 interface FilePreviewModalProps {
@@ -10,15 +10,6 @@ interface FilePreviewModalProps {
 
 const FilePreviewModal = ({ file, onClose }: FilePreviewModalProps) => {
   const { t } = useTranslation();
-  
-  useEffect(() => {
-    const handleEscape = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') onClose();
-    };
-    
-    document.addEventListener('keydown', handleEscape);
-    return () => document.removeEventListener('keydown', handleEscape);
-  }, [onClose]);
 
   if (!file) return null;
 
@@ -33,29 +24,28 @@ const FilePreviewModal = ({ file, onClose }: FilePreviewModalProps) => {
             : `data:image/jpeg;base64,${file.content}`
           } 
           alt={filename}
-          className="modal-image"
+          className="file-preview-image"
         />
       );
     } else if (file.type === 'Text') {
       return (
-        <pre className="modal-text">{file.content}</pre>
+        <pre className="file-preview-text">{file.content}</pre>
       );
     }
-    return <div className="modal-text">{t('files.typeNotSupported')}</div>;
+    return <div className="file-preview-unsupported">{t('files.typeNotSupported')}</div>;
   };
 
   return (
-    <div className="file-modal-overlay" onClick={onClose}>
-      <div className="file-modal" onClick={(e) => e.stopPropagation()}>
-        <div className="file-modal-header">
-          <h3>{filename}</h3>
-          <button className="file-modal-close" onClick={onClose}>×</button>
-        </div>
-        <div className="file-modal-content">
-          {renderContent()}
-        </div>
+    <Dialog
+      isOpen={!!file}
+      onClose={onClose}
+      title={filename}
+      size="xl"
+    >
+      <div className="file-preview-content">
+        {renderContent()}
       </div>
-    </div>
+    </Dialog>
   );
 };
 
