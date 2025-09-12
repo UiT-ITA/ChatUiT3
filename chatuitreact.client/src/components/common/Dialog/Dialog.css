@@ -275,6 +275,7 @@
     border-right: none;
     border-radius: 0.5rem;
     flex-shrink: 0;
+    width: auto;
   }
 
   .dialog-sidebar-button.active {
