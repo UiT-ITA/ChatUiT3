@@ -35,7 +35,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     const initializeAuth = async () => {
       try {
         // Handle redirect from Microsoft login
-        const result = await authService.initialize();
+        await authService.initialize();
         
         // Check if we have a user account
         const currentAccount = authService.getAccount();
