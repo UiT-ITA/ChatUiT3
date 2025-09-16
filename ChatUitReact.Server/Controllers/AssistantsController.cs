@@ -139,6 +139,7 @@ public class AssistantsController : ControllerBase
     [HttpPost("shared/{assistantId}")]
     public async Task<ActionResult> AddSharedAssistant(string assistantId)
     {
+        Console.WriteLine("Adding shared assistant " + assistantId);
         try
         {
             var userId = GetCurrentUserId();
