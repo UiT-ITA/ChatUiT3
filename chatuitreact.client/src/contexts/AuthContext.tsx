@@ -7,6 +7,8 @@ import signalrService from '../services/signalrService';
 interface AuthContextType {
   isAuthenticated: boolean;
   isInitializing: boolean;
+  isSignalRConnected: boolean;
+  isAppReady: boolean;
   account: AccountInfo | null;
   roles: string[];
   isAdmin: boolean;
@@ -27,6 +29,7 @@ interface AuthProviderProps {
 export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const [isAuthenticated, setIsAuthenticated] = useState<boolean>(false);
   const [isInitializing, setIsInitializing] = useState<boolean>(true);
+  const [isSignalRConnected, setIsSignalRConnected] = useState<boolean>(false);
   const [account, setAccount] = useState<AccountInfo | null>(null);
   const [roles, setRoles] = useState<string[]>([]);
   const [isAdmin, setIsAdmin] = useState<boolean>(false);
@@ -46,9 +49,11 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
           // Only start SignalR if we're actually authenticated
           try {
-            signalrService.startConnection();
+            await signalrService.startConnection();
+            setIsSignalRConnected(true);
           } catch (signalrError) {
             console.warn('Failed to start SignalR connection:', signalrError);
+            setIsSignalRConnected(false);
           }
 
           // Extract roles from the account claims
@@ -91,10 +96,15 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     initializeAuth();
   }, []);
 
+  // Calculate if app is ready (both auth and SignalR are ready)
+  const isAppReady = isAuthenticated && isSignalRConnected;
+
   // Auth context value
   const contextValue: AuthContextType = {
     isAuthenticated,
     isInitializing,
+    isSignalRConnected,
+    isAppReady,
     account,
     roles,
     isAdmin,

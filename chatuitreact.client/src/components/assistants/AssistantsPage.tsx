@@ -1,11 +1,11 @@
 import React, { useEffect, useState } from 'react';
-import { useParams } from 'react-router-dom';
+import { useParams, useSearchParams, useNavigate } from 'react-router-dom';
 import { MdAdd } from 'react-icons/md';
 import { useSignals } from '@preact/signals-react/runtime';
 import { useTranslation } from 'react-i18next';
 import './AssistantsPage.css';
 import { setAssistantSidebar, clearSidebarContent } from '../../services/sidebarService';
-import { getAssistants, deleteAssistant, toggleVisibility } from '../../services/assistantService';
+import { getAssistants, deleteAssistant, toggleVisibility, addSharedAssistant } from '../../services/assistantService';
 import type { PrivateAssistantDto } from '../../types/assistantModels';
 import AssistantCard from './AssistantCard';
 import AddExternalAssistant from './AddExternalAssistant';
@@ -16,6 +16,8 @@ const AssistantsPage: React.FC = () => {
   useSignals();
   const { t } = useTranslation();
   const { assistantId } = useParams<{ assistantId?: string }>();
+  const [searchParams, setSearchParams] = useSearchParams();
+  const navigate = useNavigate();
   const assistantList = getAssistants();
   const [shareModalAssistant, setShareModalAssistant] = useState<PrivateAssistantDto | null>(null);
   const [showCreateModal, setShowCreateModal] = useState(false);
@@ -29,6 +31,27 @@ const AssistantsPage: React.FC = () => {
       clearSidebarContent();
     };
   }, []);
+
+  // Handle shared assistant URL parameter
+  useEffect(() => {
+    const addAssistantId = searchParams.get('add');
+    if (addAssistantId) {
+      const handleAddFromUrl = async () => {
+        try {
+          await addSharedAssistant(addAssistantId);
+          
+          // Clear the URL parameter after processing
+          const newSearchParams = new URLSearchParams(searchParams);
+          newSearchParams.delete('add');
+          setSearchParams(newSearchParams, { replace: true });
+        } catch (error) {
+          console.error('Failed to add shared assistant from URL:', error);
+        }
+      };
+
+      handleAddFromUrl();
+    }
+  }, [searchParams, setSearchParams]);
 
   const handleToggleVisibility = async (id: string) => {
     try {
