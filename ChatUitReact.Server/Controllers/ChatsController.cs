@@ -224,7 +224,8 @@ public class ChatsController : ControllerBase
             Name = chat.Name,
             CreatedAt = chat.CreatedAt,
             UpdatedAt = chat.UpdatedAt,
-            Status = chat.Status
+            Status = chat.Status,
+            AssistantId = chat.AssistantId
         };
     }
 

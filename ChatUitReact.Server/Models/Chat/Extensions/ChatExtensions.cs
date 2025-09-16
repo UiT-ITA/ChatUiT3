@@ -10,6 +10,7 @@ public static class ChatExtensions
         return new ChatHeaderDto
         {
             Id = chat.Id,
+            AssistantId = chat.AssistantId,
             Name = chat.Name,
             CreatedAt = chat.CreatedAt,
             UpdatedAt = chat.UpdatedAt,
@@ -22,6 +23,7 @@ public static class ChatExtensions
         return new ChatHeaderDto
         {
             Id = chat.Id,
+            AssistantId = chat.AssistantId,
             Name = chat.Name,
             CreatedAt = chat.CreatedAt,
             UpdatedAt = chat.UpdatedAt,

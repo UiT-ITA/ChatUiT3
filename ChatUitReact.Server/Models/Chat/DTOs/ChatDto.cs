@@ -6,6 +6,7 @@ namespace ChatUitReact.Server.Models;
 public class ChatHeaderDto
 {
     public string Id { get; set; } = string.Empty;
+    public string AssistantId { get; set; } = string.Empty;
     public string Name { get; set; } = string.Empty;
     public DateTime CreatedAt { get; set; }
     public DateTime UpdatedAt { get; set; }
@@ -14,7 +15,6 @@ public class ChatHeaderDto
 
 public class ChatDto : ChatHeaderDto
 {
-    public string? AssistantId { get; set; }
     public List<ChatMessageDto> Messages { get; set; } = new List<ChatMessageDto>();
 }
 
@@ -39,7 +39,7 @@ public class ChatFileDto
 
 public class CreateChatDto
 {
-    public string? AssistantId { get; set; }
+    public string AssistantId { get; set; } = string.Empty;
     public List<ChatMessageDto> Messages { get; set; } = new List<ChatMessageDto>();
 }
 
@@ -47,7 +47,7 @@ public class SendMessageDto
 {
     public string Content { get; set; } = string.Empty;
     public List<ChatFileDto>? Files { get; set; }
-    public string? AssistantId { get; set; }
+    public string AssistantId { get; set; } = string.Empty;
 }
 
 public class ChatToolDto

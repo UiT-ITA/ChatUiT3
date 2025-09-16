@@ -24,6 +24,7 @@ export function getChats(): Signal<ChatHeaderDto[] | undefined> {
   if (chatListSignal.value === undefined && !chatListLoadingPromise) {
     invalidateChats();
   }
+  console.log("getChats called, current value:", chatListSignal.value);
   return chatListSignal;
 }
 
@@ -53,6 +54,7 @@ export async function createChat(content: string, assistantId: string, files?: C
       messages: [{
         content, 
         files,
+        assistantId
       }]
     };
 
@@ -68,6 +70,10 @@ export async function createChat(content: string, assistantId: string, files?: C
 export async function sendMessage(chatId: string, content: string, files?: CreateChatFileDto[]): Promise<void> {
   try {
     const assistantId = getCurrentAssistantId().value;
+    if (!assistantId) {
+      throw new Error("No assistant selected");
+    }
+    
     const messageDto: SendMessageDto = { 
       content,
       assistantId,
@@ -184,7 +190,7 @@ function getAutomaticAssistantId(): Signal<string | undefined> {
       const assistants = getAssistants().value;
       return assistants?.system[0]?.id;
     } else if (chatId) {
-      const chats = getChats().value;
+      const chats = chatListSignal.value;
       const chatHeader = chats?.find(c => c.id === chatId);
       return chatHeader?.assistantId || (getAssistants().value?.system[0]?.id);
     } else {

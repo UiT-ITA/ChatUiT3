@@ -33,7 +33,7 @@ export interface ChatMessageDto {
 
 export interface ChatHeaderDto {
   id: string;
-  assistantId?: string | null;
+  assistantId: string;
   name: string;
   createdAt: string;
   updatedAt: string;
@@ -55,11 +55,11 @@ export interface SendMessageDto {
   role?: AiChatRole;
   content: string;
   files?: CreateChatFileDto[] | null;
-  assistantId?: string | null;
+  assistantId: string;
 }
 
 
 export interface CreateChatDto {
-  assistantId?: string;
+  assistantId: string;
   messages: SendMessageDto[];
 }
