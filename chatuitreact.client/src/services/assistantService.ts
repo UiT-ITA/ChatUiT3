@@ -100,8 +100,8 @@ export async function deleteAssistant(id: string): Promise<void> {
 
 export async function toggleVisibility(id: string): Promise<void> {
     try {
-        await apiService(`/api/Assistants/${id}/toggle-visibility`, {
-            method: 'PATCH',
+        await apiService(`/api/Assistants/${id}/visibility`, {
+            method: 'POST',
         });
     } catch (error) {
         console.error(`Failed to toggle visibility for assistant with ID ${id}:`, error);
