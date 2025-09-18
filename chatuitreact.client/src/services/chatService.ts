@@ -24,7 +24,6 @@ export function getChats(): Signal<ChatHeaderDto[] | undefined> {
   if (chatListSignal.value === undefined && !chatListLoadingPromise) {
     invalidateChats();
   }
-  console.log("getChats called, current value:", chatListSignal.value);
   return chatListSignal;
 }
 

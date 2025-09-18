@@ -52,23 +52,16 @@ class SignalrService {
         this.registerEventHandlers();
       }
 
-      console.log("Starting SignalR connection...");
-
       if (this.connection.state === signalR.HubConnectionState.Disconnected) {
         await this.connection.start();
       }
-
-      console.log("SignalR connected with connection ID:", this.connection.connectionId);
 
       while (this.connection.state !== signalR.HubConnectionState.Connected) {
         if (this.connection.state === signalR.HubConnectionState.Disconnected) {
           throw new Error("Connection failed");
         }
-        console.log("Waiting for SignalR connection...");
         await new Promise(resolve => setTimeout(resolve, 10));
       }
-
-      console.log("SignalR connection established.");
 
       this.isInitialized = true;
     } catch (error) {

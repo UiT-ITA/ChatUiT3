@@ -89,7 +89,6 @@ class AuthService {
         if (!account) {
             // Check if we're already trying to authenticate
             if (this.isInteractionInProgress) {
-                console.log("Authentication already in progress, skipping login attempt");
                 return null;
             }
             
@@ -115,7 +114,6 @@ class AuthService {
             if (error instanceof InteractionRequiredAuthError) {
                 // Check if we're already trying to authenticate
                 if (this.isInteractionInProgress) {
-                    console.log("Authentication already in progress, skipping redirect attempt");
                     return null;
                 }
                 

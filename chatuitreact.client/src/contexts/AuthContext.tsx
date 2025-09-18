@@ -54,16 +54,12 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
     const initializeAuth = async () => {
       try {
-        console.log("Initializing authentication...");
         await authService.initialize();
         const currentAccount = authService.getAccount();
-        
-        console.log("Current account:", currentAccount);
         if (currentAccount) {
           setAccount(currentAccount);
           setIsAuthenticated(true);
 
-          console.log("Ensuring SignalR connection...");
           try {
             await signalrService.ensureConnection();
             setIsSignalRConnected(signalrService.isConnected());
@@ -72,12 +68,8 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
             setIsSignalRConnected(false);
           }
 
-          console.log("Extracting user roles...");
-
-          // Extract roles from the account claims
           const userRoles: string[] = [];
           
-          // In Azure AD, roles are present in the idTokenClaims
           if (currentAccount.idTokenClaims && 
               currentAccount.idTokenClaims.roles && 
               Array.isArray(currentAccount.idTokenClaims.roles)) {
@@ -86,7 +78,6 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
           
           setRoles(userRoles);
           
-          // Check if the user has admin role
           const hasAdminRole = userRoles.some(role => 
             role.toLowerCase() === 'admin' || 
             role.toLowerCase() === 'administrator'
