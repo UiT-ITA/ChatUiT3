@@ -35,26 +35,44 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const [isAdmin, setIsAdmin] = useState<boolean>(false);
 
   useEffect(() => {
+    let authInitialized = false;
+    let authPromise: Promise<void> | null = null;
+
+    const ensureAuthInitialization = async () => {
+      if (authInitialized) {
+        return;
+      }
+
+      if (authPromise) {
+        return authPromise;
+      }
+
+      authPromise = initializeAuth();
+      await authPromise;
+      authPromise = null;
+    };
+
     const initializeAuth = async () => {
       try {
-        // Handle redirect from Microsoft login
+        console.log("Initializing authentication...");
         await authService.initialize();
-        
-        // Check if we have a user account
         const currentAccount = authService.getAccount();
         
+        console.log("Current account:", currentAccount);
         if (currentAccount) {
           setAccount(currentAccount);
           setIsAuthenticated(true);
 
-          // Only start SignalR if we're actually authenticated
+          console.log("Ensuring SignalR connection...");
           try {
-            await signalrService.startConnection();
-            setIsSignalRConnected(true);
+            await signalrService.ensureConnection();
+            setIsSignalRConnected(signalrService.isConnected());
           } catch (signalrError) {
             console.warn('Failed to start SignalR connection:', signalrError);
             setIsSignalRConnected(false);
           }
+
+          console.log("Extracting user roles...");
 
           // Extract roles from the account claims
           const userRoles: string[] = [];
@@ -74,26 +92,25 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
             role.toLowerCase() === 'administrator'
           );
           setIsAdmin(hasAdminRole);
+          setIsInitializing(false);
+          authInitialized = true;
         } else {
-          // No account found, ensure we're in unauthenticated state
-          setAccount(null);
-          setIsAuthenticated(false);
-          setRoles([]);
-          setIsAdmin(false);
+          console.log("No account found, triggering auto-redirect to login...");
+          await authService.getAccessToken();
+          return;
         }
       } catch (error) {
         console.error('Authentication initialization error:', error);
-        // Reset to unauthenticated state on error
         setAccount(null);
         setIsAuthenticated(false);
         setRoles([]);
         setIsAdmin(false);
-      } finally {
         setIsInitializing(false);
+        authInitialized = true;
       }
     };
 
-    initializeAuth();
+    ensureAuthInitialization();
   }, []);
 
   // Calculate if app is ready (both auth and SignalR are ready)

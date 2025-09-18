@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { useParams, useSearchParams, useNavigate } from 'react-router-dom';
+import { useParams, useSearchParams } from 'react-router-dom';
 import { MdAdd } from 'react-icons/md';
 import { useSignals } from '@preact/signals-react/runtime';
 import { useTranslation } from 'react-i18next';
@@ -17,7 +17,6 @@ const AssistantsPage: React.FC = () => {
   const { t } = useTranslation();
   const { assistantId } = useParams<{ assistantId?: string }>();
   const [searchParams, setSearchParams] = useSearchParams();
-  const navigate = useNavigate();
   const assistantList = getAssistants();
   const [shareModalAssistant, setShareModalAssistant] = useState<PrivateAssistantDto | null>(null);
   const [showCreateModal, setShowCreateModal] = useState(false);

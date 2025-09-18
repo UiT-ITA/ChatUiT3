@@ -15,7 +15,6 @@ import AssistantsPage from './components/assistants/AssistantsPage';
 const App: React.FC = () => {
   const { isAppReady } = useAuth();
 
-  // Show loading screen until both auth and SignalR are ready
   if (!isAppReady) {
     return <LoadingIndicator />;
   }

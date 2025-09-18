@@ -4,72 +4,86 @@ import { invalidateChat, invalidateChats, receiveMessageChunk, setStreamMessageC
 import { invalidateAssistants } from "./assistantService";
 
 class SignalrService {
+  private static instance: SignalrService;
   private connection: signalR.HubConnection | null = null;
-  private isConnecting: boolean = false;
-  private handlersRegistered: boolean = false;
+  private isInitialized: boolean = false;
+  private initPromise: Promise<void> | null = null;
 
-  public async startConnection(): Promise<void> {
-    if (this.isConnecting) {
+  public static getInstance(): SignalrService {
+    if (!SignalrService.instance) {
+      SignalrService.instance = new SignalrService();
+    }
+    return SignalrService.instance;
+  }
+
+  private constructor() {}
+
+  public async ensureConnection(): Promise<void> {
+    if (this.isInitialized && this.isConnected()) {
       return;
     }
 
-    if (this.connection?.state === signalR.HubConnectionState.Connected) {
-      return;
+    if (this.initPromise) {
+      return this.initPromise;
     }
 
-    if (this.connection?.state === signalR.HubConnectionState.Connecting) {
-      return;
-    }
+    this.initPromise = this.initialize();
+    await this.initPromise;
+    this.initPromise = null;
+  }
 
-    this.isConnecting = true;
-
+  private async initialize(): Promise<void> {
     try {
       const token = await authService.getAccessToken();
       if (!token) {
-        console.error("No access token found");
-        return;
+        throw new Error("No access token available");
       }
 
-      if (this.connection) {
-        await this.connection.stop();
-        this.connection = null;
-        this.handlersRegistered = false;
+      // Only create connection if it doesn't exist or is disconnected
+      if (!this.connection || this.connection.state === signalR.HubConnectionState.Disconnected) {
+        this.connection = new signalR.HubConnectionBuilder()
+          .withUrl("/chathub", {
+            accessTokenFactory: () => authService.getAccessToken().then(t => t || "")
+          })
+          .withAutomaticReconnect()
+          .configureLogging(signalR.LogLevel.Warning)
+          .build();
+
+        this.registerEventHandlers();
       }
 
-      this.connection = new signalR.HubConnectionBuilder()
-        .withUrl("/chathub", {
-          accessTokenFactory: () => token
-        })
-        .withAutomaticReconnect()
-        .configureLogging(signalR.LogLevel.Warning)
-        .build();
+      console.log("Starting SignalR connection...");
 
-      this.registerEventHandlers();
+      if (this.connection.state === signalR.HubConnectionState.Disconnected) {
+        await this.connection.start();
+      }
 
-      await this.connection.start();
-    } catch (err) {
-      console.error("SignalR Connection Error: ", err);
-      this.connection = null;
-      this.handlersRegistered = false;
-    } finally {
-      this.isConnecting = false;
+      console.log("SignalR connected with connection ID:", this.connection.connectionId);
+
+      while (this.connection.state !== signalR.HubConnectionState.Connected) {
+        if (this.connection.state === signalR.HubConnectionState.Disconnected) {
+          throw new Error("Connection failed");
+        }
+        console.log("Waiting for SignalR connection...");
+        await new Promise(resolve => setTimeout(resolve, 10));
+      }
+
+      console.log("SignalR connection established.");
+
+      this.isInitialized = true;
+    } catch (error) {
+      console.error("Failed to initialize SignalR connection:", error);
+      throw error;
     }
   }
 
   private registerEventHandlers(): void {
-    if (!this.connection || this.handlersRegistered) {
-      return;
-    }
+    if (!this.connection) return;
 
     const streamMessageCallback = async (messageId: string) => {
-      while (this.connection?.state !== signalR.HubConnectionState.Connected) {
-        if (this.connection?.state === signalR.HubConnectionState.Disconnected) {
-            console.warn("SignalR disconnected while waiting to stream:", messageId);
-            return;
-        }
-        await new Promise(resolve => setTimeout(resolve, 100));
+      if (this.connection?.state === signalR.HubConnectionState.Connected) {
+        this.connection.invoke("StreamMessage", messageId);
       }
-      this.connection.invoke("StreamMessage", messageId);
     };
     setStreamMessageCallback(streamMessageCallback);
 
@@ -92,27 +106,26 @@ class SignalrService {
     this.connection.on("Error", (message: string) => {
       console.error("SignalR Error:", message);
     });
-
-    this.handlersRegistered = true;
   }
 
-  public async stopConnection(): Promise<void> {
-    if (this.connection) {
-      await this.connection.stop();
-      this.connection = null;
-      this.handlersRegistered = false;
-      this.isConnecting = false;
-    }
+  public isConnected(): boolean {
+    return this.connection?.state === signalR.HubConnectionState.Connected;
   }
 
   public getConnectionState(): string {
     return this.connection?.state || "Disconnected";
   }
 
-  public isConnected(): boolean {
-    return this.connection?.state === signalR.HubConnectionState.Connected;
+  // Clean shutdown for app termination
+  public async shutdown(): Promise<void> {
+    if (this.connection) {
+      await this.connection.stop();
+      this.connection = null;
+      this.isInitialized = false;
+    }
   }
 }
 
-const signalrService = new SignalrService();
+// Export singleton instance
+const signalrService = SignalrService.getInstance();
 export default signalrService;
