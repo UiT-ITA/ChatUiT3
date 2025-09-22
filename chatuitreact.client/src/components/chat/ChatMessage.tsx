@@ -1,4 +1,5 @@
 import './ChatMessage.css';
+import './ChatMessageMarkdown.css';
 import { useSignals } from '@preact/signals-react/runtime';
 import { useMemo, useState, useLayoutEffect } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -17,6 +18,7 @@ import { Icon } from '../common/Icon';
 import FilePreview from './FilePreview';
 import { segmentToolCalls } from '../../utils/toolCallParser';
 import ToolCallBlock from './ToolCallBlock';
+import { markdownToHtml } from '../../utils/markdownUtils';
 
 interface ChatMessageProps {
   message: ChatMessageDto;
@@ -44,7 +46,14 @@ export default function ChatMessage({ message, onStreamingChunk }: ChatMessagePr
   const handleCopyMessage = async () => {
     try {
       setIsCopied(true);
-      await navigator.clipboard.writeText(displayContent);
+      
+      const htmlContent = markdownToHtml(displayContent);
+      const clipboardItem = new ClipboardItem({
+        'text/html': new Blob([htmlContent], { type: 'text/html' }),
+        'text/plain': new Blob([displayContent], { type: 'text/plain' })
+      });
+      
+      await navigator.clipboard.write([clipboardItem]);
       setTimeout(() => setIsCopied(false), 2000);
     } catch (err) {
       console.error('Failed to copy message:', err);

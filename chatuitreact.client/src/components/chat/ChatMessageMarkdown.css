@@ -1,0 +1,198 @@
+/* ===================================================
+   Chat Message Markdown Styling
+   ===================================================
+   
+   This file contains all markdown-specific styling for
+   chat messages, separated from component layout styles.
+*/
+
+/* ===================================================
+   HEADERS
+   =================================================== */
+.message-content :is(h1, h2, h3, h4, h5, h6) {
+  margin-top: 1.5rem;
+}
+
+.message-content :is(h1, h2, h3, h4, h5, h6) + p {
+  margin-top: 0rem;
+}
+
+/* ===================================================
+   PARAGRAPHS
+   =================================================== */
+.message-content p {
+  margin-top: 0.75rem;
+  margin-bottom: 0.75rem;
+  line-height: 1.7;
+}
+
+.message-content p + p {
+  margin-top: 0.375rem;
+}
+
+.message-content p:has(+ :is(ul, ol)) {
+  margin-bottom: 0;
+}
+
+/* ===================================================
+   LISTS - FIXED INDENTATION
+   =================================================== */
+.message-content ul,
+.message-content ol {
+  margin: 0.75rem 0;
+  padding-left: 0;
+  list-style-position: outside;
+}
+
+/* Root level list items */
+.message-content ul > li,
+.message-content ol > li {
+  margin: 0.25rem 0;
+  margin-left: 1.5rem;
+}
+
+/* Nested lists - proper indentation */
+.message-content li ul,
+.message-content li ol {
+  margin: 0.25rem 0;
+  margin-left: 1.5rem;
+  padding-left: 0;
+}
+
+/* Nested list items */
+.message-content li ul > li,
+.message-content li ol > li {
+  margin: 0.125rem 0;
+  margin-left: 1.5rem;
+}
+
+/* Third level nesting */
+.message-content li li ul,
+.message-content li li ol {
+  margin-left: 1.5rem;
+}
+
+.message-content li li ul > li,
+.message-content li li ol > li {
+  margin-left: 1.5rem;
+}
+
+/* ===================================================
+   TABLES
+   =================================================== */
+.message-content table {
+  border-collapse: collapse;
+  border: 1px solid var(--border-primary);
+  margin: 1rem 0;
+  width: 100%;
+  font-size: 0.875rem;
+  background-color: var(--bg-secondary);
+}
+
+.message-content th {
+  background-color: var(--bg-code-header);
+  border: 1px solid var(--border-primary);
+  padding: 0.75rem;
+  text-align: left;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.message-content td {
+  border: 1px solid var(--border-primary);
+  padding: 0.75rem;
+  color: var(--text-primary);
+}
+
+.message-content tr:nth-child(even) {
+  background-color: var(--bg-tertiary);
+}
+
+.message-content tr:hover {
+  background-color: var(--bg-accent-hover);
+}
+
+/* ===================================================
+   IMAGES
+   =================================================== */
+.message-content img {
+  max-width: 100%;
+  height: auto;
+  display: block;
+  border-radius: 0.25rem;
+  margin: 0.5rem 0;
+}
+
+/* ===================================================
+   CODE BLOCKS
+   =================================================== */
+.message-content .code-block-wrapper {
+  border: 1px solid var(--border-primary);
+  border-radius: 0.5rem;
+  margin: 0.625rem 0;
+  overflow: hidden;
+  position: relative;
+}
+
+.message-content .code-block-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background-color: var(--bg-code-header);
+  padding: 0.375rem 0.75rem;
+  color: var(--text-primary);
+  font-size: 0.875rem;
+  border-bottom: 1px solid var(--border-primary);
+}
+
+.message-content .language-name {
+  text-transform: lowercase;
+}
+
+.message-content .copy-code-button {
+  background-color: var(--bg-code-button);
+  color: var(--text-primary);
+  border: none;
+  border-radius: 0.25rem;
+  padding: 0.25rem 0.5rem;
+  cursor: pointer;
+  font-size: 0.8125rem;
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+  transition: background-color 0.2s ease;
+}
+
+.message-content .copy-code-button:hover {
+  background-color: var(--bg-accent-hover);
+}
+
+.message-content .copy-code-button:active {
+  background-color: var(--bg-accent-active);
+}
+
+.message-content .code-block-wrapper > div,
+.message-content .code-block-wrapper pre,
+.message-content .code-block-wrapper code {
+  margin: 0 !important;
+}
+
+.message-content .code-block-wrapper div[class*="syntax-highlighter"] {
+  margin: 0 !important;
+  padding: 1rem !important;
+  border-radius: 0 0 0.5rem 0.5rem !important;
+  overflow-x: auto;
+  background-color: var(--bg-code-block) !important;
+}
+
+/* ===================================================
+   CONTENT SPACING ADJUSTMENTS
+   =================================================== */
+/* Negative margins to keep bubbles compact while allowing internal spacing */
+.message-content > *:first-child {
+  margin-top: -0.375rem;
+}
+
+.message-content > *:last-child {
+  margin-bottom: -0.375rem;
+}
