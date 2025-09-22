@@ -10,9 +10,7 @@ import remarkGfm from 'remark-gfm';
 import remarkMath from 'remark-math';
 import rehypeKatex from 'rehype-katex';
 import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter';
-import { atomDark } from 'react-syntax-highlighter/dist/esm/styles/prism';
-// import { dracula } from 'react-syntax-highlighter/dist/esm/styles/prism';
-// import { oneLight } from 'react-syntax-highlighter/dist/esm/styles/prism';
+import { atomDark, dracula, oneLight } from 'react-syntax-highlighter/dist/esm/styles/prism';
 import 'katex/dist/katex.min.css';
 import { Icon } from '../common/Icon';
 import FilePreview from './FilePreview';
@@ -20,6 +18,8 @@ import { segmentToolCalls } from '../../utils/toolCallParser';
 import ToolCallBlock from './ToolCallBlock';
 import { markdownToHtml } from '../../utils/markdownUtils';
 import MermaidDiagram from './MermaidDiagram';
+import { useSettings } from '../../contexts/SettingsContext';
+import { getCodeblockTheme } from '../../utils/themeUtils';
 
 interface ChatMessageProps {
   message: ChatMessageDto;
@@ -29,7 +29,20 @@ interface ChatMessageProps {
 export default function ChatMessage({ message, onStreamingChunk }: ChatMessageProps) {
   useSignals();
   const { t } = useTranslation();
+  const { settings } = useSettings();
   const [isCopied, setIsCopied] = useState(false);
+
+  // Map theme names to actual style objects
+  const styleMap = {
+    oneLight: oneLight,
+    atomDark: atomDark,
+    dracula: dracula
+  };
+
+  const currentCodeblockStyle = useMemo(() => {
+    const themeName = getCodeblockTheme(settings.theme);
+    return styleMap[themeName as keyof typeof styleMap] || atomDark;
+  }, [settings.theme]);
 
   const streamSignal = useMemo(() => {
     return message.status === "Generating" ? getStreamSignal(message.id) : null;
@@ -140,7 +153,7 @@ export default function ChatMessage({ message, onStreamingChunk }: ChatMessagePr
               </button>
             </div>
             <SyntaxHighlighter
-              style={atomDark}
+              style={currentCodeblockStyle}
               language={language}
               PreTag="div"
               {...props}
