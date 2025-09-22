@@ -18,7 +18,7 @@ export default function ChatHistory() {
   
   const chatHistoryRef = useRef<HTMLDivElement>(null);
   const [shouldAutoScroll, setShouldAutoScroll] = useState(true);
-  const [prevScrollTop, setPrevScrollTop] = useState(0);
+  const prevScrollTopRef = useRef(0);
 
   const scrollToBottom = () => {
     if (chatHistoryRef.current) {
@@ -31,7 +31,7 @@ export default function ChatHistory() {
     
     const { scrollTop, scrollHeight, clientHeight } = chatHistoryRef.current;
     const distanceFromBottom = scrollHeight - scrollTop - clientHeight;
-    const scrollDirection = scrollTop > prevScrollTop ? 'down' : 'up';
+    const scrollDirection = scrollTop > prevScrollTopRef.current ? 'down' : 'up';
     
     if (scrollDirection === 'up' && distanceFromBottom > 0) {
       // Any upward scroll = disable auto-scroll immediately
@@ -41,18 +41,21 @@ export default function ChatHistory() {
       setShouldAutoScroll(true);
     }
     
-    setPrevScrollTop(scrollTop);
+    prevScrollTopRef.current = scrollTop;
   };
 
   const scrollToBottomIfShouldAutoScroll = () => {
     if (!chatHistoryRef.current) return;
     
     // Check scroll position in real-time to avoid race conditions
-    const { scrollTop, scrollHeight, clientHeight } = chatHistoryRef.current;
-    const distanceFromBottom = scrollHeight - scrollTop - clientHeight;
-    const isCurrentlyAtBottom = distanceFromBottom < 50; // Use original threshold during streaming
+    // const { scrollTop, scrollHeight, clientHeight } = chatHistoryRef.current;
+    // const distanceFromBottom = scrollHeight - scrollTop - clientHeight;
+    // const isCurrentlyAtBottom = distanceFromBottom < 50; 
     
-    if (isCurrentlyAtBottom) {
+    // if (isCurrentlyAtBottom) {
+    //   scrollToBottom();
+    // }
+    if (shouldAutoScroll) {
       scrollToBottom();
     }
   };
@@ -69,7 +72,7 @@ export default function ChatHistory() {
 
     chatContainer.addEventListener('scroll', handleScroll);
     return () => chatContainer.removeEventListener('scroll', handleScroll);
-  }, [shouldAutoScroll, prevScrollTop]);
+  }, []);
 
   // Handle new messages - always scroll to bottom and enable auto-scroll
   useLayoutEffect(() => {
