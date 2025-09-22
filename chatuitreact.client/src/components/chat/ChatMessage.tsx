@@ -19,6 +19,7 @@ import FilePreview from './FilePreview';
 import { segmentToolCalls } from '../../utils/toolCallParser';
 import ToolCallBlock from './ToolCallBlock';
 import { markdownToHtml } from '../../utils/markdownUtils';
+import MermaidDiagram from './MermaidDiagram';
 
 interface ChatMessageProps {
   message: ChatMessageDto;
@@ -102,28 +103,55 @@ export default function ChatMessage({ message, onStreamingChunk }: ChatMessagePr
     code({ node, inline, className, children, ...props }: any) {
       const match = /language-(\w+)/.exec(className || '');
       const codeText = String(children).replace(/\n$/, '');
-      return !inline && match ? (
-        <div className="code-block-wrapper">
-          <div className="code-block-header">
-            <span className="language-name">{match[1]}</span>
-            <button
-              className="copy-code-button"
-              onClick={() => handleCopyCode(codeText)}
-              title={t('chat.actions.copyCode')}
+      
+      if (!inline && match) {
+        const language = match[1];
+        
+        // Handle mermaid diagrams
+        if (language === 'mermaid') {
+          return (
+            <div className="code-block-wrapper">
+              <div className="code-block-header">
+                <span className="language-name">Mermaid Diagram</span>
+                <button
+                  className="copy-code-button"
+                  onClick={() => handleCopyCode(codeText)}
+                  title={t('chat.actions.copyCode')}
+                >
+                  <Icon name="copy" size={1} /> {t('chat.actions.copyCode')}
+                </button>
+              </div>
+              <MermaidDiagram chart={codeText} className="mermaid-in-chat" />
+            </div>
+          );
+        }
+        
+        // Handle regular code blocks
+        return (
+          <div className="code-block-wrapper">
+            <div className="code-block-header">
+              <span className="language-name">{language}</span>
+              <button
+                className="copy-code-button"
+                onClick={() => handleCopyCode(codeText)}
+                title={t('chat.actions.copyCode')}
+              >
+                <Icon name="copy" size={1} /> {t('chat.actions.copyCode')}
+              </button>
+            </div>
+            <SyntaxHighlighter
+              style={atomDark}
+              language={language}
+              PreTag="div"
+              {...props}
             >
-              <Icon name="copy" size={1} /> {t('chat.actions.copyCode')}
-            </button>
+              {codeText}
+            </SyntaxHighlighter>
           </div>
-          <SyntaxHighlighter
-            style={atomDark}
-            language={match[1]}
-            PreTag="div"
-            {...props}
-          >
-            {codeText}
-          </SyntaxHighlighter>
-        </div>
-      ) : (
+        );
+      }
+      
+      return (
         <code className={className} {...props}>
           {children}
         </code>
