@@ -41,6 +41,7 @@ public class SharedAssistantDto
     public List<string> Tags { get; set; } = new List<string>();
     public string ModelName { get; set; } = string.Empty;
     public bool IsVisible { get; set; }
+    public string CreatedBy { get; set; } = string.Empty;
 }
 
 public class CreateAssistantDto

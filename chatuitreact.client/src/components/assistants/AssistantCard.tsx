@@ -104,7 +104,14 @@ const AssistantCard: React.FC<AssistantCardProps> = ({
             {renderCapabilityIcon(capabilities.tools, <MdPublic size={16} />, t('assistants.capabilities.tools'))}
             {renderCapabilityIcon(capabilities.reasoning, <MdPsychology size={16} />, t('assistants.capabilities.reasoning'))}
           </div>
-          <div className="assistant-card-model">{modelName}</div>
+          {variant === 'shared' && (assistant as SharedAssistantDto).createdBy && (
+            <div className="assistant-creator">
+              {t('assistants.createdBy')} {(assistant as SharedAssistantDto).createdBy}
+            </div>
+          )}
+          <div className="assistant-card-model">
+            {modelName}
+          </div>
         </div>
       </div>
     </div>

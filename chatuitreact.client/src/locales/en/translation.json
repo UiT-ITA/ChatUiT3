@@ -132,6 +132,7 @@
       "copyLink": "Copy link",
       "copyId": "Copy ID"
     },
+    "createdBy": "Created by",
     "addExternal": {
       "title": "Add Shared Assistant",
       "placeholder": "Enter assistant ID",

@@ -132,6 +132,7 @@
       "copyLink": "Kopier lenke",
       "copyId": "Kopier ID"
     },
+    "createdBy": "Opprettet av",
     "addExternal": {
       "title": "Legg til delt assistent",
       "placeholder": "Skriv inn assistent-ID",

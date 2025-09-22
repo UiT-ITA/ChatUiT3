@@ -224,7 +224,8 @@ namespace ChatUitReact.Server.Services
                     Description = assistant.Description,
                     Tags = assistant.Tags,
                     ModelName = assistant.Model.ModelName,
-                    IsVisible = user?.Preferences.VisibleAssistantIds.Contains(assistant.Id) ?? false
+                    IsVisible = user?.Preferences.VisibleAssistantIds.Contains(assistant.Id) ?? false,
+                    CreatedBy = assistant.OwnerId
                 }).ToList()
             };
         }

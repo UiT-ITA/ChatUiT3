@@ -30,6 +30,7 @@ export interface SharedAssistantDto {
     tags: string[];
     modelName: string;
     isVisible: boolean;
+    createdBy?: string;
 }
 
 export interface AssistantListDto {
