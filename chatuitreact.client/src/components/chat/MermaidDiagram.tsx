@@ -1,5 +1,7 @@
 import { useEffect, useState } from 'react';
 import mermaid from 'mermaid';
+import { useSettings } from '../../contexts/SettingsContext';
+import { getMermaidTheme } from '../../utils/themeUtils';
 import './MermaidDiagram.css';
 
 interface MermaidDiagramProps {
@@ -11,20 +13,20 @@ export default function MermaidDiagram({ chart, className = '' }: MermaidDiagram
   const [svg, setSvg] = useState<string>('');
   const [error, setError] = useState<string>('');
   const [loading, setLoading] = useState(true);
+  const { settings } = useSettings();
 
-  // Initialize mermaid once on mount
+  // Initialize mermaid when theme changes
   useEffect(() => {
+    const mermaidTheme = getMermaidTheme(settings.theme);
     mermaid.initialize({
       startOnLoad: false,
-      theme: 'dark',
+      theme: mermaidTheme,
       fontFamily: 'inherit',
-      fontSize: 16,
-      htmlLabels: false,
-      
+      htmlLabels: false
     });
-  }, []);
+  }, [settings.theme]);
 
-  // Render diagram when chart changes
+  // Render diagram when chart or theme changes
   useEffect(() => {
     const renderDiagram = async () => {
       if (!chart || !chart.trim()) {
@@ -51,7 +53,7 @@ export default function MermaidDiagram({ chart, className = '' }: MermaidDiagram
     };
 
     renderDiagram();
-  }, [chart]);
+  }, [chart, settings.theme]);
 
   if (loading) {
     return (
