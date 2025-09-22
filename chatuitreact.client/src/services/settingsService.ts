@@ -1,6 +1,5 @@
 import { AppSettings, DEFAULT_SETTINGS } from '../types/settingsModels';
 import { setTheme, setSize } from '../utils/themeUtils';
-import { setScale } from '../utils/scaleUtils';
 import i18n from '../i18n';
 
 const SETTINGS_STORAGE_KEY = 'chatuit-settings';
@@ -56,14 +55,8 @@ export class SettingsService {
   }
 
   static applySettings(settings: AppSettings): void {
-    // Apply theme
     setTheme(settings.theme);
-    
-    // Apply size (which is also used as scale)
     setSize(settings.size);
-    setScale(settings.size);
-    
-    // Apply language
     if (i18n.language !== settings.language) {
       i18n.changeLanguage(settings.language);
     }
