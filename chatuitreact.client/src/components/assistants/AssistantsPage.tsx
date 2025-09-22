@@ -5,7 +5,7 @@ import { useSignals } from '@preact/signals-react/runtime';
 import { useTranslation } from 'react-i18next';
 import './AssistantsPage.css';
 import { setAssistantSidebar, clearSidebarContent } from '../../services/sidebarService';
-import { getAssistants, deleteAssistant, toggleVisibility, addSharedAssistant } from '../../services/assistantService';
+import { getAssistants, deleteAssistant, toggleVisibility, addSharedAssistant, invalidateAssistants } from '../../services/assistantService';
 import type { PrivateAssistantDto } from '../../types/assistantModels';
 import AssistantCard from './AssistantCard';
 import AddExternalAssistant from './AddExternalAssistant';
@@ -38,6 +38,9 @@ const AssistantsPage: React.FC = () => {
       const handleAddFromUrl = async () => {
         try {
           await addSharedAssistant(addAssistantId);
+          
+          // Manually refresh the assistants list to ensure UI updates
+          await invalidateAssistants();
           
           // Clear the URL parameter after processing
           const newSearchParams = new URLSearchParams(searchParams);
