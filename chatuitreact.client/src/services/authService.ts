@@ -1,4 +1,4 @@
-import { PublicClientApplication, AuthenticationResult, AccountInfo, InteractionRequiredAuthError } from "@azure/msal-browser";
+import { PublicClientApplication, AuthenticationResult, AccountInfo } from "@azure/msal-browser";
 import { msalConfig, loginRequest, apiRequest } from "../authConfig";
 
 class AuthService {
