@@ -56,49 +56,40 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       try {
         await authService.initialize();
         const currentAccount = authService.getAccount();
-        
-        if (!currentAccount) {
+        if (currentAccount) {
+          setAccount(currentAccount);
+          setIsAuthenticated(true);
+
+          try {
+            await signalrService.ensureConnection();
+            setIsSignalRConnected(signalrService.isConnected());
+          } catch (signalrError) {
+            console.warn('Failed to start SignalR connection:', signalrError);
+            setIsSignalRConnected(false);
+          }
+
+          const userRoles: string[] = [];
+          
+          if (currentAccount.idTokenClaims && 
+              currentAccount.idTokenClaims.roles && 
+              Array.isArray(currentAccount.idTokenClaims.roles)) {
+            userRoles.push(...currentAccount.idTokenClaims.roles);
+          }
+          
+          setRoles(userRoles);
+          
+          const hasAdminRole = userRoles.some(role => 
+            role.toLowerCase() === 'admin' || 
+            role.toLowerCase() === 'administrator'
+          );
+          setIsAdmin(hasAdminRole);
+          setIsInitializing(false);
+          authInitialized = true;
+        } else {
           console.log("No account found, triggering auto-redirect to login...");
           await authService.getAccessToken();
           return;
         }
-
-        const token = await authService.getAccessToken();
-        
-        if (!token) {
-          console.warn("Token acquisition failed, redirect in progress...");
-          return;
-        }
-
-        setAccount(currentAccount);
-        setIsAuthenticated(true);
-
-        const userRoles: string[] = [];
-        
-        if (currentAccount.idTokenClaims && 
-            currentAccount.idTokenClaims.roles && 
-            Array.isArray(currentAccount.idTokenClaims.roles)) {
-          userRoles.push(...currentAccount.idTokenClaims.roles);
-        }
-        
-        setRoles(userRoles);
-        
-        const hasAdminRole = userRoles.some(role => 
-          role.toLowerCase() === 'admin' || 
-          role.toLowerCase() === 'administrator'
-        );
-        setIsAdmin(hasAdminRole);
-
-        try {
-          await signalrService.ensureConnection();
-          setIsSignalRConnected(signalrService.isConnected());
-        } catch (signalrError) {
-          console.error('Failed to start SignalR connection:', signalrError);
-          setIsSignalRConnected(false);
-        }
-
-        setIsInitializing(false);
-        authInitialized = true;
       } catch (error) {
         console.error('Authentication initialization error:', error);
         setAccount(null);
