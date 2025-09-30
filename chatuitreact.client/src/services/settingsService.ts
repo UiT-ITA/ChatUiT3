@@ -1,6 +1,6 @@
 import { AppSettings, DEFAULT_SETTINGS } from '../types/settingsModels';
 import { setTheme, setSize } from '../utils/themeUtils';
-import i18n from '../i18n';
+import { initializeI18n } from '../i18n';
 
 const SETTINGS_STORAGE_KEY = 'chatuit-settings';
 
@@ -57,16 +57,13 @@ export class SettingsService {
   static applySettings(settings: AppSettings): void {
     setTheme(settings.theme);
     setSize(settings.size);
-    if (i18n.language !== settings.language) {
-      i18n.changeLanguage(settings.language);
-    }
   }
 
-  static updateSetting<K extends keyof AppSettings>(
+  static async updateSetting<K extends keyof AppSettings>(
     key: K,
     value: AppSettings[K],
     currentSettings: AppSettings
-  ): AppSettings {
+  ): Promise<AppSettings> {
     const newSettings = {
       ...currentSettings,
       [key]: value,
@@ -74,6 +71,10 @@ export class SettingsService {
 
     this.saveSettings(newSettings);
     this.applySettings(newSettings);
+    
+    if (key === 'language') {
+      await initializeI18n(value as string);
+    }
     
     return newSettings;
   }

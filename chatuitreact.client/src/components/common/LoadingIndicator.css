@@ -4,6 +4,8 @@
   align-items: center;
   justify-content: center;
   gap: 12px;
+  min-height: 100vh;
+  background-color: var(--bg-main-page);
 }
 
 .loading-container.loading-small {
@@ -21,8 +23,8 @@
 }
 
 .spinner-ring {
-  border: 3px solid rgba(0, 0, 0, 0.1);
-  border-left: 3px solid #007bff;
+  border: 3px solid var(--border-primary);
+  border-left: 3px solid var(--accent-primary);
   border-radius: 50%;
   animation: spin 1s linear infinite;
 }
@@ -65,21 +67,5 @@
   }
   100% {
     transform: rotate(360deg);
-  }
-}
-
-/* Dark mode support */
-@media (prefers-color-scheme: dark) {
-  .spinner-ring {
-    border: 3px solid rgba(255, 255, 255, 0.1);
-    border-left: 3px solid #007bff;
-  }
-  
-  .loading-small .spinner-ring {
-    border-width: 2px;
-  }
-  
-  .loading-large .spinner-ring {
-    border-width: 4px;
   }
 }

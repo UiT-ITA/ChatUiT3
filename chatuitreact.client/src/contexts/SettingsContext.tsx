@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { AppSettings } from '../types/settingsModels';
 import { SettingsService } from '../services/settingsService';
+import { initializeI18n } from '../i18n';
 
 interface SettingsContextType {
   settings: AppSettings;
@@ -17,14 +18,20 @@ interface SettingsProviderProps {
 
 export const SettingsProvider: React.FC<SettingsProviderProps> = ({ children }) => {
   const [settings, setSettings] = useState<AppSettings>(() => SettingsService.loadSettings());
+  const [isI18nReady, setIsI18nReady] = useState(false);
 
   useEffect(() => {
-    // Apply settings on initial load
-    SettingsService.applySettings(settings);
+    const initializeApp = async () => {
+      await initializeI18n(settings.language);
+      SettingsService.applySettings(settings);
+      setIsI18nReady(true);
+    };
+
+    initializeApp();
   }, []);
 
-  const updateSetting = <K extends keyof AppSettings>(key: K, value: AppSettings[K]) => {
-    const newSettings = SettingsService.updateSetting(key, value, settings);
+  const updateSetting = async <K extends keyof AppSettings>(key: K, value: AppSettings[K]) => {
+    const newSettings = await SettingsService.updateSetting(key, value, settings);
     setSettings(newSettings);
   };
 
@@ -42,6 +49,10 @@ export const SettingsProvider: React.FC<SettingsProviderProps> = ({ children }) 
     exportData,
     deleteAllData,
   };
+
+  if (!isI18nReady) {
+    return null;
+  }
 
   return (
     <SettingsContext.Provider value={contextValue}>
