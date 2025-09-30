@@ -88,6 +88,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         } else {
           console.log("No account found, triggering auto-redirect to login...");
           await authService.getAccessToken();
+          setIsInitializing(false);
           return;
         }
       } catch (error) {

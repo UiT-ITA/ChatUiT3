@@ -110,17 +110,14 @@ class AuthService {
             });
             return response.accessToken;
         } catch (error) {
-            // If silent token acquisition fails, try interactive method
-            if (error instanceof InteractionRequiredAuthError) {
-                // Check if we're already trying to authenticate
-                if (this.isInteractionInProgress) {
-                    return null;
-                }
-                
-                this.isInteractionInProgress = true;
-                this.msalInstance.acquireTokenRedirect(apiRequest);
-            }
             console.error("Error getting access token:", error);
+            
+            await this.msalInstance.clearCache();
+            
+            if (!this.isInteractionInProgress) {
+                this.isInteractionInProgress = true;
+                this.msalInstance.loginRedirect(loginRequest);
+            }
             return null;
         }
     }
