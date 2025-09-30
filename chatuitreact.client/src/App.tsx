@@ -1,18 +1,29 @@
-import React from 'react';
+import React, { useEffect, useRef } from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
-// import { useTranslation } from 'react-i18next';
+import { BrowserAuthError } from '@azure/msal-browser';
 import { useAuth } from './contexts/AuthContext';
 import MainLayout from './components/layout/MainLayout';
-// import ProtectedRoute from './components/common/ProtectedRoute';
 import LoadingIndicator from './components/common/LoadingIndicator';
 import './App.css';
 import './styles/theme.css';
 import ChatPage from './components/chat/ChatPage';
 import AssistantsPage from './components/assistants/AssistantsPage';
 
-
 const App: React.FC = () => {
-  const { isAppReady } = useAuth();
+  const { isAuthenticated, isInitializing, isAppReady, login } = useAuth();
+  const loginInitiatedRef = useRef(false);
+
+  useEffect(() => {
+    if (!isInitializing && !isAuthenticated && !loginInitiatedRef.current) {
+      loginInitiatedRef.current = true;
+      login().catch(error => {
+        if (!(error instanceof BrowserAuthError && 
+              error.errorCode === 'interaction_in_progress')) {
+          console.error('Login error:', error);
+        }
+      });
+    }
+  }, [isInitializing, isAuthenticated, login]);
 
   if (!isAppReady) {
     return <LoadingIndicator />;
