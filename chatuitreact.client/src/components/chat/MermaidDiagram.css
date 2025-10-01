@@ -3,6 +3,16 @@
   padding: 1rem;
   background: var(--bg-code-block);
   border-radius: 0.25rem;
+  max-width: 100%;
+  overflow: hidden;
+  contain: layout paint;
+}
+
+.mermaid-diagram svg {
+  display: block;
+  max-width: 100%;
+  width: 100% !important;
+  height: auto !important;
 }
 
 /* Loading state */

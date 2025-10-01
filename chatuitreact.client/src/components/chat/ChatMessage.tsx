@@ -1,7 +1,7 @@
 import './ChatMessage.css';
 import './ChatMessageMarkdown.css';
 import { useSignals } from '@preact/signals-react/runtime';
-import { useMemo, useState, useLayoutEffect } from 'react';
+import { useMemo, useState, useLayoutEffect, useRef, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import { getStreamSignal } from '../../services/chatService';
 import type { ChatMessageDto } from '../../types/chatModels';
@@ -106,11 +106,16 @@ export default function ChatMessage({ message, onStreamingChunk }: ChatMessagePr
       .catch(err => console.error('Failed to copy code:', err));
   };
 
+  const onStreamingChunkRef = useRef(onStreamingChunk);
+  useEffect(() => {
+    onStreamingChunkRef.current = onStreamingChunk;
+  }, [onStreamingChunk]);
+
   useLayoutEffect(() => {
-    if (isStreaming && onStreamingChunk) {
-      onStreamingChunk();
+    if (isStreaming) {
+      onStreamingChunkRef.current?.();
     }
-  }, [streamSignal?.value, isStreaming, onStreamingChunk]);
+  }, [streamSignal?.value, isStreaming]);
 
   const markdownComponents = {
     code({ node, inline, className, children, ...props }: any) {

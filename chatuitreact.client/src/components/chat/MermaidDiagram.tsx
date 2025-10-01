@@ -9,7 +9,7 @@ interface MermaidDiagramProps {
   className?: string;
 }
 
-export default function MermaidDiagram({ chart, className = '' }: MermaidDiagramProps) {
+function MermaidDiagram({ chart, className = '' }: MermaidDiagramProps) {
   const [svg, setSvg] = useState<string>('');
   const [error, setError] = useState<string>('');
   const [loading, setLoading] = useState(true);
@@ -34,13 +34,21 @@ export default function MermaidDiagram({ chart, className = '' }: MermaidDiagram
         return;
       }
 
+      let container: HTMLDivElement | null = null;
       try {
         setLoading(true);
         setError('');
 
+        const id = `mermaid-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+        container = document.createElement('div');
+        container.setAttribute('aria-hidden', 'true');
+        container.style.cssText = 'position:fixed;left:0;top:0;width:0;height:0;overflow:hidden;opacity:0;pointer-events:none;';
+        document.body.appendChild(container);
+
         const { svg: renderedSvg } = await mermaid.render(
-          `mermaid-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
-          chart.trim()
+          id,
+          chart.trim(),
+          container
         );
 
         setSvg(renderedSvg);
@@ -49,6 +57,9 @@ export default function MermaidDiagram({ chart, className = '' }: MermaidDiagram
         setError(err instanceof Error ? err.message : 'Failed to render diagram');
       } finally {
         setLoading(false);
+        if (container && container.parentElement === document.body) {
+          try { container.remove(); } catch {}
+        }
       }
     };
 
@@ -86,3 +97,5 @@ export default function MermaidDiagram({ chart, className = '' }: MermaidDiagram
     />
   );
 }
+
+export default MermaidDiagram;
