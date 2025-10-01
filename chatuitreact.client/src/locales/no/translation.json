@@ -278,5 +278,73 @@
     "defaultName": "Verktøykall",
     "arguments": "Argumenter",
     "result": "Resultat"
+  },
+  "roles": {
+    "User": "Bruker",
+    "Admin": "Admin",
+    "Beta": "Beta",
+    "Super": "Super",
+    "External": "Ekstern"
+  },
+  "admin": {
+    "tabs": {
+      "endpoints": "Endepunkter",
+      "models": "Modeller"
+    },
+    "endpoints": {
+      "title": "Endepunkter",
+      "add": {
+        "title": "Legg til endepunkt"
+      },
+      "list": {
+        "empty": "Ingen endepunkter konfigurert."
+      },
+      "actions": {
+        "edit": "Rediger",
+        "delete": "Slett"
+      },
+      "dialog": {
+        "edit": {
+          "title": "Rediger endepunkt"
+        },
+        "delete": {
+          "title": "Slett endepunkt",
+          "confirm": "Er du sikker på at du vil slette dette endepunktet?",
+          "blocked": "Dette endepunktet brukes av én eller flere modeller og kan ikke slettes."
+        }
+      },
+      "fields": {
+        "url": "URL",
+        "apiKey": "API-nøkkel",
+        "provider": "Tilbyder"
+      }
+    },
+    "models": {
+      "title": "Modeller",
+      "add": {
+        "title": "Legg til modell"
+      },
+      "list": {
+        "empty": "Ingen modeller konfigurert."
+      },
+      "actions": {
+        "edit": "Rediger",
+        "delete": "Slett"
+      },
+      "dialog": {
+        "edit": {
+          "title": "Rediger modell"
+        },
+        "delete": {
+          "title": "Slett modell",
+          "confirm": "Er du sikker på at du vil slette denne modellen?"
+        }
+      },
+      "fields": {
+        "modelName": "Modellnavn",
+        "endpoint": "Endepunkt",
+        "allowedRoles": "Tillatte roller"
+      }
+    }
   }
 }

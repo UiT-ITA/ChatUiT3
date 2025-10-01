@@ -278,5 +278,80 @@
     "defaultName": "ToolCall",
     "arguments": "Arguments",
     "result": "Result"
+  },
+  "roles": {
+    "User": "User",
+    "Admin": "Admin",
+    "Beta": "Beta",
+    "Super": "Super",
+    "External": "External"
+  },
+  "admin": {
+    "tabs": {
+      "endpoints": "Endpoints",
+      "models": "Models"
+    },
+    "endpoints": {
+      "title": "Endpoints",
+      "add": {
+        "title": "Add Endpoint"
+      },
+      "list": {
+        "empty": "No endpoints configured."
+      },
+      "actions": {
+        "edit": "Edit",
+        "delete": "Delete"
+      },
+      "dialog": {
+        "edit": {
+          "title": "Edit Endpoint"
+        },
+        "delete": {
+          "title": "Delete Endpoint",
+          "confirm": "Are you sure you want to delete this endpoint?",
+          "blocked": "This endpoint is in use by one or more models and cannot be deleted."
+        }
+      },
+      "fields": {
+        "url": "URL",
+        "apiKey": "API Key",
+        "provider": "Provider"
+      }
+    },
+    "endpointType": {
+      "AzureOpenAI": "Azure OpenAI",
+      "OpenAI": "OpenAI",
+      "Anthropic": "Anthropic",
+      "LlamaCpp": "Llama.cpp",
+      "Other": "Other"
+    },
+    "models": {
+      "title": "Models",
+      "add": {
+        "title": "Add Model"
+      },
+      "list": {
+        "empty": "No models configured."
+      },
+      "actions": {
+        "edit": "Edit",
+        "delete": "Delete"
+      },
+      "dialog": {
+        "edit": {
+          "title": "Edit Model"
+        },
+        "delete": {
+          "title": "Delete Model",
+          "confirm": "Are you sure you want to delete this model?"
+        }
+      },
+      "fields": {
+        "modelName": "Model name",
+        "endpoint": "Endpoint",
+        "allowedRoles": "Allowed roles"
+      }
+    }
   }
 }

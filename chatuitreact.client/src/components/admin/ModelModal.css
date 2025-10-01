@@ -1,0 +1,53 @@
+.admin-model-modal .form-group {
+  margin-bottom: 1rem;
+}
+
+.admin-model-modal .form-label {
+  display: block;
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: var(--text-primary);
+  margin-bottom: 0.375rem;
+}
+
+.admin-model-modal .form-input,
+.admin-model-modal .form-select {
+  width: 100%;
+  background-color: var(--bg-input);
+  border: 1px solid var(--border-input);
+  border-radius: 0.375rem;
+  padding: 0.5rem 0.75rem;
+  color: var(--text-primary);
+  font-size: 0.875rem;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+  box-sizing: border-box;
+}
+
+.admin-model-modal .form-input:focus,
+.admin-model-modal .form-select:focus {
+  outline: none;
+  border-color: var(--border-accent);
+  box-shadow: 0 0 0 0.1875rem hsl(from var(--border-accent) h s l / 0.2);
+}
+
+.admin-model-modal .form-input::placeholder {
+  color: var(--text-secondary);
+}
+
+.roles-wrap {
+  display: flex;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+}
+
+.role-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  color: var(--text-primary);
+}
+
+.role-item input[type="checkbox"] {
+  margin: 0;
+  accent-color: var(--accent-primary);
+}

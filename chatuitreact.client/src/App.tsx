@@ -8,6 +8,8 @@ import './App.css';
 import './styles/theme.css';
 import ChatPage from './components/chat/ChatPage';
 import AssistantsPage from './components/assistants/AssistantsPage';
+import AdminPage from './components/admin/AdminPage';
+import ProtectedRoute from './components/common/ProtectedRoute';
 
 const App: React.FC = () => {
   const { isAuthenticated, isInitializing, isAppReady, login } = useAuth();
@@ -38,14 +40,14 @@ const App: React.FC = () => {
           <Route path="/chat/new" element={<ChatPage />} />
           <Route path="/chat/:chatId" element={<ChatPage />} />
           <Route path="/assistants" element={<AssistantsPage />} />
-          {/* <Route 
+          <Route 
             path="/admin" 
             element={
               <ProtectedRoute requiredRole="admin">
-                <Home />
+                <AdminPage />
               </ProtectedRoute>
             } 
-          /> */}
+          />
           <Route path="*" element={<Navigate to="/" replace />} />
         </Route>
       </Routes>
