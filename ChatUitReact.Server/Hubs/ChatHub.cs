@@ -13,7 +13,7 @@ public interface IChatHubClient
     Task ChatUpdated(string chatId);
     Task ChatListUpdated();
     Task AssistantsUpdated();
-    Task Error(string message);
+    Task Notify(NotifyLevel level, string message);
 }
 
 [Authorize]

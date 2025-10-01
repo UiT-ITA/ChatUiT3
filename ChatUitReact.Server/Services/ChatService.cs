@@ -153,17 +153,19 @@ public class ChatService : IChatService
         var settings = await GetChatSettingsFromAssistant(userId, effectiveAssistantId);
         
         var modelWithEndpoint = await _modelService.GetModelWithEndpointAsync(settings.Model.Id);
-        if (modelWithEndpoint == null)
-        {
-            throw new InvalidOperationException($"Model {settings.Model.Id} not found or has no endpoint configured");
-        }
+if (modelWithEndpoint == null)
+{
+    await _hubContext.Clients.Group(userId).Notify(NotifyLevel.Error, "Selected model is unavailable or misconfigured.");
+    throw new InvalidOperationException($"Model {settings.Model.Id} not found or has no endpoint configured");
+}
         
         var (endpoint, model) = modelWithEndpoint.Value;
         
-        if (endpoint.EndpointType != EndpointType.AzureOpenAI)
-        {
-            throw new NotSupportedException($"Provider {endpoint.EndpointType} is not supported. Only Azure OpenAI is currently supported.");
-        }
+if (endpoint.EndpointType != EndpointType.AzureOpenAI)
+{
+    await _hubContext.Clients.Group(userId).Notify(NotifyLevel.Error, "The selected provider is not supported.");
+    throw new NotSupportedException($"Provider {endpoint.EndpointType} is not supported. Only Azure OpenAI is currently supported.");
+}
         
         var assistantMessage = new Models.ChatMessage
         {
@@ -206,6 +208,7 @@ public class ChatService : IChatService
                 assistantMessage.Status = AiChatStatus.Error;
                 await _databaseService.UpdateMessageAsync(userId, chatId, assistantMessage);
                 NotifyChatUpdated(userId, chatId);
+                await _hubContext.Clients.Group(userId).Notify(NotifyLevel.Error, "The model failed to complete your request. Please try again.");
             }
         });
     }
@@ -274,11 +277,13 @@ public class ChatService : IChatService
             var assistant = await _assistantService.GetAssistantByIdAsync(assistantId);
             if (assistant == null)
             {
+                await _hubContext.Clients.Group(userId).Notify(NotifyLevel.Error, "Selected assistant is invalid.");
                 throw new InvalidOperationException($"Assistant {assistantId} not found for user {userId}");
             }
             
             if (assistant.Model == null)
             {
+                await _hubContext.Clients.Group(userId).Notify(NotifyLevel.Error, "Selected assistant has no model configured.");
                 throw new InvalidOperationException($"Assistant {assistantId} has no model configured");
             }
             
@@ -301,6 +306,7 @@ public class ChatService : IChatService
             defaultModel = defaultModels.FirstOrDefault();
             if (defaultModel == null)
             {
+                await _hubContext.Clients.Group(userId).Notify(NotifyLevel.Error, "No models are configured. Please contact the administrator.");
                 throw new InvalidOperationException("No models available in the system");
             }
         }

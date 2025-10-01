@@ -4,6 +4,7 @@ import Sidebar from './Sidebar';
 import AppBar from './AppBar';
 import useMediaQuery from '../../hooks/useMediaQuery';
 import './MainLayout.css';
+import ToastContainer from '../common/ToastContainer';
 
 
 const MainLayout: React.FC = () => {
@@ -50,6 +51,7 @@ const MainLayout: React.FC = () => {
           isMobileMenuOpen={isMobileMenuOpen}
           onMobileClose={handleMobileClose}
         />
+        <ToastContainer />
         <div className="content-area">
           <main className="main-content">
             <Outlet />
@@ -65,6 +67,7 @@ const MainLayout: React.FC = () => {
         onToggleSidebar={toggleSidebar}
         isNarrow={isNarrow}
       />
+      <ToastContainer />
       <div className="content-area">
         <main className="main-content">
           <Outlet />
