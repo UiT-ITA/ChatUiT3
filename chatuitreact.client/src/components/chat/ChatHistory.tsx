@@ -4,7 +4,6 @@ import { useSignals } from '@preact/signals-react/runtime';
 import { useLayoutEffect, useRef, useState, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import ChatMessage from './ChatMessage';
-import ScrollToBottomButton from './ScrollToBottomButton';
 import LoadingIndicator from '../common/LoadingIndicator';
 
 export default function ChatHistory() {
@@ -47,23 +46,15 @@ export default function ChatHistory() {
   const scrollToBottomIfShouldAutoScroll = () => {
     if (!chatHistoryRef.current) return;
     
-    // Check scroll position in real-time to avoid race conditions
-    // const { scrollTop, scrollHeight, clientHeight } = chatHistoryRef.current;
-    // const distanceFromBottom = scrollHeight - scrollTop - clientHeight;
-    // const isCurrentlyAtBottom = distanceFromBottom < 50; 
-    
-    // if (isCurrentlyAtBottom) {
-    //   scrollToBottom();
-    // }
     if (shouldAutoScroll) {
       scrollToBottom();
     }
   };
 
-  const handleScrollToBottomClick = () => {
-    scrollToBottom();
-    setShouldAutoScroll(true);
-  };
+  // const handleScrollToBottomClick = () => {
+  //   scrollToBottom();
+  //   setShouldAutoScroll(true);
+  // };
 
   // Attach scroll event listener
   useEffect(() => {
@@ -110,10 +101,10 @@ export default function ChatHistory() {
         ))}
       </div>
       
-      <ScrollToBottomButton 
+      {/* <ScrollToBottomButton 
         chatContainerRef={chatHistoryRef}
         onScrollToBottom={handleScrollToBottomClick}
-      />
+      /> */}
     </div>
   )
 }
