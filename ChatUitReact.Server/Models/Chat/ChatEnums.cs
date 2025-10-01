@@ -29,3 +29,12 @@ public enum AiChatStatus
     Error,
     Cancelled,
 }
+
+[JsonConverter(typeof(JsonStringEnumConverter))]
+public enum NotifyLevel
+{
+    Info,
+    Success,
+    Warning,
+    Error
+}

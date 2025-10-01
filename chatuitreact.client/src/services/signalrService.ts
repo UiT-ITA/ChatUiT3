@@ -2,6 +2,8 @@ import * as signalR from "@microsoft/signalr";
 import authService from "./authService";
 import { invalidateChat, invalidateChats, receiveMessageChunk, setStreamMessageCallback } from "./chatService";
 import { invalidateAssistants } from "./assistantService";
+import { addNotification } from "./notificationService";
+import type { NotifyLevel } from "../types/notification";
 
 class SignalrService {
   private static instance: SignalrService;
@@ -92,13 +94,15 @@ class SignalrService {
       invalidateAssistants();
     });
 
+    this.connection.on("Notify", (level: NotifyLevel, message: string) => {
+      console.log("Notification received:", level, message);
+      addNotification({ level, message });
+    });
+
     this.connection.on("ReceiveMessageChunk", (messageId: string, chunk: string) => {
       receiveMessageChunk(messageId, chunk);
     });
 
-    this.connection.on("Error", (message: string) => {
-      console.error("SignalR Error:", message);
-    });
   }
 
   public isConnected(): boolean {

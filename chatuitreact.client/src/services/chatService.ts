@@ -12,6 +12,7 @@ const userSelectedAssistantIdSignal = signal<string | undefined>(undefined);
 
 const chatCache = new Map<string, Signal<ChatDto | undefined>>();
 const messageStreamCache = new Map<string, Signal<string>>();
+const chatNotFoundCache = new Map<string, Signal<boolean>>();
 
 let chatListLoadingPromise: Promise<void> | null = null;
 let streamMessageCallback: ((messageId: string) => void) | null = null;
@@ -126,8 +127,27 @@ export async function invalidateChat(chatId: string): Promise<void> {
     } else {
       chatCache.set(chatId, signal(chat));
     }
-  } catch (error) {
-    console.error(`Error invalidating chat ${chatId}:`, error);
+
+    // clear any prior not-found flag
+    const nf = chatNotFoundCache.get(chatId);
+    if (nf) nf.value = false;
+  } catch (error: any) {
+    const msg = typeof error?.message === "string" ? error.message : "";
+    const status = (error as any)?.status;
+    const is404 = status === 404 || msg.startsWith("API call failed: 404");
+    if (!is404) {
+      console.error(`Error invalidating chat ${chatId}:`, error);
+    }
+    let nf = chatNotFoundCache.get(chatId);
+    if (!nf) {
+      nf = signal<boolean>(false);
+      chatNotFoundCache.set(chatId, nf);
+    }
+    nf.value = !!is404;
+
+    if (!chatCache.get(chatId)) {
+      chatCache.set(chatId, signal<ChatDto | undefined>(undefined));
+    }
   }
 }
 
@@ -163,6 +183,15 @@ export function clearStreamCache(messageId?: string): void {
   } else {
     messageStreamCache.clear();
   }
+}
+
+export function getChatNotFound(chatId: string): Signal<boolean> {
+  let nf = chatNotFoundCache.get(chatId);
+  if (!nf) {
+    nf = signal<boolean>(false);
+    chatNotFoundCache.set(chatId, nf);
+  }
+  return nf;
 }
 
 export function getStreamCacheInfo(): { size: number; messageIds: string[] } {
