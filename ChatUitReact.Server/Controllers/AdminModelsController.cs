@@ -24,9 +24,21 @@ public class AdminModelsController : ControllerBase
             var modelDtos = models.Select(m => new ModelDto
             {
                 Id = m.Id,
+                ModelId = m.ModelId,
                 ModelName = m.ModelName,
+                Description = m.Description,
                 EndpointId = m.EndpointId,
-                AllowedRoles = m.AllowedRoles
+                AllowedRoles = m.AllowedRoles,
+                Capabilities = new ModelCapabilitiesDto
+                {
+                    SupportsVision = m.Capabilities.SupportsVision,
+                    SupportsReasoning = m.Capabilities.SupportsReasoning,
+                    SupportsFunctionCalling = m.Capabilities.SupportsFunctionCalling,
+                    SupportsTemperature = m.Capabilities.SupportsTemperature,
+                    MaxContextLength = m.Capabilities.MaxContextLength,
+                    MaxOutputLength = m.Capabilities.MaxOutputLength,
+                    KnowledgeCutoff = m.Capabilities.KnowledgeCutoff
+                }
             }).ToList();
 
             return Ok(modelDtos);
@@ -51,9 +63,21 @@ public class AdminModelsController : ControllerBase
             var modelDto = new ModelDto
             {
                 Id = model.Id,
+                ModelId = model.ModelId,
                 ModelName = model.ModelName,
+                Description = model.Description,
                 EndpointId = model.EndpointId,
-                AllowedRoles = model.AllowedRoles
+                AllowedRoles = model.AllowedRoles,
+                Capabilities = new ModelCapabilitiesDto
+                {
+                    SupportsVision = model.Capabilities.SupportsVision,
+                    SupportsReasoning = model.Capabilities.SupportsReasoning,
+                    SupportsFunctionCalling = model.Capabilities.SupportsFunctionCalling,
+                    SupportsTemperature = model.Capabilities.SupportsTemperature,
+                    MaxContextLength = model.Capabilities.MaxContextLength,
+                    MaxOutputLength = model.Capabilities.MaxOutputLength,
+                    KnowledgeCutoff = model.Capabilities.KnowledgeCutoff
+                }
             };
 
             return Ok(modelDto);
@@ -71,9 +95,21 @@ public class AdminModelsController : ControllerBase
         {
             var model = new Model
             {
+                ModelId = createDto.ModelId,
                 ModelName = createDto.ModelName,
+                Description = createDto.Description,
                 EndpointId = createDto.EndpointId,
-                AllowedRoles = createDto.AllowedRoles
+                AllowedRoles = createDto.AllowedRoles,
+                Capabilities = new ModelCapabilities
+                {
+                    SupportsVision = createDto.Capabilities.SupportsVision,
+                    SupportsReasoning = createDto.Capabilities.SupportsReasoning,
+                    SupportsFunctionCalling = createDto.Capabilities.SupportsFunctionCalling,
+                    SupportsTemperature = createDto.Capabilities.SupportsTemperature,
+                    MaxContextLength = createDto.Capabilities.MaxContextLength,
+                    MaxOutputLength = createDto.Capabilities.MaxOutputLength,
+                    KnowledgeCutoff = createDto.Capabilities.KnowledgeCutoff
+                }
             };
 
             var createdId = await _modelService.CreateModelAsync(model);
@@ -82,9 +118,21 @@ public class AdminModelsController : ControllerBase
             var modelDto = new ModelDto
             {
                 Id = model.Id,
+                ModelId = model.ModelId,
                 ModelName = model.ModelName,
+                Description = model.Description,
                 EndpointId = model.EndpointId,
-                AllowedRoles = model.AllowedRoles
+                AllowedRoles = model.AllowedRoles,
+                Capabilities = new ModelCapabilitiesDto
+                {
+                    SupportsVision = model.Capabilities.SupportsVision,
+                    SupportsReasoning = model.Capabilities.SupportsReasoning,
+                    SupportsFunctionCalling = model.Capabilities.SupportsFunctionCalling,
+                    SupportsTemperature = model.Capabilities.SupportsTemperature,
+                    MaxContextLength = model.Capabilities.MaxContextLength,
+                    MaxOutputLength = model.Capabilities.MaxOutputLength,
+                    KnowledgeCutoff = model.Capabilities.KnowledgeCutoff
+                }
             };
 
             return CreatedAtAction(nameof(GetModel), new { id = createdId }, modelDto);
@@ -108,9 +156,21 @@ public class AdminModelsController : ControllerBase
             var model = new Model
             {
                 Id = updateDto.Id,
+                ModelId = updateDto.ModelId,
                 ModelName = updateDto.ModelName,
+                Description = updateDto.Description,
                 EndpointId = updateDto.EndpointId,
-                AllowedRoles = updateDto.AllowedRoles
+                AllowedRoles = updateDto.AllowedRoles,
+                Capabilities = new ModelCapabilities
+                {
+                    SupportsVision = updateDto.Capabilities.SupportsVision,
+                    SupportsReasoning = updateDto.Capabilities.SupportsReasoning,
+                    SupportsFunctionCalling = updateDto.Capabilities.SupportsFunctionCalling,
+                    SupportsTemperature = updateDto.Capabilities.SupportsTemperature,
+                    MaxContextLength = updateDto.Capabilities.MaxContextLength,
+                    MaxOutputLength = updateDto.Capabilities.MaxOutputLength,
+                    KnowledgeCutoff = updateDto.Capabilities.KnowledgeCutoff
+                }
             };
 
             var updated = await _modelService.UpdateModelAsync(model);
@@ -122,9 +182,21 @@ public class AdminModelsController : ControllerBase
             var modelDto = new ModelDto
             {
                 Id = model.Id,
+                ModelId = model.ModelId,
                 ModelName = model.ModelName,
+                Description = model.Description,
                 EndpointId = model.EndpointId,
-                AllowedRoles = model.AllowedRoles
+                AllowedRoles = model.AllowedRoles,
+                Capabilities = new ModelCapabilitiesDto
+                {
+                    SupportsVision = model.Capabilities.SupportsVision,
+                    SupportsReasoning = model.Capabilities.SupportsReasoning,
+                    SupportsFunctionCalling = model.Capabilities.SupportsFunctionCalling,
+                    SupportsTemperature = model.Capabilities.SupportsTemperature,
+                    MaxContextLength = model.Capabilities.MaxContextLength,
+                    MaxOutputLength = model.Capabilities.MaxOutputLength,
+                    KnowledgeCutoff = model.Capabilities.KnowledgeCutoff
+                }
             };
 
             return Ok(modelDto);

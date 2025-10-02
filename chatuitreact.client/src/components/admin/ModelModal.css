@@ -51,3 +51,48 @@
   margin: 0;
   accent-color: var(--accent-primary);
 }
+
+/* Capabilities layout */
+.capabilities-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(13.75rem, 1fr));
+  gap: 0.5rem 1rem;
+  margin-top: 0.25rem;
+}
+
+@media (max-width: 40rem) {
+  .capabilities-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.cap-item {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  line-height: 1.4;
+  color: var(--text-primary);
+}
+
+.cap-item input[type="checkbox"] {
+  margin: 0;
+  accent-color: var(--accent-primary);
+}
+
+.capabilities-numbers {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(13.75rem, 1fr));
+  gap: 0.75rem 1rem;
+  margin-top: 0.75rem;
+}
+
+/* Remove number input spin buttons (no px-based spacing; only appearance overrides) */
+.admin-model-modal input[type="number"]::-webkit-outer-spin-button,
+.admin-model-modal input[type="number"]::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+
+.admin-model-modal input[type="number"] {
+  -moz-appearance: textfield;
+}

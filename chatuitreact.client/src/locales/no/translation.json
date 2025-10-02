@@ -341,9 +341,19 @@
         }
       },
       "fields": {
+        "modelId": "Modell-ID",
         "modelName": "Modellnavn",
+        "description": "Beskrivelse",
         "endpoint": "Endepunkt",
-        "allowedRoles": "Tillatte roller"
+        "allowedRoles": "Tillatte roller",
+        "capabilities": "Egenskaper",
+        "supportsVision": "Støtter visjon",
+        "supportsReasoning": "Støtter resonnering",
+        "supportsFunctionCalling": "Støtter funksjonskall",
+        "supportsTemperature": "Støtter temperatur",
+        "maxContextLength": "Maksimal kontekstlengde",
+        "maxOutputLength": "Maksimal utdata-lengde",
+        "knowledgeCutoff": "Kunnskapsgrense"
       }
     }
   }

@@ -98,9 +98,12 @@ const ModelsTab: React.FC = () => {
           mode="edit"
           initial={{
             id: editing.id,
+            modelId: editing.modelId,
             modelName: editing.modelName,
+            description: editing.description,
             endpointId: editing.endpointId,
-            allowedRoles: editing.allowedRoles
+            allowedRoles: editing.allowedRoles,
+            capabilities: editing.capabilities
           }}
           endpoints={endpoints}
           allRoles={ALL_ROLES}

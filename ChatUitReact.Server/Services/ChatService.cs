@@ -299,7 +299,7 @@ if (endpoint.EndpointType != EndpointType.AzureOpenAI)
         
         // Get default model for when no assistant is specified
         var defaultModels = await _modelService.GetAllModelsAsync();
-        var defaultModel = defaultModels.FirstOrDefault(m => m.ModelName == "gpt-4o");
+        var defaultModel = defaultModels.FirstOrDefault(m => m.ModelId == "gpt-4o");
         
         if (defaultModel == null)
         {

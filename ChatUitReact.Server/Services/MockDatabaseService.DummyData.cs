@@ -57,9 +57,21 @@ public partial class MockDatabaseService
                 var gpt4oModel = new Model
                 {
                     Id = "real-gpt-4o",
-                    ModelName = "gpt-4o",
+                    ModelId = "gpt-4o",
+                    ModelName = "GPT-4o",
+                    Description = "Azure GPT-4o",
                     EndpointId = "real-azure-endpoint",
-                    AllowedRoles = new List<UserRole> { UserRole.User, UserRole.Admin, UserRole.Beta, UserRole.Super }
+                    AllowedRoles = new List<UserRole> { UserRole.User, UserRole.Admin, UserRole.Beta, UserRole.Super },
+                    Capabilities = new ModelCapabilities
+                    {
+                        SupportsVision = true,
+                        SupportsReasoning = false,
+                        SupportsFunctionCalling = true,
+                        SupportsTemperature = true,
+                        MaxContextLength = 128_000,
+                        MaxOutputLength = 16_000,
+                        KnowledgeCutoff = new DateTime(2024, 6, 1)
+                    }
                 };
                 _models[gpt4oModel.Id] = gpt4oModel;
             }
@@ -67,9 +79,21 @@ public partial class MockDatabaseService
             var model1 = new Model
             {
                 Id = "model-1",
-                ModelName = "gpt-4",
+                ModelId = "gpt-4",
+                ModelName = "GPT 4",
+                Description = "OpenAI GPT-4",
                 EndpointId = "endpoint-1",
-                AllowedRoles = new List<UserRole> { UserRole.User, UserRole.Admin, UserRole.Beta, UserRole.Super }
+                AllowedRoles = new List<UserRole> { UserRole.User, UserRole.Admin, UserRole.Beta, UserRole.Super },
+                Capabilities = new ModelCapabilities
+                {
+                    SupportsVision = false,
+                    SupportsReasoning = false,
+                    SupportsFunctionCalling = true,
+                    SupportsTemperature = true,
+                    MaxContextLength = 8_192,
+                    MaxOutputLength = 8_192,
+                    KnowledgeCutoff = new DateTime(2023, 12, 1)
+                }
             };
 
             _models[model1.Id] = model1;
@@ -81,8 +105,21 @@ public partial class MockDatabaseService
         var defaultModel = _models.Values.FirstOrDefault() ?? new Model
         {
             Id = "default-model",
+            ModelId = "gpt-4o",
             ModelName = "Default Model",
-            EndpointId = "default-endpoint"
+            Description = "Default fallback model",
+            EndpointId = "default-endpoint",
+            AllowedRoles = new List<UserRole> { UserRole.User, UserRole.Admin },
+            Capabilities = new ModelCapabilities
+            {
+                SupportsVision = true,
+                SupportsReasoning = false,
+                SupportsFunctionCalling = true,
+                SupportsTemperature = true,
+                MaxContextLength = 128_000,
+                MaxOutputLength = 16_000,
+                KnowledgeCutoff = new DateTime(2024, 6, 1)
+            }
         };
 
         var systemAssistants = new List<Assistant>

@@ -56,9 +56,21 @@ public partial class MockDatabaseService
         return new Model
         {
             Id = model.Id,
+            ModelId = model.ModelId,
             ModelName = model.ModelName,
+            Description = model.Description,
             EndpointId = model.EndpointId,
-            AllowedRoles = new List<UserRole>(model.AllowedRoles)
+            AllowedRoles = new List<UserRole>(model.AllowedRoles),
+            Capabilities = new ModelCapabilities
+            {
+                SupportsVision = model.Capabilities.SupportsVision,
+                SupportsReasoning = model.Capabilities.SupportsReasoning,
+                SupportsFunctionCalling = model.Capabilities.SupportsFunctionCalling,
+                SupportsTemperature = model.Capabilities.SupportsTemperature,
+                MaxContextLength = model.Capabilities.MaxContextLength,
+                MaxOutputLength = model.Capabilities.MaxOutputLength,
+                KnowledgeCutoff = model.Capabilities.KnowledgeCutoff
+            }
         };
     }
 

@@ -348,9 +348,19 @@
         }
       },
       "fields": {
+        "modelId": "Model ID",
         "modelName": "Model name",
+        "description": "Description",
         "endpoint": "Endpoint",
-        "allowedRoles": "Allowed roles"
+        "allowedRoles": "Allowed roles",
+        "capabilities": "Capabilities",
+        "supportsVision": "Supports Vision",
+        "supportsReasoning": "Supports Reasoning",
+        "supportsFunctionCalling": "Supports Function Calling",
+        "supportsTemperature": "Supports Temperature",
+        "maxContextLength": "Max Context Length",
+        "maxOutputLength": "Max Output Length",
+        "knowledgeCutoff": "Knowledge Cutoff"
       }
     }
   }

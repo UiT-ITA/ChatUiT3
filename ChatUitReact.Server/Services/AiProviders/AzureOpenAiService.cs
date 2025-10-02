@@ -53,7 +53,7 @@ public class AzureOpenAiService
     {
         try
         {
-            var chatClient = _client.GetChatClient(settings.Model.ModelName);
+            var chatClient = _client.GetChatClient(settings.Model.ModelId);
             var chatMessages = ConvertToChatMessages(messages);
             if (!string.IsNullOrEmpty(settings.SystemPrompt))
             {
@@ -86,7 +86,7 @@ public class AzureOpenAiService
     {
         try
         {
-            var chatClient = _client.GetChatClient(model.ModelName);
+            var chatClient = _client.GetChatClient(model.ModelId);
             var chatMessages = ConvertToChatMessages(messages);
             if (!string.IsNullOrEmpty(settings.SystemPrompt))
             {
@@ -94,7 +94,7 @@ public class AzureOpenAiService
             }
             var options = BuildCompletionOptions(settings);
 
-            Console.WriteLine($"Streaming chat completion with model: {model.ModelName}, messages count: {chatMessages.Count}");
+            Console.WriteLine($"Streaming chat completion with model: {model.ModelId}, messages count: {chatMessages.Count}");
 
             return chatClient.CompleteChatStreamingAsync(chatMessages, options, cancellationToken);
         }
@@ -114,7 +114,7 @@ public class AzureOpenAiService
         string chatId,
         [EnumeratorCancellation] CancellationToken cancellationToken = default)
     {
-        var chatClient = _client.GetChatClient(settings.Model.ModelName);
+        var chatClient = _client.GetChatClient(settings.Model.ModelId);
         var chatMessages = ConvertToChatMessages(messages);
         if (!string.IsNullOrEmpty(settings.SystemPrompt))
         {

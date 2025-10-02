@@ -21,22 +21,41 @@ export interface UpdateEndpointDto {
 
 export type UserRole = 'User' | 'Admin' | 'Beta' | 'Super' | 'External';
 
+export interface ModelCapabilities {
+  supportsVision: boolean;
+  supportsReasoning: boolean;
+  supportsFunctionCalling: boolean;
+  supportsTemperature: boolean;
+  maxContextLength: number;
+  maxOutputLength: number;
+  knowledgeCutoff: string; // ISO date string
+}
+
 export interface ModelDto {
   id: string;
-  modelName: string;
+  modelId: string;      // Provider model identifier (e.g. "gpt-4o")
+  modelName: string;    // Friendly/display name
+  description: string;
   endpointId: string;
   allowedRoles: UserRole[];
+  capabilities: ModelCapabilities;
 }
 
 export interface CreateModelDto {
-  modelName: string;
+  modelId: string;      // Provider model identifier
+  modelName: string;    // Friendly/display name
+  description: string;
   endpointId: string;
   allowedRoles: UserRole[];
+  capabilities: ModelCapabilities;
 }
 
 export interface UpdateModelDto {
   id: string;
-  modelName: string;
+  modelId: string;      // Provider model identifier
+  modelName: string;    // Friendly/display name
+  description: string;
   endpointId: string;
   allowedRoles: UserRole[];
+  capabilities: ModelCapabilities;
 }
