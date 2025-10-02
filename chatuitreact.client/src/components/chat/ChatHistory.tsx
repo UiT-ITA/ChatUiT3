@@ -9,12 +9,12 @@ import LoadingIndicator from '../common/LoadingIndicator';
 export default function ChatHistory() {
   useSignals();
   const { t } = useTranslation();
-  
+
   const currentChatId = getCurrentChatId();
   const chatId = currentChatId.value;
   const chat = chatId ? getChat(chatId) : { value: undefined };
   const messages = chat.value?.messages || [];
-  
+
   const chatHistoryRef = useRef<HTMLDivElement>(null);
   const autoScrollRef = useRef(true);
   const prevScrollTopRef = useRef(0);
@@ -71,8 +71,9 @@ export default function ChatHistory() {
 
   // Handle new messages - always scroll to bottom and enable auto-scroll
   useLayoutEffect(() => {
-    autoScrollRef.current = true;
-    scrollToBottom();
+    if (autoScrollRef.current) {
+      scrollToBottom();
+    }
   }, [messages]);
 
   if (!chatId) {
@@ -104,7 +105,7 @@ export default function ChatHistory() {
           />
         ))}
       </div>
-      
+
     </div>
   )
 }
