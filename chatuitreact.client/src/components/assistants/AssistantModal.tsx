@@ -5,7 +5,7 @@ import { useSignals } from '@preact/signals-react/runtime';
 import type { CreateAssistantDto, PrivateAssistantDto, ReasoningEffort, ChatToolDto } from '../../types/assistantModels';
 import { getModels } from '../../services/modelService';
 import { getTools } from '../../services/toolService';
-import { enhanceModelsWithCapabilities, type EnhancedModel } from '../../utils/modelUtils';
+import type { UserModelDto } from '../../types/modelModels';
 import { createAssistant, updateAssistant } from '../../services/assistantService';
 import { Dialog, DialogPage, DialogButton } from '../common/Dialog';
 import TagField from '../common/TagField';
@@ -47,8 +47,8 @@ const AssistantModal: React.FC<AssistantModalProps> = ({
     reasoningEffort: 'None'
   });
 
-  // Enhanced models
-  const models: EnhancedModel[] = modelsSignal.value ? enhanceModelsWithCapabilities(modelsSignal.value) : [];
+  // Models from server (already include capabilities and description)
+  const models: UserModelDto[] = modelsSignal.value ?? [];
   const selectedModel = models.find(m => m.id === formData.modelId);
   
   // Available tools from service
@@ -233,7 +233,7 @@ const AssistantModal: React.FC<AssistantModalProps> = ({
               disabled={loading}
             >
               <span className="dropdown-text">
-                {selectedModel ? selectedModel.displayName : 'Select a model'}
+                    {selectedModel ? selectedModel.modelName : 'Select a model'}
               </span>
               {isModelDropdownOpen ? <MdExpandLess size="20px" /> : <MdExpandMore size="20px" />}
             </button>
@@ -247,7 +247,7 @@ const AssistantModal: React.FC<AssistantModalProps> = ({
                     onClick={() => handleModelChange(model.id)}
                   >
                     <div className="model-option-header">
-                      <span className="model-name">{model.displayName}</span>
+                      <span className="model-name">{model.modelName}</span>
                       <div className="model-capabilities-inline">
                         {renderCapabilityIcon('Vision', model.capabilities.vision, <MdImage size="16px" />)}
                         {renderCapabilityIcon('Tools', model.capabilities.tools, <MdPublic size="16px" />)}
@@ -269,7 +269,7 @@ const AssistantModal: React.FC<AssistantModalProps> = ({
           {selectedModel && (
             <div className="selected-model-info">
               <div className="selected-model-summary">
-                <strong>{selectedModel.displayName}</strong>
+                <strong>{selectedModel.modelName}</strong>
                 <div className="model-capabilities">
                   {renderCapabilityBadge('Vision', selectedModel.capabilities.vision, <MdImage size="16px" />)}
                   {renderCapabilityBadge('Tools', selectedModel.capabilities.tools, <MdPublic size="16px" />)}

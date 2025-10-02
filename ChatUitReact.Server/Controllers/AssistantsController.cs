@@ -179,12 +179,20 @@ public class AssistantsController : ControllerBase
         try
         {
             var models = await _modelService.GetAllModelsAsync();
-            var modelDtos = models.Select(m => new ModelDto
+            var modelDtos = models.Select(m => new UserModelDto
             {
                 Id = m.Id,
                 ModelName = m.ModelName,
-                EndpointId = m.EndpointId,
-                AllowedRoles = m.AllowedRoles
+                Description = m.Description,
+                Capabilities = new UserModelCapabilitiesDto
+                {
+                    Vision = m.Capabilities.SupportsVision,
+                    Reasoning = m.Capabilities.SupportsReasoning,
+                    Tools = m.Capabilities.SupportsFunctionCalling,
+                    ContextSize = m.Capabilities.MaxContextLength,
+                    MaxOutputTokens = m.Capabilities.MaxOutputLength,
+                    KnowledgeCutoff = m.Capabilities.KnowledgeCutoff.ToString("yyyy-MM")
+                }
             }).ToArray();
             return Ok(modelDtos);
         }

@@ -2,8 +2,9 @@ import { useSignals } from '@preact/signals-react/runtime';
 import { useTranslation } from 'react-i18next';
 import { Icon } from './Icon';
 import { getSelectableAssistants, getCurrentAssistantId, setUserSelectedAssistantId } from '../../services/chatService';
-import { getAssistantCapabilities } from '../../utils/modelUtils';
+import { getModels } from '../../services/modelService';
 import type { AssistantDto } from '../../types/assistantModels';
+import type { UserModelDto } from '../../types/modelModels';
 import './AssistantDropdown.css';
 
 interface AssistantDropdownProps {
@@ -19,6 +20,9 @@ export default function AssistantDropdown({ isOpen, direction, onClose }: Assist
   const selectableAssistants = getSelectableAssistants().value || [];
   const currentAssistantId = getCurrentAssistantId().value;
   const selectedAssistant = selectableAssistants.find(a => a.id === currentAssistantId) || selectableAssistants[0];
+
+  const modelsSignal = getModels();
+  const models: UserModelDto[] = modelsSignal.value ?? [];
 
   const handleSelectAssistant = (assistant: AssistantDto) => {
     setUserSelectedAssistantId(assistant.id);
@@ -54,7 +58,20 @@ export default function AssistantDropdown({ isOpen, direction, onClose }: Assist
   return (
     <div className={`assistant-dropdown ${dropdownClass}`}>
       {selectableAssistants.map((assistant) => {
-        const capabilities = getAssistantCapabilities(assistant);
+        const resolveModelName = (a: AssistantDto): string => {
+          if ('modelName' in a && a.modelName) return a.modelName;
+          return (a as any)?.model?.modelName || '';
+        };
+        const modelName = resolveModelName(assistant);
+        const modelResolved =
+          ('model' in (assistant as any) && (assistant as any).model?.id)
+            ? models.find(m => m.id === (assistant as any).model.id)
+            : models.find(m => m.modelName === modelName);
+        const capabilities = {
+          vision: !!modelResolved?.capabilities.vision,
+          tools: !!modelResolved?.capabilities.tools,
+          reasoning: !!modelResolved?.capabilities.reasoning,
+        };
         
         return (
           <div 

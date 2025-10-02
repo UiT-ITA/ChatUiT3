@@ -2,7 +2,9 @@ import React from 'react';
 import { useTranslation } from 'react-i18next';
 import { MdEdit, MdDelete, MdShare, MdVisibility, MdVisibilityOff, MdImage, MdPublic, MdPsychology } from 'react-icons/md';
 import type { PrivateAssistantDto, SystemAssistantDto, SharedAssistantDto } from '../../types/assistantModels';
-import { getAssistantCapabilities, getModelNameFromAssistant } from '../../utils/modelUtils';
+import { useSignals } from '@preact/signals-react/runtime';
+import { getModels } from '../../services/modelService';
+import type { UserModelDto } from '../../types/modelModels';
 import TagField from '../common/TagField';
 import './AssistantCard.css';
 
@@ -28,8 +30,30 @@ const AssistantCard: React.FC<AssistantCardProps> = ({
   onDelete
 }) => {
   const { t } = useTranslation();
-  const modelName = getModelNameFromAssistant(assistant);
-  const capabilities = getAssistantCapabilities(assistant);
+  useSignals();
+  const modelsSignal = getModels();
+  const models: UserModelDto[] = modelsSignal.value ?? [];
+
+  const resolveModelName = (a: AssistantType): string => {
+    if ('modelName' in a && a.modelName) return a.modelName;
+    if ('model' in a && (a as any).model?.modelName) return (a as any).model.modelName;
+    return '';
+  };
+  const modelName = resolveModelName(assistant);
+
+  const modelResolved = (() => {
+    if ('model' in assistant && (assistant as any).model?.id) {
+      return models.find(m => m.id === (assistant as any).model.id);
+    }
+    const name = modelName;
+    return models.find(m => m.modelName === name);
+  })();
+
+  const capabilities = {
+    vision: !!modelResolved?.capabilities.vision,
+    tools: !!modelResolved?.capabilities.tools,
+    reasoning: !!modelResolved?.capabilities.reasoning,
+  };
 
   const renderCapabilityIcon = (enabled: boolean, icon: React.ReactNode, title: string) => {
     if (!enabled) return null;
