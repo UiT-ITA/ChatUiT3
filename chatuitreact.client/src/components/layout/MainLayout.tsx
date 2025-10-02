@@ -11,7 +11,7 @@ const MainLayout: React.FC = () => {
   const [isNarrow, setIsNarrow] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const navigate = useNavigate();
-  const isMobile = useMediaQuery('(max-width: 799px)');
+  const isMobile = useMediaQuery('(max-width: 800px)');
 
 
 
