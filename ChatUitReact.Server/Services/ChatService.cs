@@ -111,7 +111,7 @@ public class ChatService : IChatService
 
         await _databaseService.UpdateChatAsync(userId, chatId, newTitle, newAssistantId);
 
-        if (newTitle != null)
+        if (newTitle != null || newAssistantId != null)
         {
             NotifyChatListUpdated(userId);
         }
@@ -150,6 +150,10 @@ public class ChatService : IChatService
         var messages = chat?.Messages ?? new();
         
         var effectiveAssistantId = assistantId ?? chat?.AssistantId;
+        if (!string.IsNullOrEmpty(assistantId) && chat != null && assistantId != chat.AssistantId)
+        {
+            await UpdateChatAsync(userId, chatId, null, assistantId);
+        }
         var settings = await GetChatSettingsFromAssistant(userId, effectiveAssistantId);
         
         var modelWithEndpoint = await _modelService.GetModelWithEndpointAsync(settings.Model.Id);
