@@ -9,7 +9,8 @@ public static class ToolCatalog
 {
   public static readonly ChatTool[] Tools =
   [
-    new WeatherTool()
+    new WeatherTool(),
+    new FetchTool()
   ];
 
   private static readonly IReadOnlyDictionary<string, ChatTool> ByFunctionName =

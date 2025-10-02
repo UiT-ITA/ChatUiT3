@@ -175,6 +175,18 @@ export default function ChatMessage({ message, onStreamingChunk }: ChatMessagePr
         </code>
       );
     },
+    a({ href, children, ...props }: any) {
+      return (
+        <a
+          href={href as string}
+          target="_blank"
+          rel="noopener noreferrer"
+          {...props}
+        >
+          {children}
+        </a>
+      );
+    },
   };
 
   return (
