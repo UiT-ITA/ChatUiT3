@@ -66,18 +66,14 @@ public class ChatService : IChatService
         return await _databaseService.GetChatByIdAsync(userId, chatId);
     }
 
-    public async Task<Chat> CreateChatAsync(string userId, string? assistantId, List<Models.ChatMessage> messages)
+    public async Task<Chat> CreateChatAsync(string userId, string assistantId, List<Models.ChatMessage> messages)
     {
         var settings = await GetChatSettingsFromAssistant(userId, assistantId);
         return await CreateChatAsync(userId, settings, messages, assistantId);
     }
 
-    public async Task<Chat> CreateChatAsync(string userId, ChatSettings settings, List<Models.ChatMessage> messages)
-    {
-        return await CreateChatAsync(userId, settings, messages, null);
-    }
 
-    private async Task<Chat> CreateChatAsync(string userId, ChatSettings settings, List<Models.ChatMessage> messages, string? assistantId)
+    private async Task<Chat> CreateChatAsync(string userId, ChatSettings settings, List<Models.ChatMessage> messages, string assistantId)
     {
         var lastMessage = messages.Last();
         var initialMessages = messages.Take(messages.Count - 1).ToList();
@@ -142,17 +138,22 @@ public class ChatService : IChatService
         await SendStreamingMessageAsync(userId, chatId, userMessage, null);
     }
 
-    public async Task SendStreamingMessageAsync(string userId, string chatId, Models.ChatMessage userMessage, string? assistantId)
+    public async Task SendStreamingMessageAsync(string userId, string chatId, Models.ChatMessage userMessage, string assistantId)
     {
         await _databaseService.AddMessageAsync(userId, chatId, userMessage);
         
         var chat = await GetChatByIdAsync(userId, chatId);
         var messages = chat?.Messages ?? new();
         
-        var effectiveAssistantId = assistantId ?? chat?.AssistantId;
-        if (!string.IsNullOrEmpty(assistantId) && chat != null && assistantId != chat.AssistantId)
+        var effectiveAssistantId = string.IsNullOrWhiteSpace(assistantId) ? chat?.AssistantId : assistantId;
+        if (chat != null && !string.IsNullOrWhiteSpace(assistantId) && assistantId != chat.AssistantId)
         {
             await UpdateChatAsync(userId, chatId, null, assistantId);
+        }
+        if (string.IsNullOrWhiteSpace(effectiveAssistantId))
+        {
+            await _hubContext.Clients.Group(userId).Notify(NotifyLevel.Error, "Assistant is required.");
+            throw new InvalidOperationException("AssistantId is required for chat operations");
         }
         var settings = await GetChatSettingsFromAssistant(userId, effectiveAssistantId);
         
@@ -274,48 +275,35 @@ if (endpoint.EndpointType != EndpointType.AzureOpenAI)
 
     #region Private helper methods
 
-    private async Task<ChatSettings> GetChatSettingsFromAssistant(string userId, string? assistantId)
+    private async Task<ChatSettings> GetChatSettingsFromAssistant(string userId, string assistantId)
     {
-        if (!string.IsNullOrEmpty(assistantId))
+        if (string.IsNullOrWhiteSpace(assistantId))
         {
-            var assistant = await _assistantService.GetAssistantByIdAsync(assistantId);
-            if (assistant == null)
-            {
-                await _hubContext.Clients.Group(userId).Notify(NotifyLevel.Error, "Selected assistant is invalid.");
-                throw new InvalidOperationException($"Assistant {assistantId} not found for user {userId}");
-            }
-            
-            if (assistant.Model == null)
-            {
-                await _hubContext.Clients.Group(userId).Notify(NotifyLevel.Error, "Selected assistant has no model configured.");
-                throw new InvalidOperationException($"Assistant {assistantId} has no model configured");
-            }
-            
-            return new ChatSettings 
-            { 
-                Model = assistant.Model,
-                SystemPrompt = assistant.ChatSettings?.SystemPrompt ?? string.Empty,
-                Temperature = assistant.ChatSettings?.Temperature ?? 0.7f,
-                ReasoningEffort = assistant.ChatSettings?.ReasoningEffort ?? ReasoningEffort.Medium,
-            AvailableToolIds = assistant.ChatSettings?.AvailableToolIds ?? new List<string>()
-            };
+            await _hubContext.Clients.Group(userId).Notify(NotifyLevel.Error, "Assistant is required.");
+            throw new InvalidOperationException("AssistantId is required");
         }
-        
-        // Get default model for when no assistant is specified
-        var defaultModels = await _modelService.GetAllModelsAsync();
-        var defaultModel = defaultModels.FirstOrDefault(m => m.ModelId == "gpt-4o");
-        
-        if (defaultModel == null)
+
+        var assistant = await _assistantService.GetAssistantByIdAsync(assistantId);
+        if (assistant == null)
         {
-            defaultModel = defaultModels.FirstOrDefault();
-            if (defaultModel == null)
-            {
-                await _hubContext.Clients.Group(userId).Notify(NotifyLevel.Error, "No models are configured. Please contact the administrator.");
-                throw new InvalidOperationException("No models available in the system");
-            }
+            await _hubContext.Clients.Group(userId).Notify(NotifyLevel.Error, "Selected assistant is invalid.");
+            throw new InvalidOperationException($"Assistant {assistantId} not found for user {userId}");
         }
-        
-        return new ChatSettings { Model = defaultModel };
+
+        if (assistant.ChatSettings?.Model == null)
+        {
+            await _hubContext.Clients.Group(userId).Notify(NotifyLevel.Error, "Selected assistant has no model configured.");
+            throw new InvalidOperationException($"Assistant {assistantId} has no model configured");
+        }
+
+        return new ChatSettings 
+        { 
+            Model = assistant.ChatSettings.Model,
+            SystemPrompt = assistant.ChatSettings.SystemPrompt,
+            Temperature = assistant.ChatSettings.Temperature,
+            ReasoningEffort = assistant.ChatSettings.ReasoningEffort,
+            AvailableToolIds = assistant.ChatSettings.AvailableToolIds
+        };
     }
 
     #endregion Private helper methods

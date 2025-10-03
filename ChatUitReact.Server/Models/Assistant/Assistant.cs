@@ -9,7 +9,6 @@ public class Assistant
     public string Name { get; set; } = string.Empty;
     public string Description { get; set; } = string.Empty;
     public List<string> Tags { get; set; } = new List<string>();
-    public Model Model { get; set; } = new Model();
     public ChatSettings ChatSettings { get; set; } = new ChatSettings();
     internal string OwnerId { get; set; } = string.Empty;
 }

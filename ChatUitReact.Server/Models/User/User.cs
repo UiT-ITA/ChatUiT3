@@ -15,7 +15,7 @@ public class UserPreferences
     public DisplaySettings Display { get; set; } = new DisplaySettings();
     public List<string> SharedAssistantIds { get; set; } = new List<string>();
     public List<string> FavoritedAssistantIds { get; set; } = new List<string>();
-    public List<string> VisibleAssistantIds { get; set; } = new List<string>();
+    public List<string> HiddenAssistantIds { get; set; } = new List<string>();
 }
 
 public class NotificationSettings

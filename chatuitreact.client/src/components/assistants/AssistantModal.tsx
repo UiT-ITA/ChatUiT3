@@ -61,7 +61,7 @@ const AssistantModal: React.FC<AssistantModalProps> = ({
         name: editingAssistant.name,
         description: editingAssistant.description || '',
         tags: editingAssistant.tags || [],
-        modelId: editingAssistant.model.id,
+        modelId: editingAssistant.modelId,
         systemPrompt: editingAssistant.systemPrompt || '',
         temperature: editingAssistant.temperature,
         reasoningEffort: editingAssistant.reasoningEffort,

@@ -3,10 +3,7 @@ export interface PrivateAssistantDto {
     name: string;
     description?: string;
     tags: string[];
-    model: {
-        id: string;
-        modelName: string;
-    };
+    modelId: string;
     systemPrompt?: string;
     temperature: number;
     reasoningEffort: ReasoningEffort;
@@ -19,7 +16,7 @@ export interface SystemAssistantDto {
     name: string;
     description?: string;
     tags: string[];
-    modelName: string;
+    modelId: string;
     isVisible: boolean;
 }
 
@@ -28,7 +25,7 @@ export interface SharedAssistantDto {
     name: string;
     description?: string;
     tags: string[];
-    modelName: string;
+    modelId: string;
     isVisible: boolean;
     createdBy?: string;
 }
@@ -44,8 +41,7 @@ export interface AssistantDto {
     name: string;
     description?: string;
     tags: string[];
-    modelId?: string;
-    modelName?: string;
+    modelId: string;
     systemPrompt?: string;
     temperature?: number;
     reasoningEffort?: ReasoningEffort;
@@ -75,15 +71,6 @@ export interface UpdateAssistantDto {
     reasoningEffort?: ReasoningEffort;
     availableToolIds?: string[];
 }
-
-// export enum ReasoningEffort {
-//     None = "None",
-//     Low = "Low",
-//     Medium = "Medium",
-//     High = "High",
-// }
-
-
 
 export type ReasoningEffort = 
     "None" 

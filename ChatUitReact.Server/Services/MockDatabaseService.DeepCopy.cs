@@ -25,7 +25,7 @@ public partial class MockDatabaseService
                 },
                 SharedAssistantIds = new List<string>(userInfo.Preferences.SharedAssistantIds),
                 FavoritedAssistantIds = new List<string>(userInfo.Preferences.FavoritedAssistantIds),
-                VisibleAssistantIds = new List<string>(userInfo.Preferences.VisibleAssistantIds)
+                HiddenAssistantIds = new List<string>(userInfo.Preferences.HiddenAssistantIds)
             }
         };
     }
@@ -38,7 +38,6 @@ public partial class MockDatabaseService
             Name = assistant.Name,
             Description = assistant.Description,
             Tags = new List<string>(assistant.Tags),
-            Model = DeepCopyModel(assistant.Model),
             ChatSettings = new ChatSettings
             {
                 SystemPrompt = assistant.ChatSettings.SystemPrompt,

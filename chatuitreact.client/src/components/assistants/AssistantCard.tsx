@@ -34,20 +34,7 @@ const AssistantCard: React.FC<AssistantCardProps> = ({
   const modelsSignal = getModels();
   const models: UserModelDto[] = modelsSignal.value ?? [];
 
-  const resolveModelName = (a: AssistantType): string => {
-    if ('modelName' in a && a.modelName) return a.modelName;
-    if ('model' in a && (a as any).model?.modelName) return (a as any).model.modelName;
-    return '';
-  };
-  const modelName = resolveModelName(assistant);
-
-  const modelResolved = (() => {
-    if ('model' in assistant && (assistant as any).model?.id) {
-      return models.find(m => m.id === (assistant as any).model.id);
-    }
-    const name = modelName;
-    return models.find(m => m.modelName === name);
-  })();
+  const modelResolved = models.find(m => m.id === (assistant as any).modelId);
 
   const capabilities = {
     vision: !!modelResolved?.capabilities.vision,
@@ -134,7 +121,7 @@ const AssistantCard: React.FC<AssistantCardProps> = ({
             </div>
           )}
           <div className="assistant-card-model">
-            {modelName}
+            {modelResolved?.modelName || ''}
           </div>
         </div>
       </div>

@@ -188,7 +188,6 @@ public partial class MockDatabaseService
                 Name = "General Assistant",
                 Description = "A helpful general-purpose AI assistant",
                 Tags = new List<string> { "general", "helpful" },
-                Model = defaultModel,
                 ChatSettings = new ChatSettings
                 {
                     SystemPrompt = "You are a helpful AI assistant. Be concise and accurate. Format your responses in markdown when appropriate.",
@@ -204,7 +203,6 @@ public partial class MockDatabaseService
                 Name = "Coding Assistant",
                 Description = "An AI assistant specialized in programming and code review",
                 Tags = new List<string> { "coding", "programming", "development" },
-                Model = codingModel,
                 ChatSettings = new ChatSettings
                 {
                     SystemPrompt = "You are a programming expert. Help with code, debugging, and best practices.",
@@ -220,7 +218,6 @@ public partial class MockDatabaseService
                 Name = "Proofreading",
                 Description = "An AI assistant that helps with proofreading and improving text quality",
                 Tags = new List<string> { "markdown", "documentation", "formatting" },
-                Model = codingModel,
                 ChatSettings = new ChatSettings
                 {
                     SystemPrompt = "You are an expert in proofreading. Provide detailed feedback on grammar, style, and clarity. Always format your responses in markdown.",
@@ -641,7 +638,7 @@ Note: Some Markdown processors may have limitations on what HTML is allowed, and
             },
             SharedAssistantIds = new List<string>(),
             FavoritedAssistantIds = new List<string>(),
-            VisibleAssistantIds = new List<string> { "assistant1", "assistant2" }
+            HiddenAssistantIds = new List<string>()
         };
 
         _defaultUserRoles = new List<UserRole> { UserRole.Admin };

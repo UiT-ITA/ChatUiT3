@@ -8,8 +8,7 @@ public interface IChatService
     Task<List<ChatHeader>> GetChatListAsync(string userId);
     Task<List<Chat>> GetChatsAsync(string userId);
     Task<Chat?> GetChatByIdAsync(string userId, string chatId);
-    Task<Chat> CreateChatAsync(string userId, ChatSettings settings, List<ChatMessage> messages);
-    Task<Chat> CreateChatAsync(string userId, string? assistantId, List<ChatMessage> messages);
+    Task<Chat> CreateChatAsync(string userId, string assistantId, List<ChatMessage> messages);
     Task UpdateChatAsync(string userId, string chatId, string? newTitle, string? newAssistantId = null);
     Task DeleteChatAsync(string userId, string chatId);
     
@@ -17,7 +16,7 @@ public interface IChatService
     Task SendMessageAsync(string userId, string chatId, ChatMessage message);
     Task SendMessageAsync(string userId, string chatId, ChatMessage message, string? assistantId);
     Task SendStreamingMessageAsync(string userId, string chatId, ChatMessage message);
-    Task SendStreamingMessageAsync(string userId, string chatId, ChatMessage message, string? assistantId);
+    Task SendStreamingMessageAsync(string userId, string chatId, ChatMessage message, string assistantId);
     Task AddMessageAsync(string userId, string chatId, ChatMessage message);
     Task DeleteMessageAsync(string userId, string chatId, string messageId);
 

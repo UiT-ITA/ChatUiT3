@@ -47,15 +47,10 @@ export function getAssistant(assistantId: string): Signal<AssistantDto | undefin
             list.shared.find(a => a.id === assistantId);
 
         if (foundAssistant) {
-            if ('model' in foundAssistant) {
-                return { ...foundAssistant, modelId: foundAssistant.model.id, modelName: foundAssistant.model.modelName, type: 'owned' };
-            } else if ('modelName' in foundAssistant) {
-                if (list.system.some(a => a.id === assistantId)) {
-                    return { ...foundAssistant, type: 'system' };
-                } else {
-                    return { ...foundAssistant, type: 'shared' };
-                }
-            }
+            const type: AssistantDto["type"] = list.system.some(a => a.id === assistantId)
+                ? 'system'
+                : (list.shared.some(a => a.id === assistantId) ? 'shared' : 'owned');
+            return { ...(foundAssistant as any), type } as AssistantDto;
         }
         return undefined;
     });

@@ -58,15 +58,7 @@ export default function AssistantDropdown({ isOpen, direction, onClose }: Assist
   return (
     <div className={`assistant-dropdown ${dropdownClass}`}>
       {selectableAssistants.map((assistant) => {
-        const resolveModelName = (a: AssistantDto): string => {
-          if ('modelName' in a && a.modelName) return a.modelName;
-          return (a as any)?.model?.modelName || '';
-        };
-        const modelName = resolveModelName(assistant);
-        const modelResolved =
-          ('model' in (assistant as any) && (assistant as any).model?.id)
-            ? models.find(m => m.id === (assistant as any).model.id)
-            : models.find(m => m.modelName === modelName);
+        const modelResolved = models.find(m => m.id === (assistant as any).modelId);
         const capabilities = {
           vision: !!modelResolved?.capabilities.vision,
           tools: !!modelResolved?.capabilities.tools,

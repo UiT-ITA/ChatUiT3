@@ -15,7 +15,7 @@ public class PrivateAssistantDto
     public string Name { get; set; } = string.Empty;
     public string Description { get; set; } = string.Empty;
     public List<string> Tags { get; set; } = new List<string>();
-    public Model Model { get; set; } = new Model();
+    public string ModelId { get; set; } = string.Empty;
     public string SystemPrompt { get; set; } = string.Empty;
     public float Temperature { get; set; } = 0.7f;
     public ReasoningEffort ReasoningEffort { get; set; } = ReasoningEffort.None;
@@ -29,7 +29,7 @@ public class SystemAssistantDto
     public string Name { get; set; } = string.Empty;
     public string Description { get; set; } = string.Empty;
     public List<string> Tags { get; set; } = new List<string>();
-    public string ModelName { get; set; } = string.Empty;
+    public string ModelId { get; set; } = string.Empty;
     public bool IsVisible { get; set; }
 }
 
@@ -39,7 +39,7 @@ public class SharedAssistantDto
     public string Name { get; set; } = string.Empty;
     public string Description { get; set; } = string.Empty;
     public List<string> Tags { get; set; } = new List<string>();
-    public string ModelName { get; set; } = string.Empty;
+    public string ModelId { get; set; } = string.Empty;
     public bool IsVisible { get; set; }
     public string CreatedBy { get; set; } = string.Empty;
 }
