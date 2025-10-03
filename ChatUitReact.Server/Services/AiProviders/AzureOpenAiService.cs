@@ -15,6 +15,8 @@ using System.ClientModel;
 using System.Text;
 using System.Text.Json;
 using System.Runtime.CompilerServices;
+using ReverseMarkdown.Converters;
+using System.Dynamic;
 
 public class AzureOpenAiService
 {
@@ -376,19 +378,54 @@ public class AzureOpenAiService
         }
     }
 
-    private ChatCompletionOptions BuildCompletionOptions(ChatSettings? settings)
+
+    private ChatCompletionOptions BuildCompletionOptions(ChatSettings settings)
     {
-        var options = new ChatCompletionOptions
+
+        var options = new ChatCompletionOptions();
+
+        // Temperature: only set if supported by the selected model
+        if (settings.Model.Capabilities.SupportsTemperature)
         {
-            Temperature = settings?.Temperature ?? 0.5f
-        };
-        
-        var availableTools = _toolService.GetToolsForChat(settings ?? new ChatSettings());
-        foreach (var tool in availableTools)
-        {
-            options.Tools.Add(tool);
+            options.Temperature = settings.Temperature;
         }
-        
+
+        if (settings.Model.Capabilities.SupportsReasoning)
+        {
+            switch (settings.ReasoningEffort)
+            {
+#pragma warning disable OPENAI001
+                case ReasoningEffort.None:
+                    options.ReasoningEffortLevel = ChatReasoningEffortLevel.Low;
+                    break;
+                case ReasoningEffort.Low:
+                    options.ReasoningEffortLevel = ChatReasoningEffortLevel.Low;
+                    break;
+                case ReasoningEffort.Medium:
+                    options.ReasoningEffortLevel = ChatReasoningEffortLevel.Medium;
+                    break;
+                case ReasoningEffort.High:
+                    options.ReasoningEffortLevel = ChatReasoningEffortLevel.High;
+                    break;
+#pragma warning restore OPENAI001
+            }
+        }
+        else
+        {
+            options.MaxOutputTokenCount = 1000; // default
+        }
+
+
+        // Tools: only add if function calling is supported
+            if (settings.Model.Capabilities.SupportsFunctionCalling)
+            {
+                var availableTools = _toolService.GetToolsForChat(settings);
+                foreach (var tool in availableTools)
+                {
+                    options.Tools.Add(tool);
+                }
+            }
+
         return options;
     }
 

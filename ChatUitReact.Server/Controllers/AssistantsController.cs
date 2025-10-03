@@ -189,6 +189,7 @@ public class AssistantsController : ControllerBase
                     Vision = m.Capabilities.SupportsVision,
                     Reasoning = m.Capabilities.SupportsReasoning,
                     Tools = m.Capabilities.SupportsFunctionCalling,
+                    SupportsTemperature = m.Capabilities.SupportsTemperature,
                     ContextSize = m.Capabilities.MaxContextLength,
                     MaxOutputTokens = m.Capabilities.MaxOutputLength,
                     KnowledgeCutoff = m.Capabilities.KnowledgeCutoff.ToString("yyyy-MM")

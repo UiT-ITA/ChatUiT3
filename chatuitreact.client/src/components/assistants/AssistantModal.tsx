@@ -137,15 +137,29 @@ const AssistantModal: React.FC<AssistantModalProps> = ({
   const handleSubmit = async () => {
     if (!formData.name.trim() || !formData.modelId || loading) return;
 
+    // Normalize unsupported params on submit
+    const normalized: CreateAssistantDto = { ...formData };
+    if (selectedModel) {
+      if (!selectedModel.capabilities.supportsTemperature) {
+        normalized.temperature = 1;
+      }
+      if (!selectedModel.capabilities.tools) {
+        normalized.availableToolIds = [];
+      }
+      if (!selectedModel.capabilities.reasoning) {
+        normalized.reasoningEffort = 'None';
+      }
+    }
+
     setLoading(true);
     try {
       if (editingAssistant) {
         await updateAssistant({
           id: editingAssistant.id,
-          ...formData
+          ...normalized
         });
       } else {
-        await createAssistant(formData);
+        await createAssistant(normalized);
       }
       onClose();
     } catch (error) {
@@ -329,49 +343,57 @@ const AssistantModal: React.FC<AssistantModalProps> = ({
       <DialogPage id="settings" label="Settings" icon="settings">
         <div className="form-group">
           <label className="form-label">Available Tools</label>
-          {availableTools.length > 0 ? (
-            <div className="tools-selection">
-              {availableTools.map(tool => (
-                <div key={tool.id} className="tool-option">
-                  <label className="tool-checkbox-label">
-                    <input
-                      type="checkbox"
-                      checked={selectedToolIds.includes(tool.id)}
-                      onChange={(e) => handleToolSelection(tool.id, e.target.checked)}
-                      disabled={loading}
-                    />
-                    <div className="tool-info">
-                      <span className="tool-name">{tool.name}</span>
-                      <span className="tool-description">{tool.description}</span>
-                    </div>
-                  </label>
-                </div>
-              ))}
-            </div>
+          {selectedModel?.capabilities.tools ? (
+            availableTools.length > 0 ? (
+              <div className="tools-selection">
+                {availableTools.map(tool => (
+                  <div key={tool.id} className="tool-option">
+                    <label className="tool-checkbox-label">
+                      <input
+                        type="checkbox"
+                        checked={selectedToolIds.includes(tool.id)}
+                        onChange={(e) => handleToolSelection(tool.id, e.target.checked)}
+                        disabled={loading}
+                      />
+                      <div className="tool-info">
+                        <span className="tool-name">{tool.name}</span>
+                        <span className="tool-description">{tool.description}</span>
+                      </div>
+                    </label>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className="no-tools-message">
+                No tools available
+              </div>
+            )
           ) : (
             <div className="no-tools-message">
-              No tools available
+              This model does not support tools
             </div>
           )}
         </div>
 
         <div className="form-row">
-          <div className="form-group">
-            <label className="form-label">Temperature</label>
-            <div className="slider-container">
-              <input
-                type="range"
-                min="0"
-                max="1"
-                step="0.1"
-                value={formData.temperature}
-                onChange={(e) => handleChange('temperature', parseFloat(e.target.value))}
-                className="form-slider"
-                disabled={loading}
-              />
-              <span className="slider-value">{formData.temperature}</span>
+          {selectedModel?.capabilities.supportsTemperature && (
+            <div className="form-group">
+              <label className="form-label">Temperature</label>
+              <div className="slider-container">
+                <input
+                  type="range"
+                  min="0"
+                  max="1"
+                  step="0.1"
+                  value={formData.temperature}
+                  onChange={(e) => handleChange('temperature', parseFloat(e.target.value))}
+                  className="form-slider"
+                  disabled={loading}
+                />
+                <span className="slider-value">{formData.temperature}</span>
+              </div>
             </div>
-          </div>
+          )}
 
           {selectedModel?.capabilities.reasoning && (
             <div className="form-group">

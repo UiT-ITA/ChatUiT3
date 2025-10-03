@@ -2,6 +2,7 @@ export interface UserModelCapabilitiesDto {
     vision: boolean;
     reasoning: boolean;
     tools: boolean;
+    supportsTemperature: boolean;
     contextSize: number;
     maxOutputTokens: number;
     knowledgeCutoff: string; // "YYYY-MM"

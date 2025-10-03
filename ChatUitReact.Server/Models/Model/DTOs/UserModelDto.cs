@@ -7,6 +7,7 @@ public class UserModelCapabilitiesDto
     public bool Vision { get; set; }
     public bool Reasoning { get; set; }
     public bool Tools { get; set; }
+    public bool SupportsTemperature { get; set; }
     public int ContextSize { get; set; }
     public int MaxOutputTokens { get; set; }
     // Month-year string (e.g., "2024-06")
