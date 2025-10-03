@@ -105,6 +105,15 @@ const AssistantCard: React.FC<AssistantCardProps> = ({
               <MdDelete size={20} />
             </button>
           )}
+          {variant === 'shared' && onDelete && (
+            <button
+              onClick={() => onDelete(assistant.id)}
+              className="assistant-card-button"
+              title={t('assistants.actions.removeSharedAssistant') || 'Remove from shared'}
+            >
+              <MdDelete size={20} />
+            </button>
+          )}
         </div>
       </div>
       

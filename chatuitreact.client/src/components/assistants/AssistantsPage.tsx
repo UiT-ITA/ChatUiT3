@@ -5,7 +5,7 @@ import { useSignals } from '@preact/signals-react/runtime';
 import { useTranslation } from 'react-i18next';
 import './AssistantsPage.css';
 import { setAssistantSidebar, clearSidebarContent } from '../../services/sidebarService';
-import { getAssistants, deleteAssistant, toggleVisibility, addSharedAssistant, invalidateAssistants } from '../../services/assistantService';
+import { getAssistants, deleteAssistant, toggleVisibility, addSharedAssistant, invalidateAssistants, removeSharedAssistant } from '../../services/assistantService';
 import type { PrivateAssistantDto } from '../../types/assistantModels';
 import AssistantCard from './AssistantCard';
 import AddExternalAssistant from './AddExternalAssistant';
@@ -78,6 +78,17 @@ const AssistantsPage: React.FC = () => {
       await deleteAssistant(id);
     } catch (error) {
       console.error('Failed to delete assistant:', error);
+    }
+  };
+
+  const handleRemoveSharedAssistant = async (id: string) => {
+    if (!window.confirm(t('assistants.deleteConfirmation'))) return;
+
+    try {
+      await removeSharedAssistant(id);
+      await invalidateAssistants();
+    } catch (error) {
+      console.error('Failed to remove shared assistant:', error);
     }
   };
 
@@ -168,6 +179,7 @@ const AssistantsPage: React.FC = () => {
                     assistant={assistant}
                     variant="shared"
                     onToggleFavorite={handleToggleVisibility}
+                    onDelete={handleRemoveSharedAssistant}
                   />
                 ))
               ) : (

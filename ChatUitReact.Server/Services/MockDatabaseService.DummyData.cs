@@ -48,8 +48,8 @@ public partial class MockDatabaseService
                 {
                     Id = "gpt-4o",
                     ModelId = "gpt-4o",
-                    ModelName = "GPT-4o",
-                    Description = "Azure GPT-4o",
+                    ModelName = "GPT 4o",
+                    Description = "Azure GPT 4o",
                     EndpointId = "real-azure-endpoint",
                     AllowedRoles = new List<UserRole> { UserRole.User, UserRole.Admin, UserRole.Beta, UserRole.Super },
                     Capabilities = new ModelCapabilities
@@ -158,7 +158,7 @@ public partial class MockDatabaseService
 
     private void CreateDummyAssistants()
     {
-        var defaultModel = _models.Values.FirstOrDefault() ?? new Model
+        var defaultModel = _models.Values.FirstOrDefault(m => m.ModelId.Contains("gpt-4o")) ?? new Model
         {
             Id = "default-model",
             ModelId = "gpt-4o",
@@ -226,6 +226,21 @@ public partial class MockDatabaseService
                     Model = codingModel
                 },
                 OwnerId = "otv001@uit.no"
+            },
+            new Assistant
+            {
+                Id = "assistant4",
+                Name = "Shared",
+                Description = "A shared test assistant",
+                Tags = new List<string> { "test", "shared" },
+                ChatSettings = new ChatSettings
+                {
+                    SystemPrompt = "You are a parrot. You repeat everything the user says.",
+                    Temperature = 0.5f,
+                    ReasoningEffort = ReasoningEffort.Medium,
+                    Model = defaultModel
+                },
+                OwnerId = "otv001-test@uit.no"
             }
         };
 
@@ -636,7 +651,7 @@ Note: Some Markdown processors may have limitations on what HTML is allowed, and
                 CompactMode = false,
                 FontSize = 14
             },
-            SharedAssistantIds = new List<string>(),
+            SharedAssistantIds = new List<string> { "assistant4" },
             FavoritedAssistantIds = new List<string>(),
             HiddenAssistantIds = new List<string>()
         };

@@ -114,3 +114,14 @@ export async function addSharedAssistant(assistantId: string): Promise<void> {
         throw error;
     }
 }
+
+export async function removeSharedAssistant(assistantId: string): Promise<void> {
+    try {
+        await apiService(`/api/Assistants/shared/${assistantId}`, {
+            method: 'DELETE',
+        });
+    } catch (error) {
+        console.error(`Failed to remove shared assistant with ID ${assistantId}:`, error);
+        throw error;
+    }
+}

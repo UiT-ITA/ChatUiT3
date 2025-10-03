@@ -9,6 +9,7 @@ public interface IAssistantService
     Task<bool> UpdateAssistantAsync(UpdateAssistantDto updateDto, string userId);
     Task<bool> DeleteAssistantAsync(string assistantId, string userId);
     Task<bool> AddSharedAssistantAsync(string assistantId, string userId);
+    Task<bool> RemoveSharedAssistantAsync(string assistantId, string userId);
     Task<bool> ToggleAssistantVisibilityAsync(string assistantId, string userId);
     Task<string> GenerateShareLinkAsync(string assistantId, string userId);
     Task<AssistantListDto> GetUserAssistantsDtoAsync(string userId);

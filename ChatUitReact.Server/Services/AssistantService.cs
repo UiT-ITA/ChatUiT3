@@ -144,6 +144,21 @@ namespace ChatUitReact.Server.Services
             return true;
         }
 
+        public async Task<bool> RemoveSharedAssistantAsync(string assistantId, string userId)
+        {
+            var user = await _databaseService.GetUserAsync(userId);
+            if (user == null) return false;
+
+            if (user.Preferences.SharedAssistantIds.Contains(assistantId))
+            {
+                user.Preferences.SharedAssistantIds.Remove(assistantId);
+                await _databaseService.UpdateUserAsync(user);
+                await NotifyAssistantsUpdated(userId);
+            }
+
+            return true;
+        }
+
         public async Task<bool> ToggleAssistantVisibilityAsync(string assistantId, string userId)
         {
             var user = await _databaseService.GetUserAsync(userId);

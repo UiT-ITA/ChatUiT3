@@ -157,6 +157,26 @@ public class AssistantsController : ControllerBase
         }
     }
 
+    [HttpDelete("shared/{assistantId}")]
+    public async Task<ActionResult> RemoveSharedAssistant(string assistantId)
+    {
+        try
+        {
+            var userId = GetCurrentUserId();
+            await _assistantService.RemoveSharedAssistantAsync(assistantId, userId);
+
+            // Notify all clients that assistant data has changed
+            await _hubContext.Clients.Group(userId).AssistantsUpdated();
+
+            return Ok();
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error removing shared assistant");
+            return StatusCode(500, "Internal server error");
+        }
+    }
+
     [HttpPost("{assistantId}/share-link")]
     public async Task<ActionResult<string>> GenerateShareLink(string assistantId)
     {
