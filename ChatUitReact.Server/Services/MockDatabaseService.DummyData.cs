@@ -35,16 +35,6 @@ public partial class MockDatabaseService
                 };
                 _endpoints[realEndpoint.Id] = realEndpoint;
             }
-
-            var endpoint1 = new ModelEndpoint
-            {
-                Id = "endpoint-1",
-                Url = "https://api.openai.com/v1",
-                ApiKey = "sk-test-key-1",
-                EndpointType = EndpointType.OpenAI
-            };
-
-            _endpoints[endpoint1.Id] = endpoint1;
         }
     }
 
@@ -56,7 +46,7 @@ public partial class MockDatabaseService
             {
                 var gpt4oModel = new Model
                 {
-                    Id = "real-gpt-4o",
+                    Id = "gpt-4o",
                     ModelId = "gpt-4o",
                     ModelName = "GPT-4o",
                     Description = "Azure GPT-4o",
@@ -70,33 +60,99 @@ public partial class MockDatabaseService
                         SupportsTemperature = true,
                         MaxContextLength = 128_000,
                         MaxOutputLength = 16_000,
-                        KnowledgeCutoff = new DateTime(2024, 6, 1)
+                        KnowledgeCutoff = new DateTime(2023, 10, 1)
                     }
                 };
                 _models[gpt4oModel.Id] = gpt4oModel;
+
+                var gpt5Model = new Model
+                {
+                    Id = "gpt-5",
+                    ModelId = "gpt-5",
+                    ModelName = "GPT 5",
+                    Description = "Powerful reasoning model",
+                    EndpointId = "real-azure-endpoint",
+                    AllowedRoles = new List<UserRole> { UserRole.Admin, UserRole.Beta, UserRole.Super },
+                    Capabilities = new ModelCapabilities
+                    {
+                        SupportsVision = true,
+                        SupportsReasoning = true,
+                        SupportsFunctionCalling = true,
+                        SupportsTemperature = false,
+                        MaxContextLength = 400_000,
+                        MaxOutputLength = 128_000,
+                        KnowledgeCutoff = new DateTime(2024, 6, 1)
+                    }
+                };
+                _models[gpt5Model.Id] = gpt5Model;
+
+                var gpt5MiniModel = new Model
+                {
+                    Id = "gpt-5-mini",
+                    ModelId = "gpt-5-mini",
+                    ModelName = "GPT 5 Mini",
+                    Description = "fast and cheap reasoning model",
+                    EndpointId = "real-azure-endpoint",
+                    AllowedRoles = new List<UserRole> { UserRole.User, UserRole.Admin, UserRole.Beta, UserRole.Super },
+                    Capabilities = new ModelCapabilities
+                    {
+                        SupportsVision = true,
+                        SupportsReasoning = true,
+                        SupportsFunctionCalling = true,
+                        SupportsTemperature = false,
+                        MaxContextLength = 400_000,
+                        MaxOutputLength = 128_000,
+                        KnowledgeCutoff = new DateTime(2024, 6, 1)
+                    }
+                };
+                _models[gpt5MiniModel.Id] = gpt5MiniModel;
+
+
+                var o4MiniModel = new Model
+                {
+                    Id = "o4-mini",
+                    ModelId = "o4-mini",
+                    ModelName = "o4 Mini",
+                    Description = "fast and cheap reasoning model",
+                    EndpointId = "real-azure-endpoint",
+                    AllowedRoles = new List<UserRole> { UserRole.User, UserRole.Admin, UserRole.Beta, UserRole.Super },
+                    Capabilities = new ModelCapabilities
+                    {
+                        SupportsVision = true,
+                        SupportsReasoning = true,
+                        SupportsFunctionCalling = true,
+                        SupportsTemperature = false,
+                        MaxContextLength = 200_000,
+                        MaxOutputLength = 100_000,
+                        KnowledgeCutoff = new DateTime(2024, 6, 1)
+                    }
+                };
+                _models[o4MiniModel.Id] = o4MiniModel;
+
+
+                var gpt41MiniModel = new Model
+                {
+                    Id = "gpt-4.1-mini",
+                    ModelId = "gpt-4.1-mini",
+                    ModelName = "GPT-4.1 Mini",
+                    Description = "Fast and cheap model with very large context window",
+                    EndpointId = "real-azure-endpoint",
+                    AllowedRoles = new List<UserRole> { UserRole.User, UserRole.Admin, UserRole.Beta, UserRole.Super },
+                    Capabilities = new ModelCapabilities
+                    {
+                        SupportsVision = true,
+                        SupportsReasoning = false,
+                        SupportsFunctionCalling = true,
+                        SupportsTemperature = true,
+                        MaxContextLength = 1_000_000,
+                        MaxOutputLength = 32_000,
+                        KnowledgeCutoff = new DateTime(2024, 6, 1)
+                    }
+                };
+                _models[gpt41MiniModel.Id] = gpt41MiniModel;
             }
 
-            var model1 = new Model
-            {
-                Id = "model-1",
-                ModelId = "gpt-4",
-                ModelName = "GPT 4",
-                Description = "OpenAI GPT-4",
-                EndpointId = "endpoint-1",
-                AllowedRoles = new List<UserRole> { UserRole.User, UserRole.Admin, UserRole.Beta, UserRole.Super },
-                Capabilities = new ModelCapabilities
-                {
-                    SupportsVision = false,
-                    SupportsReasoning = false,
-                    SupportsFunctionCalling = true,
-                    SupportsTemperature = true,
-                    MaxContextLength = 8_192,
-                    MaxOutputLength = 8_192,
-                    KnowledgeCutoff = new DateTime(2023, 12, 1)
-                }
-            };
 
-            _models[model1.Id] = model1;
         }
     }
 
@@ -122,6 +178,8 @@ public partial class MockDatabaseService
             }
         };
 
+        var codingModel = _models.Values.FirstOrDefault(m => m.ModelId.Contains("gpt-5")) ?? defaultModel;
+
         var systemAssistants = new List<Assistant>
         {
             new Assistant
@@ -133,7 +191,7 @@ public partial class MockDatabaseService
                 Model = defaultModel,
                 ChatSettings = new ChatSettings
                 {
-                    SystemPrompt = "You are a helpful AI assistant. Be concise and accurate.",
+                    SystemPrompt = "You are a helpful AI assistant. Be concise and accurate. Format your responses in markdown when appropriate.",
                     Temperature = 0.7f,
                     ReasoningEffort = ReasoningEffort.Medium,
                     Model = defaultModel
@@ -146,13 +204,29 @@ public partial class MockDatabaseService
                 Name = "Coding Assistant",
                 Description = "An AI assistant specialized in programming and code review",
                 Tags = new List<string> { "coding", "programming", "development" },
-                Model = defaultModel,
+                Model = codingModel,
                 ChatSettings = new ChatSettings
                 {
                     SystemPrompt = "You are a programming expert. Help with code, debugging, and best practices.",
                     Temperature = 0.3f,
                     ReasoningEffort = ReasoningEffort.High,
-                    Model = defaultModel
+                    Model = codingModel
+                },
+                OwnerId = "System"
+            },
+            new Assistant
+            {
+                Id = "assistant3",
+                Name = "Proofreading",
+                Description = "An AI assistant that helps with proofreading and improving text quality",
+                Tags = new List<string> { "markdown", "documentation", "formatting" },
+                Model = codingModel,
+                ChatSettings = new ChatSettings
+                {
+                    SystemPrompt = "You are an expert in proofreading. Provide detailed feedback on grammar, style, and clarity. Always format your responses in markdown.",
+                    Temperature = 0.5f,
+                    ReasoningEffort = ReasoningEffort.Medium,
+                    Model = codingModel
                 },
                 OwnerId = "otv001@uit.no"
             }
