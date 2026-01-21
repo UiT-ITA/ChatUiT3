@@ -14,8 +14,6 @@ msalInstance.initialize().then(() => {
     msalInstance.setActiveAccount(msalInstance.getAllAccounts()[0])
   }
 
-  msalInstance.enableAccountStorageEvents()
-
   msalInstance.addEventCallback((event) => {
     if (event.eventType === EventType.LOGIN_SUCCESS && event.payload) {
       const payload = event.payload as any

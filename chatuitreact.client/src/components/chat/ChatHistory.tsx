@@ -1,7 +1,7 @@
 import './ChatHistory.css'
 import { getChat, getCurrentChatId } from '../../services/chatService'
 import { useSignals } from '@preact/signals-react/runtime';
-import { useLayoutEffect, useRef, useEffect, useCallback } from 'react';
+import { useLayoutEffect, useRef, useEffect, useCallback, useDeferredValue } from 'react';
 import { useTranslation } from 'react-i18next';
 import ChatMessage from './ChatMessage';
 import LoadingIndicator from '../common/LoadingIndicator';
@@ -14,6 +14,9 @@ export default function ChatHistory() {
   const chatId = currentChatId.value;
   const chat = chatId ? getChat(chatId) : { value: undefined };
   const messages = chat.value?.messages || [];
+
+  const deferredMessages = useDeferredValue(messages);
+  const isPending = deferredMessages !== messages;
 
   const chatHistoryRef = useRef<HTMLDivElement>(null);
   const autoScrollRef = useRef(true);
@@ -76,6 +79,10 @@ export default function ChatHistory() {
     }
   }, [messages]);
 
+  useLayoutEffect(() => {
+    requestAnimationFrame(scrollToBottom);
+  }, [deferredMessages]);
+
   if (!chatId) {
     return (
       <div className="chat-history">
@@ -84,7 +91,7 @@ export default function ChatHistory() {
     );
   }
 
-  if (chat.value === undefined) {
+  if (chat.value === undefined || isPending) {
     return (
       <div className="chat-history">
         <div className="chat-history-loading">
@@ -97,7 +104,7 @@ export default function ChatHistory() {
   return (
     <div className="chat-history" ref={chatHistoryRef}>
       <div className="chat-history-messages">
-        {messages.map((message) => (
+        {deferredMessages.map((message) => (
           <ChatMessage
             key={message.id}
             message={message}

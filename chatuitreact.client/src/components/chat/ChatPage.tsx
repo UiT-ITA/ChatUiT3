@@ -17,26 +17,13 @@ const ChatPage: React.FC = () => {
 
   const { chatId } = useParams<{ chatId?: string }>()
   const currentChatId = getCurrentChatId()
-  const [isTransitioning, setIsTransitioning] = useState(false)
   const navigate = useNavigate()
   const notFound = chatId ? getChatNotFound(chatId) : undefined
 
-  useEffect(() => {
-    // Show loading immediately when chatId changes
-    if (chatId !== currentChatId.value) {
-      setIsTransitioning(true)
-    }
-    
+  useEffect(() => {    
     setCurrentChatId(chatId)
     setChatSidebar()
-    
-    // Clear transition state after a brief delay to allow chat to load
-    const timer = setTimeout(() => {
-      setIsTransitioning(false)
-    }, 100)
-
     return () => {
-      clearTimeout(timer)
       setCurrentChatId(undefined)
       clearSidebarContent()
     }
@@ -52,11 +39,7 @@ const ChatPage: React.FC = () => {
 
   return (
     <div className="chat-page">
-      {isTransitioning ? (
-        <div className="chat-page-loading">
-          <LoadingIndicator text={t('chat.switchingChat')} />
-        </div>
-      ) : currentChatId.value === undefined ? (
+      {currentChatId.value === undefined ? (
         <NewChatWelcome />
       ) : (
         <ChatHistory />
