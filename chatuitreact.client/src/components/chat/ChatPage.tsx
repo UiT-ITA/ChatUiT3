@@ -1,6 +1,6 @@
-import React, { useEffect, useState } from 'react'
+import React, { useEffect } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
-import { useTranslation } from 'react-i18next'
+// import { useTranslation } from 'react-i18next'
 import ChatHistory from './ChatHistory'
 import ChatInput from './ChatInput'
 import NewChatWelcome from './NewChatWelcome'
@@ -8,12 +8,12 @@ import './ChatPage.css'
 import { clearSidebarContent, setChatSidebar } from '../../services/sidebarService'
 import { getCurrentChatId, setCurrentChatId, getChatNotFound } from '../../services/chatService'
 import { useSignals } from '@preact/signals-react/runtime'
-import LoadingIndicator from '../common/LoadingIndicator'
+// import LoadingIndicator from '../common/LoadingIndicator'
 import { addNotification } from '../../services/notificationService'
 
 const ChatPage: React.FC = () => {
   useSignals()
-  const { t } = useTranslation()
+  // const { t } = useTranslation()
 
   const { chatId } = useParams<{ chatId?: string }>()
   const currentChatId = getCurrentChatId()
