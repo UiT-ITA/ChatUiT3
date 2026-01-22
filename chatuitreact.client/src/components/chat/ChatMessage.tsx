@@ -111,7 +111,7 @@ export default function ChatMessage({ message, onStreamingChunk }: ChatMessagePr
     onStreamingChunkRef.current = onStreamingChunk;
   }, [onStreamingChunk]);
 
-  useLayoutEffect(() => {
+  useEffect(() => {
     if (isStreaming) {
       onStreamingChunkRef.current?.();
     }
