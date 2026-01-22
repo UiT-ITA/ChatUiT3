@@ -14,6 +14,10 @@ const chatCache = new Map<string, Signal<ChatDto | undefined>>();
 const messageStreamCache = new Map<string, Signal<string>>();
 const chatNotFoundCache = new Map<string, Signal<boolean>>();
 
+// Chunk throttling buffers
+const chunkBuffers = new Map<string, string[]>();
+const flushTimers = new Map<string, ReturnType<typeof setTimeout>>();
+
 let chatListLoadingPromise: Promise<void> | null = null;
 let streamMessageCallback: ((messageId: string) => void) | null = null;
 
@@ -166,22 +170,62 @@ export function getStreamSignal(messageId: string): Signal<string> {
   return streamSignal;
 }
 
-export function receiveMessageChunk(messageId: string, chunk: string): void {
-  let streamSignal = messageStreamCache.get(messageId);
+function flushBuffer(messageId: string): void {
+  const buffer = chunkBuffers.get(messageId);
+  if (!buffer || buffer.length === 0) return;
   
+  // Concatenate all buffered chunks
+  const accumulated = buffer.join('');
+  
+  // Update stream signal
+  let streamSignal = messageStreamCache.get(messageId);
   if (!streamSignal) {
     streamSignal = signal<string>("");
     messageStreamCache.set(messageId, streamSignal);
   }
+  streamSignal.value += accumulated;
   
-  streamSignal.value = streamSignal.value + chunk;
+  // Clear buffer and timer
+  chunkBuffers.delete(messageId);
+  flushTimers.delete(messageId);
+}
+
+export function receiveMessageChunk(messageId: string, chunk: string): void {
+  // Add chunk to buffer
+  let buffer = chunkBuffers.get(messageId);
+  if (!buffer) {
+    buffer = [];
+    chunkBuffers.set(messageId, buffer);
+  }
+  buffer.push(chunk);
+  
+  // Schedule flush if not already scheduled
+  if (!flushTimers.has(messageId)) {
+    const timer = setTimeout(() => flushBuffer(messageId), 500);
+    flushTimers.set(messageId, timer);
+  }
 }
 
 export function clearStreamCache(messageId?: string): void {
   if (messageId) {
+    // Clear stream signal
     messageStreamCache.delete(messageId);
+    
+    // Clear any pending buffer and timer
+    const timer = flushTimers.get(messageId);
+    if (timer) {
+      clearTimeout(timer);
+      flushTimers.delete(messageId);
+    }
+    chunkBuffers.delete(messageId);
   } else {
+    // Clear all stream signals
     messageStreamCache.clear();
+    
+    // Clear all pending timers and buffers
+    flushTimers.forEach(timer => clearTimeout(timer));
+    flushTimers.clear();
+    chunkBuffers.clear();
   }
 }
 
