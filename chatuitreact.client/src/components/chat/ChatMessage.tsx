@@ -117,7 +117,7 @@ export default function ChatMessage({ message, onStreamingChunk }: ChatMessagePr
     }
   }, [streamSignal?.value, isStreaming]);
 
-  console.log('Rendering ChatMessage:', { messageId: message.id, isStreaming, displayContent });
+  console.log('Rendering ChatMessage:', { messageId: message.id, isStreaming });
 
   const markdownComponents = {
     code({ node, inline, className, children, ...props }: any) {

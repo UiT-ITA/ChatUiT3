@@ -7,7 +7,8 @@ import LoadingIndicator from './components/common/LoadingIndicator';
 import './App.css';
 import './styles/theme.css';
 // import ChatPage from './components/chat/ChatPage';
-import NewChatPage from './components/chat/NewChatPage';
+// import NewChatPage from './components/chat/NewChatPage';
+import SimpleChatPage from './components/chat/SimpleChatPage';
 import AssistantsPage from './components/assistants/AssistantsPage';
 import AdminPage from './components/admin/AdminPage';
 import ProtectedRoute from './components/common/ProtectedRoute';
@@ -36,10 +37,10 @@ const App: React.FC = () => {
     <BrowserRouter>
       <Routes>
         <Route element={<MainLayout />}>
-          <Route path="/" element={<NewChatPage />} />
-          <Route path="/chat" element={<NewChatPage />} />
-          <Route path="/chat/new" element={<NewChatPage />} />
-          <Route path="/chat/:chatId" element={<NewChatPage />} />
+          <Route path="/" element={<SimpleChatPage />} />
+          <Route path="/chat" element={<SimpleChatPage />} />
+          <Route path="/chat/new" element={<SimpleChatPage />} />
+          <Route path="/chat/:chatId" element={<SimpleChatPage />} />
           <Route path="/assistants" element={<AssistantsPage />} />
           <Route 
             path="/admin" 
