@@ -1,24 +1,38 @@
-import React, { useEffect, useState } from 'react'
+import React, { useEffect, useRef } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import ChatHistory from './ChatHistory'
 import ChatInput from './ChatInput'
 import NewChatWelcome from './NewChatWelcome'
 import './ChatPage.css'
 import { clearSidebarContent, setChatSidebar } from '../../services/sidebarService'
-import { getCurrentChatId, setCurrentChatId, getChatNotFound } from '../../services/chatService'
+import { setCurrentChatId, getChatNotFound } from '../../services/chatService'
 import { useSignals } from '@preact/signals-react/runtime'
 import { addNotification } from '../../services/notificationService'
+import { useChatCache } from '../../hooks/useChatCache'
 
 const ChatPage: React.FC = () => {
   useSignals()
 
   const { chatId } = useParams<{ chatId?: string }>()
-  const currentChatId = getCurrentChatId()
   const navigate = useNavigate()
   const notFound = chatId ? getChatNotFound(chatId) : undefined
+  const mountedChatsRef = useRef<Map<string, React.ReactElement>>(new Map())
+  const cachedIds = useChatCache(chatId)
 
-  // Track all visited chat IDs to keep them mounted
-  const [visitedChatIds, setVisitedChatIds] = useState<string[]>([])
+  const currentIds = new Set(cachedIds)
+  const mountedIds = new Set(mountedChatsRef.current.keys())
+  
+  for (const id of mountedIds) {
+    if (!currentIds.has(id)) {
+      mountedChatsRef.current.delete(id)
+    }
+  }
+  
+  for (const id of currentIds) {
+    if (!mountedChatsRef.current.has(id)) {
+      mountedChatsRef.current.set(id, <ChatHistory key={id} chatId={id} />)
+    }
+  }
 
   useEffect(() => {
     setCurrentChatId(chatId)
@@ -26,15 +40,6 @@ const ChatPage: React.FC = () => {
     return () => {
       setCurrentChatId(undefined)
       clearSidebarContent()
-    }
-  }, [chatId])
-
-  // Add new chat IDs to the visited list
-  useEffect(() => {
-    if (chatId) {
-      setVisitedChatIds(prev => 
-        prev.includes(chatId) ? prev : [...prev, chatId]
-      )
     }
   }, [chatId])
 
@@ -46,26 +51,23 @@ const ChatPage: React.FC = () => {
     }
   }, [chatId, notFound?.value, navigate])
 
-  const activeChatId = currentChatId.value
-
   return (
     <div className="chat-page">
-      {activeChatId === undefined ? (
+      {chatId === undefined ? (
         <NewChatWelcome />
       ) : (
-        // Render all visited chats, but only show the active one
         <>
-          {visitedChatIds.map((id) => (
+          {Array.from(mountedChatsRef.current.entries()).map(([id, component]) => (
             <div
               key={id}
               style={{
-                display: id === activeChatId ? 'flex' : 'none',
+                display: id === chatId ? 'flex' : 'none',
                 flex: 1,
                 flexDirection: 'column',
                 minHeight: 0
               }}
             >
-              <ChatHistory chatId={id} />
+              {component}
             </div>
           ))}
         </>

@@ -19,8 +19,6 @@ function ChatHistory({ chatId }: ChatHistoryProps) {
 
   const chatHistoryRef = useRef<HTMLDivElement>(null)
   const bottomSentinelRef = useRef<HTMLDivElement>(null)
-  
-  // Store pinned state in ref (no rerenders when user scrolls)
   const pinnedRef = useRef(true)
 
   const scrollToBottom = useCallback(() => {
@@ -62,7 +60,6 @@ function ChatHistory({ chatId }: ChatHistoryProps) {
   }, [messages])
 
 
-  // Always scroll to bottom when new message is added
   useLayoutEffect(() => {
     scrollToBottom()
   }, [messages.length, scrollToBottom])
@@ -94,7 +91,4 @@ function ChatHistory({ chatId }: ChatHistoryProps) {
   )
 }
 
-// Memoize to prevent re-renders when chatId doesn't change
-export default memo(ChatHistory, (prev, next) =>
-  prev.chatId === next.chatId
-)
+export default memo(ChatHistory, (prev, next) => prev.chatId === next.chatId)

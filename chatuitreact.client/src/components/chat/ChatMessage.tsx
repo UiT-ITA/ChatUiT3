@@ -117,6 +117,8 @@ function ChatMessage({ message, onStreamingChunk }: ChatMessageProps) {
     }
   }, [streamSignal?.value, isStreaming]);
 
+  // console.log('Rendering ChatMessage:', message.id, 'isStreaming:', isStreaming);
+
   const markdownComponents = {
     code({ node, inline, className, children, ...props }: any) {
       const match = /language-(\w+)/.exec(className || '');
