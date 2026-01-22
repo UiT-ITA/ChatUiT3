@@ -21,69 +21,87 @@ function ChatHistory({ chatId }: ChatHistoryProps) {
   const isPending = deferredMessages !== messages
 
   const chatHistoryRef = useRef<HTMLDivElement>(null)
-  const autoScrollRef = useRef(true)
-  const prevScrollTopRef = useRef(0)
-  const rafIdRef = useRef<number | null>(null)
+  const bottomSentinelRef = useRef<HTMLDivElement>(null)
+  
+  // Store pinned state in ref (no rerenders when user scrolls)
+  const pinnedRef = useRef(true)
 
-  const scrollToBottom = () => {
+  const scrollToBottom = useCallback(() => {
     if (chatHistoryRef.current) {
       chatHistoryRef.current.scrollTop = chatHistoryRef.current.scrollHeight
     }
-  }
+  }, [])
 
-  const evaluateAutoScroll = () => {
-    if (!chatHistoryRef.current) return
+  const scrollToBottomIfPinned = useCallback(() => {
+    if (!pinnedRef.current) return
+    const scroller = chatHistoryRef.current
+    if (!scroller) return
 
-    const { scrollTop, scrollHeight, clientHeight } = chatHistoryRef.current
-    const distanceFromBottom = scrollHeight - scrollTop - clientHeight
-    const scrollDirection = scrollTop > prevScrollTopRef.current ? 'down' : 'up'
-
-    if (scrollDirection === 'up' && distanceFromBottom > 0) {
-      autoScrollRef.current = false
-    } else if (scrollDirection === 'down' && distanceFromBottom < 100) {
-      autoScrollRef.current = true
-    }
-
-    prevScrollTopRef.current = scrollTop
-  }
-
-  const handleScroll = () => {
-    if (rafIdRef.current != null) return
-    rafIdRef.current = requestAnimationFrame(() => {
-      rafIdRef.current = null
-      evaluateAutoScroll()
-    })
-  }
-
-  const scrollToBottomIfShouldAutoScroll = useCallback(() => {
-    if (!chatHistoryRef.current || !autoScrollRef.current) return
     requestAnimationFrame(() => {
-      if (chatHistoryRef.current && autoScrollRef.current) {
-        chatHistoryRef.current.scrollTop = chatHistoryRef.current.scrollHeight
-      }
+      if (!pinnedRef.current) return
+      scroller.scrollTop = scroller.scrollHeight
     })
   }, [])
 
-  // Attach scroll event listener
-  useEffect(() => {
-    const chatContainer = chatHistoryRef.current
-    if (!chatContainer) return
-
-    chatContainer.addEventListener('scroll', handleScroll, { passive: true })
-    return () => chatContainer.removeEventListener('scroll', handleScroll)
-  }, [])
-
-  // Handle new messages - always scroll to bottom and enable auto-scroll
+  // Scroll to bottom on mount
   useLayoutEffect(() => {
-    if (autoScrollRef.current) {
-      scrollToBottom()
+    scrollToBottom()
+  }, [scrollToBottom])
+
+  // IntersectionObserver to track if user is at bottom
+  useEffect(() => {
+    const scroller = chatHistoryRef.current
+    const sentinel = bottomSentinelRef.current
+    if (!scroller || !sentinel) return
+
+    const io = new IntersectionObserver(
+      (entries) => {
+        const entry = entries[0]
+        pinnedRef.current = !!entry?.isIntersecting
+      },
+      {
+        root: scroller,
+        threshold: 0.01,
+      }
+    )
+
+    io.observe(sentinel)
+    return () => io.disconnect()
+  }, [isPending, chatId])
+
+  // Scroll event handler to track scroll position
+  useEffect(() => {
+    const scroller = chatHistoryRef.current
+    if (!scroller) return
+
+    const NEAR_BOTTOM_PX = 10
+
+    const updatePinnedFromScrollPosition = () => {
+      if (!scroller) return
+      
+      const distanceFromBottom =
+        scroller.scrollHeight - scroller.scrollTop - scroller.clientHeight
+      pinnedRef.current = distanceFromBottom <= NEAR_BOTTOM_PX
     }
-  }, [messages])
+
+    scroller.addEventListener('scroll', updatePinnedFromScrollPosition, {
+      passive: true,
+    })
+    
+    return () => {
+      scroller.removeEventListener('scroll', updatePinnedFromScrollPosition)
+    }
+  }, [isPending, chatId])
+
+  // Always scroll to bottom when new message is added
+  useLayoutEffect(() => {
+    scrollToBottom()
+  }, [messages.length, scrollToBottom])
 
   // Ensure scroll after deferred render
   useLayoutEffect(() => {
-    requestAnimationFrame(scrollToBottom)
-  }, [deferredMessages])
+    scrollToBottom()
+  }, [deferredMessages, scrollToBottom])
 
   if (chat.value === undefined || isPending) {
     return (
@@ -102,9 +120,11 @@ function ChatHistory({ chatId }: ChatHistoryProps) {
           <ChatMessage
             key={message.id}
             message={message}
-            onStreamingChunk={scrollToBottomIfShouldAutoScroll}
+            onStreamingChunk={scrollToBottomIfPinned}
           />
         ))}
+        {/* Bottom sentinel for IntersectionObserver */}
+        <div ref={bottomSentinelRef} style={{ height: 1 }} />
       </div>
     </div>
   )
