@@ -40,11 +40,6 @@ function ChatHistory({ chatId }: ChatHistoryProps) {
     })
   }, [])
 
-  // Scroll to bottom on mount
-  useLayoutEffect(() => {
-    scrollToBottom()
-  }, [scrollToBottom])
-
   // IntersectionObserver to track if user is at bottom
   useEffect(() => {
     const scroller = chatHistoryRef.current
