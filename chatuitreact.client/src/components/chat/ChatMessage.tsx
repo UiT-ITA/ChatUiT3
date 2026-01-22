@@ -1,7 +1,7 @@
 import './ChatMessage.css';
 import './ChatMessageMarkdown.css';
 import { useSignals } from '@preact/signals-react/runtime';
-import { useMemo, useState, useLayoutEffect, useRef, useEffect } from 'react';
+import { useMemo, useState, useRef, useEffect, memo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { getStreamSignal } from '../../services/chatService';
 import type { ChatMessageDto } from '../../types/chatModels';
@@ -26,7 +26,7 @@ interface ChatMessageProps {
   onStreamingChunk?: () => void;
 }
 
-export default function ChatMessage({ message, onStreamingChunk }: ChatMessageProps) {
+function ChatMessage({ message, onStreamingChunk }: ChatMessageProps) {
   useSignals();
   const { t } = useTranslation();
   const { settings } = useSettings();
@@ -273,3 +273,6 @@ export default function ChatMessage({ message, onStreamingChunk }: ChatMessagePr
     </div >
   );
 }
+
+// Memoize to prevent rerenders when message object reference hasn't changed
+export default memo(ChatMessage);

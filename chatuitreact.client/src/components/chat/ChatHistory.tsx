@@ -1,7 +1,7 @@
 import './ChatHistory.css'
 import { getChat } from '../../services/chatService'
 import { useSignals } from '@preact/signals-react/runtime'
-import { useLayoutEffect, useRef, useEffect, useCallback, useDeferredValue, memo } from 'react'
+import { useLayoutEffect, useRef, useEffect, useCallback, memo } from 'react'
 import { useTranslation } from 'react-i18next'
 import ChatMessage from './ChatMessage'
 import LoadingIndicator from '../common/LoadingIndicator'
@@ -16,9 +16,6 @@ function ChatHistory({ chatId }: ChatHistoryProps) {
 
   const chat = getChat(chatId)
   const messages = chat.value?.messages || []
-
-  const deferredMessages = useDeferredValue(messages)
-  const isPending = deferredMessages !== messages
 
   const chatHistoryRef = useRef<HTMLDivElement>(null)
   const bottomSentinelRef = useRef<HTMLDivElement>(null)
@@ -67,43 +64,15 @@ function ChatHistory({ chatId }: ChatHistoryProps) {
 
     io.observe(sentinel)
     return () => io.disconnect()
-  }, [isPending, chatId])
+  }, [messages])
 
-  // Scroll event handler to track scroll position
-  useEffect(() => {
-    const scroller = chatHistoryRef.current
-    if (!scroller) return
-
-    const NEAR_BOTTOM_PX = 10
-
-    const updatePinnedFromScrollPosition = () => {
-      if (!scroller) return
-      
-      const distanceFromBottom =
-        scroller.scrollHeight - scroller.scrollTop - scroller.clientHeight
-      pinnedRef.current = distanceFromBottom <= NEAR_BOTTOM_PX
-    }
-
-    scroller.addEventListener('scroll', updatePinnedFromScrollPosition, {
-      passive: true,
-    })
-    
-    return () => {
-      scroller.removeEventListener('scroll', updatePinnedFromScrollPosition)
-    }
-  }, [isPending, chatId])
 
   // Always scroll to bottom when new message is added
   useLayoutEffect(() => {
     scrollToBottom()
   }, [messages.length, scrollToBottom])
 
-  // Ensure scroll after deferred render
-  useLayoutEffect(() => {
-    scrollToBottom()
-  }, [deferredMessages, scrollToBottom])
-
-  if (chat.value === undefined || isPending) {
+  if (chat.value === undefined) {
     return (
       <div className="chat-history">
         <div className="chat-history-loading">
@@ -116,7 +85,7 @@ function ChatHistory({ chatId }: ChatHistoryProps) {
   return (
     <div className="chat-history" ref={chatHistoryRef}>
       <div className="chat-history-messages">
-        {deferredMessages.map((message) => (
+        {messages.map((message) => (
           <ChatMessage
             key={message.id}
             message={message}

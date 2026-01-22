@@ -115,10 +115,27 @@ export async function invalidateChat(chatId: string): Promise<void> {
     // Fetch fresh chat data
     const chat = await apiService<ChatDto>(`/api/Chats/${chatId}`);
     
-    // Clean up stream caches for messages that are no longer generating
+    // Smart merge: preserve object references for unchanged messages to prevent unnecessary rerenders
     if (currentChat) {
+      const mergedMessages = chat.messages.map(newMessage => {
+        const existingMessage = currentChat.messages.find(m => m.id === newMessage.id);
+        
+        // If message exists and hasn't changed, keep the existing object reference
+        if (existingMessage && 
+            existingMessage.content === newMessage.content &&
+            existingMessage.status === newMessage.status &&
+            existingMessage.timestamp === newMessage.timestamp) {
+          return existingMessage; // Preserve reference to avoid rerender
+        }
+        
+        return newMessage; // New or changed message
+      });
+      
+      chat.messages = mergedMessages;
+      
+      // Clean up stream caches for messages that are no longer generating
       currentChat.messages.forEach(oldMessage => {
-        const newMessage = chat.messages.find(m => m.id === oldMessage.id);
+        const newMessage = mergedMessages.find(m => m.id === oldMessage.id);
         if (oldMessage.status === "Generating" && newMessage && newMessage.status !== "Generating") {
           messageStreamCache.delete(oldMessage.id);
         }
@@ -201,7 +218,7 @@ export function receiveMessageChunk(messageId: string, chunk: string): void {
   
   // Schedule flush if not already scheduled
   if (!flushTimers.has(messageId)) {
-    const timer = setTimeout(() => flushBuffer(messageId), 500);
+    const timer = setTimeout(() => flushBuffer(messageId), 250);
     flushTimers.set(messageId, timer);
   }
 }
