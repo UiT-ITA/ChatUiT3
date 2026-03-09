@@ -12,18 +12,17 @@
 
   <ItemGroup>
     <PackageReference Include="Azure.AI.OpenAI" Version="2.3.0-beta.2" />
-    <PackageReference Include="Microsoft.AspNetCore.OpenApi" Version="10.0.2" />
-    <PackageReference Include="Microsoft.AspNetCore.SignalR.Client" Version="10.0.2" />
+    <PackageReference Include="Microsoft.AspNetCore.OpenApi" Version="10.0.3" />
+    <PackageReference Include="Microsoft.AspNetCore.SignalR.Client" Version="10.0.3" />
     <PackageReference Include="Microsoft.AspNetCore.SpaProxy">
-      <Version>10.0.2</Version>
+      <Version>10.0.3</Version>
     </PackageReference>
-    <PackageReference Include="Microsoft.Azure.Cosmos" Version="3.56.0" />
-    <PackageReference Include="Microsoft.EntityFrameworkCore.Cosmos" Version="10.0.2" />
-    <PackageReference Include="Microsoft.Identity.Web" Version="4.3.0" />
-    <PackageReference Include="MongoDB.Driver" Version="3.6.0" />
-    <PackageReference Include="ReverseMarkdown" Version="5.0.0" />
+    <PackageReference Include="Microsoft.Azure.Cosmos" Version="3.55.0-preview.0" />
+    <PackageReference Include="Microsoft.EntityFrameworkCore.Cosmos" Version="10.0.3" />
+    <PackageReference Include="Microsoft.Identity.Web" Version="4.5.0" />
+    <PackageReference Include="ReverseMarkdown" Version="5.2.0" />
     <PackageReference Include="SmartReader" Version="0.11.0" />
-    <PackageReference Include="Swashbuckle.AspNetCore.SwaggerUI" Version="10.1.0" />
+    <PackageReference Include="Swashbuckle.AspNetCore.SwaggerUI" Version="10.1.4" />
   </ItemGroup>
 
   <ItemGroup>

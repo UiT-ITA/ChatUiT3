@@ -25,7 +25,7 @@ public partial class MockDatabaseService : IDatabaseService
         InitializeDummyData();
     }
 
-    private void AddUserToService(string userId)
+    private void AddUser(string userId)
     {
         // Initialize user info if doesn't exist
         _userInfoStorage.GetOrAdd(userId, _ => new UserInfo

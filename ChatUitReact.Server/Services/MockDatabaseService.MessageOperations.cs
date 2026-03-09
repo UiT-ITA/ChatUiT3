@@ -6,7 +6,7 @@ public partial class MockDatabaseService
 {
     public Task AddMessageAsync(string userId, string chatId, ChatMessage message)
     {
-        AddUserToService(userId);
+        AddUser(userId);
         var chat = _chatStorage[userId].FirstOrDefault(c => c.Id == chatId);
         if (chat != null)
         {
@@ -18,7 +18,7 @@ public partial class MockDatabaseService
 
     public Task UpdateMessageAsync(string userId, string chatId, ChatMessage message)
     {
-        AddUserToService(userId);
+        AddUser(userId);
         var chat = _chatStorage[userId].FirstOrDefault(c => c.Id == chatId);
         if (chat != null)
         {
@@ -41,7 +41,7 @@ public partial class MockDatabaseService
 
     public Task DeleteMessageAsync(string userId, string chatId, string messageId)
     {
-        AddUserToService(userId);
+        AddUser(userId);
         var chat = _chatStorage[userId].FirstOrDefault(c => c.Id == chatId);
         if (chat != null)
         {

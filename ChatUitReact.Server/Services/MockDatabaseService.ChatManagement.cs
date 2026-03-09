@@ -6,7 +6,7 @@ public partial class MockDatabaseService
 {
     public Task<List<ChatHeader>> GetChatListAsync(string userId)
     {
-        AddUserToService(userId);
+        AddUser(userId);
 
         var chatHeaders = _chatStorage[userId].Select(chat => DeepCopyChatHeader(chat)).ToList();
         return Task.FromResult(chatHeaders);
@@ -14,7 +14,7 @@ public partial class MockDatabaseService
 
     public Task<Chat?> GetChatByIdAsync(string userId, string chatId)
     {
-        AddUserToService(userId);
+        AddUser(userId);
 
         var chat = _chatStorage[userId].FirstOrDefault(c => c.Id == chatId);
         return Task.FromResult(chat != null ? DeepCopyChat(chat) : null);
@@ -22,7 +22,7 @@ public partial class MockDatabaseService
 
     public Task AddChatAsync(string userId, Chat chat)
     {
-        AddUserToService(userId);
+        AddUser(userId);
         var chatCopy = DeepCopyChat(chat);
         _chatStorage[userId].Add(chatCopy);
         return Task.CompletedTask;
@@ -30,7 +30,7 @@ public partial class MockDatabaseService
 
     public Task DeleteChatAsync(string userId, string chatId)
     {
-        AddUserToService(userId);
+        AddUser(userId);
 
         var chat = _chatStorage[userId].FirstOrDefault(c => c.Id == chatId);
         if (chat != null)
@@ -48,7 +48,7 @@ public partial class MockDatabaseService
             return Task.CompletedTask;
         }
 
-        AddUserToService(userId);
+        AddUser(userId);
 
         var chat = _chatStorage[userId].FirstOrDefault(c => c.Id == chatId);
         

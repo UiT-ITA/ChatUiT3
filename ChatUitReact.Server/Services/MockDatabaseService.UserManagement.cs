@@ -6,7 +6,7 @@ public partial class MockDatabaseService
 {
     public Task<UserInfo> GetUserInfoAsync(string userId)
     {
-        AddUserToService(userId);
+        AddUser(userId);
         
         var userInfo = _userInfoStorage[userId];
         return Task.FromResult(DeepCopyUserInfo(userInfo));
@@ -14,7 +14,7 @@ public partial class MockDatabaseService
 
     public async Task<bool> UpdateUserInfoAsync(string userId, UserInfo userInfo)
     {
-        AddUserToService(userId);
+        AddUser(userId);
         
         _userInfoStorage[userId] = DeepCopyUserInfo(userInfo);
         return await Task.FromResult(true);

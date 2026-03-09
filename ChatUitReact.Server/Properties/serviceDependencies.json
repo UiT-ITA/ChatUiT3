@@ -2,8 +2,7 @@
   "dependencies": {
     "cosmosdb1": {
       "type": "cosmosdb",
-      "connectionId": "ConnectionStrings:CosmosDBConnection",
-      "dynamicId": null
+      "connectionId": "ConnectionStrings:CosmosDBConnection"
     }
   }
 }
