@@ -85,6 +85,8 @@ builder.Services.AddSingleton<IAssistantService, AssistantService>();
 builder.Services.AddSingleton<AzureOpenAiService>();
 builder.Services.AddSingleton<IToolService, ToolService>();
 
+//builder.Services.AddSingleton<IDatabaseService, DatabaseService>();
+
 var app = builder.Build();
 
 app.UseDefaultFiles();
