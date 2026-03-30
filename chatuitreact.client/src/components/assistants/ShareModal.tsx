@@ -1,13 +1,13 @@
 import React from 'react';
 import { useTranslation } from 'react-i18next';
-import type { PrivateAssistantDto } from '../../types/assistantModels';
+import type { FullAssistantDto } from '../../types/assistantModels';
 import { Dialog } from '../common/Dialog';
 import { Icon } from '../common/Icon';
 import './ShareModal.css';
 
 interface ShareModalProps {
   isOpen: boolean;
-  assistant: PrivateAssistantDto | null;
+  assistant: FullAssistantDto | null;
   onClose: () => void;
   onCopyLink: (assistantId: string) => void;
   onCopyGuid: (assistantId: string) => void;

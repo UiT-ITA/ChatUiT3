@@ -1,5 +1,15 @@
 import apiService from './apiService';
-import type { EndpointDto, CreateEndpointDto, UpdateEndpointDto, ModelDto, CreateModelDto, UpdateModelDto } from '../types/admin';
+import type {
+  EndpointDto,
+  CreateEndpointDto,
+  UpdateEndpointDto,
+  ModelDto,
+  CreateModelDto,
+  UpdateModelDto,
+  AdminAssistantDto,
+  CreateAdminAssistantDto,
+  UpdateAdminAssistantDto
+} from '../types/admin';
 
 export async function getEndpoints(): Promise<EndpointDto[]> {
   return apiService<EndpointDto[]>('/api/admin/endpoints');
@@ -31,4 +41,24 @@ export async function updateModel(id: string, data: UpdateModelDto): Promise<Mod
 
 export async function deleteModel(id: string): Promise<void> {
   return apiService.delete<void>(`/api/admin/models/${id}`);
+}
+
+export async function getAdminAssistants(): Promise<AdminAssistantDto[]> {
+  return apiService<AdminAssistantDto[]>('/api/admin/assistants');
+}
+
+export async function getAdminAssistant(id: string): Promise<AdminAssistantDto> {
+  return apiService<AdminAssistantDto>(`/api/admin/assistants/${id}`);
+}
+
+export async function createAdminAssistant(data: CreateAdminAssistantDto): Promise<AdminAssistantDto> {
+  return apiService.post<AdminAssistantDto>('/api/admin/assistants', data);
+}
+
+export async function updateAdminAssistant(id: string, data: UpdateAdminAssistantDto): Promise<AdminAssistantDto> {
+  return apiService.put<AdminAssistantDto>(`/api/admin/assistants/${id}`, data);
+}
+
+export async function deleteAdminAssistant(id: string): Promise<void> {
+  return apiService.delete<void>(`/api/admin/assistants/${id}`);
 }

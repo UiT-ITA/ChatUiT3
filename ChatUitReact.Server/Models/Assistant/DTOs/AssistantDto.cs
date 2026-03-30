@@ -4,12 +4,12 @@ namespace ChatUitReact.Server.Models;
 
 public class AssistantListDto
 {
-    public List<PrivateAssistantDto> Owned { get; set; } = new List<PrivateAssistantDto>();
-    public List<SystemAssistantDto> System { get; set; } = new List<SystemAssistantDto>();
-    public List<SharedAssistantDto> Shared { get; set; } = new List<SharedAssistantDto>();
+    public List<FullAssistantDto> Owned { get; set; } = new List<FullAssistantDto>();
+    public List<AssistantSummaryDto> System { get; set; } = new List<AssistantSummaryDto>();
+    public List<AssistantSummaryDto> Shared { get; set; } = new List<AssistantSummaryDto>();
 }
 
-public class PrivateAssistantDto
+public class FullAssistantDto
 {
     public string Id { get; set; } = string.Empty;
     public string Name { get; set; } = string.Empty;
@@ -23,17 +23,7 @@ public class PrivateAssistantDto
     public bool IsVisible { get; set; }
 }
 
-public class SystemAssistantDto
-{
-    public string Id { get; set; } = string.Empty;
-    public string Name { get; set; } = string.Empty;
-    public string Description { get; set; } = string.Empty;
-    public List<string> Tags { get; set; } = new List<string>();
-    public string ModelId { get; set; } = string.Empty;
-    public bool IsVisible { get; set; }
-}
-
-public class SharedAssistantDto
+public class AssistantSummaryDto
 {
     public string Id { get; set; } = string.Empty;
     public string Name { get; set; } = string.Empty;

@@ -3,10 +3,11 @@ import { useTranslation } from 'react-i18next';
 import './AdminPage.css';
 import EndpointsTab from './EndpointsTab';
 import ModelsTab from './ModelsTab';
+import AssistantsTab from './AssistantsTab';
 
 const AdminPage: React.FC = () => {
   const { t } = useTranslation();
-  const [tab, setTab] = useState<'endpoints' | 'models'>('endpoints');
+  const [tab, setTab] = useState<'endpoints' | 'models' | 'assistants'>('endpoints');
 
   useEffect(() => {
     // No sidebar changes for now; page styling mirrors AssistantsPage
@@ -30,11 +31,17 @@ const AdminPage: React.FC = () => {
             >
               {t('admin.tabs.models')}
             </button>
+            <button
+              className={`admin-tab-button ${tab === 'assistants' ? 'active' : ''}`}
+              onClick={() => setTab('assistants')}
+            >
+              {t('admin.tabs.assistants')}
+            </button>
           </div>
         </div>
 
         <div className="admin-section">
-          {tab === 'endpoints' ? <EndpointsTab /> : <ModelsTab />}
+          {tab === 'endpoints' ? <EndpointsTab /> : tab === 'models' ? <ModelsTab /> : <AssistantsTab />}
         </div>
       </div>
     </div>

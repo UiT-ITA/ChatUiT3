@@ -289,7 +289,8 @@
   "admin": {
     "tabs": {
       "endpoints": "Endepunkter",
-      "models": "Modeller"
+      "models": "Modeller",
+      "assistants": "Assistenter"
     },
     "endpoints": {
       "title": "Endepunkter",
@@ -354,6 +355,23 @@
         "maxContextLength": "Maksimal kontekstlengde",
         "maxOutputLength": "Maksimal utdata-lengde",
         "knowledgeCutoff": "Kunnskapsgrense"
+      }
+    },
+    "assistants": {
+      "title": "Systemassistenter",
+      "add": {
+        "title": "Legg til assistent"
+      },
+      "list": {
+        "empty": "Ingen systemassistenter er konfigurert."
+      },
+      "dialog": {
+        "edit": {
+          "title": "Rediger assistent"
+        },
+        "delete": {
+          "confirm": "Er du sikker på at du vil slette denne assistenten?"
+        }
       }
     }
   }

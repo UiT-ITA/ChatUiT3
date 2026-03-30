@@ -1,22 +1,22 @@
 import React from 'react';
 import { useTranslation } from 'react-i18next';
 import { MdEdit, MdDelete, MdShare, MdVisibility, MdVisibilityOff, MdImage, MdPublic, MdPsychology } from 'react-icons/md';
-import type { PrivateAssistantDto, SystemAssistantDto, SharedAssistantDto } from '../../types/assistantModels';
+import type { FullAssistantDto, AssistantSummaryDto } from '../../types/assistantModels';
 import { useSignals } from '@preact/signals-react/runtime';
 import { getModels } from '../../services/modelService';
 import type { UserModelDto } from '../../types/modelModels';
 import TagField from '../common/TagField';
 import './AssistantCard.css';
 
-type AssistantType = PrivateAssistantDto | SystemAssistantDto | SharedAssistantDto;
+type AssistantType = FullAssistantDto | AssistantSummaryDto;
 
 interface AssistantCardProps {
   assistant: AssistantType;
   variant: 'owned' | 'system' | 'shared';
   isDefault?: boolean;
   onToggleFavorite: (id: string) => void;
-  onShare?: (assistant: PrivateAssistantDto) => void;
-  onEdit?: (assistant: PrivateAssistantDto) => void;
+  onShare?: (assistant: FullAssistantDto) => void;
+  onEdit?: (assistant: FullAssistantDto) => void;
   onDelete?: (id: string) => void;
 }
 
@@ -78,7 +78,7 @@ const AssistantCard: React.FC<AssistantCardProps> = ({
           
           {variant === 'owned' && onShare && (
             <button
-              onClick={() => onShare(assistant as PrivateAssistantDto)}
+              onClick={() => onShare(assistant as FullAssistantDto)}
               className="assistant-card-button"
               title={t('assistants.actions.shareAssistant')}
             >
@@ -88,7 +88,7 @@ const AssistantCard: React.FC<AssistantCardProps> = ({
           
           {variant === 'owned' && onEdit && (
             <button
-              onClick={() => onEdit(assistant as PrivateAssistantDto)}
+              onClick={() => onEdit(assistant as FullAssistantDto)}
               className="assistant-card-button"
               title={t('assistants.actions.editAssistant')}
             >
@@ -124,9 +124,9 @@ const AssistantCard: React.FC<AssistantCardProps> = ({
             {renderCapabilityIcon(capabilities.tools, <MdPublic size={16} />, t('assistants.capabilities.tools'))}
             {renderCapabilityIcon(capabilities.reasoning, <MdPsychology size={16} />, t('assistants.capabilities.reasoning'))}
           </div>
-          {variant === 'shared' && (assistant as SharedAssistantDto).createdBy && (
+          {variant !== 'owned' && (assistant as AssistantSummaryDto).createdBy && (
             <div className="assistant-creator">
-              {t('assistants.createdBy')} {(assistant as SharedAssistantDto).createdBy}
+              {t('assistants.createdBy')} {(assistant as AssistantSummaryDto).createdBy}
             </div>
           )}
           <div className="assistant-card-model">

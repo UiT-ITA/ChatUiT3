@@ -6,7 +6,7 @@ import { useTranslation } from 'react-i18next';
 import './AssistantsPage.css';
 import { setAssistantSidebar, clearSidebarContent } from '../../services/sidebarService';
 import { getAssistants, deleteAssistant, toggleVisibility, addSharedAssistant, invalidateAssistants, removeSharedAssistant } from '../../services/assistantService';
-import type { PrivateAssistantDto } from '../../types/assistantModels';
+import type { FullAssistantDto } from '../../types/assistantModels';
 import AssistantCard from './AssistantCard';
 import AddExternalAssistant from './AddExternalAssistant';
 import ShareModal from './ShareModal';
@@ -18,9 +18,9 @@ const AssistantsPage: React.FC = () => {
   const { assistantId } = useParams<{ assistantId?: string }>();
   const [searchParams, setSearchParams] = useSearchParams();
   const assistantList = getAssistants();
-  const [shareModalAssistant, setShareModalAssistant] = useState<PrivateAssistantDto | null>(null);
+  const [shareModalAssistant, setShareModalAssistant] = useState<FullAssistantDto | null>(null);
   const [showCreateModal, setShowCreateModal] = useState(false);
-  const [editingAssistant, setEditingAssistant] = useState<PrivateAssistantDto | null>(null);
+  const [editingAssistant, setEditingAssistant] = useState<FullAssistantDto | null>(null);
 
   const isListView = assistantId === undefined;
 
@@ -63,11 +63,11 @@ const AssistantsPage: React.FC = () => {
     }
   };
 
-  const handleShareAssistant = (assistant: PrivateAssistantDto) => {
+  const handleShareAssistant = (assistant: FullAssistantDto) => {
     setShareModalAssistant(assistant);
   };
 
-  const handleEditAssistant = (assistant: PrivateAssistantDto) => {
+  const handleEditAssistant = (assistant: FullAssistantDto) => {
     setEditingAssistant(assistant);
   };
 

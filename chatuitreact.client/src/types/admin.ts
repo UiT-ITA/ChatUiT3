@@ -1,3 +1,5 @@
+import type { FullAssistantDto, CreateAssistantDto, UpdateAssistantDto } from './assistantModels';
+
 export type EndpointType = 'AzureOpenAI' | 'OpenAI' | 'Anthropic' | 'LlamaCpp' | 'Other';
 
 export interface EndpointDto {
@@ -59,3 +61,7 @@ export interface UpdateModelDto {
   allowedRoles: UserRole[];
   capabilities: ModelCapabilities;
 }
+
+export type AdminAssistantDto = FullAssistantDto;
+export type CreateAdminAssistantDto = CreateAssistantDto;
+export type UpdateAdminAssistantDto = UpdateAssistantDto;

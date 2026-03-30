@@ -2,7 +2,7 @@ import React, { useState, useRef, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import { MdImage, MdPublic, MdPsychology, MdExpandMore, MdExpandLess } from 'react-icons/md';
 import { useSignals } from '@preact/signals-react/runtime';
-import type { CreateAssistantDto, PrivateAssistantDto, ReasoningEffort, ChatToolDto } from '../../types/assistantModels';
+import type { CreateAssistantDto, FullAssistantDto, ReasoningEffort, ChatToolDto, UpdateAssistantDto } from '../../types/assistantModels';
 import { getModels } from '../../services/modelService';
 import { getTools } from '../../services/toolService';
 import type { UserModelDto } from '../../types/modelModels';
@@ -13,14 +13,22 @@ import './AssistantModal.css';
 
 interface AssistantModalProps {
   isOpen: boolean;
-  editingAssistant: PrivateAssistantDto | null;
+  editingAssistant: FullAssistantDto | null;
   onClose: () => void;
+  onCreate?: (assistant: CreateAssistantDto) => Promise<unknown>;
+  onUpdate?: (assistant: UpdateAssistantDto) => Promise<unknown>;
+  createTitle?: string;
+  editTitle?: string;
 }
 
 const AssistantModal: React.FC<AssistantModalProps> = ({
   isOpen,
   editingAssistant,
-  onClose
+  onClose,
+  onCreate,
+  onUpdate,
+  createTitle,
+  editTitle
 }) => {
   useSignals();
   const { t } = useTranslation();
@@ -154,12 +162,12 @@ const AssistantModal: React.FC<AssistantModalProps> = ({
     setLoading(true);
     try {
       if (editingAssistant) {
-        await updateAssistant({
+        await (onUpdate ?? updateAssistant)({
           id: editingAssistant.id,
           ...normalized
         });
       } else {
-        await createAssistant(normalized);
+        await (onCreate ?? createAssistant)(normalized);
       }
       onClose();
     } catch (error) {
@@ -196,7 +204,7 @@ const AssistantModal: React.FC<AssistantModalProps> = ({
     <Dialog
       isOpen={isOpen}
       onClose={onClose}
-      title={editingAssistant ? t('assistants.editAssistant') : t('assistants.createAssistant')}
+      title={editingAssistant ? (editTitle ?? t('assistants.editAssistant')) : (createTitle ?? t('assistants.createAssistant'))}
       size="large"
     >
       {/* Details Page */}

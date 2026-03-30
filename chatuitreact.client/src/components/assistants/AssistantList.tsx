@@ -2,7 +2,7 @@ import { Link } from "react-router-dom";
 import { useTranslation } from 'react-i18next';
 import { getAssistants } from "../../services/assistantService";
 import { useSignals } from "@preact/signals-react/runtime";
-import type { AssistantDto, PrivateAssistantDto, SharedAssistantDto, SystemAssistantDto } from "../../types/assistantModels";
+import type { AssistantDto, FullAssistantDto, AssistantSummaryDto } from "../../types/assistantModels";
 
 export function AssistantList() {
   useSignals();
@@ -13,7 +13,7 @@ export function AssistantList() {
     return <div>{t('common.loading')}</div>;
   }
 
-  const renderAssistantLinks = (assistants: (PrivateAssistantDto | SystemAssistantDto | SharedAssistantDto)[], type: AssistantDto['type']) => {
+  const renderAssistantLinks = (assistants: (FullAssistantDto | AssistantSummaryDto)[], type: AssistantDto['type']) => {
     if (assistants.length === 0) {
       const emptyStateKey = type === 'owned' ? 'assistants.emptyStates.noPersonalAssistants' :
                            type === 'system' ? 'assistants.emptyStates.noSystemAssistants' :

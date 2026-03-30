@@ -1,4 +1,4 @@
-export interface PrivateAssistantDto {
+export interface FullAssistantDto {
     id: string;
     name: string;
     description?: string;
@@ -11,16 +11,7 @@ export interface PrivateAssistantDto {
     isVisible: boolean;
 }
 
-export interface SystemAssistantDto {
-    id: string;
-    name: string;
-    description?: string;
-    tags: string[];
-    modelId: string;
-    isVisible: boolean;
-}
-
-export interface SharedAssistantDto {
+export interface AssistantSummaryDto {
     id: string;
     name: string;
     description?: string;
@@ -31,9 +22,9 @@ export interface SharedAssistantDto {
 }
 
 export interface AssistantListDto {
-    owned: PrivateAssistantDto[];
-    system: SystemAssistantDto[];
-    shared: SharedAssistantDto[];
+    owned: FullAssistantDto[];
+    system: AssistantSummaryDto[];
+    shared: AssistantSummaryDto[];
 }
 
 export interface AssistantDto {
