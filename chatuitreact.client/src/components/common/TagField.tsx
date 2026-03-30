@@ -71,7 +71,8 @@ const TagField: React.FC<TagFieldProps> = ({
             </span>
           ))}
           {tags.length === 0 && (
-            <span className="tag-empty">{t('common.noTags')}</span>
+            //<span className="tag-empty">{t('common.noTags')}</span>
+            <span className="tag-empty">  </span>
           )}
         </div>
       </div>
