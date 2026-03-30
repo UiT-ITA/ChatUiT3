@@ -134,7 +134,9 @@
     },
     "knowledge": {
       "title": "Kunnskap",
+      "addFiles": "Legg til filer",
       "noFilesAdded": "Ingen filer lagt til",
+      "shortDescriptionPlaceholder": "Legg til kort beskrivelse",
       "categories": {
         "alwaysLoaded": {
           "title": "Alltid lastede filer",

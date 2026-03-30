@@ -134,7 +134,9 @@
     },
     "knowledge": {
       "title": "Knowledge",
+      "addFiles": "Add files",
       "noFilesAdded": "No files added",
+      "shortDescriptionPlaceholder": "Add short description",
       "categories": {
         "alwaysLoaded": {
           "title": "Always loaded files",

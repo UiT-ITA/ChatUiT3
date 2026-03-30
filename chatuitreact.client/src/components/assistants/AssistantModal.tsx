@@ -9,8 +9,14 @@ import type { UserModelDto } from '../../types/modelModels';
 import { createAssistant, updateAssistant } from '../../services/assistantService';
 import { Dialog, DialogPage, DialogButton } from '../common/Dialog';
 import TagField from '../common/TagField';
-import KnowledgeFileList, { type KnowledgeFileCategory } from './KnowledgeFileList';
+import KnowledgeFileList, { type KnowledgeFileCategory, type KnowledgeFileItemData } from './KnowledgeFileList';
 import './AssistantModal.css';
+
+const createEmptyKnowledgeFiles = (): Record<KnowledgeFileCategory, KnowledgeFileItemData[]> => ({
+  alwaysLoaded: [],
+  selectiveLoaded: [],
+  ragLoaded: []
+});
 
 interface AssistantModalProps {
   isOpen: boolean;
@@ -38,6 +44,7 @@ const AssistantModal: React.FC<AssistantModalProps> = ({
   const [isModelDropdownOpen, setIsModelDropdownOpen] = useState(false);
   const [loading, setLoading] = useState(false);
   const [selectedToolIds, setSelectedToolIds] = useState<string[]>([]);
+  const [knowledgeFiles, setKnowledgeFiles] = useState<Record<KnowledgeFileCategory, KnowledgeFileItemData[]>>(createEmptyKnowledgeFiles);
   const [systemPromptSnippets, setSystemPromptSnippets] = useState({
     renderMarkdown: false,
     includeBasicInfo: false,
@@ -66,6 +73,7 @@ const AssistantModal: React.FC<AssistantModalProps> = ({
     category: KnowledgeFileCategory;
     title: string;
     description: string;
+    allowItemDescription?: boolean;
   }> = [
     {
       category: 'alwaysLoaded',
@@ -75,7 +83,8 @@ const AssistantModal: React.FC<AssistantModalProps> = ({
     {
       category: 'selectiveLoaded',
       title: t('assistants.knowledge.categories.selectiveLoaded.title'),
-      description: t('assistants.knowledge.categories.selectiveLoaded.description')
+      description: t('assistants.knowledge.categories.selectiveLoaded.description'),
+      allowItemDescription: true
     },
     {
       category: 'ragLoaded',
@@ -87,6 +96,7 @@ const AssistantModal: React.FC<AssistantModalProps> = ({
   // Initialize form data when editing
   useEffect(() => {
     if (editingAssistant) {
+      setKnowledgeFiles(createEmptyKnowledgeFiles());
       setFormData({
         name: editingAssistant.name,
         description: editingAssistant.description || '',
@@ -99,6 +109,7 @@ const AssistantModal: React.FC<AssistantModalProps> = ({
       });
       setSelectedToolIds(editingAssistant.availableToolIds || []);
     } else {
+      setKnowledgeFiles(createEmptyKnowledgeFiles());
       setFormData({
         name: '',
         description: '',
@@ -162,6 +173,36 @@ const AssistantModal: React.FC<AssistantModalProps> = ({
     
     setSelectedToolIds(newSelectedIds);
     handleChange('availableToolIds', newSelectedIds);
+  };
+
+  const handleKnowledgeFilesSelected = (category: KnowledgeFileCategory, files: File[]) => {
+    if (files.length === 0) {
+      return;
+    }
+
+    const newItems = files.map((file) => ({
+      id: crypto.randomUUID(),
+      name: file.name,
+      file
+    }));
+
+    setKnowledgeFiles((prev) => ({
+      ...prev,
+      [category]: [...prev[category], ...newItems]
+    }));
+  };
+
+  const handleKnowledgeFileDescriptionChange = (
+    category: KnowledgeFileCategory,
+    itemId: string,
+    description: string
+  ) => {
+    setKnowledgeFiles((prev) => ({
+      ...prev,
+      [category]: prev[category].map((item) => (
+        item.id === itemId ? { ...item, description } : item
+      ))
+    }));
   };
 
   const handleSubmit = async () => {
@@ -459,6 +500,12 @@ const AssistantModal: React.FC<AssistantModalProps> = ({
               title={section.title}
               description={section.description}
               emptyLabel={t('assistants.knowledge.noFilesAdded')}
+              items={knowledgeFiles[section.category]}
+              onFilesSelected={(files) => handleKnowledgeFilesSelected(section.category, files)}
+              disabled={loading}
+              allowItemDescription={section.allowItemDescription}
+              itemDescriptionPlaceholder={t('assistants.knowledge.shortDescriptionPlaceholder')}
+              onItemDescriptionChange={(itemId, description) => handleKnowledgeFileDescriptionChange(section.category, itemId, description)}
             />
           ))}
         </div>
