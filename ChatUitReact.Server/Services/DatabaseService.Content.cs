@@ -177,6 +177,25 @@ public partial class DatabaseService
         return chatFiles;
     }
 
+    private async Task<List<ChatFile>> ReadFilesAsync(
+        string userId,
+        IReadOnlyCollection<StoredFileDocument>? files,
+        IReadOnlyDictionary<string, ContentBlockDocument> contentBlocksById)
+    {
+        if (files == null || files.Count == 0)
+        {
+            return new List<ChatFile>();
+        }
+
+        var chatFiles = new List<ChatFile>(files.Count);
+        foreach (var file in files)
+        {
+            chatFiles.Add(await ReadFileAsync(userId, file, contentBlocksById));
+        }
+
+        return chatFiles;
+    }
+
     private async Task<ChatFile> ReadFileAsync(string userId, StoredFileDocument file)
     {
         return file.Type switch
@@ -201,6 +220,110 @@ public partial class DatabaseService
             },
             _ => throw new NotSupportedException($"Unsupported file type: {file.Type}")
         };
+    }
+
+    private async Task<ChatFile> ReadFileAsync(
+        string userId,
+        StoredFileDocument file,
+        IReadOnlyDictionary<string, ContentBlockDocument> contentBlocksById)
+    {
+        return file.Type switch
+        {
+            AiContentType.Text => new ChatFileText
+            {
+                Id = file.Id,
+                Filename = file.Filename,
+                Content = ReadTextContent(file.ContentBlockIds, contentBlocksById)
+            },
+            AiContentType.Image => new ChatFileImage
+            {
+                Id = file.Id,
+                Filename = file.Filename,
+                Content = Convert.ToBase64String(ReadBinaryContent(file.ContentBlockIds, contentBlocksById))
+            },
+            AiContentType.Mixed => new ChatFileMixed
+            {
+                Id = file.Id,
+                Filename = file.Filename,
+                Chunks = await ReadFilesAsync(userId, file.Chunks, contentBlocksById)
+            },
+            _ => throw new NotSupportedException($"Unsupported file type: {file.Type}")
+        };
+    }
+
+    private string ReadTextContent(
+        IReadOnlyCollection<string> contentBlockIds,
+        IReadOnlyDictionary<string, ContentBlockDocument> contentBlocksById)
+    {
+        if (contentBlockIds.Count == 0)
+        {
+            return string.Empty;
+        }
+
+        var documents = GetOrderedContentBlocks(contentBlockIds, contentBlocksById);
+        if (documents.Count == 0)
+        {
+            return string.Empty;
+        }
+
+        if (documents.Any(x => x.IsEncrypted))
+        {
+            throw new NotSupportedException("Encrypted text content is not implemented yet.");
+        }
+
+        return string.Concat(documents.Select(x => x.Payload));
+    }
+
+    private byte[] ReadBinaryContent(
+        IReadOnlyCollection<string> contentBlockIds,
+        IReadOnlyDictionary<string, ContentBlockDocument> contentBlocksById)
+    {
+        if (contentBlockIds.Count == 0)
+        {
+            return Array.Empty<byte>();
+        }
+
+        var documents = GetOrderedContentBlocks(contentBlockIds, contentBlocksById);
+        if (documents.Count == 0)
+        {
+            return Array.Empty<byte>();
+        }
+
+        return Convert.FromBase64String(string.Concat(documents.Select(x => x.Payload)));
+    }
+
+    private List<ContentBlockDocument> GetOrderedContentBlocks(
+        IReadOnlyCollection<string> contentBlockIds,
+        IReadOnlyDictionary<string, ContentBlockDocument> contentBlocksById)
+    {
+        var documents = new List<ContentBlockDocument>(contentBlockIds.Count);
+
+        foreach (var contentBlockId in contentBlockIds)
+        {
+            if (contentBlocksById.TryGetValue(contentBlockId, out var document))
+            {
+                documents.Add(document);
+            }
+        }
+
+        return documents;
+    }
+
+    private async Task<Dictionary<string, ContentBlockDocument>> ReadContentBlockMapByChatAsync(string userId, string chatId)
+    {
+        if (_contentContainer == null)
+        {
+            return new Dictionary<string, ContentBlockDocument>();
+        }
+
+        var documents = await QueryItemsAsync<ContentBlockDocument>(
+            _contentContainer,
+            new QueryDefinition("SELECT * FROM c WHERE c.userId = @userId AND c.chatId = @chatId")
+                .WithParameter("@userId", userId)
+                .WithParameter("@chatId", chatId),
+            userId);
+
+        return documents.ToDictionary(document => document.Id, document => document);
     }
 
     private async Task<List<ContentBlockDocument>> ReadContentBlocksAsync(string userId, IReadOnlyCollection<string> contentBlockIds)

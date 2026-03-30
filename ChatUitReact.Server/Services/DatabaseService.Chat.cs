@@ -23,24 +23,31 @@ public partial class DatabaseService
     {
         await EnsureInitializedAsync();
 
-        var chatDocument = await ReadItemOrDefaultAsync<ChatDocument>(_chatContainer!, chatId, userId);
+        var chatTask = ReadItemOrDefaultAsync<ChatDocument>(_chatContainer!, chatId, userId);
+        var messageDocumentsTask = QueryItemsAsync<ChatMessageDocument>(
+            _chatMessageContainer!,
+            new QueryDefinition("SELECT * FROM c WHERE c.userId = @userId AND c.chatId = @chatId ORDER BY c.timestamp ASC")
+                .WithParameter("@userId", userId)
+                .WithParameter("@chatId", chatId),
+            userId);
+        var contentBlocksTask = ReadContentBlockMapByChatAsync(userId, chatId);
+
+        await Task.WhenAll(chatTask, messageDocumentsTask, contentBlocksTask);
+
+        var chatDocument = await chatTask;
 
         if (chatDocument == null)
         {
             return null;
         }
 
-        var messageDocuments = await QueryItemsAsync<ChatMessageDocument>(
-            _chatMessageContainer!,
-            new QueryDefinition("SELECT * FROM c WHERE c.userId = @userId AND c.chatId = @chatId ORDER BY c.timestamp ASC")
-                .WithParameter("@userId", userId)
-                .WithParameter("@chatId", chatId),
-            userId);
+        var messageDocuments = await messageDocumentsTask;
+        var contentBlocksById = await contentBlocksTask;
 
         var messages = new List<ChatMessage>(messageDocuments.Count);
         foreach (var messageDocument in messageDocuments)
         {
-            messages.Add(await MapChatMessageAsync(userId, messageDocument));
+            messages.Add(await MapChatMessageAsync(userId, messageDocument, contentBlocksById));
         }
 
         return new Chat
@@ -267,6 +274,22 @@ public partial class DatabaseService
             Content = await ReadTextContentAsync(userId, messageDocument.ContentBlockIds),
             Status = messageDocument.Status,
             Files = await ReadFilesAsync(userId, messageDocument.Files)
+        };
+    }
+
+    private async Task<ChatMessage> MapChatMessageAsync(
+        string userId,
+        ChatMessageDocument messageDocument,
+        IReadOnlyDictionary<string, ContentBlockDocument> contentBlocksById)
+    {
+        return new ChatMessage
+        {
+            Id = messageDocument.Id,
+            Role = messageDocument.Role,
+            Timestamp = messageDocument.Timestamp,
+            Content = ReadTextContent(messageDocument.ContentBlockIds, contentBlocksById),
+            Status = messageDocument.Status,
+            Files = await ReadFilesAsync(userId, messageDocument.Files, contentBlocksById)
         };
     }
 

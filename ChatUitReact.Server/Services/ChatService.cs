@@ -140,7 +140,24 @@ public class ChatService : IChatService
 
     public async Task SendStreamingMessageAsync(string userId, string chatId, Models.ChatMessage userMessage, string assistantId)
     {
-        await _databaseService.AddMessageAsync(userId, chatId, userMessage);
+        if (userMessage.Timestamp == default)
+        {
+            userMessage.Timestamp = DateTime.UtcNow;
+        }
+
+        var assistantMessage = new Models.ChatMessage
+        {
+            Role = AiChatRole.Assistant,
+            Status = AiChatStatus.Generating,
+            Timestamp = userMessage.Timestamp.AddSeconds(1)
+        };
+
+        _streamingService.StartMessage(userId, assistantMessage.Id);
+
+        var userMessageTask = _databaseService.AddMessageAsync(userId, chatId, userMessage);
+        var assistantMessageTask = _databaseService.AddMessageAsync(userId, chatId, assistantMessage);
+
+        await Task.WhenAll(userMessageTask, assistantMessageTask);
         NotifyChatUpdated(userId, chatId);
         
         var chat = await GetChatByIdAsync(userId, chatId);
@@ -172,18 +189,6 @@ if (endpoint.EndpointType != EndpointType.AzureOpenAI)
     await _hubContext.Clients.Group(userId).Notify(NotifyLevel.Error, "The selected provider is not supported.");
     throw new NotSupportedException($"Provider {endpoint.EndpointType} is not supported. Only Azure OpenAI is currently supported.");
 }
-        
-        var assistantMessage = new Models.ChatMessage
-        {
-            Role = AiChatRole.Assistant,
-            Status = AiChatStatus.Generating
-        };
-        
-        _streamingService.StartMessage(userId, assistantMessage.Id);
-        
-        await _databaseService.AddMessageAsync(userId, chatId, assistantMessage);
-        
-        NotifyChatUpdated(userId, chatId);
 
         _ = Task.Run(async () =>
         {
