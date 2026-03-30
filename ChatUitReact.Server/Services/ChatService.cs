@@ -68,12 +68,11 @@ public class ChatService : IChatService
 
     public async Task<Chat> CreateChatAsync(string userId, string assistantId, List<Models.ChatMessage> messages)
     {
-        var settings = await GetChatSettingsFromAssistant(userId, assistantId);
-        return await CreateChatAsync(userId, settings, messages, assistantId);
+        return await CreateChatAsync(userId, messages, assistantId);
     }
 
 
-    private async Task<Chat> CreateChatAsync(string userId, ChatSettings settings, List<Models.ChatMessage> messages, string assistantId)
+    private async Task<Chat> CreateChatAsync(string userId, List<Models.ChatMessage> messages, string assistantId)
     {
         var lastMessage = messages.Last();
         var initialMessages = messages.Take(messages.Count - 1).ToList();
