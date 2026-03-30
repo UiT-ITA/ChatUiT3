@@ -1,27 +1,96 @@
-﻿using ChatUitReact.Server.Models;
+using ChatUitReact.Server.Models;
+using Microsoft.Azure.Cosmos;
 
 namespace ChatUitReact.Server.Services;
 
 public partial class DatabaseService
 {
-    public Task<UserInfo?> GetUserAsync(string userId)
+    public async Task<UserInfo?> GetUserAsync(string userId)
     {
-        throw new NotImplementedException();
+        await EnsureInitializedAsync();
+
+        var document = await ReadItemOrDefaultAsync<UserDocument>(_userContainer!, userId, userId);
+        if (document != null)
+        {
+            return MapUser(document);
+        }
+
+        var newUser = new UserInfo
+        {
+            Username = userId,
+            Roles = new List<UserRole>(),
+            Preferences = new UserPreferences()
+        };
+
+        await UpsertUserAsync(userId, newUser);
+        return newUser;
     }
 
-    public Task<bool> UpdateUserAsync(UserInfo user)
+    public async Task<bool> UpdateUserAsync(UserInfo user)
     {
-        throw new NotImplementedException();
+        if (string.IsNullOrWhiteSpace(user.Username))
+        {
+            return false;
+        }
+
+        return await UpsertUserAsync(user.Username, user);
     }
 
 
-    public Task<UserInfo> GetUserInfoAsync(string userId)
+    public async Task<UserInfo> GetUserInfoAsync(string userId)
     {
-        throw new NotImplementedException();
+        await EnsureInitializedAsync();
+
+        var document = await ReadItemOrDefaultAsync<UserDocument>(_userContainer!, userId, userId);
+        if (document != null)
+        {
+            return MapUser(document);
+        }
+
+        var newUser = new UserInfo
+        {
+            Username = userId,
+            Roles = new List<UserRole>(),
+            Preferences = new UserPreferences()
+        };
+
+        await UpsertUserAsync(userId, newUser);
+        return newUser;
     }
 
-    public Task<bool> UpdateUserInfoAsync(string userId, UserInfo userInfo)
+    public async Task<bool> UpdateUserInfoAsync(string userId, UserInfo userInfo)
     {
-        throw new NotImplementedException();
+        return await UpsertUserAsync(userId, userInfo);
+    }
+
+    private async Task<bool> UpsertUserAsync(string userId, UserInfo userInfo)
+    {
+        await EnsureInitializedAsync();
+
+        var document = MapUserDocument(userId, userInfo);
+        await _userContainer!.UpsertItemAsync(document, new PartitionKey(userId));
+        userInfo.Username = userId;
+        return true;
+    }
+
+    private static UserInfo MapUser(UserDocument document)
+    {
+        return new UserInfo
+        {
+            Username = document.UserId,
+            Roles = document.Roles,
+            Preferences = document.Preferences
+        };
+    }
+
+    private static UserDocument MapUserDocument(string userId, UserInfo userInfo)
+    {
+        return new UserDocument
+        {
+            Id = userId,
+            UserId = userId,
+            Roles = userInfo.Roles,
+            Preferences = userInfo.Preferences
+        };
     }
 }

@@ -1,0 +1,353 @@
+using ChatUitReact.Server.Models;
+using Microsoft.Azure.Cosmos;
+using System.Text;
+
+namespace ChatUitReact.Server.Services;
+
+public partial class DatabaseService
+{
+    private int MaxTextChunkUtf8Bytes => Math.Min(Math.Max(_options.MaxTextChunkUtf8Bytes, 4_096), 1_000_000);
+    private int MaxBinaryPayloadCharacters
+    {
+        get
+        {
+            var requestedSize = Math.Min(Math.Max(_options.MaxBinaryPayloadCharacters, 4_096), 1_000_000);
+            return requestedSize - (requestedSize % 4);
+        }
+    }
+
+    private async Task<List<string>> WriteTextContentAsync(string userId, string chatId, string ownerId, string? content)
+    {
+        if (_contentContainer == null)
+        {
+            throw new InvalidOperationException("Content container is not initialized.");
+        }
+
+        var chunks = SplitTextPayload(content ?? string.Empty);
+        if (chunks.Count == 0)
+        {
+            return new List<string>();
+        }
+
+        var blockIds = new List<string>(chunks.Count);
+        for (var index = 0; index < chunks.Count; index++)
+        {
+            var document = new ContentBlockDocument
+            {
+                Id = Guid.NewGuid().ToString(),
+                UserId = userId,
+                ChatId = chatId,
+                OwnerId = ownerId,
+                ContentType = StoredContentType.Text,
+                ChunkIndex = index,
+                IsEncrypted = false,
+                Payload = chunks[index]
+            };
+
+            await _contentContainer.CreateItemAsync(document, new Microsoft.Azure.Cosmos.PartitionKey(userId));
+            blockIds.Add(document.Id);
+        }
+
+        return blockIds;
+    }
+
+    private async Task<string> ReadTextContentAsync(string userId, IReadOnlyCollection<string> contentBlockIds)
+    {
+        var documents = await ReadContentBlocksAsync(userId, contentBlockIds);
+        if (documents.Count == 0)
+        {
+            return string.Empty;
+        }
+
+        if (documents.Any(x => x.IsEncrypted))
+        {
+            throw new NotSupportedException("Encrypted text content is not implemented yet.");
+        }
+
+        return string.Concat(documents.Select(x => x.Payload));
+    }
+
+    private async Task<List<string>> WriteBinaryContentAsync(string userId, string chatId, string ownerId, byte[] bytes)
+    {
+        if (_contentContainer == null)
+        {
+            throw new InvalidOperationException("Content container is not initialized.");
+        }
+
+        if (bytes.Length == 0)
+        {
+            return new List<string>();
+        }
+
+        var base64Payload = Convert.ToBase64String(bytes);
+        var chunks = SplitBinaryPayload(base64Payload);
+        var blockIds = new List<string>(chunks.Count);
+
+        for (var index = 0; index < chunks.Count; index++)
+        {
+            var document = new ContentBlockDocument
+            {
+                Id = Guid.NewGuid().ToString(),
+                UserId = userId,
+                ChatId = chatId,
+                OwnerId = ownerId,
+                ContentType = StoredContentType.Binary,
+                ChunkIndex = index,
+                IsEncrypted = false,
+                Payload = chunks[index]
+            };
+
+            await _contentContainer.CreateItemAsync(document, new Microsoft.Azure.Cosmos.PartitionKey(userId));
+            blockIds.Add(document.Id);
+        }
+
+        return blockIds;
+    }
+
+    private async Task<byte[]> ReadBinaryContentAsync(string userId, IReadOnlyCollection<string> contentBlockIds)
+    {
+        var documents = await ReadContentBlocksAsync(userId, contentBlockIds);
+        if (documents.Count == 0)
+        {
+            return Array.Empty<byte>();
+        }
+
+        return Convert.FromBase64String(string.Concat(documents.Select(x => x.Payload)));
+    }
+
+    private async Task<List<StoredFileDocument>> WriteFilesAsync(string userId, string chatId, IReadOnlyCollection<ChatFile>? files)
+    {
+        if (files == null || files.Count == 0)
+        {
+            return new List<StoredFileDocument>();
+        }
+
+        var storedFiles = new List<StoredFileDocument>(files.Count);
+        foreach (var file in files)
+        {
+            storedFiles.Add(await WriteFileAsync(userId, chatId, file));
+        }
+
+        return storedFiles;
+    }
+
+    private async Task<StoredFileDocument> WriteFileAsync(string userId, string chatId, ChatFile file)
+    {
+        var storedFile = new StoredFileDocument
+        {
+            Id = string.IsNullOrWhiteSpace(file.Id) ? Guid.NewGuid().ToString() : file.Id,
+            Filename = file.Filename,
+            Type = file.Type
+        };
+
+        switch (file)
+        {
+            case ChatFileText textFile:
+                storedFile.ContentBlockIds = await WriteTextContentAsync(userId, chatId, storedFile.Id, textFile.Content);
+                break;
+
+            case ChatFileImage imageFile:
+                var imageBytes = string.IsNullOrWhiteSpace(imageFile.Content)
+                    ? Array.Empty<byte>()
+                    : Convert.FromBase64String(imageFile.Content);
+                storedFile.ContentBlockIds = await WriteBinaryContentAsync(userId, chatId, storedFile.Id, imageBytes);
+                break;
+
+            case ChatFileMixed mixedFile:
+                storedFile.Chunks = await WriteFilesAsync(userId, chatId, mixedFile.Chunks);
+                break;
+        }
+
+        return storedFile;
+    }
+
+    private async Task<List<ChatFile>> ReadFilesAsync(string userId, IReadOnlyCollection<StoredFileDocument>? files)
+    {
+        if (files == null || files.Count == 0)
+        {
+            return new List<ChatFile>();
+        }
+
+        var chatFiles = new List<ChatFile>(files.Count);
+        foreach (var file in files)
+        {
+            chatFiles.Add(await ReadFileAsync(userId, file));
+        }
+
+        return chatFiles;
+    }
+
+    private async Task<ChatFile> ReadFileAsync(string userId, StoredFileDocument file)
+    {
+        return file.Type switch
+        {
+            AiContentType.Text => new ChatFileText
+            {
+                Id = file.Id,
+                Filename = file.Filename,
+                Content = await ReadTextContentAsync(userId, file.ContentBlockIds)
+            },
+            AiContentType.Image => new ChatFileImage
+            {
+                Id = file.Id,
+                Filename = file.Filename,
+                Content = Convert.ToBase64String(await ReadBinaryContentAsync(userId, file.ContentBlockIds))
+            },
+            AiContentType.Mixed => new ChatFileMixed
+            {
+                Id = file.Id,
+                Filename = file.Filename,
+                Chunks = await ReadFilesAsync(userId, file.Chunks)
+            },
+            _ => throw new NotSupportedException($"Unsupported file type: {file.Type}")
+        };
+    }
+
+    private async Task<List<ContentBlockDocument>> ReadContentBlocksAsync(string userId, IReadOnlyCollection<string> contentBlockIds)
+    {
+        if (_contentContainer == null || contentBlockIds.Count == 0)
+        {
+            return new List<ContentBlockDocument>();
+        }
+
+        var itemDescriptors = contentBlockIds
+            .Distinct()
+            .Select(contentBlockId => (id: contentBlockId, partitionKey: new PartitionKey(userId)))
+            .ToList();
+
+        var response = await _contentContainer.ReadManyItemsAsync<ContentBlockDocument>(itemDescriptors);
+        var documentsById = response.Resource.ToDictionary(document => document.Id, document => document);
+        var documents = new List<ContentBlockDocument>(contentBlockIds.Count);
+
+        foreach (var contentBlockId in contentBlockIds)
+        {
+            if (documentsById.TryGetValue(contentBlockId, out var document))
+            {
+                documents.Add(document);
+            }
+        }
+
+        return documents;
+    }
+
+    private List<string> SplitTextPayload(string text)
+    {
+        if (string.IsNullOrEmpty(text))
+        {
+            return new List<string>();
+        }
+
+        var chunks = new List<string>();
+        var builder = new StringBuilder();
+        var currentBytes = 0;
+
+        foreach (var rune in text.EnumerateRunes())
+        {
+            var value = rune.ToString();
+            var runeBytes = Encoding.UTF8.GetByteCount(value);
+
+            if (builder.Length > 0 && currentBytes + runeBytes > MaxTextChunkUtf8Bytes)
+            {
+                chunks.Add(builder.ToString());
+                builder.Clear();
+                currentBytes = 0;
+            }
+
+            builder.Append(value);
+            currentBytes += runeBytes;
+        }
+
+        if (builder.Length > 0)
+        {
+            chunks.Add(builder.ToString());
+        }
+
+        return chunks;
+    }
+
+    private List<string> SplitBinaryPayload(string base64Payload)
+    {
+        if (string.IsNullOrEmpty(base64Payload))
+        {
+            return new List<string>();
+        }
+
+        var chunkSize = MaxBinaryPayloadCharacters;
+        var chunks = new List<string>();
+
+        for (var index = 0; index < base64Payload.Length; index += chunkSize)
+        {
+            chunks.Add(base64Payload.Substring(index, Math.Min(chunkSize, base64Payload.Length - index)));
+        }
+
+        return chunks;
+    }
+
+    private async Task DeleteChatContentAsync(string userId, string chatId)
+    {
+        if (_contentContainer == null)
+        {
+            return;
+        }
+
+        await DeleteItemsByQueryAsync(
+            _contentContainer,
+            new Microsoft.Azure.Cosmos.QueryDefinition("SELECT c.id FROM c WHERE c.userId = @userId AND c.chatId = @chatId")
+                .WithParameter("@userId", userId)
+                .WithParameter("@chatId", chatId),
+            userId);
+    }
+
+    private async Task DeleteOwnedContentAsync(string userId, string chatId, string ownerId)
+    {
+        if (_contentContainer == null)
+        {
+            return;
+        }
+
+        await DeleteItemsByQueryAsync(
+            _contentContainer,
+            new Microsoft.Azure.Cosmos.QueryDefinition("SELECT c.id FROM c WHERE c.userId = @userId AND c.chatId = @chatId AND c.ownerId = @ownerId")
+                .WithParameter("@userId", userId)
+                .WithParameter("@chatId", chatId)
+                .WithParameter("@ownerId", ownerId),
+            userId);
+    }
+
+    private async Task DeleteFileContentAsync(string userId, string contentOwnerChatId, IReadOnlyCollection<StoredFileDocument>? files)
+    {
+        if (_contentContainer == null || files == null || files.Count == 0)
+        {
+            return;
+        }
+
+        var ownerIds = new HashSet<string>();
+        CollectFileOwnerIds(files, ownerIds);
+
+        if (ownerIds.Count == 0)
+        {
+            return;
+        }
+
+        foreach (var ownerId in ownerIds)
+        {
+            await DeleteOwnedContentAsync(userId, contentOwnerChatId, ownerId);
+        }
+    }
+
+    private void CollectFileOwnerIds(IReadOnlyCollection<StoredFileDocument> files, ISet<string> ownerIds)
+    {
+        foreach (var file in files)
+        {
+            if (!string.IsNullOrWhiteSpace(file.Id))
+            {
+                ownerIds.Add(file.Id);
+            }
+
+            if (file.Chunks.Count > 0)
+            {
+                CollectFileOwnerIds(file.Chunks, ownerIds);
+            }
+        }
+    }
+}

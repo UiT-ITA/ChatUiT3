@@ -1,0 +1,241 @@
+using ChatUitReact.Server.Models;
+using Newtonsoft.Json;
+using Newtonsoft.Json.Converters;
+
+namespace ChatUitReact.Server.Services;
+
+public partial class DatabaseService
+{
+    private sealed class IdOnlyDocument
+    {
+        [JsonProperty("id")]
+        public string Id { get; set; } = string.Empty;
+    }
+
+    [JsonConverter(typeof(StringEnumConverter))]
+    private enum StoredContentType
+    {
+        Text,
+        Binary
+    }
+
+    private sealed class CosmosChatStorageOptions
+    {
+        public string? ConnectionString { get; set; }
+        public string DatabaseName { get; set; } = "UserData";
+        public string ConfigurationDatabaseName { get; set; } = "Configuration";
+        public int MaxTextChunkUtf8Bytes { get; set; } = 500_000;
+        public int MaxBinaryPayloadCharacters { get; set; } = 900_000;
+        public CosmosContainerOptions Users { get; set; } = new CosmosContainerOptions { Name = "Users", PartitionKeyPath = "/userId" };
+        public CosmosContainerOptions Chats { get; set; } = new CosmosContainerOptions { Name = "Chats", PartitionKeyPath = "/userId" };
+        public CosmosContainerOptions ChatMessages { get; set; } = new CosmosContainerOptions { Name = "ChatMessages", PartitionKeyPath = "/userId" };
+        public CosmosContainerOptions Content { get; set; } = new CosmosContainerOptions { Name = "Content", PartitionKeyPath = "/userId" };
+        public CosmosContainerOptions Models { get; set; } = new CosmosContainerOptions { Name = "Models", PartitionKeyPath = "/partitionKey" };
+        public CosmosContainerOptions ModelEndpoints { get; set; } = new CosmosContainerOptions { Name = "ModelEndpoints", PartitionKeyPath = "/partitionKey" };
+        public CosmosContainerOptions Assistants { get; set; } = new CosmosContainerOptions { Name = "Assistants", PartitionKeyPath = "/partitionKey" };
+    }
+
+    private sealed class CosmosContainerOptions
+    {
+        public string Name { get; set; } = string.Empty;
+        public string PartitionKeyPath { get; set; } = "/userId";
+    }
+
+    private sealed class ChatDocument
+    {
+        [JsonProperty("id")]
+        public string Id { get; set; } = string.Empty;
+
+        [JsonProperty("userId")]
+        public string UserId { get; set; } = string.Empty;
+
+        [JsonProperty("assistantId")]
+        public string AssistantId { get; set; } = string.Empty;
+
+        [JsonProperty("name")]
+        public string Name { get; set; } = string.Empty;
+
+        [JsonProperty("createdAt")]
+        public DateTime CreatedAt { get; set; }
+
+        [JsonProperty("updatedAt")]
+        public DateTime UpdatedAt { get; set; }
+
+        [JsonProperty("status")]
+        public AiChatStatus Status { get; set; }
+    }
+
+    private sealed class ChatMessageDocument
+    {
+        [JsonProperty("id")]
+        public string Id { get; set; } = string.Empty;
+
+        [JsonProperty("userId")]
+        public string UserId { get; set; } = string.Empty;
+
+        [JsonProperty("chatId")]
+        public string ChatId { get; set; } = string.Empty;
+
+        [JsonProperty("role")]
+        public AiChatRole Role { get; set; }
+
+        [JsonProperty("timestamp")]
+        public DateTime Timestamp { get; set; }
+
+        [JsonProperty("status")]
+        public AiChatStatus Status { get; set; }
+
+        [JsonProperty("contentBlockIds")]
+        public List<string> ContentBlockIds { get; set; } = new();
+
+        [JsonProperty("files")]
+        public List<StoredFileDocument> Files { get; set; } = new();
+    }
+
+    private sealed class StoredFileDocument
+    {
+        [JsonProperty("id")]
+        public string Id { get; set; } = string.Empty;
+
+        [JsonProperty("filename")]
+        public string? Filename { get; set; }
+
+        [JsonProperty("type")]
+        public AiContentType Type { get; set; }
+
+        [JsonProperty("contentBlockIds")]
+        public List<string> ContentBlockIds { get; set; } = new();
+
+        [JsonProperty("chunks")]
+        public List<StoredFileDocument> Chunks { get; set; } = new();
+    }
+
+    private sealed class ContentBlockDocument
+    {
+        [JsonProperty("id")]
+        public string Id { get; set; } = string.Empty;
+
+        [JsonProperty("userId")]
+        public string UserId { get; set; } = string.Empty;
+
+        [JsonProperty("chatId")]
+        public string ChatId { get; set; } = string.Empty;
+
+        [JsonProperty("ownerId")]
+        public string OwnerId { get; set; } = string.Empty;
+
+        [JsonProperty("contentType")]
+        public StoredContentType ContentType { get; set; }
+
+        [JsonProperty("chunkIndex")]
+        public int ChunkIndex { get; set; }
+
+        [JsonProperty("isEncrypted")]
+        public bool IsEncrypted { get; set; }
+
+        [JsonProperty("payload")]
+        public string Payload { get; set; } = string.Empty;
+    }
+
+    private sealed class ModelDocument
+    {
+        [JsonProperty("id")]
+        public string Id { get; set; } = string.Empty;
+
+        [JsonProperty("partitionKey")]
+        public string PartitionKey { get; set; } = string.Empty;
+
+        [JsonProperty("modelId")]
+        public string ModelId { get; set; } = string.Empty;
+
+        [JsonProperty("modelName")]
+        public string ModelName { get; set; } = string.Empty;
+
+        [JsonProperty("description")]
+        public string Description { get; set; } = string.Empty;
+
+        [JsonProperty("endpointId")]
+        public string EndpointId { get; set; } = string.Empty;
+
+        [JsonProperty("allowedRoles")]
+        public List<UserRole> AllowedRoles { get; set; } = new();
+
+        [JsonProperty("capabilities")]
+        public ModelCapabilities Capabilities { get; set; } = new();
+    }
+
+    private sealed class ModelEndpointDocument
+    {
+        [JsonProperty("id")]
+        public string Id { get; set; } = string.Empty;
+
+        [JsonProperty("partitionKey")]
+        public string PartitionKey { get; set; } = string.Empty;
+
+        [JsonProperty("url")]
+        public string Url { get; set; } = string.Empty;
+
+        [JsonProperty("apiKey")]
+        public string ApiKey { get; set; } = string.Empty;
+
+        [JsonProperty("endpointType")]
+        public EndpointType EndpointType { get; set; }
+    }
+
+    private sealed class AssistantDocument
+    {
+        [JsonProperty("id")]
+        public string Id { get; set; } = string.Empty;
+
+        [JsonProperty("partitionKey")]
+        public string PartitionKey { get; set; } = string.Empty;
+
+        [JsonProperty("name")]
+        public string Name { get; set; } = string.Empty;
+
+        [JsonProperty("description")]
+        public string Description { get; set; } = string.Empty;
+
+        [JsonProperty("tags")]
+        public List<string> Tags { get; set; } = new();
+
+        [JsonProperty("chatSettings")]
+        public AssistantChatSettingsDocument ChatSettings { get; set; } = new();
+
+        [JsonProperty("ownerId")]
+        public string OwnerId { get; set; } = string.Empty;
+    }
+
+    private sealed class AssistantChatSettingsDocument
+    {
+        [JsonProperty("systemPrompt")]
+        public string SystemPrompt { get; set; } = string.Empty;
+
+        [JsonProperty("modelId")]
+        public string ModelId { get; set; } = string.Empty;
+
+        [JsonProperty("temperature")]
+        public float Temperature { get; set; } = 0.5f;
+
+        [JsonProperty("reasoningEffort")]
+        public ReasoningEffort ReasoningEffort { get; set; } = ReasoningEffort.None;
+
+        [JsonProperty("availableToolIds")]
+        public List<string> AvailableToolIds { get; set; } = new();
+    }
+
+    private sealed class UserDocument
+    {
+        [JsonProperty("id")]
+        public string Id { get; set; } = string.Empty;
+
+        [JsonProperty("userId")]
+        public string UserId { get; set; } = string.Empty;
+
+        [JsonProperty("roles")]
+        public List<UserRole> Roles { get; set; } = new();
+
+        [JsonProperty("preferences")]
+        public UserPreferences Preferences { get; set; } = new();
+    }
+}

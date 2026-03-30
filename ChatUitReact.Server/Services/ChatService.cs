@@ -1,4 +1,4 @@
-﻿using Microsoft.AspNetCore.SignalR;
+using Microsoft.AspNetCore.SignalR;
 using ChatUitReact.Server.Hubs;
 using ChatUitReact.Server.Models;
 using System.Text;
@@ -141,6 +141,7 @@ public class ChatService : IChatService
     public async Task SendStreamingMessageAsync(string userId, string chatId, Models.ChatMessage userMessage, string assistantId)
     {
         await _databaseService.AddMessageAsync(userId, chatId, userMessage);
+        NotifyChatUpdated(userId, chatId);
         
         var chat = await GetChatByIdAsync(userId, chatId);
         var messages = chat?.Messages ?? new();
