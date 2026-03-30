@@ -132,6 +132,24 @@
       "copyLink": "Copy link",
       "copyId": "Copy ID"
     },
+    "knowledge": {
+      "title": "Knowledge",
+      "noFilesAdded": "No files added",
+      "categories": {
+        "alwaysLoaded": {
+          "title": "Always loaded files",
+          "description": "Files that are always included for this assistant."
+        },
+        "selectiveLoaded": {
+          "title": "Selective loaded files",
+          "description": "Files that can be included only when needed."
+        },
+        "ragLoaded": {
+          "title": "RAG loaded files",
+          "description": "Files that will be searched through retrieval."
+        }
+      }
+    },
     "createdBy": "Created by",
     "addExternal": {
       "title": "Add Shared Assistant",

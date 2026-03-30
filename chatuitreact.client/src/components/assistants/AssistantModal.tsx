@@ -9,6 +9,7 @@ import type { UserModelDto } from '../../types/modelModels';
 import { createAssistant, updateAssistant } from '../../services/assistantService';
 import { Dialog, DialogPage, DialogButton } from '../common/Dialog';
 import TagField from '../common/TagField';
+import KnowledgeFileList, { type KnowledgeFileCategory } from './KnowledgeFileList';
 import './AssistantModal.css';
 
 interface AssistantModalProps {
@@ -61,6 +62,27 @@ const AssistantModal: React.FC<AssistantModalProps> = ({
   
   // Available tools from service
   const availableTools: ChatToolDto[] = toolsSignal.value || [];
+  const knowledgeSections: Array<{
+    category: KnowledgeFileCategory;
+    title: string;
+    description: string;
+  }> = [
+    {
+      category: 'alwaysLoaded',
+      title: t('assistants.knowledge.categories.alwaysLoaded.title'),
+      description: t('assistants.knowledge.categories.alwaysLoaded.description')
+    },
+    {
+      category: 'selectiveLoaded',
+      title: t('assistants.knowledge.categories.selectiveLoaded.title'),
+      description: t('assistants.knowledge.categories.selectiveLoaded.description')
+    },
+    {
+      category: 'ragLoaded',
+      title: t('assistants.knowledge.categories.ragLoaded.title'),
+      description: t('assistants.knowledge.categories.ragLoaded.description')
+    }
+  ];
 
   // Initialize form data when editing
   useEffect(() => {
@@ -428,10 +450,17 @@ const AssistantModal: React.FC<AssistantModalProps> = ({
       </DialogPage>
 
       {/* Knowledge Page */}
-      <DialogPage id="knowledge" label="Knowledge" icon="help">
-        <div className="empty-section">
-          <p>Background knowledge features are not yet implemented.</p>
-          <p>This section will allow you to provide additional context and knowledge sources for your assistant.</p>
+      <DialogPage id="knowledge" label={t('assistants.knowledge.title')} icon="help">
+        <div className="knowledge-section">
+          {knowledgeSections.map((section) => (
+            <KnowledgeFileList
+              key={section.category}
+              category={section.category}
+              title={section.title}
+              description={section.description}
+              emptyLabel={t('assistants.knowledge.noFilesAdded')}
+            />
+          ))}
         </div>
       </DialogPage>
 

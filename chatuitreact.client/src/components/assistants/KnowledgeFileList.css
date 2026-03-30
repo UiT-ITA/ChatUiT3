@@ -1,0 +1,42 @@
+.knowledge-file-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.knowledge-file-list__title {
+  margin: 0;
+  color: var(--text-primary);
+  font-size: 0.875rem;
+  font-weight: 600;
+}
+
+.knowledge-file-list__description {
+  margin: 0;
+  color: var(--text-secondary);
+  font-size: 0.8125rem;
+  line-height: 1.4;
+}
+
+.knowledge-file-list__items {
+  min-height: 5.5rem;
+  padding: 0.5rem;
+  border: 1px solid var(--border-input);
+  border-radius: 0.375rem;
+  background: var(--bg-input);
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.knowledge-file-list__empty {
+  color: var(--text-secondary);
+  font-size: 0.875rem;
+  line-height: 1.4;
+}
+
+@media (max-width: 768px) {
+  .knowledge-file-list__items {
+    min-height: 4.5rem;
+  }
+}

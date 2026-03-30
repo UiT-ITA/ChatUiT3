@@ -592,6 +592,12 @@
   margin-bottom: 0;
 }
 
+.knowledge-section {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
 /* Modal adjustments for accordion */
 .modal-body.accordion-container {
   padding: 0;
@@ -658,4 +664,5 @@
     gap: 0.375rem;
     padding: 0.25rem;
   }
+
 }

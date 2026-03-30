@@ -132,6 +132,24 @@
       "copyLink": "Kopier lenke",
       "copyId": "Kopier ID"
     },
+    "knowledge": {
+      "title": "Kunnskap",
+      "noFilesAdded": "Ingen filer lagt til",
+      "categories": {
+        "alwaysLoaded": {
+          "title": "Alltid lastede filer",
+          "description": "Filer som alltid inkluderes for denne assistenten."
+        },
+        "selectiveLoaded": {
+          "title": "Selektivt lastede filer",
+          "description": "Filer som kan inkluderes bare ved behov."
+        },
+        "ragLoaded": {
+          "title": "RAG-lastede filer",
+          "description": "Filer som senere skal søkes i med retrieval."
+        }
+      }
+    },
     "createdBy": "Opprettet av",
     "addExternal": {
       "title": "Legg til delt assistent",
