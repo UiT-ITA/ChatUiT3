@@ -4,6 +4,7 @@ import { FileProcessingService } from '../../services/fileProcessingService';
 import type { ProcessedFile } from '../../types/importModels';
 import { SUPPORTED_IMPORT_ACCEPT, isValidFileType } from '../../utils/fileUtils';
 import FilePreviewModal from '../chat/FilePreviewModal';
+import { addNotification } from '../../services/notificationService';
 import KnowledgeFileItem, {
   type KnowledgeFileCategory,
   type KnowledgeFileItemData
@@ -53,11 +54,34 @@ const KnowledgeFileList = ({
     const files = event.target.files;
 
     if (files && files.length > 0) {
-      const processedFiles = await Promise.all(
-        Array.from(files)
-          .filter((file) => isValidFileType(file))
-          .map((file) => FileProcessingService.processFile(file))
+      const validFiles = Array.from(files)
+        .filter((file) => isValidFileType(file));
+
+      const processingResults = await Promise.allSettled(
+        validFiles.map((file) => FileProcessingService.processFile(file))
       );
+
+      const processedFiles = processingResults.flatMap((result) => {
+        return result.status === 'fulfilled' ? [result.value] : [];
+      });
+
+      processingResults.forEach((result, index) => {
+        if (result.status !== 'rejected') {
+          return;
+        }
+
+        const file = validFiles[index];
+        if (!file) {
+          return;
+        }
+
+          const reason = result.reason instanceof Error ? result.reason.message : 'File processing failed';
+          console.error(`Failed to process knowledge file ${file.name}:`, result.reason);
+          addNotification({
+            level: 'Error',
+            message: `${file.name}: ${reason}`
+          });
+      });
 
       onFilesSelected(processedFiles);
     }

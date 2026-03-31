@@ -10,6 +10,7 @@ import FilePreview from './FilePreview';
 import type { ProcessedFile } from '../../types/importModels';
 import { SUPPORTED_IMPORT_ACCEPT, isValidFileType } from '../../utils/fileUtils';
 import { useNavigate } from 'react-router-dom';
+import { addNotification } from '../../services/notificationService';
 
 export default function ChatInput() {
   useSignals();
@@ -83,12 +84,36 @@ export default function ChatInput() {
         isValidFileType(file)
       );
 
-      const convertedFiles = await Promise.all(
+      const conversionResults = await Promise.allSettled(
         fileArray.map(file => FileProcessingService.processFile(file))
       );
 
+      const convertedFiles = conversionResults.flatMap((result) => {
+        return result.status === 'fulfilled' ? [result.value] : [];
+      });
+
+      conversionResults.forEach((result, index) => {
+        if (result.status !== 'rejected') {
+          return;
+        }
+
+        const file = fileArray[index];
+        if (!file) {
+          return;
+        }
+
+          const reason = result.reason instanceof Error ? result.reason.message : 'File processing failed';
+          console.error(`Failed to process file ${file.name}:`, result.reason);
+          addNotification({
+            level: 'Error',
+            message: `${file.name}: ${reason}`
+          });
+      });
+
       setSelectedFiles(prev => [...prev, ...convertedFiles].slice(0, 10));
     }
+
+    e.target.value = '';
   };
 
   const removeFile = (index: number) => {

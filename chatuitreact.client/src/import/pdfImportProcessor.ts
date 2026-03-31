@@ -30,48 +30,51 @@ type GraphicsState = {
 
 export async function processPdfImport(file: File): Promise<ProcessedFile> {
     const loadingTask = pdfjs.getDocument({ data: await file.arrayBuffer() });
-    const pdfDocument = await loadingTask.promise;
-    const chunks: ProcessedFileChunk[] = [];
+    try {
+        const pdfDocument = await loadingTask.promise;
+        const chunks: ProcessedFileChunk[] = [];
 
-    for (let pageNumber = 1; pageNumber <= pdfDocument.numPages; pageNumber += 1) {
-        const page = await pdfDocument.getPage(pageNumber);
-        const textContent = await page.getTextContent();
-        const operatorList = await page.getOperatorList();
-        const imageElements = await extractPdfImages(page as any, operatorList as any);
-        const textElements = buildPdfTextLayout(textContent.items as Array<any>);
+        for (let pageNumber = 1; pageNumber <= pdfDocument.numPages; pageNumber += 1) {
+            const page = await pdfDocument.getPage(pageNumber);
+            const textContent = await page.getTextContent();
+            const operatorList = await page.getOperatorList();
+            const imageElements = await extractPdfImages(page as any, operatorList as any);
+            const textElements = buildPdfTextLayout(textContent.items as Array<any>);
 
-        const ordered = [...textElements, ...imageElements].sort((left, right) => {
-            if (Math.abs(left.y - right.y) > 4) {
-                return right.y - left.y;
-            }
+            const ordered = [...textElements, ...imageElements].sort((left, right) => {
+                if (Math.abs(left.y - right.y) > 4) {
+                    return right.y - left.y;
+                }
 
-            return left.x - right.x;
-        });
+                return left.x - right.x;
+            });
 
-        let textBuffer = '';
-        const flushText = () => {
-            const normalized = textBuffer.trim();
-            textBuffer = '';
-            if (normalized.length > 0) {
-                chunks.push(createTextChunk(`${normalized}\n\n`, 'plain'));
-            }
-        };
+            let textBuffer = '';
+            const flushText = () => {
+                const normalized = textBuffer.trim();
+                textBuffer = '';
+                if (normalized.length > 0) {
+                    chunks.push(createTextChunk(`${normalized}\n\n`, 'plain'));
+                }
+            };
 
-        for (const element of ordered) {
-            if (element.kind === 'text') {
-                textBuffer += `${element.text}\n`;
-                continue;
+            for (const element of ordered) {
+                if (element.kind === 'text') {
+                    textBuffer += `${element.text}\n`;
+                    continue;
+                }
+
+                flushText();
+                chunks.push(element.chunk);
             }
 
             flushText();
-            chunks.push(element.chunk);
         }
 
-        flushText();
+        return createProcessedFile(file.name, chunks);
+    } finally {
+        await loadingTask.destroy();
     }
-
-    await loadingTask.destroy();
-    return createProcessedFile(file.name, chunks);
 }
 
 async function extractPdfImages(page: any, operatorList: any): Promise<LayoutImage[]> {
@@ -102,7 +105,7 @@ async function extractPdfImages(page: any, operatorList: any): Promise<LayoutIma
             const imageName = args[0];
             const imageObject = await getPdfImageObject(page, imageName);
             if (!imageObject) {
-                continue;
+                throw new Error('PDF image extraction is unsupported for this file');
             }
 
             const chunk = await convertPdfImageObjectToChunk(imageObject);
@@ -162,10 +165,28 @@ function buildPdfTextLayout(items: Array<any>): LayoutText[] {
 
 async function getPdfImageObject(page: any, name: string): Promise<any> {
     return new Promise((resolve) => {
+        let settled = false;
+        const timeoutId = window.setTimeout(() => {
+            if (!settled) {
+                settled = true;
+                resolve(null);
+            }
+        }, 1500);
+
+        const finish = (value: any) => {
+            if (settled) {
+                return;
+            }
+
+            settled = true;
+            window.clearTimeout(timeoutId);
+            resolve(value);
+        };
+
         try {
             const existing = page.objs.get(name);
             if (existing) {
-                resolve(existing);
+                finish(existing);
                 return;
             }
         } catch {
@@ -173,9 +194,9 @@ async function getPdfImageObject(page: any, name: string): Promise<any> {
         }
 
         try {
-            page.objs.get(name, (value: any) => resolve(value));
+            page.objs.get(name, (value: any) => finish(value));
         } catch {
-            resolve(null);
+            finish(null);
         }
     });
 }
