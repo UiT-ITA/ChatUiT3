@@ -2,19 +2,27 @@
 .file-preview-content {
   display: flex;
   flex-direction: column;
-  align-items: center;
-  justify-content: center;
+  align-items: stretch;
+  justify-content: flex-start;
+  gap: 1rem;
   height: 100%;
   padding: 1rem;
-  overflow: hidden; /* Prevent scrollbars */
+  overflow: auto;
+}
+
+.file-preview-content--compact {
+  height: 100%;
+  padding: 0.5rem;
+  gap: 0.5rem;
+  overflow: auto;
 }
 
 .file-preview-image {
   max-width: 100%;
-  max-height: 100%;
+  max-height: none;
   width: auto;
   height: auto;
-  object-fit: contain; /* Ensure image scales to fit container */
+  object-fit: contain;
   border-radius: 0.5rem;
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
   transition: transform 0.2s ease;
@@ -27,17 +35,23 @@
 .file-preview-text {
   background: var(--bg-code);
   color: var(--text-primary);
-  padding: 1.5rem;
+  padding: 1rem;
   border-radius: 0.5rem;
   font-size: 0.875rem;
   line-height: 1.6;
   white-space: pre-wrap;
   margin: 0;
   border: 1px solid var(--border-primary);
-  max-height: 60vh;
-  overflow: auto;
+  overflow: visible;
   width: 100%;
   font-family: 'Consolas', 'Monaco', 'Courier New', monospace;
+}
+
+.file-preview-markdown {
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-primary);
+  border-radius: 0.5rem;
+  padding: 1rem;
 }
 
 .file-preview-unsupported {
@@ -54,17 +68,15 @@
 @media (max-width: 768px) {
   .file-preview-content {
     padding: 0.5rem;
-    min-height: 15rem;
   }
 
   .file-preview-image {
-    max-height: 60vh;
+    max-height: none;
   }
 
   .file-preview-text {
     padding: 1rem;
     font-size: 0.8125rem;
-    max-height: 50vh;
   }
 
   .file-preview-unsupported {

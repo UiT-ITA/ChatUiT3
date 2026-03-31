@@ -1,4 +1,5 @@
 import { MdInsertDriveFile } from 'react-icons/md';
+import type { ProcessedFile } from '../../types/importModels';
 import './KnowledgeFileItem.css';
 
 export type KnowledgeFileCategory = 'alwaysLoaded' | 'selectiveLoaded' | 'ragLoaded';
@@ -7,7 +8,7 @@ export interface KnowledgeFileItemData {
   id: string;
   name: string;
   description?: string;
-  file?: File;
+  processedFile?: ProcessedFile;
 }
 
 interface KnowledgeFileItemProps {

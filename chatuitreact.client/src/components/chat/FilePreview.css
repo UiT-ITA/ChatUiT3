@@ -4,8 +4,10 @@
     overflow: visible;
     border: 1px solid var(--border-primary);
     background: var(--bg-secondary);
-    max-width: 7.5rem;
-    max-height: 7.5rem;
+    width: 14rem;
+    min-height: 11rem;
+    display: flex;
+    flex-direction: column;
 }
 
 .file-thumbnail.clickable {
@@ -18,41 +20,23 @@
     box-shadow: 0 0.125rem 0.5rem rgba(0, 0, 0, 0.15);
 }
 
-.file-thumbnail.image {
-    width: 5rem;
-    height: 5rem;
-}
-
-.file-thumbnail.text {
-    width: 7.5rem;
-    height: 5rem;
+.file-thumbnail-header {
     display: flex;
     align-items: center;
-    justify-content: center;
-    padding: 0.5rem;
-    box-sizing: border-box;
-}
-
-.file-image {
-    width: 100%;
-    height: 100%;
-    object-fit: cover;
-    display: block;
-    border-radius: 0.5rem;
-}
-
-.file-icon {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    text-align: center;
-    gap: 0.25rem;
-    padding: 0.5rem;
+    gap: 0.5rem;
+    padding: 0.625rem 0.75rem;
+    border-bottom: 1px solid var(--border-primary);
 }
 
 .file-emoji {
     font-size: 1.5rem;
     line-height: 1;
+}
+
+.file-thumbnail-body {
+    flex: 1;
+    min-height: 0;
+    overflow: hidden;
 }
 
 .file-name {
@@ -61,18 +45,12 @@
     color: var(--text-primary);
     word-break: break-word;
     line-height: 1.2;
-    max-height: 2.4em;
+    max-height: 2.8em;
     overflow: hidden;
     display: -webkit-box;
     line-clamp: 2;
     -webkit-line-clamp: 2;
     -webkit-box-orient: vertical;
-}
-
-.file-info {
-    font-size: 0.625rem;
-    color: var(--text-secondary);
-    line-height: 1;
 }
 
 .remove-btn {

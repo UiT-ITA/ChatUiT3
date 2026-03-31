@@ -1,7 +1,8 @@
 import { useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { FileProcessingService } from '../../services/fileProcessingService';
-import type { CreateChatFileDto } from '../../types/chatModels';
+import type { ProcessedFile } from '../../types/importModels';
+import { SUPPORTED_IMPORT_ACCEPT, isValidFileType } from '../../utils/fileUtils';
 import FilePreviewModal from '../chat/FilePreviewModal';
 import KnowledgeFileItem, {
   type KnowledgeFileCategory,
@@ -16,7 +17,7 @@ interface KnowledgeFileListProps {
   title: string;
   description: string;
   emptyLabel: string;
-  onFilesSelected: (files: File[]) => void;
+  onFilesSelected: (files: ProcessedFile[]) => void;
   items?: KnowledgeFileItemData[];
   disabled?: boolean;
   allowItemDescription?: boolean;
@@ -38,7 +39,7 @@ const KnowledgeFileList = ({
 }: KnowledgeFileListProps) => {
   const { t } = useTranslation();
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const [previewFile, setPreviewFile] = useState<CreateChatFileDto | null>(null);
+  const [previewFile, setPreviewFile] = useState<ProcessedFile | null>(null);
 
   const handleAddClick = () => {
     if (disabled) {
@@ -48,27 +49,28 @@ const KnowledgeFileList = ({
     fileInputRef.current?.click();
   };
 
-  const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileChange = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const files = event.target.files;
 
     if (files && files.length > 0) {
-      onFilesSelected(Array.from(files));
+      const processedFiles = await Promise.all(
+        Array.from(files)
+          .filter((file) => isValidFileType(file))
+          .map((file) => FileProcessingService.processFile(file))
+      );
+
+      onFilesSelected(processedFiles);
     }
 
     event.target.value = '';
   };
 
   const handlePreview = async (item: KnowledgeFileItemData) => {
-    if (!item.file) {
+    if (!item.processedFile) {
       return;
     }
 
-    try {
-      const processedFile = await FileProcessingService.processFile(item.file);
-      setPreviewFile(processedFile);
-    } catch (error) {
-      console.error('Failed to preview file:', error);
-    }
+    setPreviewFile(item.processedFile);
   };
 
   return (
@@ -95,7 +97,7 @@ const KnowledgeFileList = ({
           type="file"
           className="knowledge-file-list__file-input"
           multiple
-          accept=".txt,.csv,.json,image/jpeg,image/png"
+          accept={SUPPORTED_IMPORT_ACCEPT}
           onChange={handleFileChange}
           disabled={disabled}
         />
@@ -106,7 +108,7 @@ const KnowledgeFileList = ({
               key={item.id}
               item={item}
               category={category}
-              onPreview={item.file ? () => void handlePreview(item) : undefined}
+              onPreview={item.processedFile ? () => void handlePreview(item) : undefined}
               allowDescription={allowItemDescription}
               descriptionPlaceholder={itemDescriptionPlaceholder}
               onDescriptionChange={(value) => onItemDescriptionChange?.(item.id, value)}

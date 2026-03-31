@@ -10,6 +10,7 @@ import { createAssistant, updateAssistant } from '../../services/assistantServic
 import { Dialog, DialogPage, DialogButton } from '../common/Dialog';
 import TagField from '../common/TagField';
 import KnowledgeFileList, { type KnowledgeFileCategory, type KnowledgeFileItemData } from './KnowledgeFileList';
+import type { ProcessedFile } from '../../types/importModels';
 import './AssistantModal.css';
 
 const createEmptyKnowledgeFiles = (): Record<KnowledgeFileCategory, KnowledgeFileItemData[]> => ({
@@ -175,15 +176,15 @@ const AssistantModal: React.FC<AssistantModalProps> = ({
     handleChange('availableToolIds', newSelectedIds);
   };
 
-  const handleKnowledgeFilesSelected = (category: KnowledgeFileCategory, files: File[]) => {
+  const handleKnowledgeFilesSelected = (category: KnowledgeFileCategory, files: ProcessedFile[]) => {
     if (files.length === 0) {
       return;
     }
 
     const newItems = files.map((file) => ({
       id: crypto.randomUUID(),
-      name: file.name,
-      file
+      name: file.sourceFilename,
+      processedFile: file
     }));
 
     setKnowledgeFiles((prev) => ({

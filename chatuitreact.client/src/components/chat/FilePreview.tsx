@@ -2,18 +2,20 @@ import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import type { ChatFileDto, CreateChatFileDto } from '../../types/chatModels';
 import { getFileIcon } from '../../utils/fileUtils';
+import type { ProcessedFile } from '../../types/importModels';
 import FilePreviewModal from './FilePreviewModal';
+import ProcessedFilePreviewContent from './ProcessedFilePreviewContent';
 import './FilePreview.css';
 
 interface FilePreviewProps {
-  file: ChatFileDto | CreateChatFileDto;
+  file: ProcessedFile | ChatFileDto | CreateChatFileDto;
   onRemove?: () => void;
   showRemoveButton?: boolean;
 }
 
 const FilePreview = ({ file, onRemove, showRemoveButton = false }: FilePreviewProps) => {
   const { t } = useTranslation();
-  const [selectedFile, setSelectedFile] = useState<ChatFileDto | CreateChatFileDto | null>(null);
+  const [selectedFile, setSelectedFile] = useState<ProcessedFile | ChatFileDto | CreateChatFileDto | null>(null);
 
   const handleFileClick = () => {
     setSelectedFile(file);
@@ -24,13 +26,13 @@ const FilePreview = ({ file, onRemove, showRemoveButton = false }: FilePreviewPr
     onRemove?.();
   };
 
-  const filename = file.filename || t('files.unknownFile');
-  const isImage = file.type === 'Image';
+  const isProcessedFile = 'sourceFilename' in file;
+  const filename = isProcessedFile ? file.sourceFilename : (file.filename ?? 'Unknown file');
 
   return (
     <>
-      <div 
-        className={`file-thumbnail ${isImage ? 'image' : 'text'} clickable`}
+      <div
+        className="file-thumbnail clickable"
         onClick={handleFileClick}
       >
         {showRemoveButton && (
@@ -42,23 +44,25 @@ const FilePreview = ({ file, onRemove, showRemoveButton = false }: FilePreviewPr
             ×
           </button>
         )}
-        
-        {isImage ? (
-          <img 
-            src={file.content.startsWith('data:') 
-              ? file.content 
-              : `data:image/jpeg;base64,${file.content}`
-            }
-            alt={filename} 
-            className="file-image"
-          />
-        ) : (
-          <div className="file-icon">
-            <div className="file-emoji">{getFileIcon(filename)}</div>
-            <div className="file-name">{filename}</div>
-            <div className="file-info">{t('files.types.text')}</div>
-          </div>
-        )}
+
+        <div className="file-thumbnail-header">
+          <div className="file-emoji">{getFileIcon(filename)}</div>
+          <div className="file-name">{filename}</div>
+        </div>
+
+        <div className="file-thumbnail-body">
+          {isProcessedFile ? (
+            <ProcessedFilePreviewContent file={file} compact={true} />
+          ) : file.type === 'Image' ? (
+            <img
+              src={file.content.startsWith('data:') ? file.content : `data:image/jpeg;base64,${file.content}`}
+              alt={filename}
+              className="file-preview-image"
+            />
+          ) : (
+            <pre className="file-preview-text">{file.content}</pre>
+          )}
+        </div>
       </div>
       
       <FilePreviewModal 

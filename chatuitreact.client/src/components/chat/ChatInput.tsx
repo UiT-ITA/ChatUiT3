@@ -7,7 +7,8 @@ import { FileProcessingService } from '../../services/fileProcessingService';
 import { Icon } from '../common/Icon';
 import AssistantSelector from '../common/AssistantSelector';
 import FilePreview from './FilePreview';
-import type { CreateChatFileDto } from '../../types/chatModels';
+import type { ProcessedFile } from '../../types/importModels';
+import { SUPPORTED_IMPORT_ACCEPT, isValidFileType } from '../../utils/fileUtils';
 import { useNavigate } from 'react-router-dom';
 
 export default function ChatInput() {
@@ -15,7 +16,7 @@ export default function ChatInput() {
   const { t } = useTranslation();
   const navigate = useNavigate();
 
-  const [selectedFiles, setSelectedFiles] = useState<CreateChatFileDto[]>([]);
+  const [selectedFiles, setSelectedFiles] = useState<ProcessedFile[]>([]);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
@@ -79,7 +80,7 @@ export default function ChatInput() {
     const files = e.target.files;
     if (files) {
       const fileArray = Array.from(files).filter(file =>
-        FileProcessingService.isImageFile(file) || FileProcessingService.isTextFile(file)
+        isValidFileType(file)
       );
 
       const convertedFiles = await Promise.all(
@@ -101,7 +102,7 @@ export default function ChatInput() {
           <div className="input-file-previews">
             {selectedFiles.map((file, index) => (
               <FilePreview
-                key={`${file.filename}-${index}`}
+                key={`${file.id}-${index}`}
                 file={file}
                 onRemove={() => removeFile(index)}
                 showRemoveButton={true}
@@ -146,7 +147,7 @@ export default function ChatInput() {
             onChange={handleFileChange}
             style={{ display: 'none' }}
             multiple
-            accept=".txt,.csv,.json,image/jpeg,image/png"
+            accept={SUPPORTED_IMPORT_ACCEPT}
           />
         </form>
       </div>
