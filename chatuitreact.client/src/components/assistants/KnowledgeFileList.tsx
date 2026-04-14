@@ -1,7 +1,7 @@
 import { useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { FileProcessingService } from '../../services/fileProcessingService';
-import type { ProcessedFile } from '../../types/importModels';
+import type { ChatFile } from '../../types/fileModels';
 import { SUPPORTED_IMPORT_ACCEPT, isValidFileType } from '../../utils/fileUtils';
 import FilePreviewModal from '../chat/FilePreviewModal';
 import { addNotification } from '../../services/notificationService';
@@ -18,12 +18,13 @@ interface KnowledgeFileListProps {
   title: string;
   description: string;
   emptyLabel: string;
-  onFilesSelected: (files: ProcessedFile[]) => void;
+  onFilesSelected: (files: ChatFile[]) => void;
   items?: KnowledgeFileItemData[];
   disabled?: boolean;
   allowItemDescription?: boolean;
   itemDescriptionPlaceholder?: string;
   onItemDescriptionChange?: (itemId: string, description: string) => void;
+  onItemRemove?: (itemId: string) => void;
 }
 
 const KnowledgeFileList = ({
@@ -36,11 +37,12 @@ const KnowledgeFileList = ({
   disabled = false,
   allowItemDescription = false,
   itemDescriptionPlaceholder = '',
-  onItemDescriptionChange
+  onItemDescriptionChange,
+  onItemRemove
 }: KnowledgeFileListProps) => {
   const { t } = useTranslation();
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const [previewFile, setPreviewFile] = useState<ProcessedFile | null>(null);
+  const [previewFile, setPreviewFile] = useState<ChatFile | null>(null);
 
   const handleAddClick = () => {
     if (disabled) {
@@ -61,7 +63,7 @@ const KnowledgeFileList = ({
         validFiles.map((file) => FileProcessingService.processFile(file))
       );
 
-      const processedFiles = processingResults.flatMap((result) => {
+      const ChatFiles = processingResults.flatMap((result) => {
         return result.status === 'fulfilled' ? [result.value] : [];
       });
 
@@ -83,18 +85,18 @@ const KnowledgeFileList = ({
           });
       });
 
-      onFilesSelected(processedFiles);
+      onFilesSelected(ChatFiles);
     }
 
     event.target.value = '';
   };
 
   const handlePreview = async (item: KnowledgeFileItemData) => {
-    if (!item.processedFile) {
+    if (!item.ChatFile) {
       return;
     }
 
-    setPreviewFile(item.processedFile);
+    setPreviewFile(item.ChatFile);
   };
 
   return (
@@ -132,7 +134,8 @@ const KnowledgeFileList = ({
               key={item.id}
               item={item}
               category={category}
-              onPreview={item.processedFile ? () => void handlePreview(item) : undefined}
+              onPreview={item.ChatFile ? () => void handlePreview(item) : undefined}
+              onRemove={onItemRemove ? () => onItemRemove(item.id) : undefined}
               allowDescription={allowItemDescription}
               descriptionPlaceholder={itemDescriptionPlaceholder}
               onDescriptionChange={(value) => onItemDescriptionChange?.(item.id, value)}

@@ -1,10 +1,10 @@
-import type { ImageChunk, ProcessedFile, ProcessedFileChunk, TextChunk } from '../types/importModels';
+import type { ImageChunk, ChatFile, ChatFileChunk, TextChunk } from '../types/fileModels';
 
 const MAX_LONG_SIDE = 2048;
 const MAX_SHORT_SIDE = 1024;
 const JPEG_QUALITY = 0.85;
 
-export function createProcessedFile(sourceFilename: string, chunks: ProcessedFileChunk[]): ProcessedFile {
+export function createChatFile(sourceFilename: string, chunks: ChatFileChunk[]): ChatFile {
     return {
         id: crypto.randomUUID(),
         sourceFilename,
@@ -16,7 +16,6 @@ export function createProcessedFile(sourceFilename: string, chunks: ProcessedFil
 
 export function createTextChunk(text: string, format: 'plain' | 'markdown'): TextChunk {
     return {
-        id: crypto.randomUUID(),
         type: 'text',
         text,
         format
@@ -152,8 +151,8 @@ export function getRelationshipTargets(relsXml: string, relsPath: string): Map<s
     return relationships;
 }
 
-function mergeAdjacentTextChunks(chunks: ProcessedFileChunk[]): ProcessedFileChunk[] {
-    const merged: ProcessedFileChunk[] = [];
+function mergeAdjacentTextChunks(chunks: ChatFileChunk[]): ChatFileChunk[] {
+    const merged: ChatFileChunk[] = [];
 
     for (const chunk of chunks) {
         if (chunk.type === 'text' && chunk.text.length === 0) {
@@ -193,7 +192,6 @@ async function normalizeImageDataUrlToChunk(dataUrl: string): Promise<ImageChunk
     const base64 = jpegDataUrl.split(',')[1];
 
     return {
-        id: crypto.randomUUID(),
         type: 'image',
         base64,
         width,

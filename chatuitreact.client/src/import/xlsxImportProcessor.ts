@@ -1,7 +1,7 @@
 import ExcelJS from 'exceljs';
-import type { ProcessedFile, ProcessedFileChunk } from '../types/importModels';
+import type { ChatFile, ChatFileChunk } from '../types/fileModels';
 import {
-    createProcessedFile,
+    createChatFile,
     createTextChunk,
     escapeMarkdownTableCell,
     normalizeImageBytesToChunk
@@ -13,11 +13,11 @@ type WorksheetImage = {
     col: number;
 };
 
-export async function processXlsxImport(file: File): Promise<ProcessedFile> {
+export async function processXlsxImport(file: File): Promise<ChatFile> {
     const workbook = new ExcelJS.Workbook();
     await workbook.xlsx.load(await file.arrayBuffer());
 
-    const chunks: ProcessedFileChunk[] = [];
+    const chunks: ChatFileChunk[] = [];
     const workbookImages = Array.isArray((workbook as any).model?.media) ? (workbook as any).model.media : [];
 
     for (const worksheet of workbook.worksheets) {
@@ -65,7 +65,7 @@ export async function processXlsxImport(file: File): Promise<ProcessedFile> {
         }
     }
 
-    return createProcessedFile(file.name, chunks);
+    return createChatFile(file.name, chunks);
 }
 
 function buildWorksheetRowBlocks(worksheet: ExcelJS.Worksheet): Array<{ rowNumber: number; cells: string[] }> {

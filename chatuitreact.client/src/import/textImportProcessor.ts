@@ -1,7 +1,7 @@
-import type { ProcessedFile } from '../types/importModels';
-import { createProcessedFile, createTextChunk, readFileAsText } from './processingShared';
+import type { ChatFile } from '../types/fileModels';
+import { createChatFile, createTextChunk, readFileAsText } from './processingShared';
 
-export async function processTextImport(file: File, format: 'plain' | 'markdown'): Promise<ProcessedFile> {
+export async function processTextImport(file: File, format: 'plain' | 'markdown'): Promise<ChatFile> {
     const text = await readFileAsText(file);
-    return createProcessedFile(file.name, [createTextChunk(text, format)]);
+    return createChatFile(file.name, [createTextChunk(text, format)]);
 }

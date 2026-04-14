@@ -7,7 +7,7 @@ import { FileProcessingService } from '../../services/fileProcessingService';
 import { Icon } from '../common/Icon';
 import AssistantSelector from '../common/AssistantSelector';
 import FileThumbnail from './FileThumbnail';
-import type { ProcessedFile } from '../../types/importModels';
+import type { ChatFile } from '../../types/fileModels';
 import { SUPPORTED_IMPORT_ACCEPT, isValidFileType } from '../../utils/fileUtils';
 import { useNavigate } from 'react-router-dom';
 import { addNotification } from '../../services/notificationService';
@@ -17,7 +17,7 @@ export default function ChatInput() {
   const { t } = useTranslation();
   const navigate = useNavigate();
 
-  const [selectedFiles, setSelectedFiles] = useState<ProcessedFile[]>([]);
+  const [selectedFiles, setSelectedFiles] = useState<ChatFile[]>([]);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
@@ -179,3 +179,4 @@ export default function ChatInput() {
     </div>
   );
 }
+

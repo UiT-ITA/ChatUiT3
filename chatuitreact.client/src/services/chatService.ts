@@ -1,10 +1,11 @@
 import { signal, Signal, computed } from "@preact/signals-react";
 import type { ChatDto, ChatHeaderDto, CreateChatDto } from "../types/chatModels";
 import apiService from "./apiService";
-import type { SendMessageDto, CreateChatFileDto } from "../types/chatModels";
+import type { SendMessageDto } from "../types/chatModels";
 import { getAssistants, getAssistant } from "./assistantService";
 import type { AssistantDto } from "../types/assistantModels";
-
+import type { ChatFile } from "../types/fileModels";
+import { mapToCreateChatFileDto } from "../utils/fileUtils";
 
 const chatListSignal = signal<ChatHeaderDto[] | undefined>(undefined);
 const currentChatIdSignal = signal<string | undefined>(undefined);
@@ -51,13 +52,14 @@ export async function invalidateChats(): Promise<void> {
   return chatListLoadingPromise;
 }
 
-export async function createChat(content: string, assistantId: string, files?: CreateChatFileDto[]): Promise<string> {
+export async function createChat(content: string, assistantId: string, files?: ChatFile[]): Promise<string> {
   try {
+    const fileDtos = files ? mapToCreateChatFileDto(files) : undefined;
     const createChatDto: CreateChatDto = {
       assistantId,
       messages: [{
         content, 
-        files,
+        files: fileDtos,
         assistantId
       }]
     };
@@ -71,17 +73,18 @@ export async function createChat(content: string, assistantId: string, files?: C
   }
 }
 
-export async function sendMessage(chatId: string, content: string, files?: CreateChatFileDto[]): Promise<void> {
+export async function sendMessage(chatId: string, content: string, files?: ChatFile[]): Promise<void> {
   try {
     const assistantId = getCurrentAssistantId().value;
     if (!assistantId) {
       throw new Error("No assistant selected");
     }
     
+    const fileDtos = files ? mapToCreateChatFileDto(files) : undefined;
     const messageDto: SendMessageDto = { 
       content,
       assistantId,
-      files
+      files: fileDtos
     };
 
     await apiService.post(`/api/Chats/${chatId}/messages`, messageDto);

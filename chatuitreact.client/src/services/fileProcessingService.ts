@@ -4,7 +4,7 @@ import { processPdfImport } from '../import/pdfImportProcessor';
 import { processPptxImport } from '../import/pptxImportProcessor';
 import { processTextImport } from '../import/textImportProcessor';
 import { processXlsxImport } from '../import/xlsxImportProcessor';
-import type { ProcessedFile } from '../types/importModels';
+import type { ChatFile } from '../types/fileModels';
 import {
     getFileExtension,
     getSupportedImportKind,
@@ -13,7 +13,7 @@ import {
 } from '../utils/fileUtils';
 
 export class FileProcessingService {
-    static async processFile(file: File): Promise<ProcessedFile> {
+    static async processFile(file: File): Promise<ChatFile> {
         const kind = getSupportedImportKind(file);
 
         if (kind === 'image') {
@@ -56,3 +56,4 @@ export class FileProcessingService {
         return isTextImportFile(file);
     }
 }
+

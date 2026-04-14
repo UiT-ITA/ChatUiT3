@@ -14,12 +14,19 @@ export type AiChatStatus =
 
 export type AiContentType = "Text" | "Image" | "Mixed";
 
+export interface ChatFileChunkDto {
+  type: 'text' | 'image';
+  text?: string;
+  format?: 'plain' | 'markdown';
+  base64?: string;
+  width?: number;
+  height?: number;
+}
+
 export interface ChatFileDto {
   id: string;
-  filename?: string | null;
-  type: AiContentType;
-  content: string;
-  chunks?: any[] | null;
+  sourceFilename: string;
+  chunks: ChatFileChunkDto[];
 }
 
 export interface ChatMessageDto {
@@ -45,10 +52,8 @@ export interface ChatDto extends ChatHeaderDto {
 }
 
 export interface CreateChatFileDto {
-  filename?: string | null;
-  type: AiContentType;
-  content: string;
-  chunks?: any[] | null;
+  sourceFilename: string;
+  chunks: ChatFileChunkDto[];
 }
 
 export interface SendMessageDto {

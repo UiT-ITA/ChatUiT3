@@ -1,5 +1,6 @@
 import { MdInsertDriveFile } from 'react-icons/md';
-import type { ProcessedFile } from '../../types/importModels';
+import { Icon } from '../common/Icon';
+import type { ChatFile } from '../../types/fileModels';
 import './KnowledgeFileItem.css';
 
 export type KnowledgeFileCategory = 'alwaysLoaded' | 'selectiveLoaded' | 'ragLoaded';
@@ -8,13 +9,14 @@ export interface KnowledgeFileItemData {
   id: string;
   name: string;
   description?: string;
-  processedFile?: ProcessedFile;
+  ChatFile?: ChatFile;
 }
 
 interface KnowledgeFileItemProps {
   item: KnowledgeFileItemData;
   category: KnowledgeFileCategory;
   onPreview?: () => void;
+  onRemove?: () => void;
   allowDescription?: boolean;
   descriptionPlaceholder?: string;
   onDescriptionChange?: (description: string) => void;
@@ -25,6 +27,7 @@ const KnowledgeFileItem = ({
   item,
   category,
   onPreview,
+  onRemove,
   allowDescription = false,
   descriptionPlaceholder = '',
   onDescriptionChange,
@@ -62,6 +65,17 @@ const KnowledgeFileItem = ({
           />
         )}
       </div>
+      {onRemove && (
+        <button
+          type="button"
+          className="knowledge-file-item__remove"
+          onClick={onRemove}
+          disabled={disabled}
+          title="Remove file"
+        >
+          <Icon name="trash" size={1} />
+        </button>
+      )}
     </article>
   );
 };

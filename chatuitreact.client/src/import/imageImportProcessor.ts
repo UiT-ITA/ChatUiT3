@@ -1,7 +1,7 @@
-import type { ProcessedFile } from '../types/importModels';
-import { createProcessedFile, normalizeImageFileToChunk } from './processingShared';
+import type { ChatFile } from '../types/fileModels';
+import { createChatFile, normalizeImageFileToChunk } from './processingShared';
 
-export async function processImageImport(file: File): Promise<ProcessedFile> {
+export async function processImageImport(file: File): Promise<ChatFile> {
     const chunk = await normalizeImageFileToChunk(file);
-    return createProcessedFile(file.name, [chunk]);
+    return createChatFile(file.name, [chunk]);
 }

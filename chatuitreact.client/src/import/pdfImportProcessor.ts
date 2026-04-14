@@ -1,8 +1,8 @@
 import * as pdfjs from 'pdfjs-dist';
 import type { OPS } from 'pdfjs-dist';
-import type { ProcessedFile, ProcessedFileChunk } from '../types/importModels';
+import type { ChatFile, ChatFileChunk } from '../types/fileModels';
 import {
-    createProcessedFile,
+    createChatFile,
     createTextChunk,
     normalizeImageDataToChunk,
     normalizeImageBytesToChunk
@@ -21,18 +21,18 @@ type LayoutImage = {
     kind: 'image';
     x: number;
     y: number;
-    chunk: ProcessedFileChunk;
+    chunk: ChatFileChunk;
 };
 
 type GraphicsState = {
     transform: number[];
 };
 
-export async function processPdfImport(file: File): Promise<ProcessedFile> {
+export async function processPdfImport(file: File): Promise<ChatFile> {
     const loadingTask = pdfjs.getDocument({ data: await file.arrayBuffer() });
     try {
         const pdfDocument = await loadingTask.promise;
-        const chunks: ProcessedFileChunk[] = [];
+        const chunks: ChatFileChunk[] = [];
 
         for (let pageNumber = 1; pageNumber <= pdfDocument.numPages; pageNumber += 1) {
             const page = await pdfDocument.getPage(pageNumber);
@@ -71,7 +71,7 @@ export async function processPdfImport(file: File): Promise<ProcessedFile> {
             flushText();
         }
 
-        return createProcessedFile(file.name, chunks);
+        return createChatFile(file.name, chunks);
     } finally {
         await loadingTask.destroy();
     }
@@ -201,7 +201,7 @@ async function getPdfImageObject(page: any, name: string): Promise<any> {
     });
 }
 
-async function convertPdfImageObjectToChunk(imageObject: any): Promise<ProcessedFileChunk> {
+async function convertPdfImageObjectToChunk(imageObject: any): Promise<ChatFileChunk> {
     if (imageObject instanceof ImageData) {
         return normalizeImageDataToChunk(imageObject);
     }

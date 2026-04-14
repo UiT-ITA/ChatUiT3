@@ -2,24 +2,24 @@ import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import remarkMath from 'remark-math';
 import rehypeKatex from 'rehype-katex';
-import type { ProcessedFile } from '../../types/importModels';
+import type { ChatFile } from '../../types/fileModels';
 import { toJpegDataUrl } from '../../import/processingShared';
 import './FilePreviewModal.css';
 import './ChatMessageMarkdown.css';
 
-interface ProcessedFilePreviewContentProps {
-  file: ProcessedFile;
+interface ChatFilePreviewContentProps {
+  file: ChatFile;
   compact?: boolean;
 }
 
-const ProcessedFilePreviewContent = ({ file, compact = false }: ProcessedFilePreviewContentProps) => {
+const ChatFilePreviewContent = ({ file, compact = false }: ChatFilePreviewContentProps) => {
   return (
     <div className={`file-preview-content${compact ? ' file-preview-content--compact' : ''}`}>
-      {file.chunks.map((chunk) => {
+      {file.chunks.map((chunk, index) => {
         if (chunk.type === 'image') {
           return (
             <img
-              key={chunk.id}
+              key={index}
               src={toJpegDataUrl(chunk.base64)}
               alt={file.sourceFilename}
               className="file-preview-image"
@@ -29,7 +29,7 @@ const ProcessedFilePreviewContent = ({ file, compact = false }: ProcessedFilePre
 
         if (chunk.format === 'markdown') {
           return (
-            <div key={chunk.id} className="message-content file-preview-markdown">
+            <div key={index} className="message-content file-preview-markdown">
               <ReactMarkdown
                 remarkPlugins={[remarkGfm, remarkMath]}
                 rehypePlugins={[rehypeKatex]}
@@ -41,7 +41,7 @@ const ProcessedFilePreviewContent = ({ file, compact = false }: ProcessedFilePre
         }
 
         return (
-          <pre key={chunk.id} className="file-preview-text">
+          <pre key={index} className="file-preview-text">
             {chunk.text}
           </pre>
         );
@@ -50,4 +50,4 @@ const ProcessedFilePreviewContent = ({ file, compact = false }: ProcessedFilePre
   );
 };
 
-export default ProcessedFilePreviewContent;
+export default ChatFilePreviewContent;

@@ -1,22 +1,20 @@
-export interface ProcessedFile {
+export interface ChatFile {
     id: string;
     sourceFilename: string;
-    chunks: ProcessedFileChunk[];
+    chunks: ChatFileChunk[];
 }
 
 export interface TextChunk {
-    id: string;
     type: 'text';
     text: string;
     format: 'plain' | 'markdown';
 }
 
 export interface ImageChunk {
-    id: string;
     type: 'image';
     base64: string;
     width: number;
     height: number;
 }
 
-export type ProcessedFileChunk = TextChunk | ImageChunk;
+export type ChatFileChunk = TextChunk | ImageChunk;

@@ -87,3 +87,20 @@ export const formatFileSize = (bytes: number): string => {
     
     return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
 };
+
+import type { ChatFile } from '../types/fileModels';
+import type { CreateChatFileDto } from '../types/chatModels';
+
+export function mapToCreateChatFileDto(files: ChatFile[]): CreateChatFileDto[] {
+    return files.map(file => ({
+        sourceFilename: file.sourceFilename,
+        chunks: file.chunks.map(chunk => ({
+             type: chunk.type,
+             text: chunk.type === 'text' ? chunk.text : undefined,
+             format: chunk.type === 'text' ? chunk.format : undefined,
+             base64: chunk.type === 'image' ? chunk.base64 : undefined,
+             width: chunk.type === 'image' ? chunk.width : undefined,
+             height: chunk.type === 'image' ? chunk.height : undefined
+        }))
+    }));
+}

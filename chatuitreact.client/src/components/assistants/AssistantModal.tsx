@@ -10,7 +10,7 @@ import { createAssistant, updateAssistant } from '../../services/assistantServic
 import { Dialog, DialogPage, DialogButton } from '../common/Dialog';
 import TagField from '../common/TagField';
 import KnowledgeFileList, { type KnowledgeFileCategory, type KnowledgeFileItemData } from './KnowledgeFileList';
-import type { ProcessedFile } from '../../types/importModels';
+import type { ChatFile } from '../../types/fileModels';
 import './AssistantModal.css';
 
 const createEmptyKnowledgeFiles = (): Record<KnowledgeFileCategory, KnowledgeFileItemData[]> => ({
@@ -176,7 +176,7 @@ const AssistantModal: React.FC<AssistantModalProps> = ({
     handleChange('availableToolIds', newSelectedIds);
   };
 
-  const handleKnowledgeFilesSelected = (category: KnowledgeFileCategory, files: ProcessedFile[]) => {
+  const handleKnowledgeFilesSelected = (category: KnowledgeFileCategory, files: ChatFile[]) => {
     if (files.length === 0) {
       return;
     }
@@ -184,7 +184,7 @@ const AssistantModal: React.FC<AssistantModalProps> = ({
     const newItems = files.map((file) => ({
       id: crypto.randomUUID(),
       name: file.sourceFilename,
-      processedFile: file
+      ChatFile: file
     }));
 
     setKnowledgeFiles((prev) => ({
@@ -203,6 +203,16 @@ const AssistantModal: React.FC<AssistantModalProps> = ({
       [category]: prev[category].map((item) => (
         item.id === itemId ? { ...item, description } : item
       ))
+    }));
+  };
+
+  const handleKnowledgeFileRemove = (
+    category: KnowledgeFileCategory,
+    itemId: string
+  ) => {
+    setKnowledgeFiles((prev) => ({
+      ...prev,
+      [category]: prev[category].filter((item) => item.id !== itemId)
     }));
   };
 
@@ -507,6 +517,7 @@ const AssistantModal: React.FC<AssistantModalProps> = ({
               allowItemDescription={section.allowItemDescription}
               itemDescriptionPlaceholder={t('assistants.knowledge.shortDescriptionPlaceholder')}
               onItemDescriptionChange={(itemId, description) => handleKnowledgeFileDescriptionChange(section.category, itemId, description)}
+              onItemRemove={(itemId) => handleKnowledgeFileRemove(section.category, itemId)}
             />
           ))}
         </div>
@@ -533,3 +544,4 @@ const AssistantModal: React.FC<AssistantModalProps> = ({
 };
 
 export default AssistantModal;
+

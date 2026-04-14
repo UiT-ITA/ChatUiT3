@@ -1,19 +1,18 @@
 import { Dialog } from '../common/Dialog';
 import type { ChatFileDto, CreateChatFileDto } from '../../types/chatModels';
-import type { ProcessedFile } from '../../types/importModels';
-import ProcessedFilePreviewContent from './ProcessedFilePreviewContent';
+import type { ChatFile } from '../../types/fileModels';
+import ChatFilePreviewContent from './ChatFilePreviewContent';
 import './FilePreviewModal.css';
 
 interface FilePreviewModalProps {
-  file: ProcessedFile | ChatFileDto | CreateChatFileDto | null;
+  file: ChatFile | ChatFileDto | CreateChatFileDto | null;
   onClose: () => void;
 }
 
 const FilePreviewModal = ({ file, onClose }: FilePreviewModalProps) => {
   if (!file) return null;
 
-  const isProcessedFile = 'sourceFilename' in file;
-  const title = isProcessedFile ? file.sourceFilename : (file.filename ?? 'Unknown file');
+  const title = file.sourceFilename || 'Unknown file';
 
   return (
     <Dialog
@@ -22,23 +21,10 @@ const FilePreviewModal = ({ file, onClose }: FilePreviewModalProps) => {
       title={title}
       size="xl"
     >
-      {isProcessedFile ? (
-        <ProcessedFilePreviewContent file={file} />
-      ) : (
-        <div className="file-preview-content">
-          {file.type === 'Image' ? (
-            <img
-              src={file.content.startsWith('data:') ? file.content : `data:image/jpeg;base64,${file.content}`}
-              alt={title}
-              className="file-preview-image"
-            />
-          ) : (
-            <pre className="file-preview-text">{file.content}</pre>
-          )}
-        </div>
-      )}
+      <ChatFilePreviewContent file={file as ChatFile} />
     </Dialog>
   );
 };
 
 export default FilePreviewModal;
+

@@ -110,6 +110,31 @@ public class ChatsController : ControllerBase
         {
             var userId = GetCurrentUserId();
             
+            // Temporary stop condition for testing
+            if (request.Messages.Any(m => m.Files != null && m.Files.Any()))
+            {
+                foreach (var msg in request.Messages)
+                {
+                    if (msg.Files != null)
+                    {
+                        foreach (var file in msg.Files)
+                        {
+                            Console.WriteLine($"Received file (CreateChat): {file.SourceFilename}");
+                            foreach (var chunk in file.Chunks)
+                            {
+                                if (chunk.Type.Equals("text", StringComparison.OrdinalIgnoreCase))
+                                {
+                                    Console.WriteLine($"--- Content of {file.SourceFilename} ---");
+                                    Console.WriteLine(chunk.Text);
+                                    Console.WriteLine("--------------------------------------");
+                                }
+                            }
+                        }
+                    }
+                }
+                return Ok(new { success = true, temp_stopped = true });
+            }
+
             // Map DTO messages to domain messages
             var initialMessages = new List<ChatMessage>();
             foreach (var msgDto in request.Messages)
@@ -121,7 +146,7 @@ public class ChatsController : ControllerBase
                     Timestamp = msgDto.Timestamp,
                     Content = msgDto.Content,
                     Status = msgDto.Status,
-                    Files = MapDtoToFiles(msgDto.Files)
+                    Files = new List<ChatFile>()
                 };
                 initialMessages.Add(message);
             }
@@ -147,12 +172,32 @@ public class ChatsController : ControllerBase
         {
             var userId = GetCurrentUserId();
             
+            if (request.Files != null && request.Files.Any())
+            {
+                foreach (var file in request.Files)
+                {
+                    Console.WriteLine($"Received file: {file.SourceFilename}");
+                    foreach (var chunk in file.Chunks)
+                    {
+                        if (chunk.Type.Equals("text", StringComparison.OrdinalIgnoreCase))
+                        {
+                            Console.WriteLine($"--- Content of {file.SourceFilename} ---");
+                            Console.WriteLine(chunk.Text);
+                            Console.WriteLine("--------------------------------------");
+                        }
+                    }
+                }
+                
+                // Temporary stop condition: drop everything, do not create message or chat
+                return Ok(new { success = true, temp_stopped = true });
+            }
+
             var message = new ChatMessage
             {
                 Role = AiChatRole.User,
                 Content = request.Content,
                 Status = AiChatStatus.Success,
-                Files = MapDtoToFiles(request.Files ?? new List<ChatFileDto>())
+                Files = new List<ChatFile>()
             };
 
             if (chatId == "new")
@@ -184,37 +229,12 @@ public class ChatsController : ControllerBase
         }
     }
 
-    private List<ChatFile> MapDtoToFiles(List<ChatFileDto> fileDtos)
+    /*
+    private List<ChatFile> MapDtoToFiles(List<CreateChatFileDto> fileDtos)
     {
-        var files = new List<ChatFile>();
-        foreach (var dto in fileDtos)
-        {
-            ChatFile file = dto.Type switch
-            {
-                AiContentType.Text => new ChatFileText
-                {
-                    Id = dto.Id,
-                    Filename = dto.Filename,
-                    Content = dto.Content
-                },
-                AiContentType.Image => new ChatFileImage
-                {
-                    Id = dto.Id,
-                    Filename = dto.Filename,
-                    Content = dto.Content
-                },
-                AiContentType.Mixed => new ChatFileMixed
-                {
-                    Id = dto.Id,
-                    Filename = dto.Filename,
-                    Chunks = MapDtoToFiles(dto.Chunks ?? new List<ChatFileDto>())
-                },
-                _ => throw new ArgumentException($"Unknown file type: {dto.Type}")
-            };
-            files.Add(file);
-        }
-        return files;
+        return new List<ChatFile>();
     }
+    */
 
     private ChatHeaderDto MapToHeaderDto(Chat chat)
     {
@@ -258,31 +278,7 @@ public class ChatsController : ControllerBase
 
     private List<ChatFileDto> MapFilesToDto(List<ChatFile> files)
     {
-        var fileDtos = new List<ChatFileDto>();
-        foreach (var file in files)
-        {
-            var dto = new ChatFileDto
-            {
-                Id = file.Id,
-                Filename = file.Filename,
-                Type = file.Type
-            };
-
-            switch (file)
-            {
-                case ChatFileText textFile:
-                    dto.Content = textFile.Content;
-                    break;
-                case ChatFileImage imageFile:
-                    dto.Content = imageFile.Content;
-                    break;
-                case ChatFileMixed mixedFile:
-                    dto.Chunks = MapFilesToDto(mixedFile.Chunks);
-                    break;
-            }
-            fileDtos.Add(dto);
-        }
-        return fileDtos;
+        return new List<ChatFileDto>(); // TODO: Update when backend handles ChatFile processing
     }
 
     [HttpDelete("{chatId}")]

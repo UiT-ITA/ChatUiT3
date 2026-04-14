@@ -1,8 +1,8 @@
 import JSZip from 'jszip';
-import type { ProcessedFile, ProcessedFileChunk } from '../types/importModels';
+import type { ChatFile, ChatFileChunk } from '../types/fileModels';
 import {
     collectElementText,
-    createProcessedFile,
+    createChatFile,
     createTextChunk,
     escapeMarkdownTableCell,
     getRelationshipTargets,
@@ -11,7 +11,7 @@ import {
     resolveZipPath
 } from './processingShared';
 
-export async function processDocxImport(file: File): Promise<ProcessedFile> {
+export async function processDocxImport(file: File): Promise<ChatFile> {
     const zip = await JSZip.loadAsync(await file.arrayBuffer());
     const documentXml = await zip.file('word/document.xml')?.async('text');
     const relsXml = await zip.file('word/_rels/document.xml.rels')?.async('text');
@@ -28,7 +28,7 @@ export async function processDocxImport(file: File): Promise<ProcessedFile> {
         throw new Error('DOCX body is missing');
     }
 
-    const chunks: ProcessedFileChunk[] = [];
+    const chunks: ChatFileChunk[] = [];
 
     for (const child of Array.from(body.childNodes)) {
         if (!(child instanceof Element)) {
@@ -49,15 +49,15 @@ export async function processDocxImport(file: File): Promise<ProcessedFile> {
         }
     }
 
-    return createProcessedFile(file.name, chunks);
+    return createChatFile(file.name, chunks);
 }
 
 async function processParagraph(
     paragraph: Element,
     zip: JSZip,
     relationshipTargets: Map<string, string>
-): Promise<ProcessedFileChunk[]> {
-    const chunks: ProcessedFileChunk[] = [];
+): Promise<ChatFileChunk[]> {
+    const chunks: ChatFileChunk[] = [];
     let textBuffer = '';
     let prefixUsed = false;
 

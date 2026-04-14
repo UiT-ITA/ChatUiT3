@@ -28,13 +28,27 @@ public class ChatMessageDto
     public List<ChatFileDto> Files { get; set; } = new List<ChatFileDto>();
 }
 
+public class ChatFileChunkDto
+{
+    public string Type { get; set; } = string.Empty;
+    public string? Text { get; set; }
+    public string? Format { get; set; }
+    public string? Base64 { get; set; }
+    public int? Width { get; set; }
+    public int? Height { get; set; }
+}
+
 public class ChatFileDto
 {
     public string Id { get; set; } = string.Empty;
-    public string? Filename { get; set; }
-    public AiContentType Type { get; set; }
-    public string Content { get; set; } = string.Empty;
-    public List<ChatFileDto>? Chunks { get; set; }
+    public string SourceFilename { get; set; } = string.Empty;
+    public List<ChatFileChunkDto> Chunks { get; set; } = new List<ChatFileChunkDto>();
+}
+
+public class CreateChatFileDto
+{
+    public string SourceFilename { get; set; } = string.Empty;
+    public List<ChatFileChunkDto> Chunks { get; set; } = new List<ChatFileChunkDto>();
 }
 
 public class CreateChatDto
@@ -46,7 +60,7 @@ public class CreateChatDto
 public class SendMessageDto
 {
     public string Content { get; set; } = string.Empty;
-    public List<ChatFileDto>? Files { get; set; }
+    public List<CreateChatFileDto>? Files { get; set; }
     public string AssistantId { get; set; } = string.Empty;
 }
 

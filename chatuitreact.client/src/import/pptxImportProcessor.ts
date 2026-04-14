@@ -1,7 +1,7 @@
 import JSZip from 'jszip';
-import type { ProcessedFile, ProcessedFileChunk } from '../types/importModels';
+import type { ChatFile, ChatFileChunk } from '../types/fileModels';
 import {
-    createProcessedFile,
+    createChatFile,
     createTextChunk,
     escapeMarkdownTableCell,
     getRelationshipTargets,
@@ -10,13 +10,13 @@ import {
     resolveZipPath
 } from './processingShared';
 
-export async function processPptxImport(file: File): Promise<ProcessedFile> {
+export async function processPptxImport(file: File): Promise<ChatFile> {
     const zip = await JSZip.loadAsync(await file.arrayBuffer());
     const slideNames = Object.keys(zip.files)
         .filter((name) => /^ppt\/slides\/slide\d+\.xml$/.test(name))
         .sort(compareOpenXmlPartNames);
 
-    const chunks: ProcessedFileChunk[] = [];
+    const chunks: ChatFileChunk[] = [];
 
     for (const slideName of slideNames) {
         const slideXml = await zip.file(slideName)?.async('text');
@@ -39,7 +39,7 @@ export async function processPptxImport(file: File): Promise<ProcessedFile> {
         chunks.push(...slideChunks);
     }
 
-    return createProcessedFile(file.name, chunks);
+    return createChatFile(file.name, chunks);
 }
 
 async function processSlideChildren(
@@ -47,8 +47,8 @@ async function processSlideChildren(
     zip: JSZip,
     relTargets: Map<string, string>,
     slideName: string
-): Promise<ProcessedFileChunk[]> {
-    const chunks: ProcessedFileChunk[] = [];
+): Promise<ChatFileChunk[]> {
+    const chunks: ChatFileChunk[] = [];
 
     for (const child of children) {
         if (!(child instanceof Element)) {

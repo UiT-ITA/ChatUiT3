@@ -3,19 +3,19 @@ import { useTranslation } from 'react-i18next';
 import type { ChatFileDto, CreateChatFileDto } from '../../types/chatModels';
 import { Icon } from '../common/Icon';
 import { getFileExtension } from '../../utils/fileUtils';
-import type { ProcessedFile, ImageChunk } from '../../types/importModels';
+import type { ChatFile, ImageChunk } from '../../types/fileModels';
 import FilePreviewModal from './FilePreviewModal';
 import './FileThumbnail.css';
 
 interface FileThumbnailProps {
-  file: ProcessedFile | ChatFileDto | CreateChatFileDto;
+  file: ChatFile | ChatFileDto | CreateChatFileDto;
   onRemove?: () => void;
   showRemoveButton?: boolean;
 }
 
 const FileThumbnail = ({ file, onRemove, showRemoveButton = false }: FileThumbnailProps) => {
   const { t } = useTranslation();
-  const [selectedFile, setSelectedFile] = useState<ProcessedFile | ChatFileDto | CreateChatFileDto | null>(null);
+  const [selectedFile, setSelectedFile] = useState<ChatFile | ChatFileDto | CreateChatFileDto | null>(null);
 
   const handleFileClick = () => {
     setSelectedFile(file);
@@ -26,8 +26,13 @@ const FileThumbnail = ({ file, onRemove, showRemoveButton = false }: FileThumbna
     onRemove?.();
   };
 
-  const isProcessedFile = 'sourceFilename' in file;
-  const filename = isProcessedFile ? (file as ProcessedFile).sourceFilename : ((file as ChatFileDto | CreateChatFileDto).filename ?? 'Unknown file');
+  const isChatFile = 'sourceFilename' in file;
+  
+  if (!isChatFile || !file.chunks) {
+    console.error("DEBUG: Malformed or legacy file object detected:", file);
+  }
+
+  const filename = isChatFile ? (file as ChatFile).sourceFilename : ((file as ChatFileDto | CreateChatFileDto).sourceFilename ?? 'Unknown file');
   const extension = getFileExtension(filename).toUpperCase() || 'FILE';
 
   const truncateFilename = (name: string, maxLength: number = 20) => {
@@ -39,8 +44,8 @@ const FileThumbnail = ({ file, onRemove, showRemoveButton = false }: FileThumbna
   let isImage = false;
   let imageSource = '';
 
-  if (isProcessedFile) {
-      const processed = file as ProcessedFile;
+  if (isChatFile) {
+      const processed = file as ChatFile;
       // Only treat as image thumbnail if it's EXACTLY one chunk and it's an image.
       // This prevents PDFs with embedded images from showing up as image thumbnails.
       isImage = processed.chunks.length === 1 && processed.chunks[0].type === 'image';
@@ -49,9 +54,9 @@ const FileThumbnail = ({ file, onRemove, showRemoveButton = false }: FileThumbna
       }
   } else {
       const chatFile = file as ChatFileDto | CreateChatFileDto;
-      isImage = chatFile.type === 'Image';
+      isImage = chatFile.chunks.length === 1 && chatFile.chunks[0].type === 'image';
       if (isImage) {
-        imageSource = chatFile.content.startsWith('data:') ? chatFile.content : `data:image/jpeg;base64,${chatFile.content}`;
+        imageSource = chatFile.chunks[0].base64?.startsWith('data:') ? chatFile.chunks[0].base64 : `data:image/jpeg;base64,${chatFile.chunks[0].base64}`;
       }
   }
 
@@ -103,3 +108,4 @@ const FileThumbnail = ({ file, onRemove, showRemoveButton = false }: FileThumbna
 };
 
 export default FileThumbnail;
+
