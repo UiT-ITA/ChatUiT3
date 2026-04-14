@@ -3,27 +3,18 @@ using System.Collections.Generic;
 
 namespace ChatUitReact.Server.Models;
 
-public abstract class ChatFile
+public class ChatFileChunk
 {
     public string Id { get; set; } = Guid.NewGuid().ToString();
-    public string? Filename { get; set; } = string.Empty;
-    public abstract AiContentType Type { get; }
+    public string Type { get; set; } = string.Empty;
+    public string? Text { get; set; }
+    public string? Format { get; set; }
+    public string? Base64 { get; set; }
 }
 
-public class ChatFileText : ChatFile
+public class ChatFile
 {
-    public override AiContentType Type { get; } = AiContentType.Text;
-    public string Content { get; set; } = string.Empty;
-}
-
-public class ChatFileImage : ChatFile
-{
-    public override AiContentType Type { get; } = AiContentType.Image;
-    public string Content { get; set; } = string.Empty;
-}
-
-public class ChatFileMixed : ChatFile
-{
-    public override AiContentType Type { get; } = AiContentType.Mixed;
-    public List<ChatFile> Chunks { get; set; } = new List<ChatFile>();
+    public string Id { get; set; } = Guid.NewGuid().ToString();
+    public string SourceFilename { get; set; } = string.Empty;
+    public List<ChatFileChunk> Chunks { get; set; } = new List<ChatFileChunk>();
 }

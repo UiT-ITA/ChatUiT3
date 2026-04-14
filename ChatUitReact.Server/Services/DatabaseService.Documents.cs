@@ -97,17 +97,26 @@ public partial class DatabaseService
         [JsonProperty("id")]
         public string Id { get; set; } = string.Empty;
 
-        [JsonProperty("filename")]
-        public string? Filename { get; set; }
+        [JsonProperty("sourceFilename")]
+        public string SourceFilename { get; set; } = string.Empty;
+
+        [JsonProperty("chunks")]
+        public List<StoredFileChunkDocument> Chunks { get; set; } = new();
+    }
+
+    private sealed class StoredFileChunkDocument
+    {
+        [JsonProperty("id")]
+        public string Id { get; set; } = string.Empty;
 
         [JsonProperty("type")]
-        public AiContentType Type { get; set; }
+        public string Type { get; set; } = string.Empty;
+
+        [JsonProperty("format")]
+        public string? Format { get; set; }
 
         [JsonProperty("contentBlockIds")]
         public List<string> ContentBlockIds { get; set; } = new();
-
-        [JsonProperty("chunks")]
-        public List<StoredFileDocument> Chunks { get; set; } = new();
     }
 
     private sealed class ContentBlockDocument

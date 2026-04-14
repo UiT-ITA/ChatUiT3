@@ -54,7 +54,10 @@ export async function processXlsxImport(file: File): Promise<ChatFile> {
                 throw new Error('XLSX image extraction is unsupported for this workbook');
             }
 
-            chunks.push(await normalizeImageBytesToChunk(bytes, `image/${extension}`));
+            const chunk = await normalizeImageBytesToChunk(bytes, `image/${extension}`);
+            if (chunk) {
+                chunks.push(chunk);
+            }
             currentRowIndex = image.row;
         }
 

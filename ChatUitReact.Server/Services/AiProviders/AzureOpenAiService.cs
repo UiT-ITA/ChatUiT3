@@ -298,82 +298,40 @@ public class AzureOpenAiService
     {
         try
         {
-            switch (file)
+            contentParts.Add(ChatMessageContentPart.CreateTextPart(
+                $"\n--- ATTACHED FILE: {file.SourceFilename} ---\n"
+            ));
+
+            for (int i = 0; i < file.Chunks.Count; i++)
             {
-                case ChatFileText textFile:
-                    contentParts.Add(ChatMessageContentPart.CreateTextPart(
-                        $"\n--- FILE: {textFile.Filename} (Text) ---\n{textFile.Content}\n--- END FILE ---\n"
-                    ));
-                    break;
-                    
-                case ChatFileImage imageFile:
-                    // Add text header for the image
-                    contentParts.Add(ChatMessageContentPart.CreateTextPart(
-                        $"\n--- FILE: {imageFile.Filename} (Image) ---"
-                    ));
-                    
-                    // Add the actual image
-                    var imageBytes = Convert.FromBase64String(imageFile.Content);
-                    var imageBinaryData = BinaryData.FromBytes(imageBytes);
-                    contentParts.Add(ChatMessageContentPart.CreateImagePart(imageBinaryData, "image/jpeg"));
-                    
-                    // Add closing header
-                    contentParts.Add(ChatMessageContentPart.CreateTextPart(
-                        "--- END FILE ---\n"
-                    ));
-                    break;
-                    
-                case ChatFileMixed mixedFile:
-                    // Start of mixed file
-                    contentParts.Add(ChatMessageContentPart.CreateTextPart(
-                        $"\n--- FILE: {mixedFile.Filename} (Mixed Document) ---\n"
-                    ));
-                    
-                    // Process each chunk with chunk numbering
-                    for (int i = 0; i < mixedFile.Chunks.Count; i++)
-                    {
-                        var chunk = mixedFile.Chunks[i];
-                        
-                        // Add chunk header
-                        contentParts.Add(ChatMessageContentPart.CreateTextPart(
-                            $"[CHUNK {i + 1}/{mixedFile.Chunks.Count}] ({chunk.Type})\n"
-                        ));
-                        
-                        // Process the chunk content
-                        switch (chunk)
-                        {
-                            case ChatFileText textChunk:
-                                contentParts.Add(ChatMessageContentPart.CreateTextPart(
-                                    textChunk.Content + "\n"
-                                ));
-                                break;
-                                
-                            case ChatFileImage imageChunk:
-                                var chunkImageBytes = Convert.FromBase64String(imageChunk.Content);
-                                var chunkImageData = BinaryData.FromBytes(chunkImageBytes);
-                                contentParts.Add(ChatMessageContentPart.CreateImagePart(chunkImageData, "image/jpeg"));
-                                contentParts.Add(ChatMessageContentPart.CreateTextPart("\n"));
-                                break;
-                                
-                            case ChatFileMixed nestedMixed:
-                                // Recursive call for nested mixed files
-                                ProcessFileRecursively(nestedMixed, contentParts);
-                                break;
-                        }
-                    }
-                    
-                    // End of mixed file
-                    contentParts.Add(ChatMessageContentPart.CreateTextPart(
-                        $"--- END FILE: {mixedFile.Filename} ---\n"
-                    ));
-                    break;
+                var chunk = file.Chunks[i];
+                
+                contentParts.Add(ChatMessageContentPart.CreateTextPart(
+                    $"[File Part {i + 1} of {file.Chunks.Count}]\n"
+                ));
+
+                if (chunk.Type.Equals("text", StringComparison.OrdinalIgnoreCase))
+                {
+                    contentParts.Add(ChatMessageContentPart.CreateTextPart((chunk.Text ?? string.Empty) + "\n"));
+                }
+                else if (chunk.Type.Equals("image", StringComparison.OrdinalIgnoreCase) && !string.IsNullOrWhiteSpace(chunk.Base64))
+                {
+                    var imageBytes = Convert.FromBase64String(chunk.Base64);
+                    var binaryData = BinaryData.FromBytes(imageBytes);
+                    contentParts.Add(ChatMessageContentPart.CreateImagePart(binaryData, "image/jpeg"));
+                    contentParts.Add(ChatMessageContentPart.CreateTextPart("\n"));
+                }
             }
+
+            contentParts.Add(ChatMessageContentPart.CreateTextPart(
+                $"--- END OF FILE: {file.SourceFilename} ---\n\n"
+            ));
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error processing file {FileName} of type {FileType}", file.Filename, file.Type);
+            _logger.LogError(ex, "Error processing file {FileName}", file.SourceFilename);
             contentParts.Add(ChatMessageContentPart.CreateTextPart(
-                $"\n--- ERROR: Could not process file {file.Filename} ({file.Type}) ---\n"
+                $"\n--- ERROR: Could not process file {file.SourceFilename} ---\n"
             ));
         }
     }

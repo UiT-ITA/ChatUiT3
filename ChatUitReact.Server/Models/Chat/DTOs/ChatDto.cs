@@ -34,8 +34,6 @@ public class ChatFileChunkDto
     public string? Text { get; set; }
     public string? Format { get; set; }
     public string? Base64 { get; set; }
-    public int? Width { get; set; }
-    public int? Height { get; set; }
 }
 
 public class ChatFileDto
@@ -54,7 +52,7 @@ public class CreateChatFileDto
 public class CreateChatDto
 {
     public string AssistantId { get; set; } = string.Empty;
-    public List<ChatMessageDto> Messages { get; set; } = new List<ChatMessageDto>();
+    public List<SendMessageDto> Messages { get; set; } = new List<SendMessageDto>();
 }
 
 public class SendMessageDto

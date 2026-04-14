@@ -125,40 +125,42 @@ public partial class DatabaseService
         var storedFiles = new List<StoredFileDocument>(files.Count);
         foreach (var file in files)
         {
-            storedFiles.Add(await WriteFileAsync(userId, chatId, file));
+            var storedFile = new StoredFileDocument
+            {
+                Id = string.IsNullOrWhiteSpace(file.Id) ? Guid.NewGuid().ToString() : file.Id,
+                SourceFilename = file.SourceFilename,
+                Chunks = new List<StoredFileChunkDocument>()
+            };
+
+            foreach (var chunk in file.Chunks)
+            {
+                var storedChunk = new StoredFileChunkDocument
+                {
+                    Id = string.IsNullOrWhiteSpace(chunk.Id) ? Guid.NewGuid().ToString() : chunk.Id,
+                    Type = chunk.Type,
+                    Format = chunk.Format,
+                    ContentBlockIds = new List<string>()
+                };
+
+                if (chunk.Type.Equals("text", StringComparison.OrdinalIgnoreCase))
+                {
+                    storedChunk.ContentBlockIds = await WriteTextContentAsync(userId, chatId, storedChunk.Id, chunk.Text);
+                }
+                else if (chunk.Type.Equals("image", StringComparison.OrdinalIgnoreCase))
+                {
+                    var imageBytes = string.IsNullOrWhiteSpace(chunk.Base64)
+                        ? Array.Empty<byte>()
+                        : Convert.FromBase64String(chunk.Base64);
+                    storedChunk.ContentBlockIds = await WriteBinaryContentAsync(userId, chatId, storedChunk.Id, imageBytes);
+                }
+
+                storedFile.Chunks.Add(storedChunk);
+            }
+
+            storedFiles.Add(storedFile);
         }
 
         return storedFiles;
-    }
-
-    private async Task<StoredFileDocument> WriteFileAsync(string userId, string chatId, ChatFile file)
-    {
-        var storedFile = new StoredFileDocument
-        {
-            Id = string.IsNullOrWhiteSpace(file.Id) ? Guid.NewGuid().ToString() : file.Id,
-            Filename = file.Filename,
-            Type = file.Type
-        };
-
-        switch (file)
-        {
-            case ChatFileText textFile:
-                storedFile.ContentBlockIds = await WriteTextContentAsync(userId, chatId, storedFile.Id, textFile.Content);
-                break;
-
-            case ChatFileImage imageFile:
-                var imageBytes = string.IsNullOrWhiteSpace(imageFile.Content)
-                    ? Array.Empty<byte>()
-                    : Convert.FromBase64String(imageFile.Content);
-                storedFile.ContentBlockIds = await WriteBinaryContentAsync(userId, chatId, storedFile.Id, imageBytes);
-                break;
-
-            case ChatFileMixed mixedFile:
-                storedFile.Chunks = await WriteFilesAsync(userId, chatId, mixedFile.Chunks);
-                break;
-        }
-
-        return storedFile;
     }
 
     private async Task<List<ChatFile>> ReadFilesAsync(string userId, IReadOnlyCollection<StoredFileDocument>? files)
@@ -171,7 +173,35 @@ public partial class DatabaseService
         var chatFiles = new List<ChatFile>(files.Count);
         foreach (var file in files)
         {
-            chatFiles.Add(await ReadFileAsync(userId, file));
+            var chatFile = new ChatFile
+            {
+                Id = file.Id,
+                SourceFilename = file.SourceFilename,
+                Chunks = new List<ChatFileChunk>()
+            };
+
+            foreach (var chunk in file.Chunks)
+            {
+                var chatChunk = new ChatFileChunk
+                {
+                    Id = chunk.Id,
+                    Type = chunk.Type,
+                    Format = chunk.Format
+                };
+
+                if (chunk.Type.Equals("text", StringComparison.OrdinalIgnoreCase))
+                {
+                    chatChunk.Text = await ReadTextContentAsync(userId, chunk.ContentBlockIds);
+                }
+                else if (chunk.Type.Equals("image", StringComparison.OrdinalIgnoreCase))
+                {
+                    chatChunk.Base64 = Convert.ToBase64String(await ReadBinaryContentAsync(userId, chunk.ContentBlockIds));
+                }
+
+                chatFile.Chunks.Add(chatChunk);
+            }
+
+            chatFiles.Add(chatFile);
         }
 
         return chatFiles;
@@ -190,65 +220,38 @@ public partial class DatabaseService
         var chatFiles = new List<ChatFile>(files.Count);
         foreach (var file in files)
         {
-            chatFiles.Add(await ReadFileAsync(userId, file, contentBlocksById));
+            var chatFile = new ChatFile
+            {
+                Id = file.Id,
+                SourceFilename = file.SourceFilename,
+                Chunks = new List<ChatFileChunk>()
+            };
+
+            foreach (var chunk in file.Chunks)
+            {
+                var chatChunk = new ChatFileChunk
+                {
+                    Id = chunk.Id,
+                    Type = chunk.Type,
+                    Format = chunk.Format
+                };
+
+                if (chunk.Type.Equals("text", StringComparison.OrdinalIgnoreCase))
+                {
+                    chatChunk.Text = ReadTextContent(chunk.ContentBlockIds, contentBlocksById);
+                }
+                else if (chunk.Type.Equals("image", StringComparison.OrdinalIgnoreCase))
+                {
+                    chatChunk.Base64 = Convert.ToBase64String(ReadBinaryContent(chunk.ContentBlockIds, contentBlocksById));
+                }
+
+                chatFile.Chunks.Add(chatChunk);
+            }
+
+            chatFiles.Add(chatFile);
         }
 
         return chatFiles;
-    }
-
-    private async Task<ChatFile> ReadFileAsync(string userId, StoredFileDocument file)
-    {
-        return file.Type switch
-        {
-            AiContentType.Text => new ChatFileText
-            {
-                Id = file.Id,
-                Filename = file.Filename,
-                Content = await ReadTextContentAsync(userId, file.ContentBlockIds)
-            },
-            AiContentType.Image => new ChatFileImage
-            {
-                Id = file.Id,
-                Filename = file.Filename,
-                Content = Convert.ToBase64String(await ReadBinaryContentAsync(userId, file.ContentBlockIds))
-            },
-            AiContentType.Mixed => new ChatFileMixed
-            {
-                Id = file.Id,
-                Filename = file.Filename,
-                Chunks = await ReadFilesAsync(userId, file.Chunks)
-            },
-            _ => throw new NotSupportedException($"Unsupported file type: {file.Type}")
-        };
-    }
-
-    private async Task<ChatFile> ReadFileAsync(
-        string userId,
-        StoredFileDocument file,
-        IReadOnlyDictionary<string, ContentBlockDocument> contentBlocksById)
-    {
-        return file.Type switch
-        {
-            AiContentType.Text => new ChatFileText
-            {
-                Id = file.Id,
-                Filename = file.Filename,
-                Content = ReadTextContent(file.ContentBlockIds, contentBlocksById)
-            },
-            AiContentType.Image => new ChatFileImage
-            {
-                Id = file.Id,
-                Filename = file.Filename,
-                Content = Convert.ToBase64String(ReadBinaryContent(file.ContentBlockIds, contentBlocksById))
-            },
-            AiContentType.Mixed => new ChatFileMixed
-            {
-                Id = file.Id,
-                Filename = file.Filename,
-                Chunks = await ReadFilesAsync(userId, file.Chunks, contentBlocksById)
-            },
-            _ => throw new NotSupportedException($"Unsupported file type: {file.Type}")
-        };
     }
 
     private string ReadTextContent(
@@ -462,14 +465,12 @@ public partial class DatabaseService
     {
         foreach (var file in files)
         {
-            if (!string.IsNullOrWhiteSpace(file.Id))
+            foreach (var chunk in file.Chunks)
             {
-                ownerIds.Add(file.Id);
-            }
-
-            if (file.Chunks.Count > 0)
-            {
-                CollectFileOwnerIds(file.Chunks, ownerIds);
+                if (!string.IsNullOrWhiteSpace(chunk.Id))
+                {
+                    ownerIds.Add(chunk.Id);
+                }
             }
         }
     }

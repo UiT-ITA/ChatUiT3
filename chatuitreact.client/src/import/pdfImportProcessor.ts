@@ -109,12 +109,14 @@ async function extractPdfImages(page: any, operatorList: any): Promise<LayoutIma
             }
 
             const chunk = await convertPdfImageObjectToChunk(imageObject);
-            layoutImages.push({
-                kind: 'image',
-                x: state.transform[4] ?? 0,
-                y: state.transform[5] ?? 0,
-                chunk
-            });
+            if (chunk) {
+                layoutImages.push({
+                    kind: 'image',
+                    x: state.transform[4] ?? 0,
+                    y: state.transform[5] ?? 0,
+                    chunk
+                });
+            }
             continue;
         }
 
@@ -125,12 +127,14 @@ async function extractPdfImages(page: any, operatorList: any): Promise<LayoutIma
             }
 
             const chunk = await convertPdfImageObjectToChunk(inlineImage);
-            layoutImages.push({
-                kind: 'image',
-                x: state.transform[4] ?? 0,
-                y: state.transform[5] ?? 0,
-                chunk
-            });
+            if (chunk) {
+                layoutImages.push({
+                    kind: 'image',
+                    x: state.transform[4] ?? 0,
+                    y: state.transform[5] ?? 0,
+                    chunk
+                });
+            }
         }
     }
 
@@ -201,7 +205,7 @@ async function getPdfImageObject(page: any, name: string): Promise<any> {
     });
 }
 
-async function convertPdfImageObjectToChunk(imageObject: any): Promise<ChatFileChunk> {
+async function convertPdfImageObjectToChunk(imageObject: any): Promise<ChatFileChunk | null> {
     if (imageObject instanceof ImageData) {
         return normalizeImageDataToChunk(imageObject);
     }

@@ -19,8 +19,6 @@ export interface ChatFileChunkDto {
   text?: string;
   format?: 'plain' | 'markdown';
   base64?: string;
-  width?: number;
-  height?: number;
 }
 
 export interface ChatFileDto {

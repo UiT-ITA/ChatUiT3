@@ -22,16 +22,16 @@ export function createTextChunk(text: string, format: 'plain' | 'markdown'): Tex
     };
 }
 
-export async function normalizeImageFileToChunk(file: File): Promise<ImageChunk> {
+export async function normalizeImageFileToChunk(file: File): Promise<ImageChunk | null> {
     return normalizeImageBlobToChunk(file);
 }
 
-export async function normalizeImageBlobToChunk(blob: Blob): Promise<ImageChunk> {
+export async function normalizeImageBlobToChunk(blob: Blob): Promise<ImageChunk | null> {
     const dataUrl = await blobToDataUrl(blob);
     return normalizeImageDataUrlToChunk(dataUrl);
 }
 
-export async function normalizeImageBytesToChunk(bytes: Uint8Array | ArrayBuffer, mimeType: string): Promise<ImageChunk> {
+export async function normalizeImageBytesToChunk(bytes: Uint8Array | ArrayBuffer, mimeType: string): Promise<ImageChunk | null> {
     const byteCopy = bytes instanceof Uint8Array
         ? new Uint8Array(bytes)
         : new Uint8Array(bytes.slice(0));
@@ -39,7 +39,7 @@ export async function normalizeImageBytesToChunk(bytes: Uint8Array | ArrayBuffer
     return normalizeImageBlobToChunk(new Blob([byteCopy.buffer], { type: mimeType }));
 }
 
-export async function normalizeImageDataToChunk(imageData: ImageData): Promise<ImageChunk> {
+export async function normalizeImageDataToChunk(imageData: ImageData): Promise<ImageChunk | null> {
     const canvas = document.createElement('canvas');
     canvas.width = imageData.width;
     canvas.height = imageData.height;
@@ -175,8 +175,13 @@ function mergeAdjacentTextChunks(chunks: ChatFileChunk[]): ChatFileChunk[] {
     return merged;
 }
 
-async function normalizeImageDataUrlToChunk(dataUrl: string): Promise<ImageChunk> {
+async function normalizeImageDataUrlToChunk(dataUrl: string): Promise<ImageChunk | null> {
     const image = await loadImage(dataUrl);
+
+    if (image.width < 100 || image.height < 100) {
+        return null;
+    }
+
     const { width, height } = calculateImageDimensions(image.width, image.height);
     const canvas = document.createElement('canvas');
     canvas.width = width;
@@ -193,9 +198,7 @@ async function normalizeImageDataUrlToChunk(dataUrl: string): Promise<ImageChunk
 
     return {
         type: 'image',
-        base64,
-        width,
-        height
+        base64
     };
 }
 

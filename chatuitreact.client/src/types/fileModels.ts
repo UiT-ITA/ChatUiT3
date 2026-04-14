@@ -13,8 +13,6 @@ export interface TextChunk {
 export interface ImageChunk {
     type: 'image';
     base64: string;
-    width: number;
-    height: number;
 }
 
 export type ChatFileChunk = TextChunk | ImageChunk;

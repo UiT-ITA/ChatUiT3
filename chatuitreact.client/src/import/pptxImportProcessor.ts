@@ -82,7 +82,10 @@ async function processSlideChildren(
             }
 
             const imageBlob = await imageFile.async('blob');
-            chunks.push(await normalizeImageBlobToChunk(imageBlob));
+            const chunk = await normalizeImageBlobToChunk(imageBlob);
+            if (chunk) {
+                chunks.push(chunk);
+            }
             continue;
         }
 

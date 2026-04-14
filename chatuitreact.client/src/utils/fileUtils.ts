@@ -98,9 +98,7 @@ export function mapToCreateChatFileDto(files: ChatFile[]): CreateChatFileDto[] {
              type: chunk.type,
              text: chunk.type === 'text' ? chunk.text : undefined,
              format: chunk.type === 'text' ? chunk.format : undefined,
-             base64: chunk.type === 'image' ? chunk.base64 : undefined,
-             width: chunk.type === 'image' ? chunk.width : undefined,
-             height: chunk.type === 'image' ? chunk.height : undefined
+             base64: chunk.type === 'image' ? chunk.base64 : undefined
         }))
     }));
 }
