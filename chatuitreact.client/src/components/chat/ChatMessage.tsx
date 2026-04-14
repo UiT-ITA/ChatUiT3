@@ -13,7 +13,7 @@ import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter';
 import { atomDark, dracula, oneLight } from 'react-syntax-highlighter/dist/esm/styles/prism';
 import 'katex/dist/katex.min.css';
 import { Icon } from '../common/Icon';
-import FilePreview from './FilePreview';
+import FileThumbnail from './FileThumbnail';
 import { segmentToolCalls } from '../../utils/toolCallParser';
 import ToolCallBlock from './ToolCallBlock';
 import { markdownToHtml } from '../../utils/markdownUtils';
@@ -197,7 +197,7 @@ function ChatMessage({ message, onStreamingChunk }: ChatMessageProps) {
         <div className="message-files">
           <div className="message-file-previews">
             {message.files.map((file) => (
-              <FilePreview
+              <FileThumbnail
                 key={file.id}
                 file={file}
                 showRemoveButton={false}

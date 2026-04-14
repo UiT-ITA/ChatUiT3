@@ -47,37 +47,6 @@ export const SUPPORTED_IMPORT_ACCEPT = [
 
 export type SupportedImportKind = 'image' | 'text' | 'complex';
 
-export const getFileIcon = (filename: string): string => {
-    const extension = getFileExtension(filename);
-    
-    switch (extension) {
-        case 'txt':
-        case 'md':
-        case 'markdown':
-            return '📄';
-        case 'csv':
-        case 'xlsx':
-            return '📊';
-        case 'json':
-            return '📋';
-        case 'pdf':
-            return '📕';
-        case 'docx':
-            return '📝';
-        case 'pptx':
-            return '📽️';
-        case 'jpg':
-        case 'jpeg':
-        case 'png':
-        case 'bmp':
-        case 'webp':
-        case 'gif':
-            return '🖼️';
-        default:
-            return '📄';
-    }
-};
-
 export const getSupportedImportKind = (file: File): SupportedImportKind | null => {
     const extension = getFileExtension(file.name);
 

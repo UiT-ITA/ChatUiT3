@@ -6,7 +6,7 @@ import { sendMessage, getCurrentChatId, getCurrentAssistantId, createChat } from
 import { FileProcessingService } from '../../services/fileProcessingService';
 import { Icon } from '../common/Icon';
 import AssistantSelector from '../common/AssistantSelector';
-import FilePreview from './FilePreview';
+import FileThumbnail from './FileThumbnail';
 import type { ProcessedFile } from '../../types/importModels';
 import { SUPPORTED_IMPORT_ACCEPT, isValidFileType } from '../../utils/fileUtils';
 import { useNavigate } from 'react-router-dom';
@@ -126,7 +126,7 @@ export default function ChatInput() {
         {selectedFiles.length > 0 && (
           <div className="input-file-previews">
             {selectedFiles.map((file, index) => (
-              <FilePreview
+              <FileThumbnail
                 key={`${file.id}-${index}`}
                 file={file}
                 onRemove={() => removeFile(index)}

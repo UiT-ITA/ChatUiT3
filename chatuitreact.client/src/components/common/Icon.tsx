@@ -2,7 +2,7 @@ import { PiSidebarSimple } from "react-icons/pi";
 import { VscLayoutSidebarLeft, VscLayoutSidebarLeftOff  } from "react-icons/vsc";
 import { RiSettings3Line, RiChatAiLine, RiAdminLine, RiUserLine, RiRobot2Line, RiMenuLine } from 'react-icons/ri';
 import { GrHelpBook } from "react-icons/gr";
-import { MdOutlineVpnKey, MdContentCopy, MdCheck, MdRefresh, MdEdit, MdCallSplit, MdKeyboardArrowDown, MdMoreHoriz, MdAttachFile, MdSend, MdKeyboardArrowUp, MdInfo, MdRemoveRedEye, MdPublic, MdPsychology, MdMoreVert, MdClose } from "react-icons/md";
+import { MdOutlineVpnKey, MdContentCopy, MdCheck, MdRefresh, MdEdit, MdCallSplit, MdKeyboardArrowDown, MdMoreHoriz, MdAttachFile, MdSend, MdKeyboardArrowUp, MdInfo, MdRemoveRedEye, MdPublic, MdPsychology, MdMoreVert, MdClose, MdInsertDriveFile } from "react-icons/md";
 import { FaStar, FaTrash } from "react-icons/fa";
 
 const iconMap = {
@@ -35,6 +35,7 @@ const iconMap = {
   trash: FaTrash,
   moreVert: MdMoreVert,
   close: MdClose,
+  file: MdInsertDriveFile,
 } as const;
 
 interface IconProps {
