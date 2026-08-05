@@ -10,6 +10,9 @@ export interface KnowledgeFileItemData {
   name: string;
   description?: string;
   ChatFile?: ChatFile;
+  // Set for files that are already stored on the server; their content is
+  // fetched on demand.
+  fileId?: string;
 }
 
 interface KnowledgeFileItemProps {
@@ -49,7 +52,7 @@ const KnowledgeFileItem = ({
             <MdInsertDriveFile size={16} />
           </div>
 
-          <div className="knowledge-file-item__name">
+          <div className="knowledge-file-item__name t-body-strong">
             {item.name}
           </div>
         </button>
@@ -59,7 +62,7 @@ const KnowledgeFileItem = ({
             type="text"
             value={item.description ?? ''}
             onChange={(event) => onDescriptionChange?.(event.target.value)}
-            className="knowledge-file-item__description-input"
+            className="knowledge-file-item__description-input t-ui-plain"
             placeholder={descriptionPlaceholder}
             disabled={disabled}
           />

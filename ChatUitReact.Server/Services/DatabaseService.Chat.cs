@@ -19,7 +19,7 @@ public partial class DatabaseService
         return chatDocuments.Select(MapChatHeader).ToList();
     }
 
-    public async Task<Chat?> GetChatByIdAsync(string userId, string chatId)
+    public async Task<Chat?> GetChatByIdAsync(string userId, string chatId, bool includeFileContent = true)
     {
         await EnsureInitializedAsync();
 
@@ -30,9 +30,8 @@ public partial class DatabaseService
                 .WithParameter("@userId", userId)
                 .WithParameter("@chatId", chatId),
             userId);
-        var contentBlocksTask = ReadContentBlockMapByChatAsync(userId, chatId);
 
-        await Task.WhenAll(chatTask, messageDocumentsTask, contentBlocksTask);
+        await Task.WhenAll(chatTask, messageDocumentsTask);
 
         var chatDocument = await chatTask;
 
@@ -42,12 +41,18 @@ public partial class DatabaseService
         }
 
         var messageDocuments = await messageDocumentsTask;
-        var contentBlocksById = await contentBlocksTask;
+
+        // With file content the whole chat's blocks are needed; without it only the
+        // blocks holding message text (owned by the messages themselves) are fetched,
+        // so file payloads never leave the database.
+        var contentBlocksById = includeFileContent
+            ? await ReadContentBlockMapByChatAsync(userId, chatId)
+            : await ReadContentBlockMapByOwnersAsync(userId, chatId, messageDocuments.Select(m => m.Id).ToList());
 
         var messages = new List<ChatMessage>(messageDocuments.Count);
         foreach (var messageDocument in messageDocuments)
         {
-            messages.Add(await MapChatMessageAsync(userId, messageDocument, contentBlocksById));
+            messages.Add(MapChatMessage(messageDocument, contentBlocksById, includeFileContent));
         }
 
         return new Chat
@@ -60,6 +65,32 @@ public partial class DatabaseService
             Status = chatDocument.Status,
             Messages = messages
         };
+    }
+
+    public async Task<ChatFile?> GetChatFileAsync(string userId, string chatId, string fileId)
+    {
+        await EnsureInitializedAsync();
+
+        var fileDocuments = await QueryItemsAsync<ChatMessageDocument>(
+            _chatMessageContainer!,
+            new QueryDefinition("SELECT * FROM c WHERE c.userId = @userId AND c.chatId = @chatId")
+                .WithParameter("@userId", userId)
+                .WithParameter("@chatId", chatId),
+            userId);
+
+        var file = fileDocuments
+            .SelectMany(message => message.Files)
+            .FirstOrDefault(f => f.Id == fileId);
+
+        if (file == null)
+        {
+            return null;
+        }
+
+        var ownerIds = file.Chunks.Select(chunk => chunk.Id).ToList();
+        var contentBlocksById = await ReadContentBlockMapByOwnersAsync(userId, chatId, ownerIds);
+
+        return ReadFiles(new[] { file }, contentBlocksById, includeContent: true).FirstOrDefault();
     }
 
     public async Task AddChatAsync(string userId, Chat chat)
@@ -166,19 +197,30 @@ public partial class DatabaseService
         var messageId = string.IsNullOrWhiteSpace(message.Id) ? Guid.NewGuid().ToString() : message.Id;
         var timestamp = message.Timestamp == default ? DateTime.UtcNow : message.Timestamp;
 
-        var messageDocument = new ChatMessageDocument
+        // Content blocks are written before the message document so a partially saved
+        // message is never visible; on failure the already-written blocks are removed.
+        var writtenBlockIds = new List<string>();
+        try
         {
-            Id = messageId,
-            UserId = userId,
-            ChatId = chatId,
-            Role = message.Role,
-            Timestamp = timestamp,
-            Status = message.Status,
-            ContentBlockIds = await WriteTextContentAsync(userId, chatId, messageId, message.Content),
-            Files = await WriteFilesAsync(userId, chatId, message.Files)
-        };
+            var messageDocument = new ChatMessageDocument
+            {
+                Id = messageId,
+                UserId = userId,
+                ChatId = chatId,
+                Role = message.Role,
+                Timestamp = timestamp,
+                Status = message.Status,
+                ContentBlockIds = await WriteTextContentAsync(userId, chatId, messageId, message.Content, writtenBlockIds),
+                Files = await WriteFilesAsync(userId, chatId, message.Files, writtenBlockIds)
+            };
 
-        await _chatMessageContainer!.CreateItemAsync(messageDocument, new PartitionKey(userId));
+            await _chatMessageContainer!.CreateItemAsync(messageDocument, new PartitionKey(userId));
+        }
+        catch
+        {
+            await DeleteContentBlocksAsync(userId, writtenBlockIds);
+            throw;
+        }
 
         message.Id = messageId;
         message.Timestamp = timestamp;
@@ -200,30 +242,47 @@ public partial class DatabaseService
         var timestamp = message.Timestamp == default ? existingMessage.Timestamp : message.Timestamp;
         var role = message.Role;
         var status = message.Status;
+        var replaceFiles = message.Files != null && message.Files.Count > 0;
 
-        await DeleteOwnedContentAsync(userId, chatId, message.Id);
-        var contentBlockIds = await WriteTextContentAsync(userId, chatId, message.Id, message.Content);
-
-        var files = existingMessage.Files;
-        if (message.Files != null && message.Files.Count > 0)
+        // Write the new blocks and replace the message document first; the old blocks
+        // are only deleted once the replacement is safely stored. On failure the new
+        // blocks are removed and the existing message stays intact.
+        var writtenBlockIds = new List<string>();
+        try
         {
-            await DeleteFileContentAsync(userId, chatId, existingMessage.Files);
-            files = await WriteFilesAsync(userId, chatId, message.Files);
+            var contentBlockIds = await WriteTextContentAsync(userId, chatId, message.Id, message.Content, writtenBlockIds);
+
+            var files = existingMessage.Files;
+            if (replaceFiles)
+            {
+                files = await WriteFilesAsync(userId, chatId, message.Files, writtenBlockIds);
+            }
+
+            var replacement = new ChatMessageDocument
+            {
+                Id = message.Id,
+                UserId = userId,
+                ChatId = chatId,
+                Role = role,
+                Timestamp = timestamp,
+                Status = status,
+                ContentBlockIds = contentBlockIds,
+                Files = files
+            };
+
+            await _chatMessageContainer!.ReplaceItemAsync(replacement, replacement.Id, new PartitionKey(userId));
+        }
+        catch
+        {
+            await DeleteContentBlocksAsync(userId, writtenBlockIds);
+            throw;
         }
 
-        var replacement = new ChatMessageDocument
+        await DeleteContentBlocksAsync(userId, existingMessage.ContentBlockIds);
+        if (replaceFiles)
         {
-            Id = message.Id,
-            UserId = userId,
-            ChatId = chatId,
-            Role = role,
-            Timestamp = timestamp,
-            Status = status,
-            ContentBlockIds = contentBlockIds,
-            Files = files
-        };
-
-        await _chatMessageContainer!.ReplaceItemAsync(replacement, replacement.Id, new PartitionKey(userId));
+            await DeleteContentBlocksAsync(userId, CollectFileContentBlockIds(existingMessage.Files));
+        }
 
         message.Timestamp = timestamp;
         await TouchChatAsync(userId, chatId, timestamp, status);
@@ -264,23 +323,10 @@ public partial class DatabaseService
         };
     }
 
-    private async Task<ChatMessage> MapChatMessageAsync(string userId, ChatMessageDocument messageDocument)
-    {
-        return new ChatMessage
-        {
-            Id = messageDocument.Id,
-            Role = messageDocument.Role,
-            Timestamp = messageDocument.Timestamp,
-            Content = await ReadTextContentAsync(userId, messageDocument.ContentBlockIds),
-            Status = messageDocument.Status,
-            Files = await ReadFilesAsync(userId, messageDocument.Files)
-        };
-    }
-
-    private async Task<ChatMessage> MapChatMessageAsync(
-        string userId,
+    private ChatMessage MapChatMessage(
         ChatMessageDocument messageDocument,
-        IReadOnlyDictionary<string, ContentBlockDocument> contentBlocksById)
+        IReadOnlyDictionary<string, ContentBlockDocument> contentBlocksById,
+        bool includeFileContent)
     {
         return new ChatMessage
         {
@@ -289,7 +335,7 @@ public partial class DatabaseService
             Timestamp = messageDocument.Timestamp,
             Content = ReadTextContent(messageDocument.ContentBlockIds, contentBlocksById),
             Status = messageDocument.Status,
-            Files = await ReadFilesAsync(userId, messageDocument.Files, contentBlocksById)
+            Files = ReadFiles(messageDocument.Files, contentBlocksById, includeFileContent)
         };
     }
 

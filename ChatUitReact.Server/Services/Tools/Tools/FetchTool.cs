@@ -47,8 +47,8 @@ public class FetchTool : ChatTool
       var converter = new Converter(new Config
       {
         GithubFlavored = true,
-        RemoveComments = true,
-        UnknownTags = Config.UnknownTagsOption.Drop
+        Formatting = { RemoveComments = true },
+        Tags = { Unknown = Config.UnknownTagsOption.Drop }
       });
       var markdown = converter.Convert(extractedHtml ?? string.Empty);
 

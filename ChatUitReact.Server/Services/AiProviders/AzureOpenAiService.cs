@@ -15,7 +15,6 @@ using System.ClientModel;
 using System.Text;
 using System.Text.Json;
 using System.Runtime.CompilerServices;
-using ReverseMarkdown.Converters;
 using System.Dynamic;
 
 public class AzureOpenAiService

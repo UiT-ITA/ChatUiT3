@@ -1,0 +1,55 @@
+.conversation-panel {
+  width: 13.5rem;
+  flex: 0 0 13.5rem;
+  padding: 1.25rem 1rem;
+  overflow-y: auto;
+  border-left: 1px solid var(--line);
+}
+
+.conversation-panel-title {
+  padding-bottom: 0.5rem;
+  border-bottom: 4px solid var(--accent-2);
+  margin-bottom: 0.625rem;
+}
+
+.conversation-panel-section {
+  margin-top: 1.375rem;
+  padding-bottom: 0.5rem;
+  border-bottom: 1px solid var(--line);
+  margin-bottom: 0.625rem;
+}
+
+.conversation-panel-files {
+  display: flex;
+  flex-direction: column;
+  gap: 0.375rem;
+}
+
+.conversation-panel-file {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  color: var(--text-2);
+  min-width: 0;
+}
+
+.conversation-panel-file span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.conversation-panel-file-icon {
+  color: var(--accent);
+  flex: 0 0 auto;
+}
+
+.conversation-panel-empty {
+  color: var(--text-3);
+}
+
+.conversation-panel-meta {
+  margin-top: 1.375rem;
+  color: var(--text-3);
+  line-height: 1.6;
+}

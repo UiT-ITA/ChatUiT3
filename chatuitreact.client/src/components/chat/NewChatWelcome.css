@@ -1,132 +1,165 @@
 .new-chat-welcome {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
   display: flex;
-  justify-content: center;
-  align-items: center;
-  height: 100%;
-  padding: 1rem;
-
+  flex-direction: column;
 }
 
 .welcome-container {
-  max-width: 40rem;
-  margin: auto;
-  text-align: center;
-  background-color: var(--bg-secondary);
-  border-radius: 1rem;
-  padding: 2rem;
-  box-shadow: 0 0 0 1px var(--border-primary);
-  color: var(--text-primary);
+  max-width: 60rem;
+  width: 100%;
+  margin: 0 auto;
+  padding: 3.5rem 2rem 1rem;
 }
 
-.welcome-container h1 {
-  margin: 0 0 1rem 0;
-  color: var(--text-primary);
-}
-
-.welcome-container p {
-  margin: 0 0 2rem 0;
-  color: var(--text-secondary);
-}
-
-.assistant-section {
-  margin: 2rem 0;
+/* Brand hero banner with the UiT skew element */
+.welcome-hero {
   position: relative;
+  overflow: hidden;
+  background: var(--brand);
+  padding: 1.875rem 2.125rem;
+  margin-bottom: 1.625rem;
 }
 
-.assistant-section label {
+[data-mode="dark"] .welcome-hero {
+  background: var(--panel-2);
+}
+
+.welcome-hero-stripe-gap {
+  position: absolute;
+  top: -1.25rem;
+  bottom: -1.25rem;
+  right: 7.5rem;
+  width: var(--skew-stripe);
+  background: var(--bg);
+  transform: skewX(var(--skew-angle));
+}
+
+.welcome-hero-stripe {
+  position: absolute;
+  top: -1.25rem;
+  bottom: -1.25rem;
+  right: 4rem;
+  width: 2.75rem;
+  background: var(--accent-2);
+  opacity: 0.9;
+  transform: skewX(var(--skew-angle));
+}
+
+.welcome-hero-content {
+  position: relative;
+  max-width: 26.25rem;
+}
+
+.welcome-hero-overline {
+  color: var(--accent-2);
+}
+
+.welcome-hero-title {
+  line-height: 1.2;
+  color: var(--uit-white);
+  margin-top: 0.5rem;
+}
+
+[data-mode="dark"] .welcome-hero-title {
+  color: var(--text);
+}
+
+.welcome-hero-sub {
+  color: var(--dark-blue-20);
+  margin-top: 0.5rem;
+  max-width: 21.25rem;
+}
+
+[data-mode="dark"] .welcome-hero-sub {
+  color: var(--text-2);
+}
+
+[data-theme="grey"][data-mode="light"] .welcome-hero-sub {
+  color: var(--grey-300);
+}
+
+/* Assistant picker */
+.assistant-section {
+  margin-bottom: 1.625rem;
+}
+
+.assistant-section .t-overline {
   display: block;
-  margin-bottom: 0.5rem;
-  color: var(--text-primary);
+  margin-bottom: 0.625rem;
 }
 
 .assistant-dropdown-container {
   position: relative;
-  display: inline-block;
-  margin: 0 auto;
+  display: inline-flex;
 }
 
 .assistant-dropdown-button {
-  position: relative;
   display: flex;
   align-items: center;
   justify-content: space-between;
-  background-color: var(--bg-input);
-  border: none;
-  border-radius: 0.5rem;
-  padding: 0.75rem 1rem;
-  cursor: pointer;
-  transition: all 0.2s ease;
-  box-shadow: 0 0 0 1px var(--border-primary);
+  gap: 0.4375rem;
   min-width: 15rem;
-  height: 2.75rem;
-  white-space: nowrap;
-  color: var(--text-primary);
+  max-width: 100%;
+  height: 2.25rem;
+  padding: 0 0.625rem;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  color: var(--text);
+  transition: background var(--dur-fast) var(--ease-standard);
 }
 
 .assistant-dropdown-button:hover {
-  background-color: var(--bg-input-hover);
+  background: var(--panel);
 }
 
 .assistant-dropdown-button .assistant-name {
-  flex: 1;
-  text-align: left;
-  font-size: 1rem;
-  font-weight: 500;
-  padding: 0;
-  line-height: normal;
-  opacity: 1;
-  visibility: visible;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .assistant-dropdown-button .expand-icon {
-  opacity: 1;
-  visibility: visible;
-  position: static;
-  margin-left: 0.5rem;
+  color: var(--text-3);
+  flex-shrink: 0;
 }
 
-.tips-section h3 {
-  margin: 0 0 1.5rem 0;
-  color: var(--text-primary);
+/* Starter/tip cards */
+.tips-section .t-overline {
+  display: block;
+  margin-bottom: 0.625rem;
 }
 
 .tips-container {
-  display: flex;
-  gap: 1rem;
-  justify-content: center;
-  flex-wrap: nowrap;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(13.4375rem, 1fr));
+  gap: 0.625rem;
 }
 
 .tip-card {
-  flex: 1;
-  min-width: 0;
-  background-color: var(--bg-input);
-  border-radius: 0.5rem;
-  padding: 1rem;
-  box-shadow: 0 0 0 1px var(--border-primary);
   text-align: left;
-}
-
-@media (max-width: 48rem) {
-  .tips-container {
-    flex-direction: column;
-    align-items: center;
-  }
-  
-  .tip-card {
-    width: 100%;
-    max-width: 20rem;
-  }
+  padding: 0.75rem 0.875rem;
+  background: transparent;
+  border: 1px solid var(--line);
+  border-top: 3px solid var(--accent-2);
+  border-radius: 0 0 var(--radius-md) var(--radius-md);
+  color: var(--text);
 }
 
 .tip-card strong {
   display: block;
-  margin-bottom: 0.5rem;
-  color: var(--text-primary);
 }
 
 .tip-card p {
-  margin: 0;
-  color: var(--text-secondary);
-  font-size: 0.875rem;
+  color: var(--text-3);
+  margin-top: 0.1875rem;
+}
+
+@media (max-width: 50rem) {
+  .welcome-container {
+    padding: 1.75rem 1rem 1rem;
+  }
 }

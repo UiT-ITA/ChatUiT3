@@ -34,9 +34,15 @@ namespace ChatUitReact.Server.Services
             };
         }
 
-        public async Task<Assistant?> GetAssistantByIdAsync(string assistantId)
+        public async Task<Assistant?> GetAssistantByIdAsync(string assistantId, bool includeFileContent = false)
         {
-            return await _databaseService.GetAssistantByIdAsync(assistantId);
+            return await _databaseService.GetAssistantByIdAsync(assistantId, includeFileContent);
+        }
+
+        public async Task<AssistantFileDto?> GetAssistantFileDtoAsync(string assistantId, string fileId)
+        {
+            var file = await _databaseService.GetAssistantFileAsync(assistantId, fileId);
+            return file == null ? null : MapAssistantFileDto(file);
         }
 
         public async Task<bool> CreateAssistantAsync(CreateAssistantDto createDto, string userId)
@@ -273,6 +279,7 @@ namespace ChatUitReact.Server.Services
                         ? createDto.AvailableToolIds ?? new List<string>()
                         : new List<string>()
                 },
+                Files = MapAssistantFiles(createDto.Files),
                 OwnerId = ownerId
             };
         }
@@ -298,6 +305,7 @@ namespace ChatUitReact.Server.Services
                     ? updateDto.AvailableToolIds ?? new List<string>()
                     : new List<string>()
             };
+            assistant.Files = MapAssistantFiles(updateDto.Files);
 
             return true;
         }
@@ -315,7 +323,49 @@ namespace ChatUitReact.Server.Services
                 Temperature = assistant.ChatSettings.Temperature,
                 ReasoningEffort = assistant.ChatSettings.ReasoningEffort,
                 AvailableToolIds = assistant.ChatSettings.AvailableToolIds,
-                IsVisible = !(user?.Preferences.HiddenAssistantIds.Contains(assistant.Id) ?? false)
+                IsVisible = !(user?.Preferences.HiddenAssistantIds.Contains(assistant.Id) ?? false),
+                Files = assistant.Files.Select(MapAssistantFileDto).ToList()
+            };
+        }
+
+        private static List<AssistantFile> MapAssistantFiles(List<AssistantFileDto>? fileDtos)
+        {
+            if (fileDtos == null)
+            {
+                return new List<AssistantFile>();
+            }
+
+            return fileDtos.Select(dto => new AssistantFile
+            {
+                Id = string.IsNullOrWhiteSpace(dto.Id) ? Guid.NewGuid().ToString() : dto.Id,
+                SourceFilename = dto.SourceFilename,
+                Category = dto.Category,
+                Description = dto.Description,
+                Chunks = dto.Chunks.Select(chunk => new ChatFileChunk
+                {
+                    Type = chunk.Type,
+                    Text = chunk.Text,
+                    Format = chunk.Format,
+                    Base64 = chunk.Base64
+                }).ToList()
+            }).ToList();
+        }
+
+        private static AssistantFileDto MapAssistantFileDto(AssistantFile file)
+        {
+            return new AssistantFileDto
+            {
+                Id = file.Id,
+                SourceFilename = file.SourceFilename,
+                Category = file.Category,
+                Description = file.Description,
+                Chunks = file.Chunks.Select(chunk => new ChatFileChunkDto
+                {
+                    Type = chunk.Type,
+                    Text = chunk.Text,
+                    Format = chunk.Format,
+                    Base64 = chunk.Base64
+                }).ToList()
             };
         }
 

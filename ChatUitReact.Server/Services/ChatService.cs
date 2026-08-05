@@ -7,6 +7,9 @@ namespace ChatUitReact.Server.Services;
 
 public class ChatService : IChatService
 {
+    private const string GenerationFailedText = "*The response could not be completed because an error occurred while generating it.*";
+    private static readonly TimeSpan StaleGenerationThreshold = TimeSpan.FromMinutes(5);
+
     private readonly AzureOpenAiService _azureOpenAiService;
     private readonly IHubContext<ChatHub, IChatHubClient> _hubContext;
     private readonly ILogger<ChatService> _logger;
@@ -43,27 +46,48 @@ public class ChatService : IChatService
         return await _databaseService.GetChatListAsync(userId);
     }
 
-    public async Task<List<Chat>> GetChatsAsync(string userId)
+    public async Task<Chat?> GetChatByIdAsync(string userId, string chatId, bool includeFileContent = true)
     {
-        var chatList = await _databaseService.GetChatListAsync(userId);
-
-        var chats = new List<Chat>();
-
-        foreach (var chatHeader in chatList)
+        var chat = await _databaseService.GetChatByIdAsync(userId, chatId, includeFileContent);
+        if (chat == null)
         {
-            var chat = await _databaseService.GetChatByIdAsync(userId, chatHeader.Id);
-            if (chat != null)
-            {
-                chats.Add(chat);
-            }
+            return null;
         }
 
-        return chats;
+        // A message left in Generating (e.g. after a server restart mid-stream) would
+        // otherwise stay in that state forever; mark it as failed once it goes stale.
+        foreach (var message in chat.Messages)
+        {
+            if (message.Status != AiChatStatus.Generating ||
+                DateTime.UtcNow - message.Timestamp < StaleGenerationThreshold)
+            {
+                continue;
+            }
+
+            message.Status = AiChatStatus.Error;
+            message.Content = string.IsNullOrWhiteSpace(message.Content)
+                ? GenerationFailedText
+                : $"{message.Content}\n\n{GenerationFailedText}";
+
+            // Persist through a copy without files: an empty file list keeps the stored
+            // files untouched, which matters when this chat was loaded metadata-only.
+            await _databaseService.UpdateMessageAsync(userId, chatId, new Models.ChatMessage
+            {
+                Id = message.Id,
+                Role = message.Role,
+                Timestamp = message.Timestamp,
+                Status = message.Status,
+                Content = message.Content,
+                Files = new List<ChatFile>()
+            });
+        }
+
+        return chat;
     }
 
-    public async Task<Chat?> GetChatByIdAsync(string userId, string chatId)
+    public async Task<ChatFile?> GetChatFileAsync(string userId, string chatId, string fileId)
     {
-        return await _databaseService.GetChatByIdAsync(userId, chatId);
+        return await _databaseService.GetChatFileAsync(userId, chatId, fileId);
     }
 
     public async Task<Chat> CreateChatAsync(string userId, string assistantId, List<Models.ChatMessage> messages)
@@ -191,10 +215,10 @@ if (endpoint.EndpointType != EndpointType.AzureOpenAI)
 
         _ = Task.Run(async () =>
         {
-            try 
-            {
-                var content = new StringBuilder();
+            var content = new StringBuilder();
 
+            try
+            {
                 await foreach (var chunk in _azureOpenAiService.StreamChatAsync(messages, settings, userId, chatId))
                 {
                     if (!chunk.IsComplete)
@@ -215,6 +239,12 @@ if (endpoint.EndpointType != EndpointType.AzureOpenAI)
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error getting chat completion");
+                _streamingService.CompleteMessage(userId, assistantMessage.Id);
+
+                var partialContent = content.ToString();
+                assistantMessage.Content = string.IsNullOrWhiteSpace(partialContent)
+                    ? GenerationFailedText
+                    : $"{partialContent}\n\n{GenerationFailedText}";
                 assistantMessage.Status = AiChatStatus.Error;
                 await _databaseService.UpdateMessageAsync(userId, chatId, assistantMessage);
                 NotifyChatUpdated(userId, chatId);
@@ -288,7 +318,7 @@ if (endpoint.EndpointType != EndpointType.AzureOpenAI)
             throw new InvalidOperationException("AssistantId is required");
         }
 
-        var assistant = await _assistantService.GetAssistantByIdAsync(assistantId);
+        var assistant = await _assistantService.GetAssistantByIdAsync(assistantId, includeFileContent: true);
         if (assistant == null)
         {
             await _hubContext.Clients.Group(userId).Notify(NotifyLevel.Error, "Selected assistant is invalid.");
@@ -301,14 +331,47 @@ if (endpoint.EndpointType != EndpointType.AzureOpenAI)
             throw new InvalidOperationException($"Assistant {assistantId} has no model configured");
         }
 
-        return new ChatSettings 
-        { 
+        return new ChatSettings
+        {
             Model = assistant.ChatSettings.Model,
-            SystemPrompt = assistant.ChatSettings.SystemPrompt,
+            SystemPrompt = AppendKnowledgeFiles(assistant.ChatSettings.SystemPrompt, assistant.Files),
             Temperature = assistant.ChatSettings.Temperature,
             ReasoningEffort = assistant.ChatSettings.ReasoningEffort,
             AvailableToolIds = assistant.ChatSettings.AvailableToolIds
         };
+    }
+
+    private static string AppendKnowledgeFiles(string systemPrompt, List<AssistantFile> files)
+    {
+        // Only always-loaded files go into the system message, and only their text
+        // content — images cannot be carried in a system message.
+        var builder = new StringBuilder();
+        foreach (var file in files.Where(f => f.Category == AssistantFileCategories.AlwaysLoaded))
+        {
+            var text = string.Concat(file.Chunks
+                .Where(chunk => chunk.Type.Equals("text", StringComparison.OrdinalIgnoreCase))
+                .Select(chunk => chunk.Text));
+
+            if (string.IsNullOrWhiteSpace(text))
+            {
+                continue;
+            }
+
+            builder.AppendLine();
+            builder.AppendLine();
+            builder.AppendLine($"## {file.SourceFilename}");
+            builder.AppendLine(text);
+        }
+
+        if (builder.Length == 0)
+        {
+            return systemPrompt;
+        }
+
+        var knowledgeSection = "# Knowledge files" + builder;
+        return string.IsNullOrWhiteSpace(systemPrompt)
+            ? knowledgeSection
+            : $"{systemPrompt}\n\n{knowledgeSection}";
     }
 
     #endregion Private helper methods

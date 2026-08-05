@@ -24,8 +24,8 @@ const AddExternalAssistant: React.FC = () => {
 
   return (
     <div className="add-external-assistant">
-      <h3 className="add-external-assistant-title">{t('assistants.addExternal.title')}</h3>
-      <p className="add-external-assistant-description">
+      <h3 className="add-external-assistant-title t-overline">{t('assistants.addExternal.title')}</h3>
+      <p className="add-external-assistant-description t-caption">
         {t('assistants.addSharedAssistantDescription')}
       </p>
       <div className="add-external-assistant-form">
@@ -34,13 +34,13 @@ const AddExternalAssistant: React.FC = () => {
           value={externalId}
           onChange={(e) => setExternalId(e.target.value)}
           placeholder={t('assistants.addExternal.placeholder')}
-          className="add-external-assistant-input"
+          className="add-external-assistant-input t-ui-plain"
           disabled={loading}
         />
         <button
           onClick={handleAdd}
           disabled={!externalId.trim() || loading}
-          className="add-external-assistant-button"
+          className="add-external-assistant-button t-ui"
         >
           {loading ? t('assistants.addExternal.adding') : t('assistants.addExternal.add')}
         </button>

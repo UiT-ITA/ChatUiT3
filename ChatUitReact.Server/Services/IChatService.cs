@@ -6,8 +6,8 @@ public interface IChatService
 {    
     // Chat Management
     Task<List<ChatHeader>> GetChatListAsync(string userId);
-    Task<List<Chat>> GetChatsAsync(string userId);
-    Task<Chat?> GetChatByIdAsync(string userId, string chatId);
+    Task<Chat?> GetChatByIdAsync(string userId, string chatId, bool includeFileContent = true);
+    Task<ChatFile?> GetChatFileAsync(string userId, string chatId, string fileId);
     Task<Chat> CreateChatAsync(string userId, string assistantId, List<ChatMessage> messages);
     Task UpdateChatAsync(string userId, string chatId, string? newTitle, string? newAssistantId = null);
     Task DeleteChatAsync(string userId, string chatId);

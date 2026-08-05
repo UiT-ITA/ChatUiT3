@@ -1,10 +1,17 @@
-export type ThemeName = 'light' | 'dim' | 'dark';
+export type ThemeName = 'blue' | 'grey';
+export type ModeName = 'light' | 'dark' | 'system';
+export type ResolvedMode = 'light' | 'dark';
 export type SizeName = 'small' | 'medium' | 'large' | 'xl';
 
 export const THEME_OPTIONS = [
+  { value: 'blue', label: 'Blue' },
+  { value: 'grey', label: 'Grey' },
+] as const;
+
+export const MODE_OPTIONS = [
   { value: 'light', label: 'Light' },
-  { value: 'dim', label: 'Dim' },
   { value: 'dark', label: 'Dark' },
+  { value: 'system', label: 'System' },
 ] as const;
 
 export const SIZE_OPTIONS = [
@@ -14,8 +21,19 @@ export const SIZE_OPTIONS = [
   { value: 'xl', label: 'Extra Large' },
 ] as const;
 
+export function resolveMode(mode: ModeName): ResolvedMode {
+  if (mode === 'system') {
+    return window.matchMedia?.('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+  }
+  return mode;
+}
+
 export function setTheme(themeName: ThemeName): void {
   document.documentElement.dataset.theme = themeName;
+}
+
+export function setMode(mode: ModeName): void {
+  document.documentElement.dataset.mode = resolveMode(mode);
 }
 
 export function setSize(sizeName: SizeName): void {
@@ -26,57 +44,22 @@ export function setSize(sizeName: SizeName): void {
   }
 }
 
-export function getCurrentTheme(): ThemeName {
-  return (document.documentElement.dataset.theme as ThemeName) || 'dim';
+export function getCurrentMode(): ResolvedMode {
+  return (document.documentElement.dataset.mode as ResolvedMode) || 'light';
 }
 
-export function getCurrentSize(): SizeName {
-  return (document.documentElement.dataset.size as SizeName) || 'medium';
-}
-
-// Theme configuration for components
+// Component theming follows the resolved light/dark mode
 type MermaidTheme = 'dark' | 'default' | 'base' | 'forest' | 'neutral' | 'null';
 
-interface ThemeComponentConfig {
-  type: 'light' | 'dark';
-  mermaid: MermaidTheme;
-  codeblock: string;
-}
-
-const THEME_CONFIG: Record<ThemeName, ThemeComponentConfig> = {
-  light: {
-    type: 'light',
-    mermaid: 'neutral',
-    codeblock: 'oneLight'
-  },
-  dim: {
-    type: 'dark',
-    mermaid: 'dark',
-    codeblock: 'atomDark'
-  },
-  dark: {
-    type: 'dark',
-    mermaid: 'dark',
-    codeblock: 'atomDark'
-  }
+const MODE_CONFIG: Record<ResolvedMode, { mermaid: MermaidTheme; codeblock: string }> = {
+  light: { mermaid: 'neutral', codeblock: 'oneLight' },
+  dark: { mermaid: 'dark', codeblock: 'atomDark' },
 };
 
-export function getThemeConfig(themeName: ThemeName): ThemeComponentConfig {
-  return THEME_CONFIG[themeName];
+export function getMermaidTheme(mode: ModeName): MermaidTheme {
+  return MODE_CONFIG[resolveMode(mode)].mermaid;
 }
 
-export function getMermaidTheme(themeName: ThemeName): MermaidTheme {
-  return THEME_CONFIG[themeName].mermaid;
-}
-
-export function getCodeblockTheme(themeName: ThemeName): string {
-  return THEME_CONFIG[themeName].codeblock;
-}
-
-export function isLightTheme(themeName: ThemeName): boolean {
-  return THEME_CONFIG[themeName].type === 'light';
-}
-
-export function isDarkTheme(themeName: ThemeName): boolean {
-  return THEME_CONFIG[themeName].type === 'dark';
+export function getCodeblockTheme(mode: ModeName): string {
+  return MODE_CONFIG[resolveMode(mode)].codeblock;
 }

@@ -1,3 +1,19 @@
+import type { ChatFileChunkDto } from './chatModels';
+
+export type AssistantFileCategory = 'alwaysLoaded' | 'selectiveLoaded' | 'ragLoaded';
+
+export interface AssistantFileDto {
+    // Absent for files that are new in a create/update request.
+    id?: string;
+    sourceFilename: string;
+    category: AssistantFileCategory;
+    description?: string;
+    // Full content for new files when saving; metadata only (no text/base64) when
+    // reading an assistant — content is fetched via fetchAssistantFile. A stored
+    // file sent back without content is kept as-is on the server.
+    chunks: ChatFileChunkDto[];
+}
+
 export interface FullAssistantDto {
     id: string;
     name: string;
@@ -9,6 +25,7 @@ export interface FullAssistantDto {
     reasoningEffort: ReasoningEffort;
     availableToolIds: string[];
     isVisible: boolean;
+    files: AssistantFileDto[];
 }
 
 export interface AssistantSummaryDto {
@@ -49,6 +66,7 @@ export interface CreateAssistantDto {
     temperature?: number;
     reasoningEffort?: ReasoningEffort;
     availableToolIds?: string[];
+    files?: AssistantFileDto[];
 }
 
 export interface UpdateAssistantDto {
@@ -61,9 +79,10 @@ export interface UpdateAssistantDto {
     temperature?: number;
     reasoningEffort?: ReasoningEffort;
     availableToolIds?: string[];
+    files?: AssistantFileDto[];
 }
 
-export type ReasoningEffort = 
+export type ReasoningEffort =
     "None" 
     | "Low" 
     | "Medium" 

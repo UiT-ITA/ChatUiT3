@@ -72,9 +72,9 @@ export default function AssistantDropdown({ isOpen, direction, onClose }: Assist
             onClick={() => handleSelectAssistant(assistant)}
           >
             <div className="assistant-info">
-              <span className="assistant-option-name">{assistant.name}</span>
+              <span className="assistant-option-name t-ui">{assistant.name}</span>
               {assistant.type === 'system' && (
-                <span className="system-badge">{t('assistants.systemBadge')}</span>
+                <span className="system-badge t-tag">{t('assistants.systemBadge')}</span>
               )}
               <div className="info-tooltip-container">
                 <Icon 
@@ -82,7 +82,7 @@ export default function AssistantDropdown({ isOpen, direction, onClose }: Assist
                   size={1} 
                   className="info-icon" 
                 />
-                <div className="info-tooltip">{assistant.description || t('assistants.noDescriptionAvailable')}</div>
+                <div className="info-tooltip t-caption">{assistant.description || t('assistants.noDescriptionAvailable')}</div>
               </div>
             </div>
             <div className="assistant-capabilities">

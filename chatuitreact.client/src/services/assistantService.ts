@@ -1,6 +1,22 @@
 import { signal, Signal, computed } from "@preact/signals-react";
-import type { AssistantDto, CreateAssistantDto, UpdateAssistantDto, AssistantListDto } from "../types/assistantModels";
+import type { AssistantDto, AssistantFileDto, CreateAssistantDto, UpdateAssistantDto, AssistantListDto } from "../types/assistantModels";
 import apiService from "./apiService";
+
+// Assistant file content is loaded on demand (assistants carry file metadata only).
+const assistantFileCache = new Map<string, Promise<AssistantFileDto>>();
+
+export function fetchAssistantFile(assistantId: string, fileId: string): Promise<AssistantFileDto> {
+    const cacheKey = `${assistantId}/${fileId}`;
+    let pending = assistantFileCache.get(cacheKey);
+
+    if (!pending) {
+        pending = apiService<AssistantFileDto>(`/api/Assistants/${assistantId}/files/${fileId}`);
+        assistantFileCache.set(cacheKey, pending);
+        pending.catch(() => assistantFileCache.delete(cacheKey));
+    }
+
+    return pending;
+}
 
 const assistantListSignal = signal<AssistantListDto | undefined>(undefined);
 

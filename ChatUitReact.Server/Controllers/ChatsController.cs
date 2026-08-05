@@ -41,7 +41,7 @@ public class ChatsController : ControllerBase
         try
         {
             var userId = GetCurrentUserId();
-            var chats = await _chatService.GetChatsAsync(userId);
+            var chats = await _chatService.GetChatListAsync(userId);
             var chatDtos = chats.Select(MapToHeaderDto);
             return Ok(chatDtos);
         }
@@ -58,8 +58,8 @@ public class ChatsController : ControllerBase
         try
         {
             var userId = GetCurrentUserId();
-            var chat = await _chatService.GetChatByIdAsync(userId, chatId);
-            
+            var chat = await _chatService.GetChatByIdAsync(userId, chatId, includeFileContent: false);
+
             if (chat == null)
             {
                 return NotFound("Chat not found");
@@ -74,31 +74,24 @@ public class ChatsController : ControllerBase
         }
     }
 
-    [HttpGet("{chatId}/messages")]
-    public async Task<ActionResult<object>> GetMessages(string chatId, [FromQuery] int page = 1, [FromQuery] int size = 50)
+    [HttpGet("{chatId}/files/{fileId}")]
+    public async Task<ActionResult<ChatFileDto>> GetChatFile(string chatId, string fileId)
     {
         try
         {
             var userId = GetCurrentUserId();
-            var chat = await _chatService.GetChatByIdAsync(userId, chatId);
-            
-            if (chat == null)
+            var file = await _chatService.GetChatFileAsync(userId, chatId, fileId);
+
+            if (file == null)
             {
-                return NotFound("Chat not found");
+                return NotFound("File not found");
             }
 
-            // Simple pagination - in a real app, you'd want more efficient DB queries
-            var allMessages = chat.Messages.OrderBy(m => m.Timestamp).ToList();
-            var totalMessages = allMessages.Count;
-            var skip = (page - 1) * size;
-            var messages = allMessages.Skip(skip).Take(size).Select(MapMessageToDto).ToList();
-            var hasMore = skip + size < totalMessages;
-
-            return Ok(new { messages, hasMore });
+            return Ok(MapFilesToDto(new List<ChatFile> { file }).First());
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error getting messages for chat {ChatId}", chatId);
+            _logger.LogError(ex, "Error getting file {FileId} for chat {ChatId}", fileId, chatId);
             return StatusCode(500, "Internal server error");
         }
     }
@@ -237,7 +230,7 @@ public class ChatsController : ControllerBase
         return result;
     }
 
-    private ChatHeaderDto MapToHeaderDto(Chat chat)
+    private ChatHeaderDto MapToHeaderDto(ChatHeader chat)
     {
         return new ChatHeaderDto
         {

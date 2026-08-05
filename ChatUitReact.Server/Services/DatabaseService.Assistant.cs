@@ -59,7 +59,7 @@ public partial class DatabaseService
         return assistants;
     }
 
-    public async Task<Assistant?> GetAssistantByIdAsync(string assistantId)
+    public async Task<Assistant?> GetAssistantByIdAsync(string assistantId, bool includeFileContent = false)
     {
         await EnsureInitializedAsync();
 
@@ -68,7 +68,26 @@ public partial class DatabaseService
             assistantId,
             ConfigurationPartitionKey);
 
-        return document == null ? null : await MapAssistantAsync(document);
+        return document == null ? null : await MapAssistantAsync(document, includeFileContent);
+    }
+
+    public async Task<AssistantFile?> GetAssistantFileAsync(string assistantId, string fileId)
+    {
+        await EnsureInitializedAsync();
+
+        var document = await ReadItemOrDefaultAsync<AssistantDocument>(
+            _assistantContainer!,
+            assistantId,
+            ConfigurationPartitionKey);
+
+        var file = document?.Files.FirstOrDefault(f => f.Id == fileId);
+        if (file == null)
+        {
+            return null;
+        }
+
+        var contentBlocksById = await ReadAssistantContentBlockMapAsync(assistantId);
+        return ReadAssistantFiles(new[] { file }, contentBlocksById, includeContent: true).FirstOrDefault();
     }
 
     public async Task<Assistant> CreateAssistantAsync(Assistant assistant)
@@ -78,10 +97,24 @@ public partial class DatabaseService
         var assistantId = string.IsNullOrWhiteSpace(assistant.Id) ? Guid.NewGuid().ToString() : assistant.Id;
         var document = MapAssistantDocument(assistant, assistantId);
 
-        await _assistantContainer!.CreateItemAsync(document, new PartitionKey(ConfigurationPartitionKey));
+        var writtenBlockIds = new List<string>();
+        try
+        {
+            foreach (var file in assistant.Files)
+            {
+                document.Files.Add(await WriteAssistantFileAsync(assistantId, file, writtenBlockIds));
+            }
+
+            await _assistantContainer!.CreateItemAsync(document, new PartitionKey(ConfigurationPartitionKey));
+        }
+        catch
+        {
+            await DeleteAssistantContentBlocksAsync(assistantId, writtenBlockIds);
+            throw;
+        }
 
         assistant.Id = assistantId;
-        return await MapAssistantAsync(document);
+        return await MapAssistantAsync(document, includeFileContent: false);
     }
 
     public async Task<Assistant?> UpdateAssistantAsync(Assistant assistant)
@@ -103,9 +136,53 @@ public partial class DatabaseService
             return null;
         }
 
+        var existingFilesById = existingDocument.Files.ToDictionary(f => f.Id, f => f);
         var document = MapAssistantDocument(assistant, assistant.Id);
-        await _assistantContainer!.ReplaceItemAsync(document, document.Id, new PartitionKey(ConfigurationPartitionKey));
-        return await MapAssistantAsync(document);
+
+        // assistant.Files is the full desired list. A file whose chunks carry no
+        // content refers to an already-stored file and is kept (category/description
+        // may still change); files with content are written fresh. Old blocks are
+        // only deleted after the document is safely replaced.
+        var writtenBlockIds = new List<string>();
+        var replacedFiles = new List<StoredAssistantFileDocument>();
+        try
+        {
+            foreach (var file in assistant.Files)
+            {
+                var hasContent = file.Chunks.Any(chunk => chunk.Text != null || chunk.Base64 != null);
+
+                if (!hasContent && !string.IsNullOrWhiteSpace(file.Id) && existingFilesById.TryGetValue(file.Id, out var keptFile))
+                {
+                    keptFile.Category = file.Category;
+                    keptFile.Description = file.Description;
+                    document.Files.Add(keptFile);
+                    continue;
+                }
+
+                if (!string.IsNullOrWhiteSpace(file.Id) && existingFilesById.TryGetValue(file.Id, out var replacedFile))
+                {
+                    replacedFiles.Add(replacedFile);
+                }
+
+                document.Files.Add(await WriteAssistantFileAsync(assistant.Id, file, writtenBlockIds));
+            }
+
+            await _assistantContainer!.ReplaceItemAsync(document, document.Id, new PartitionKey(ConfigurationPartitionKey));
+        }
+        catch
+        {
+            await DeleteAssistantContentBlocksAsync(assistant.Id, writtenBlockIds);
+            throw;
+        }
+
+        var keptFileIds = document.Files.Select(f => f.Id).ToHashSet();
+        var obsoleteFiles = existingDocument.Files
+            .Where(f => !keptFileIds.Contains(f.Id))
+            .Concat(replacedFiles)
+            .ToList();
+        await DeleteAssistantContentBlocksAsync(assistant.Id, CollectAssistantFileContentBlockIds(obsoleteFiles));
+
+        return await MapAssistantAsync(document, includeFileContent: false);
     }
 
     public async Task<bool> DeleteAssistantAsync(string assistantId)
@@ -122,6 +199,7 @@ public partial class DatabaseService
             return false;
         }
 
+        await DeleteAssistantContentAsync(assistantId);
         await _assistantContainer!.DeleteItemAsync<AssistantDocument>(assistantId, new PartitionKey(ConfigurationPartitionKey));
         return true;
     }
@@ -138,11 +216,15 @@ public partial class DatabaseService
         return assistants;
     }
 
-    private async Task<Assistant> MapAssistantAsync(AssistantDocument document)
+    private async Task<Assistant> MapAssistantAsync(AssistantDocument document, bool includeFileContent = false)
     {
         var model = string.IsNullOrWhiteSpace(document.ChatSettings.ModelId)
             ? new Model()
             : await GetModelByIdAsync(document.ChatSettings.ModelId) ?? new Model { Id = document.ChatSettings.ModelId };
+
+        var contentBlocksById = includeFileContent && document.Files.Count > 0
+            ? await ReadAssistantContentBlockMapAsync(document.Id)
+            : new Dictionary<string, ContentBlockDocument>();
 
         return new Assistant
         {
@@ -158,6 +240,7 @@ public partial class DatabaseService
                 ReasoningEffort = document.ChatSettings.ReasoningEffort,
                 AvailableToolIds = document.ChatSettings.AvailableToolIds
             },
+            Files = ReadAssistantFiles(document.Files, contentBlocksById, includeFileContent),
             OwnerId = document.OwnerId
         };
     }

@@ -1,11 +1,25 @@
 import { signal, Signal, computed } from "@preact/signals-react";
-import type { ChatDto, ChatHeaderDto, CreateChatDto } from "../types/chatModels";
+import type { ChatDto, ChatFileDto, ChatHeaderDto, CreateChatDto } from "../types/chatModels";
 import apiService from "./apiService";
 import type { SendMessageDto } from "../types/chatModels";
 import { getAssistants, getAssistant } from "./assistantService";
 import type { AssistantDto } from "../types/assistantModels";
 import type { ChatFile } from "../types/fileModels";
-import { mapToCreateChatFileDto } from "../utils/fileUtils";
+import { formatFileSize, mapToCreateChatFileDto } from "../utils/fileUtils";
+import { addNotification } from "./notificationService";
+
+// Must stay below the server's Kestrel MaxRequestBodySize (100 MB); the margin
+// covers headers and JSON overhead.
+const MAX_MESSAGE_PAYLOAD_BYTES = 95 * 1024 * 1024;
+
+function ensurePayloadWithinLimit(payload: unknown): void {
+  const size = new Blob([JSON.stringify(payload)]).size;
+  if (size > MAX_MESSAGE_PAYLOAD_BYTES) {
+    const message = `Message is too large to send (${formatFileSize(size)}). The limit is ${formatFileSize(MAX_MESSAGE_PAYLOAD_BYTES)} — remove some files or use smaller ones.`;
+    addNotification({ level: "Error", message });
+    throw new Error(message);
+  }
+}
 
 const chatListSignal = signal<ChatHeaderDto[] | undefined>(undefined);
 const currentChatIdSignal = signal<string | undefined>(undefined);
@@ -64,6 +78,8 @@ export async function createChat(content: string, assistantId: string, files?: C
       }]
     };
 
+    ensurePayloadWithinLimit(createChatDto);
+
     const response = await apiService.post<ChatDto>("/api/Chats", createChatDto);
     return response.id;
 
@@ -87,12 +103,30 @@ export async function sendMessage(chatId: string, content: string, files?: ChatF
       files: fileDtos
     };
 
+    ensurePayloadWithinLimit(messageDto);
+
     await apiService.post(`/api/Chats/${chatId}/messages`, messageDto);
 
   } catch (error) {
     console.error(`Error sending message to chat ${chatId}:`, error);
     throw error; // Re-throw to allow component to handle
   }
+}
+
+// Chat file content is loaded on demand (the chat DTO only carries file metadata).
+const fileContentCache = new Map<string, Promise<ChatFileDto>>();
+
+export function fetchChatFile(chatId: string, fileId: string): Promise<ChatFileDto> {
+  const cacheKey = `${chatId}/${fileId}`;
+  let pending = fileContentCache.get(cacheKey);
+
+  if (!pending) {
+    pending = apiService<ChatFileDto>(`/api/Chats/${chatId}/files/${fileId}`);
+    fileContentCache.set(cacheKey, pending);
+    pending.catch(() => fileContentCache.delete(cacheKey));
+  }
+
+  return pending;
 }
 
 export function getChat(chatId: string): Signal<ChatDto | undefined> {

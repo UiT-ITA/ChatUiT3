@@ -41,7 +41,7 @@ const ChatFilePreviewContent = ({ file, compact = false }: ChatFilePreviewConten
         }
 
         return (
-          <pre key={index} className="file-preview-text">
+          <pre key={index} className="file-preview-text t-code">
             {chunk.text}
           </pre>
         );

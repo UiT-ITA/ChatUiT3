@@ -66,13 +66,13 @@ const TagField: React.FC<TagFieldProps> = ({
       <div className="tag-field readonly">
         <div className="tag-list">
           {tags.map((tag, index) => (
-            <span key={index} className="tag readonly">
+            <span key={index} className="tag readonly t-caption-strong">
               {tag}
             </span>
           ))}
           {tags.length === 0 && (
-            //<span className="tag-empty">{t('common.noTags')}</span>
-            <span className="tag-empty">  </span>
+            //<span className="tag-empty t-caption">{t('common.noTags')}</span>
+            <span className="tag-empty t-caption">  </span>
           )}
         </div>
       </div>
@@ -86,7 +86,7 @@ const TagField: React.FC<TagFieldProps> = ({
     >
       <div className="tag-list">
         {tags.map((tag, index) => (
-          <span key={index} className="tag editable">
+          <span key={index} className="tag editable t-caption-strong">
             {tag}
             {!disabled && (
               <button
@@ -112,7 +112,7 @@ const TagField: React.FC<TagFieldProps> = ({
             onKeyDown={handleInputKeyDown}
             onBlur={handleInputBlur}
             placeholder={tags.length === 0 ? defaultPlaceholder : ''}
-            className="tag-input"
+            className="tag-input t-body"
             disabled={disabled}
           />
         )}

@@ -1,0 +1,242 @@
+/* =============================================================================
+   TYPOGRAPHY — THE single place where text styles live.
+
+   Every piece of text in the app uses exactly one of these role classes.
+   Component stylesheets MUST NOT set font-family, font-size, font-weight,
+   letter-spacing or text-transform — same text role, same class, everywhere.
+
+   The only element-level typography allowed is the "content typography"
+   section at the bottom, for rendered markdown where we cannot put classes
+   on the elements.
+============================================================================= */
+
+/* ---- Display ---- */
+
+/* Serif hero greeting (welcome banner) */
+.t-hero {
+  font-family: var(--font-serif);
+  font-size: var(--fs-hero);
+  font-weight: 400;
+  line-height: 1.2;
+}
+
+/* Page title with the accent underline bar */
+.t-page-title {
+  font-size: var(--fs-page-title);
+  font-weight: 800;
+  letter-spacing: -0.01em;
+  line-height: 1.2;
+}
+
+/* Header / dialog titles */
+.t-title {
+  font-size: var(--fs-title-sm);
+  font-weight: 700;
+}
+
+/* ---- Body ---- */
+
+/* Serif lead paragraph of an assistant answer */
+.t-lead {
+  font-family: var(--font-serif);
+  font-size: var(--fs-lead);
+  line-height: 1.5;
+}
+
+/* Chat message text */
+.t-chat {
+  font-size: var(--fs-chat);
+  line-height: 1.6;
+}
+
+/* Default UI body text (inputs, intros) */
+.t-body {
+  font-size: var(--fs-body-sm);
+  font-weight: 400;
+}
+
+.t-body-strong {
+  font-size: var(--fs-body-sm);
+  font-weight: 600;
+}
+
+/* Larger body: intros and the composer text */
+.t-body-lg {
+  font-size: var(--fs-title-sm);
+  font-weight: 400;
+}
+
+/* Dense rows / tables */
+.t-table {
+  font-size: var(--fs-table);
+  font-weight: 400;
+}
+
+.t-table-strong {
+  font-size: var(--fs-table);
+  font-weight: 600;
+}
+
+/* ---- Controls & small text ---- */
+
+/* Buttons, list-row titles, controls */
+.t-ui {
+  font-size: var(--fs-ui);
+  font-weight: 600;
+}
+
+/* Small plain text (empty states, hints in row size) */
+.t-ui-plain {
+  font-size: var(--fs-ui);
+  font-weight: 400;
+}
+
+/* Form field labels */
+.t-label {
+  font-size: var(--fs-caption);
+  font-weight: 700;
+}
+
+/* Secondary text, descriptions */
+.t-caption {
+  font-size: var(--fs-caption);
+  font-weight: 400;
+}
+
+.t-caption-strong {
+  font-size: var(--fs-caption);
+  font-weight: 600;
+}
+
+/* ---- Labels, meta & code ---- */
+
+/* Uppercase section overline */
+.t-overline {
+  font-size: var(--fs-overline);
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+/* Sidebar group label (Today / Yesterday / …) */
+.t-group-label {
+  font-size: var(--fs-overline);
+  font-weight: 700;
+  letter-spacing: 0.04em;
+}
+
+/* Small plain hint text (composer hints, panel meta) */
+.t-hint {
+  font-size: var(--fs-overline);
+  font-weight: 400;
+}
+
+/* Mono meta: timestamps, counts, ids */
+.t-meta {
+  font-family: var(--font-mono);
+  font-size: var(--fs-overline);
+  font-weight: 400;
+}
+
+/* Mono code text */
+.t-code {
+  font-family: var(--font-mono);
+  font-size: var(--fs-code);
+  line-height: 1.6;
+}
+
+/* Bordered chip next to titles */
+.t-chip {
+  font-size: var(--fs-overline);
+  font-weight: 600;
+  line-height: 1;
+}
+
+/* Tiny uppercase tag/badge */
+.t-tag {
+  font-size: var(--fs-2xs);
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  line-height: 1;
+}
+
+/* =============================================================================
+   CONTENT TYPOGRAPHY — rendered markdown & form controls, where classes
+   cannot be applied per element. Still defined only here.
+============================================================================= */
+
+/* Base face for the whole app */
+:root {
+  font-family: var(--font-sans);
+  font-weight: 400;
+}
+
+textarea,
+input,
+button,
+select {
+  font-family: inherit;
+  font-size: inherit;
+  color: inherit;
+}
+
+.message-content {
+  font-size: var(--fs-chat);
+  line-height: 1.6;
+}
+
+.message-content :is(h1, h2, h3, h4, h5, h6) {
+  line-height: 1.2;
+  letter-spacing: -0.01em;
+}
+
+.message-content h1 { font-size: var(--fs-h1); }
+.message-content h2 { font-size: var(--fs-h2); }
+.message-content h3 { font-size: var(--fs-h3); }
+.message-content h4 { font-size: var(--fs-title-sm); }
+
+.message-content p {
+  line-height: 1.7;
+}
+
+/* Serif lead paragraph of an assistant answer */
+.assistant-message .message-content > p:first-child {
+  font-family: var(--font-serif);
+  font-size: var(--fs-lead);
+  line-height: 1.5;
+}
+
+.message-content ol > li::marker {
+  font-family: var(--font-mono);
+  font-size: var(--fs-ui);
+  font-weight: 600;
+}
+
+.message-content table {
+  font-size: var(--fs-table);
+}
+
+.message-content th {
+  font-weight: 700;
+}
+
+.message-content td:first-child {
+  font-weight: 600;
+}
+
+.message-content :not(pre) > code {
+  font-family: var(--font-mono);
+  font-size: var(--fs-ui);
+}
+
+.message-content .code-block-wrapper pre,
+.message-content .code-block-wrapper code {
+  font-family: var(--font-mono) !important;
+  font-size: var(--fs-code) !important;
+  line-height: 1.6 !important;
+}
+
+.message-content a::after {
+  font-size: 0.85em;
+}

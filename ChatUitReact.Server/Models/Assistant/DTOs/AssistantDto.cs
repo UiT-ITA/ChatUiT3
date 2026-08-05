@@ -21,6 +21,21 @@ public class FullAssistantDto
     public ReasoningEffort ReasoningEffort { get; set; } = ReasoningEffort.None;
     public List<string> AvailableToolIds { get; set; } = new List<string>();
     public bool IsVisible { get; set; }
+    public List<AssistantFileDto> Files { get; set; } = new List<AssistantFileDto>();
+}
+
+public class AssistantFileDto
+{
+    // Empty for files that are new in a create/update request.
+    public string? Id { get; set; }
+    public string SourceFilename { get; set; } = string.Empty;
+    public string Category { get; set; } = AssistantFileCategories.AlwaysLoaded;
+    public string? Description { get; set; }
+    // Full content for new files in create/update requests; when reading an
+    // assistant the chunks carry metadata only (no text/base64) and content is
+    // fetched separately. An already-stored file is kept as-is when its chunks
+    // arrive without content.
+    public List<ChatFileChunkDto> Chunks { get; set; } = new List<ChatFileChunkDto>();
 }
 
 public class AssistantSummaryDto
@@ -46,6 +61,7 @@ public class CreateAssistantDto
     public float Temperature { get; set; } = 0.7f;
     public ReasoningEffort ReasoningEffort { get; set; } = ReasoningEffort.None;
     public List<string> AvailableToolIds { get; set; } = new List<string>();
+    public List<AssistantFileDto> Files { get; set; } = new List<AssistantFileDto>();
 }
 
 public class UpdateAssistantDto
@@ -62,4 +78,5 @@ public class UpdateAssistantDto
     public float Temperature { get; set; } = 0.7f;
     public ReasoningEffort ReasoningEffort { get; set; } = ReasoningEffort.None;
     public List<string> AvailableToolIds { get; set; } = new List<string>();
+    public List<AssistantFileDto> Files { get; set; } = new List<AssistantFileDto>();
 }

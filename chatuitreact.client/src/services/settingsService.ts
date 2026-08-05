@@ -1,5 +1,5 @@
 import { AppSettings, DEFAULT_SETTINGS } from '../types/settingsModels';
-import { setTheme, setSize } from '../utils/themeUtils';
+import { setTheme, setMode, setSize } from '../utils/themeUtils';
 import { initializeI18n } from '../i18n';
 
 const SETTINGS_STORAGE_KEY = 'chatuit-settings';
@@ -19,8 +19,8 @@ export class SettingsService {
         return initialSettings;
       }
 
-      const parsed = JSON.parse(stored);
-      
+      const parsed = this.migrateSettings(JSON.parse(stored));
+
       // Merge with defaults to ensure all properties exist
       const settings: AppSettings = {
         ...DEFAULT_SETTINGS,
@@ -54,9 +54,37 @@ export class SettingsService {
     }
   }
 
+  // Older versions stored theme as light/dim/dark; split into theme + mode
+  private static migrateSettings(parsed: Record<string, unknown>): Record<string, unknown> {
+    if (parsed.theme === 'light' || parsed.theme === 'dim' || parsed.theme === 'dark') {
+      parsed.mode = parsed.theme === 'light' ? 'light' : 'dark';
+      parsed.theme = 'blue';
+    }
+    return parsed;
+  }
+
   static applySettings(settings: AppSettings): void {
     setTheme(settings.theme);
+    setMode(settings.mode);
     setSize(settings.size);
+    this.watchSystemMode(settings);
+  }
+
+  private static systemModeQuery: MediaQueryList | null = null;
+  private static systemModeListener: (() => void) | null = null;
+
+  // Re-resolve data-mode when the OS scheme changes and mode is "system"
+  private static watchSystemMode(settings: AppSettings): void {
+    if (this.systemModeQuery && this.systemModeListener) {
+      this.systemModeQuery.removeEventListener('change', this.systemModeListener);
+      this.systemModeQuery = null;
+      this.systemModeListener = null;
+    }
+    if (settings.mode === 'system' && window.matchMedia) {
+      this.systemModeQuery = window.matchMedia('(prefers-color-scheme: dark)');
+      this.systemModeListener = () => setMode('system');
+      this.systemModeQuery.addEventListener('change', this.systemModeListener);
+    }
   }
 
   static async updateSetting<K extends keyof AppSettings>(

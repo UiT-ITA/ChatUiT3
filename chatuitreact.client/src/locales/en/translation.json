@@ -19,8 +19,8 @@
   },
   "sidebar": {
     "newChat": "New chat",
-    "expand": "Expand sidebar",
-    "collapse": "Collapse sidebar",
+    "chats": "Chats",
+    "toggleMode": "Toggle light/dark mode",
     "help": "Help",
     "chatSettings": "Chat settings",
     "settings": "Settings",
@@ -38,12 +38,33 @@
   "chat": {
     "sendMessage": "Send message",
     "chatNotFound": "Chat not found. You can start a new chat below.",
-    "messagePlaceholder": "Type a message...",
+    "messagePlaceholder": "Ask ChatUiT anything…",
     "loadingChat": "Loading chat...",
     "switchingChat": "Switching chat...",
     "loadingChats": "Loading chats...",
     "noChatsFound": "No chats found.",
+    "noChatsMatchSearch": "No chats match your search.",
     "scrollToBottom": "Scroll to bottom",
+    "newChat": "New chat",
+    "togglePanel": "Show conversation overview",
+    "assistantLabel": "Assistant",
+    "attachFile": "Attach file",
+    "enterHint": "Enter sends · Shift + Enter for a new line",
+    "disclaimer": "ChatUiT can make mistakes. Check important answers against the source.",
+    "charCount": "{{count}} characters",
+    "groups": {
+      "today": "Today",
+      "yesterday": "Yesterday",
+      "earlier": "Earlier"
+    },
+    "panel": {
+      "title": "In this conversation",
+      "files": "Files in the conversation",
+      "noFiles": "No files yet.",
+      "assistant": "Assistant",
+      "created": "Created",
+      "updated": "Last changed"
+    },
     "actions": {
       "copy": "Copy",
       "retry": "Retry",
@@ -63,8 +84,9 @@
     }
   },
   "welcome": {
-    "header": "Welcome to ChatUit",
-    "subheader": "Start a conversation with your AI assistant.",
+    "header": "Welcome to ChatUiT",
+    "greeting": "Hello, {{name}}.",
+    "subheader": "Ask a question, paste a text, or upload a file.",
     "chooseAssistant": "Choose your assistant:",
     "selectAssistant": "Select AI assistant",
     "tips": {
@@ -85,6 +107,14 @@
   },
   "assistants": {
     "title": "Assistants",
+    "intro": "An assistant is a conversation you have set up in advance: name, model, instructions and files it should know. Pick one from the list, or create a new one.",
+    "selectHint": "Select an assistant in the list to view or edit it.",
+    "overview": "Overview",
+    "newAssistant": "New assistant",
+    "fileCount": "{{count}} files",
+    "saveAssistant": "Save assistant",
+    "useInNewChat": "Use in new chat",
+    "notFound": "This assistant was not found.",
     "create": "Create Assistant",
     "createAssistant": "Create Assistant",
     "editAssistant": "Edit Assistant",
@@ -107,7 +137,17 @@
       "tagsPlaceholder": "Add tags...",
       "model": "Model",
       "selectModel": "Select a model",
-      "systemPrompt": "System Prompt",
+      "systemPrompt": "Instructions",
+      "systemPromptPlaceholder": "Describe how the assistant should behave (optional)",
+      "characters": "characters",
+      "tools": "Tools the assistant may use",
+      "noTools": "No tools available",
+      "modelNoTools": "This model does not support tools",
+      "snippets": {
+        "renderMarkdown": "Render in markdown",
+        "includeBasicInfo": "Include basic info about you",
+        "renderEquations": "Render equations"
+      },
       "temperature": "Temperature",
       "reasoning": "Reasoning",
       "reasoningEffort": "Reasoning Effort",
@@ -181,9 +221,14 @@
     },
     "theme": {
       "title": "Theme",
+      "blue": "Blue",
+      "grey": "Grey"
+    },
+    "mode": {
+      "title": "Color mode",
       "light": "Light",
       "dark": "Dark",
-      "altDark": "Alt Dark"
+      "system": "Follow system"
     },
     "textScale": {
       "title": "Text Scale",
@@ -269,8 +314,18 @@
       "text": "Text"
     }
   },
+  "contextColumn": {
+    "chats": "Chats",
+    "assistants": "Assistants",
+    "admin": "Admin",
+    "settings": "Settings",
+    "searchChats": "Search chats",
+    "adminNote": "Administration of endpoints, models and system assistants."
+  },
   "common": {
     "close": "Close",
+    "clear": "Clear",
+    "notFound": "Not found.",
     "add": "Add",
     "cancel": "Cancel",
     "name": "Name",
@@ -307,6 +362,7 @@
     "External": "External"
   },
   "admin": {
+    "intro": "Manage the endpoints, models and system assistants available in ChatUiT. Pick an item in the list, or add a new one.",
     "tabs": {
       "endpoints": "Endpoints",
       "models": "Models",

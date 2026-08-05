@@ -17,14 +17,14 @@ function MermaidDiagram({ chart, className = '' }: MermaidDiagramProps) {
 
   // Initialize mermaid when theme changes
   useEffect(() => {
-    const mermaidTheme = getMermaidTheme(settings.theme);
+    const mermaidTheme = getMermaidTheme(settings.mode);
     mermaid.initialize({
       startOnLoad: false,
       theme: mermaidTheme,
       fontFamily: 'inherit',
       htmlLabels: false
     });
-  }, [settings.theme]);
+  }, [settings.mode]);
 
   // Render diagram when chart or theme changes
   useEffect(() => {
@@ -64,7 +64,7 @@ function MermaidDiagram({ chart, className = '' }: MermaidDiagramProps) {
     };
 
     renderDiagram();
-  }, [chart, settings.theme]);
+  }, [chart, settings.mode]);
 
   if (loading) {
     return (

@@ -16,7 +16,7 @@ public partial class DatabaseService
         }
     }
 
-    private async Task<List<string>> WriteTextContentAsync(string userId, string chatId, string ownerId, string? content)
+    private async Task<List<string>> WriteTextContentAsync(string userId, string chatId, string ownerId, string? content, ICollection<string>? writtenBlockIds = null)
     {
         if (_contentContainer == null)
         {
@@ -46,28 +46,13 @@ public partial class DatabaseService
 
             await _contentContainer.CreateItemAsync(document, new Microsoft.Azure.Cosmos.PartitionKey(userId));
             blockIds.Add(document.Id);
+            writtenBlockIds?.Add(document.Id);
         }
 
         return blockIds;
     }
 
-    private async Task<string> ReadTextContentAsync(string userId, IReadOnlyCollection<string> contentBlockIds)
-    {
-        var documents = await ReadContentBlocksAsync(userId, contentBlockIds);
-        if (documents.Count == 0)
-        {
-            return string.Empty;
-        }
-
-        if (documents.Any(x => x.IsEncrypted))
-        {
-            throw new NotSupportedException("Encrypted text content is not implemented yet.");
-        }
-
-        return string.Concat(documents.Select(x => x.Payload));
-    }
-
-    private async Task<List<string>> WriteBinaryContentAsync(string userId, string chatId, string ownerId, byte[] bytes)
+    private async Task<List<string>> WriteBinaryContentAsync(string userId, string chatId, string ownerId, byte[] bytes, ICollection<string>? writtenBlockIds = null)
     {
         if (_contentContainer == null)
         {
@@ -99,23 +84,13 @@ public partial class DatabaseService
 
             await _contentContainer.CreateItemAsync(document, new Microsoft.Azure.Cosmos.PartitionKey(userId));
             blockIds.Add(document.Id);
+            writtenBlockIds?.Add(document.Id);
         }
 
         return blockIds;
     }
 
-    private async Task<byte[]> ReadBinaryContentAsync(string userId, IReadOnlyCollection<string> contentBlockIds)
-    {
-        var documents = await ReadContentBlocksAsync(userId, contentBlockIds);
-        if (documents.Count == 0)
-        {
-            return Array.Empty<byte>();
-        }
-
-        return Convert.FromBase64String(string.Concat(documents.Select(x => x.Payload)));
-    }
-
-    private async Task<List<StoredFileDocument>> WriteFilesAsync(string userId, string chatId, IReadOnlyCollection<ChatFile>? files)
+    private async Task<List<StoredFileDocument>> WriteFilesAsync(string userId, string chatId, IReadOnlyCollection<ChatFile>? files, ICollection<string>? writtenBlockIds = null)
     {
         if (files == null || files.Count == 0)
         {
@@ -144,14 +119,14 @@ public partial class DatabaseService
 
                 if (chunk.Type.Equals("text", StringComparison.OrdinalIgnoreCase))
                 {
-                    storedChunk.ContentBlockIds = await WriteTextContentAsync(userId, chatId, storedChunk.Id, chunk.Text);
+                    storedChunk.ContentBlockIds = await WriteTextContentAsync(userId, chatId, storedChunk.Id, chunk.Text, writtenBlockIds);
                 }
                 else if (chunk.Type.Equals("image", StringComparison.OrdinalIgnoreCase))
                 {
                     var imageBytes = string.IsNullOrWhiteSpace(chunk.Base64)
                         ? Array.Empty<byte>()
                         : Convert.FromBase64String(chunk.Base64);
-                    storedChunk.ContentBlockIds = await WriteBinaryContentAsync(userId, chatId, storedChunk.Id, imageBytes);
+                    storedChunk.ContentBlockIds = await WriteBinaryContentAsync(userId, chatId, storedChunk.Id, imageBytes, writtenBlockIds);
                 }
 
                 storedFile.Chunks.Add(storedChunk);
@@ -163,54 +138,10 @@ public partial class DatabaseService
         return storedFiles;
     }
 
-    private async Task<List<ChatFile>> ReadFilesAsync(string userId, IReadOnlyCollection<StoredFileDocument>? files)
-    {
-        if (files == null || files.Count == 0)
-        {
-            return new List<ChatFile>();
-        }
-
-        var chatFiles = new List<ChatFile>(files.Count);
-        foreach (var file in files)
-        {
-            var chatFile = new ChatFile
-            {
-                Id = file.Id,
-                SourceFilename = file.SourceFilename,
-                Chunks = new List<ChatFileChunk>()
-            };
-
-            foreach (var chunk in file.Chunks)
-            {
-                var chatChunk = new ChatFileChunk
-                {
-                    Id = chunk.Id,
-                    Type = chunk.Type,
-                    Format = chunk.Format
-                };
-
-                if (chunk.Type.Equals("text", StringComparison.OrdinalIgnoreCase))
-                {
-                    chatChunk.Text = await ReadTextContentAsync(userId, chunk.ContentBlockIds);
-                }
-                else if (chunk.Type.Equals("image", StringComparison.OrdinalIgnoreCase))
-                {
-                    chatChunk.Base64 = Convert.ToBase64String(await ReadBinaryContentAsync(userId, chunk.ContentBlockIds));
-                }
-
-                chatFile.Chunks.Add(chatChunk);
-            }
-
-            chatFiles.Add(chatFile);
-        }
-
-        return chatFiles;
-    }
-
-    private async Task<List<ChatFile>> ReadFilesAsync(
-        string userId,
+    private List<ChatFile> ReadFiles(
         IReadOnlyCollection<StoredFileDocument>? files,
-        IReadOnlyDictionary<string, ContentBlockDocument> contentBlocksById)
+        IReadOnlyDictionary<string, ContentBlockDocument> contentBlocksById,
+        bool includeContent)
     {
         if (files == null || files.Count == 0)
         {
@@ -236,13 +167,16 @@ public partial class DatabaseService
                     Format = chunk.Format
                 };
 
-                if (chunk.Type.Equals("text", StringComparison.OrdinalIgnoreCase))
+                if (includeContent)
                 {
-                    chatChunk.Text = ReadTextContent(chunk.ContentBlockIds, contentBlocksById);
-                }
-                else if (chunk.Type.Equals("image", StringComparison.OrdinalIgnoreCase))
-                {
-                    chatChunk.Base64 = Convert.ToBase64String(ReadBinaryContent(chunk.ContentBlockIds, contentBlocksById));
+                    if (chunk.Type.Equals("text", StringComparison.OrdinalIgnoreCase))
+                    {
+                        chatChunk.Text = ReadTextContent(chunk.ContentBlockIds, contentBlocksById);
+                    }
+                    else if (chunk.Type.Equals("image", StringComparison.OrdinalIgnoreCase))
+                    {
+                        chatChunk.Base64 = Convert.ToBase64String(ReadBinaryContent(chunk.ContentBlockIds, contentBlocksById));
+                    }
                 }
 
                 chatFile.Chunks.Add(chatChunk);
@@ -329,31 +263,25 @@ public partial class DatabaseService
         return documents.ToDictionary(document => document.Id, document => document);
     }
 
-    private async Task<List<ContentBlockDocument>> ReadContentBlocksAsync(string userId, IReadOnlyCollection<string> contentBlockIds)
+    private async Task<Dictionary<string, ContentBlockDocument>> ReadContentBlockMapByOwnersAsync(
+        string userId,
+        string chatId,
+        IReadOnlyCollection<string> ownerIds)
     {
-        if (_contentContainer == null || contentBlockIds.Count == 0)
+        if (_contentContainer == null || ownerIds.Count == 0)
         {
-            return new List<ContentBlockDocument>();
+            return new Dictionary<string, ContentBlockDocument>();
         }
 
-        var itemDescriptors = contentBlockIds
-            .Distinct()
-            .Select(contentBlockId => (id: contentBlockId, partitionKey: new PartitionKey(userId)))
-            .ToList();
+        var documents = await QueryItemsAsync<ContentBlockDocument>(
+            _contentContainer,
+            new QueryDefinition("SELECT * FROM c WHERE c.userId = @userId AND c.chatId = @chatId AND ARRAY_CONTAINS(@ownerIds, c.ownerId)")
+                .WithParameter("@userId", userId)
+                .WithParameter("@chatId", chatId)
+                .WithParameter("@ownerIds", ownerIds),
+            userId);
 
-        var response = await _contentContainer.ReadManyItemsAsync<ContentBlockDocument>(itemDescriptors);
-        var documentsById = response.Resource.ToDictionary(document => document.Id, document => document);
-        var documents = new List<ContentBlockDocument>(contentBlockIds.Count);
-
-        foreach (var contentBlockId in contentBlockIds)
-        {
-            if (documentsById.TryGetValue(contentBlockId, out var document))
-            {
-                documents.Add(document);
-            }
-        }
-
-        return documents;
+        return documents.ToDictionary(document => document.Id, document => document);
     }
 
     private List<string> SplitTextPayload(string text)
@@ -407,6 +335,44 @@ public partial class DatabaseService
         }
 
         return chunks;
+    }
+
+    private async Task DeleteContentBlocksAsync(string userId, IEnumerable<string> contentBlockIds)
+    {
+        if (_contentContainer == null)
+        {
+            return;
+        }
+
+        foreach (var contentBlockId in contentBlockIds.Distinct())
+        {
+            try
+            {
+                await _contentContainer.DeleteItemAsync<ContentBlockDocument>(contentBlockId, new PartitionKey(userId));
+            }
+            catch (CosmosException ex) when (ex.StatusCode == System.Net.HttpStatusCode.NotFound)
+            {
+            }
+        }
+    }
+
+    private static List<string> CollectFileContentBlockIds(IReadOnlyCollection<StoredFileDocument>? files)
+    {
+        var blockIds = new List<string>();
+        if (files == null)
+        {
+            return blockIds;
+        }
+
+        foreach (var file in files)
+        {
+            foreach (var chunk in file.Chunks)
+            {
+                blockIds.AddRange(chunk.ContentBlockIds);
+            }
+        }
+
+        return blockIds;
     }
 
     private async Task DeleteChatContentAsync(string userId, string chatId)

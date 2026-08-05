@@ -23,49 +23,33 @@
   width: auto;
   height: auto;
   object-fit: contain;
-  border-radius: 0.5rem;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
-  transition: transform 0.2s ease;
-}
-
-.file-preview-image:hover {
-  transform: scale(1.02);
+  border-radius: var(--radius-sm);
+  background: var(--panel);
+  border: 1px solid var(--line);
 }
 
 .file-preview-text {
-  background: var(--bg-code);
-  color: var(--text-primary);
+  background: var(--code-bg);
+  color: var(--text);
   padding: 1rem;
-  border-radius: 0.5rem;
-  font-size: 0.875rem;
+  border-radius: var(--radius-sm);
   line-height: 1.6;
   white-space: pre-wrap;
   margin: 0;
-  border: 1px solid var(--border-primary);
+  border: 1px solid var(--line);
   overflow: visible;
   width: 100%;
-  font-family: 'Consolas', 'Monaco', 'Courier New', monospace;
 }
 
 .file-preview-markdown {
-  background: var(--bg-secondary);
-  border: 1px solid var(--border-primary);
-  border-radius: 0.5rem;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
   padding: 1rem;
 }
 
-.file-preview-unsupported {
-  color: var(--text-secondary);
-  font-style: italic;
-  text-align: center;
-  padding: 2rem;
-  background: var(--bg-secondary);
-  border-radius: 0.5rem;
-  border: 1px solid var(--border-primary);
-}
-
 /* Mobile responsive adjustments */
-@media (max-width: 768px) {
+@media (max-width: 48rem) {
   .file-preview-content {
     padding: 0.5rem;
   }
@@ -76,56 +60,6 @@
 
   .file-preview-text {
     padding: 1rem;
-    font-size: 0.8125rem;
   }
 
-  .file-preview-unsupported {
-    padding: 1.5rem;
   }
-}
-
-/* Scrollbar styling for text content */
-.file-preview-text::-webkit-scrollbar {
-  width: 0.5rem;
-}
-
-.file-preview-text::-webkit-scrollbar-track {
-  background: var(--scrollbar-track);
-}
-
-.file-preview-text::-webkit-scrollbar-thumb {
-  background: var(--scrollbar-thumb);
-  border-radius: 0.25rem;
-}
-
-.file-preview-text::-webkit-scrollbar-thumb:hover {
-  background: var(--scrollbar-thumb-hover);
-}
-
-/* Focus and accessibility improvements */
-.file-preview-image:focus {
-  outline: 2px solid var(--accent-primary);
-  outline-offset: 2px;
-}
-
-.file-preview-text:focus {
-  outline: 2px solid var(--accent-primary);
-  outline-offset: 2px;
-}
-
-/* Loading state for images */
-.file-preview-image {
-  background: var(--bg-secondary);
-  border: 1px solid var(--border-primary);
-}
-
-/* Text selection styling */
-.file-preview-text::selection {
-  background: var(--accent-primary);
-  color: var(--text-on-accent);
-}
-
-.file-preview-text::-moz-selection {
-  background: var(--accent-primary);
-  color: var(--text-on-accent);
-}

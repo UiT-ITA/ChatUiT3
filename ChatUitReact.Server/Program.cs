@@ -11,6 +11,13 @@ if (builder.Environment.IsDevelopment())
     IdentityModelEventSource.ShowPII = false;
 }
 
+// Messages are posted as a single JSON body including file content (base64-inflated),
+// so the default 30 MB body limit is too small.
+builder.WebHost.ConfigureKestrel(options =>
+{
+    options.Limits.MaxRequestBodySize = 100 * 1024 * 1024;
+});
+
 
 // CORS
 builder.Services.AddCors(options =>

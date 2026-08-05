@@ -20,7 +20,7 @@ const LoadingIndicator: React.FC<LoadingIndicatorProps> = ({
       <div className="loading-spinner">
         <div className="spinner-ring"></div>
       </div>
-      {showText && <div className="loading-text">{displayText}</div>}
+      {showText && <div className="loading-text t-caption">{displayText}</div>}
     </div>
   );
 };

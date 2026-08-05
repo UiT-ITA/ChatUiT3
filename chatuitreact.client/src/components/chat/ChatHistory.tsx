@@ -1,5 +1,5 @@
 import './ChatHistory.css'
-import { getChat } from '../../services/chatService'
+import { getChat, getSelectableAssistants } from '../../services/chatService'
 import { useSignals } from '@preact/signals-react/runtime'
 import { useLayoutEffect, useRef, useEffect, useCallback, memo } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -16,6 +16,8 @@ function ChatHistory({ chatId }: ChatHistoryProps) {
 
   const chat = getChat(chatId)
   const messages = chat.value?.messages || []
+  const assistants = getSelectableAssistants().value || []
+  const assistantName = assistants.find((a) => a.id === chat.value?.assistantId)?.name
 
   const chatHistoryRef = useRef<HTMLDivElement>(null)
   const bottomSentinelRef = useRef<HTMLDivElement>(null)
@@ -81,6 +83,7 @@ function ChatHistory({ chatId }: ChatHistoryProps) {
           <ChatMessage
             key={message.id}
             message={message}
+            assistantName={assistantName}
             onStreamingChunk={scrollToBottomIfPinned}
           />
         ))}

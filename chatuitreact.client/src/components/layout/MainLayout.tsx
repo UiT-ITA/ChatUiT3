@@ -1,78 +1,52 @@
-import { useState } from 'react';
-import { Outlet, useNavigate } from 'react-router-dom';
-import Sidebar from './Sidebar';
-import AppBar from './AppBar';
+import { Outlet, useLocation } from 'react-router-dom';
+import IconRail from './IconRail';
+import ContextColumn from './ContextColumn';
+import MainHeader from './MainHeader';
 import useMediaQuery from '../../hooks/useMediaQuery';
-import './MainLayout.css';
 import ToastContainer from '../common/ToastContainer';
+import './MainLayout.css';
 
-
+/**
+ * App shell per the design: icon rail | context column | main (header + content).
+ * On mobile the rail becomes a top bar and the column and main area act as a
+ * list/detail pair — the section root shows the list, deeper routes show the
+ * detail with a back button in the header.
+ */
 const MainLayout: React.FC = () => {
-  const [isNarrow, setIsNarrow] = useState(false);
-  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
-  const navigate = useNavigate();
   const isMobile = useMediaQuery('(max-width: 800px)');
+  const location = useLocation();
 
-
-
-  const toggleSidebar = () => {
-    setIsNarrow(!isNarrow);
-  };
-
-  const handleMobileMenuClick = () => {
-    setIsMobileMenuOpen(!isMobileMenuOpen);
-  };
-
-  const handleNewChatClick = () => {
-    navigate('/chat/new');
-    if (isMobile) {
-      setIsMobileMenuOpen(false);
-    }
-  };
-
-  const handleMobileClose = () => {
-    setIsMobileMenuOpen(false);
-  };
+  const pathParts = location.pathname.split('/').filter(Boolean);
+  // Section roots ("/", "/chat", "/assistants", "/settings", "/admin") show the list;
+  // anything deeper is a detail view
+  const isDetail = pathParts.length >= 2;
 
   if (isMobile) {
     return (
       <div className="layout mobile-layout">
-        <AppBar 
-          onMenuClick={handleMobileMenuClick}
-          onNewChatClick={handleNewChatClick}
-        />
-        {isMobileMenuOpen && (
-          <div className="mobile-backdrop" onClick={handleMobileClose} />
-        )}
-        <Sidebar
-          onToggleSidebar={toggleSidebar}
-          isNarrow={false}
-          isMobile={isMobile}
-          isMobileMenuOpen={isMobileMenuOpen}
-          onMobileClose={handleMobileClose}
-        />
+        <IconRail isMobile />
         <ToastContainer />
-        <div className="content-area">
-          <main className="main-content">
+        {isDetail ? (
+          <main className="main-column">
+            <MainHeader isMobile />
             <Outlet />
           </main>
-        </div>
+        ) : (
+          <ContextColumn isMobile />
+        )}
       </div>
     );
   }
 
   return (
-    <div className={`layout ${isNarrow ? 'narrow-sidebar' : 'wide-sidebar'}`}>
-      <Sidebar
-        onToggleSidebar={toggleSidebar}
-        isNarrow={isNarrow}
-      />
+    <div className="layout">
+      <IconRail />
+      <ContextColumn />
       <ToastContainer />
-      <div className="content-area">
-        <main className="main-content">
-          <Outlet />
-        </main>
-      </div>
+      <main className="main-column">
+        <MainHeader />
+        <Outlet />
+      </main>
     </div>
   );
 };

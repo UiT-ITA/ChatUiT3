@@ -19,6 +19,7 @@ interface KnowledgeFileListProps {
   description: string;
   emptyLabel: string;
   onFilesSelected: (files: ChatFile[]) => void;
+  onLoadFile?: (item: KnowledgeFileItemData) => Promise<ChatFile | null>;
   items?: KnowledgeFileItemData[];
   disabled?: boolean;
   allowItemDescription?: boolean;
@@ -33,6 +34,7 @@ const KnowledgeFileList = ({
   description,
   emptyLabel,
   onFilesSelected,
+  onLoadFile,
   items = [],
   disabled = false,
   allowItemDescription = false,
@@ -92,11 +94,17 @@ const KnowledgeFileList = ({
   };
 
   const handlePreview = async (item: KnowledgeFileItemData) => {
-    if (!item.ChatFile) {
+    if (item.ChatFile) {
+      setPreviewFile(item.ChatFile);
       return;
     }
 
-    setPreviewFile(item.ChatFile);
+    if (onLoadFile) {
+      const loaded = await onLoadFile(item);
+      if (loaded) {
+        setPreviewFile(loaded);
+      }
+    }
   };
 
   return (
@@ -104,13 +112,13 @@ const KnowledgeFileList = ({
       <section className="knowledge-file-list" aria-label={title}>
         <div className="knowledge-file-list__header">
           <div className="knowledge-file-list__heading">
-            <h3 className="knowledge-file-list__title">{title}</h3>
-            <p className="knowledge-file-list__description">{description}</p>
+            <h3 className="knowledge-file-list__title t-body-strong">{title}</h3>
+            <p className="knowledge-file-list__description t-ui-plain">{description}</p>
           </div>
 
           <button
             type="button"
-            className="knowledge-file-list__add-button"
+            className="knowledge-file-list__add-button t-ui"
             onClick={handleAddClick}
             disabled={disabled}
           >
@@ -134,7 +142,7 @@ const KnowledgeFileList = ({
               key={item.id}
               item={item}
               category={category}
-              onPreview={item.ChatFile ? () => void handlePreview(item) : undefined}
+              onPreview={item.ChatFile || (onLoadFile && item.fileId) ? () => void handlePreview(item) : undefined}
               onRemove={onItemRemove ? () => onItemRemove(item.id) : undefined}
               allowDescription={allowItemDescription}
               descriptionPlaceholder={itemDescriptionPlaceholder}
@@ -142,7 +150,7 @@ const KnowledgeFileList = ({
               disabled={disabled}
             />
           )) : (
-            <div className="knowledge-file-list__empty">{emptyLabel}</div>
+            <div className="knowledge-file-list__empty t-ui-plain">{emptyLabel}</div>
           )}
         </div>
       </section>

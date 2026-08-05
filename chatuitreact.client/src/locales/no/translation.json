@@ -19,8 +19,8 @@
   },
   "sidebar": {
     "newChat": "Ny samtale",
-    "expand": "Utvid sidepanelet",
-    "collapse": "Slå sammen sidepanelet",
+    "chats": "Samtaler",
+    "toggleMode": "Bytt mellom lyst og mørkt",
     "help": "Hjelp",
     "chatSettings": "Chat-innstillinger",
     "settings": "Innstillinger",
@@ -38,12 +38,33 @@
   "chat": {
     "sendMessage": "Send melding",
     "chatNotFound": "Samtale ikke funnet. Du kan starte en ny samtale nedenfor.",
-    "messagePlaceholder": "Skriv en melding...",
+    "messagePlaceholder": "Spør ChatUiT om noe…",
     "loadingChat": "Laster samtale...",
     "switchingChat": "Bytter samtale...",
     "loadingChats": "Laster samtaler...",
     "noChatsFound": "Ingen samtaler funnet.",
+    "noChatsMatchSearch": "Ingen samtaler passer søket.",
     "scrollToBottom": "Rull til bunnen",
+    "newChat": "Ny samtale",
+    "togglePanel": "Vis samtaleoversikt",
+    "assistantLabel": "Assistent",
+    "attachFile": "Legg ved fil",
+    "enterHint": "Enter sender · Shift + Enter gir ny linje",
+    "disclaimer": "ChatUiT kan gjøre feil. Sjekk viktige svar mot kilden.",
+    "charCount": "{{count}} tegn",
+    "groups": {
+      "today": "I dag",
+      "yesterday": "I går",
+      "earlier": "Tidligere"
+    },
+    "panel": {
+      "title": "I denne samtalen",
+      "files": "Filer i samtalen",
+      "noFiles": "Ingen filer ennå.",
+      "assistant": "Assistent",
+      "created": "Opprettet",
+      "updated": "Sist endret"
+    },
     "actions": {
       "copy": "Kopier",
       "retry": "Prøv igjen",
@@ -63,8 +84,9 @@
     }
   },
   "welcome": {
-    "header": "Velkommen til ChatUit",
-    "subheader": "Start en samtale med din AI-assistent.",
+    "header": "Velkommen til ChatUiT",
+    "greeting": "Hei, {{name}}.",
+    "subheader": "Spør om noe, lim inn en tekst, eller last opp en fil.",
     "chooseAssistant": "Velg din assistent:",
     "selectAssistant": "Velg AI-assistent",
     "tips": {
@@ -85,6 +107,14 @@
   },
   "assistants": {
     "title": "Assistenter",
+    "intro": "En assistent er en samtale du har satt opp på forhånd: navn, modell, instruks og filer den skal kunne. Velg en fra listen, eller opprett en ny.",
+    "selectHint": "Velg en assistent i listen for å se eller redigere den.",
+    "overview": "Oversikt",
+    "newAssistant": "Ny assistent",
+    "fileCount": "{{count}} filer",
+    "saveAssistant": "Lagre assistent",
+    "useInNewChat": "Bruk i ny samtale",
+    "notFound": "Fant ikke denne assistenten.",
     "create": "Opprett assistent",
     "createAssistant": "Opprett assistent",
     "editAssistant": "Rediger assistent",
@@ -107,7 +137,17 @@
       "tagsPlaceholder": "Legg til tagger...",
       "model": "Modell",
       "selectModel": "Velg en modell",
-      "systemPrompt": "Systemprompt",
+      "systemPrompt": "Instruks",
+      "systemPromptPlaceholder": "Beskriv hvordan assistenten skal oppføre seg (valgfritt)",
+      "characters": "tegn",
+      "tools": "Verktøy assistenten får bruke",
+      "noTools": "Ingen verktøy tilgjengelig",
+      "modelNoTools": "Denne modellen støtter ikke verktøy",
+      "snippets": {
+        "renderMarkdown": "Svar i markdown",
+        "includeBasicInfo": "Ta med grunnleggende info om deg",
+        "renderEquations": "Vis likninger"
+      },
       "temperature": "Temperatur",
       "reasoning": "Resonnering",
       "reasoningEffort": "Resonneringsinnsats",
@@ -181,9 +221,14 @@
     },
     "theme": {
       "title": "Tema",
+      "blue": "Blå",
+      "grey": "Grå"
+    },
+    "mode": {
+      "title": "Fargemodus",
       "light": "Lyst",
       "dark": "Mørkt",
-      "altDark": "Alternativ mørk"
+      "system": "Følg systemet"
     },
     "textScale": {
       "title": "Tekststørrelse",
@@ -269,8 +314,18 @@
       "text": "Tekst"
     }
   },
+  "contextColumn": {
+    "chats": "Samtaler",
+    "assistants": "Assistenter",
+    "admin": "Administrasjon",
+    "settings": "Innstillinger",
+    "searchChats": "Søk i samtaler",
+    "adminNote": "Administrasjon av endepunkter, modeller og systemassistenter."
+  },
   "common": {
     "close": "Lukk",
+    "clear": "Tøm",
+    "notFound": "Ikke funnet.",
     "add": "Legg til",
     "cancel": "Avbryt",
     "name": "Navn",
@@ -307,10 +362,11 @@
     "External": "Ekstern"
   },
   "admin": {
+    "intro": "Administrer endepunktene, modellene og systemassistentene som er tilgjengelige i ChatUiT. Velg et element i listen, eller legg til et nytt.",
     "tabs": {
       "endpoints": "Endepunkter",
       "models": "Modeller",
-      "assistants": "Assistenter"
+      "assistants": "Systemassistenter"
     },
     "endpoints": {
       "title": "Endepunkter",

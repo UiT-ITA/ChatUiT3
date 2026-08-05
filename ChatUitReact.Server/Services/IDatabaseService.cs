@@ -12,7 +12,8 @@ public interface IDatabaseService
 
     // Chat management
     Task<List<ChatHeader>> GetChatListAsync(string userId);
-    Task<Chat?> GetChatByIdAsync(string userId, string chatId);
+    Task<Chat?> GetChatByIdAsync(string userId, string chatId, bool includeFileContent = true);
+    Task<ChatFile?> GetChatFileAsync(string userId, string chatId, string fileId);
     Task AddChatAsync(string userId, Chat chat);
     Task DeleteChatAsync(string userId, string chatId);
     Task UpdateChatAsync(string userId, string chatId, string? newTitle, string? newAssistantId = null);
@@ -40,7 +41,8 @@ public interface IDatabaseService
     Task<List<Assistant>> GetAssistantsByOwnerAsync(string ownerId);
     Task<List<Assistant>> GetSystemAssistantsAsync();
     Task<List<Assistant>> GetAssistantsByIdsAsync(List<string> assistantIds);
-    Task<Assistant?> GetAssistantByIdAsync(string assistantId);
+    Task<Assistant?> GetAssistantByIdAsync(string assistantId, bool includeFileContent = false);
+    Task<AssistantFile?> GetAssistantFileAsync(string assistantId, string fileId);
     Task<Assistant> CreateAssistantAsync(Assistant assistant);
     Task<Assistant?> UpdateAssistantAsync(Assistant assistant);
     Task<bool> DeleteAssistantAsync(string assistantId);

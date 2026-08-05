@@ -34,12 +34,22 @@ public partial class MockDatabaseService
         }
     }
 
-    public Task<Assistant?> GetAssistantByIdAsync(string assistantId)
+    public Task<Assistant?> GetAssistantByIdAsync(string assistantId, bool includeFileContent = false)
     {
         lock (_assistantsLock)
         {
             var assistant = _assistants.FirstOrDefault(a => a.Id == assistantId);
             return Task.FromResult(assistant != null ? DeepCopyAssistant(assistant) : null);
+        }
+    }
+
+    public Task<AssistantFile?> GetAssistantFileAsync(string assistantId, string fileId)
+    {
+        lock (_assistantsLock)
+        {
+            var assistant = _assistants.FirstOrDefault(a => a.Id == assistantId);
+            var file = assistant?.Files.FirstOrDefault(f => f.Id == fileId);
+            return Task.FromResult(file);
         }
     }
 

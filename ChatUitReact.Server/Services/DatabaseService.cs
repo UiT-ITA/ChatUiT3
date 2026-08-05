@@ -25,6 +25,7 @@ public partial class DatabaseService : IDatabaseService
     private readonly Container? _modelContainer;
     private readonly Container? _modelEndpointContainer;
     private readonly Container? _assistantContainer;
+    private readonly Container? _assistantContentContainer;
     private readonly Task _initializationTask;
 
     public DatabaseService(IConfiguration configuration)
@@ -49,6 +50,7 @@ public partial class DatabaseService : IDatabaseService
         _modelContainer = _configurationDatabase.GetContainer(_options.Models.Name);
         _modelEndpointContainer = _configurationDatabase.GetContainer(_options.ModelEndpoints.Name);
         _assistantContainer = _configurationDatabase.GetContainer(_options.Assistants.Name);
+        _assistantContentContainer = _configurationDatabase.GetContainer(_options.AssistantContent.Name);
         _initializationTask = InitializeAsync();
     }
 
@@ -56,7 +58,7 @@ public partial class DatabaseService : IDatabaseService
     {
         if (_userDataDatabase == null || _configurationDatabase == null ||
             _userContainer == null || _chatContainer == null || _chatMessageContainer == null || _contentContainer == null ||
-            _modelContainer == null || _modelEndpointContainer == null || _assistantContainer == null)
+            _modelContainer == null || _modelEndpointContainer == null || _assistantContainer == null || _assistantContentContainer == null)
         {
             throw new InvalidOperationException("DatabaseService is not configured. Add a valid Cosmos NoSQL connection string under ConnectionStrings:CosmosDBConnection or CosmosNoSql:ConnectionString.");
         }
@@ -77,10 +79,11 @@ public partial class DatabaseService : IDatabaseService
         await EnsureContainerExistsAsync(_userDataDatabase, CreateContainerProperties(_options.Users));
         await EnsureContainerExistsAsync(_userDataDatabase, CreateContainerProperties(_options.Chats));
         await EnsureContainerExistsAsync(_userDataDatabase, CreateContainerProperties(_options.ChatMessages));
-        await EnsureContainerExistsAsync(_userDataDatabase, CreateContentContainerProperties());
+        await EnsureContainerExistsAsync(_userDataDatabase, CreateContentContainerProperties(_options.Content));
         await EnsureContainerExistsAsync(_configurationDatabase, CreateContainerProperties(_options.Models));
         await EnsureContainerExistsAsync(_configurationDatabase, CreateContainerProperties(_options.ModelEndpoints));
         await EnsureContainerExistsAsync(_configurationDatabase, CreateContainerProperties(_options.Assistants));
+        await EnsureContainerExistsAsync(_configurationDatabase, CreateContentContainerProperties(_options.AssistantContent));
     }
 
     private static string ConfigurationPartitionKey => ConfigurationPartitionKeyValue;
@@ -95,9 +98,9 @@ public partial class DatabaseService : IDatabaseService
         return new ContainerProperties(containerOptions.Name, containerOptions.PartitionKeyPath);
     }
 
-    private ContainerProperties CreateContentContainerProperties()
+    private static ContainerProperties CreateContentContainerProperties(CosmosContainerOptions containerOptions)
     {
-        var properties = new ContainerProperties(_options.Content.Name, _options.Content.PartitionKeyPath);
+        var properties = new ContainerProperties(containerOptions.Name, containerOptions.PartitionKeyPath);
         properties.IndexingPolicy.IncludedPaths.Add(new IncludedPath { Path = "/*" });
         properties.IndexingPolicy.ExcludedPaths.Add(new ExcludedPath { Path = "/payload/?" });
         return properties;

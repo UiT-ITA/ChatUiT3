@@ -1,26 +1,28 @@
 /* Message files container */
 .message-files {
-    margin-bottom: 0.5rem;
-    padding-bottom: 0.5rem;
+  margin-bottom: 0.4375rem;
+}
+
+.user-message .message-files {
+  display: flex;
+  justify-content: flex-end;
 }
 
 .message-file-previews {
-    display: flex;
-    flex-direction: row;
-    flex-wrap: wrap;
-    gap: 1rem;
-    padding: 0.75rem 0.75rem 0.5rem 0;
+  display: flex;
+  flex-direction: row;
+  flex-wrap: wrap;
+  gap: 0.375rem;
 }
 
 /* Base message styling */
 .chat-message {
   width: 100%;
-  margin: 0.5rem 0;
+  margin: 0.625rem 0;
   position: relative;
-  border-radius: 0.5rem;
 }
 
-/* User message styling */
+/* User message: right-aligned bubble */
 .chat-message.user-message {
   display: flex;
   flex-direction: column;
@@ -28,18 +30,17 @@
 }
 
 .user-message .message-content {
-  background-color: var(--bg-user);
-  box-shadow: 0 0 0 0.375rem var(--border-user);
-  color: var(--text-primary);
-  border-radius: 1.375rem;
-  padding: 0.75rem 1rem;
-  max-width: fit-content;
+  background: var(--panel-2);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-md);
+  color: var(--text);
+  padding: 0.6875rem 0.875rem;
+  max-width: 35rem;
   word-break: break-word;
   line-height: 1.5;
-  font-size: 1rem;
 }
 
-/* Assistant message styling */
+/* Assistant message: plain full-width text, no bubble */
 .chat-message.assistant-message {
   display: flex;
   flex-direction: column;
@@ -47,15 +48,18 @@
 }
 
 .assistant-message .message-content {
-  color: var(--text-primary);
+  color: var(--text);
   width: 100%;
-  padding: 0.5rem 0;
   word-break: break-word;
-  line-height: 1.5;
-  font-size: 1rem;
+  line-height: 1.6;
 }
 
-/* System message styling */
+/* Lead paragraph of an answer in the serif profile font */
+.assistant-message .message-content > p:first-child {
+  line-height: 1.5;
+}
+
+/* System message */
 .chat-message.system-message {
   display: flex;
   flex-direction: column;
@@ -63,81 +67,96 @@
 }
 
 .system-message .message-content {
-  background-color: var(--bg-secondary);
-  color: var(--text-primary);
-  border-radius: 0.5rem;
+  background: var(--panel);
+  color: var(--text);
+  border-radius: var(--radius-md);
   padding: 0.75rem 1rem;
   width: 100%;
   word-break: break-word;
   line-height: 1.5;
-  font-size: 1rem;
-  border-left: 0.1875rem solid var(--accent-warning);
+  border-left: 3px solid var(--warn);
 }
 
-/* Toolbar styling - hidden by default, shows on hover */
+/* Toolbar under the message — visible on hover */
 .message-toolbar {
   display: flex;
   align-items: center;
   margin-top: 0.5rem;
   opacity: 0;
-  transition: opacity 0.2s ease;
-  gap: 0.625rem;
+  transition: opacity var(--dur-base) var(--ease-standard);
+  gap: 0.125rem;
   width: 100%;
 }
 
-.chat-message:hover .message-toolbar {
+.chat-message:hover .message-toolbar,
+.chat-message:focus-within .message-toolbar {
   opacity: 1;
 }
 
-/* Message timestamp styling */
-.message-time {
-  font-size: 0.75rem;
-  color: var(--text-secondary);
+.assistant-message .message-toolbar {
+  justify-content: flex-start;
+  padding-top: 0.625rem;
+  border-top: 1px solid var(--line-soft);
 }
 
-/* Message actions container */
-.message-actions {
-  display: flex;
-  gap: 0.5rem;
-}
-
-/* Toolbar alignment for user messages */
 .user-message .message-toolbar {
   justify-content: flex-end;
 }
 
-/* Toolbar alignment for assistant messages */
-.assistant-message .message-toolbar {
-  justify-content: flex-start;
+/* Assistant meta row above the answer */
+.message-meta {
+  display: flex;
+  align-items: center;
+  gap: 0.625rem;
+  margin-bottom: 0.5rem;
 }
 
-/* Icon button styling */
+.message-meta-name {
+  color: var(--text-2);
+}
+
+/* Message timestamp — mono meta */
+.message-time {
+  color: var(--text-3);
+}
+
+.message-actions {
+  display: flex;
+  gap: 0.125rem;
+}
+
 .message-action-button {
   background: none;
   border: none;
-  color: var(--text-secondary);
+  border-radius: var(--radius-sm);
+  color: var(--text-3);
   cursor: pointer;
   width: 1.75rem;
   height: 1.75rem;
-  border-radius: 0.25rem;
   display: flex;
   align-items: center;
   justify-content: center;
   padding: 0;
-  transition: color 0.2s ease, background-color 0.2s ease, transform 0.15s ease;
+  transition: color var(--dur-fast) var(--ease-standard), background var(--dur-fast) var(--ease-standard);
 }
 
 .message-action-button:hover {
-  color: var(--accent-primary);
-  /* background-color: var(--bg-toolbar-hover); */
+  color: var(--accent);
+  background: var(--panel);
 }
 
 .message-action-button:active {
   transform: scale(0.95);
-  /* background-color: var(--bg-toolbar-active); */
 }
 
-
-/* Placeholder for streaming class - will be implemented later */
-/* .chat-message.streaming {
-} */
+/* Streaming caret */
+.chat-message.streaming .message-content::after {
+  content: '';
+  display: inline-block;
+  width: 0.5rem;
+  height: 1rem;
+  background: var(--accent);
+  vertical-align: -0.1875rem;
+  margin-left: 0.125rem;
+  animation: caret-blink 1s steps(1) infinite;
+}

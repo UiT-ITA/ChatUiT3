@@ -2,13 +2,15 @@ import React, { useEffect, useRef } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import ChatHistory from './ChatHistory'
 import ChatInput from './ChatInput'
+import ConversationPanel from './ConversationPanel'
 import NewChatWelcome from './NewChatWelcome'
 import './ChatPage.css'
-import { clearSidebarContent, setChatSidebar } from '../../services/sidebarService'
 import { setCurrentChatId, getChatNotFound } from '../../services/chatService'
+import { conversationPanelOpenSignal } from '../../services/uiService'
 import { useSignals } from '@preact/signals-react/runtime'
 import { addNotification } from '../../services/notificationService'
 import { useChatCache } from '../../hooks/useChatCache'
+import useMediaQuery from '../../hooks/useMediaQuery'
 
 const ChatPage: React.FC = () => {
   useSignals()
@@ -18,16 +20,17 @@ const ChatPage: React.FC = () => {
   const notFound = chatId ? getChatNotFound(chatId) : undefined
   const mountedChatsRef = useRef<Map<string, React.ReactElement>>(new Map())
   const cachedIds = useChatCache(chatId)
+  const isWide = useMediaQuery('(min-width: 1100px)')
 
   const currentIds = new Set(cachedIds)
   const mountedIds = new Set(mountedChatsRef.current.keys())
-  
+
   for (const id of mountedIds) {
     if (!currentIds.has(id)) {
       mountedChatsRef.current.delete(id)
     }
   }
-  
+
   for (const id of currentIds) {
     if (!mountedChatsRef.current.has(id)) {
       mountedChatsRef.current.set(id, <ChatHistory key={id} chatId={id} />)
@@ -36,10 +39,8 @@ const ChatPage: React.FC = () => {
 
   useEffect(() => {
     setCurrentChatId(chatId)
-    setChatSidebar()
     return () => {
       setCurrentChatId(undefined)
-      clearSidebarContent()
     }
   }, [chatId])
 
@@ -51,28 +52,31 @@ const ChatPage: React.FC = () => {
     }
   }, [chatId, notFound?.value, navigate])
 
+  const showPanel = chatId !== undefined && conversationPanelOpenSignal.value && isWide
+
   return (
     <div className="chat-page">
-      {chatId === undefined ? (
-        <NewChatWelcome />
-      ) : (
-        <>
-          {Array.from(mountedChatsRef.current.entries()).map(([id, component]) => (
-            <div
-              key={id}
-              style={{
-                display: id === chatId ? 'flex' : 'none',
-                flex: 1,
-                flexDirection: 'column',
-                minHeight: 0
-              }}
-            >
-              {component}
-            </div>
-          ))}
-        </>
-      )}
-      <ChatInput />
+      <div className="chat-page-body">
+        <div className="chat-page-main">
+          {chatId === undefined ? (
+            <NewChatWelcome />
+          ) : (
+            <>
+              {Array.from(mountedChatsRef.current.entries()).map(([id, component]) => (
+                <div
+                  key={id}
+                  className="chat-page-history"
+                  style={{ display: id === chatId ? 'flex' : 'none' }}
+                >
+                  {component}
+                </div>
+              ))}
+            </>
+          )}
+          <ChatInput />
+        </div>
+        {showPanel && <ConversationPanel chatId={chatId} />}
+      </div>
     </div>
   )
 }

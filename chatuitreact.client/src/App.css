@@ -14,26 +14,69 @@ html, body, #root {
   overflow-x: auto;
 }
 
-/* Root element styling */
 #root {
-    display: flex;
-    flex-direction: column;
-    width: 100%;
-    height: 100%;
-    background-color: var(--bg-primary);
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  height: 100%;
+  background-color: var(--bg);
 }
 
-/* Global typography */
+/* Base text setup — the faces themselves live in styles/typography.css */
 :root {
-  font-family: 'Inter', system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
   line-height: 1.5;
-  font-weight: 400;
+  color: var(--text);
+  background: var(--bg);
+  -webkit-font-smoothing: antialiased;
 }
 
-/* Global table styling */
-th, td {
-  padding-left: var(--padding-xl);
-  padding-right: var(--padding-xl);
+a {
+  color: var(--accent);
+  text-decoration: underline;
+  text-underline-offset: 0.125rem;
+}
+
+a:hover {
+  color: var(--brand);
+}
+
+::selection {
+  background: var(--sel-bg);
+  color: var(--sel-fg);
+}
+
+:focus-visible {
+  outline: var(--focus-ring);
+  outline-offset: 2px;
+}
+
+/* Default colours for the typography roles (faces defined in typography.css) */
+.t-overline {
+  color: var(--text-3);
+}
+
+.t-page-title {
+  color: var(--text);
+}
+
+/* Accent underline bar under a page title — recurring design element */
+.page-title-bar {
+  width: 6rem;
+  height: 4px;
+  background: var(--accent-2);
+  margin: 0.75rem 0 0.875rem;
+}
+
+/* Menu fade-in */
+@keyframes fade-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+/* Streaming caret blink */
+@keyframes caret-blink {
+  0%, 49% { opacity: 1; }
+  50%, 100% { opacity: 0; }
 }
 
 /* Global loading container */
@@ -42,53 +85,33 @@ th, td {
   justify-content: center;
   align-items: center;
   height: 100vh;
-  font-size: var(--font-xl);
-  color: var(--text-secondary);
+  color: var(--text-3);
 }
-
-/* Home page content */
-.authenticated-content,
-.unauthenticated-content {
-  padding: var(--padding-2xl);
-  color: var(--text-primary);
-}
-
-.authenticated-content h2,
-.unauthenticated-content h2 {
-  font-size: var(--font-xl);
-  margin-bottom: var(--margin-lg);
-  color: var(--text-primary);
-}
-
-.authenticated-content p,
-.unauthenticated-content p {
-  font-size: var(--font-base);
-  color: var(--text-secondary);
-  line-height: 1.6;
-}
-
 
 /* Custom Scrollbars */
 ::-webkit-scrollbar {
-    width: 0.5rem;
+  width: 0.625rem;
+  height: 0.625rem;
 }
 
 ::-webkit-scrollbar-track {
-    background: var(--scrollbar-track);
+  background: transparent;
 }
 
 ::-webkit-scrollbar-thumb {
-    background: var(--scrollbar-thumb);
-    border-radius: 0.25rem;
+  background: var(--line);
+  border: 3px solid transparent;
+  background-clip: content-box;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-    background: var(--scrollbar-thumb-hover);
+  background: var(--text-3);
+  border: 3px solid transparent;
+  background-clip: content-box;
 }
 
 @-moz-document url-prefix() {
-    * {
-        scrollbar-color: var(--scrollbar-thumb) var(--scrollbar-track);
-        /* No scrollbar-width = keeps default thickness & usability */
-    }
+  * {
+    scrollbar-color: var(--line) transparent;
+  }
 }

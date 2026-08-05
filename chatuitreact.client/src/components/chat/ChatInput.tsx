@@ -18,6 +18,7 @@ export default function ChatInput() {
   const navigate = useNavigate();
 
   const [selectedFiles, setSelectedFiles] = useState<ChatFile[]>([]);
+  const [charCount, setCharCount] = useState(0);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
@@ -60,6 +61,7 @@ export default function ChatInput() {
       textareaRef.current.value = '';
     }
     setSelectedFiles([]);
+    setCharCount(0);
 
     if (textareaRef.current) {
       textareaRef.current.focus();
@@ -122,49 +124,52 @@ export default function ChatInput() {
 
   return (
     <div className="chat-input">
-      <div className="outer-container">
-        {selectedFiles.length > 0 && (
-          <div className="input-file-previews">
-            {selectedFiles.map((file, index) => (
-              <FileThumbnail
-                key={`${file.id}-${index}`}
-                file={file}
-                onRemove={() => removeFile(index)}
-                showRemoveButton={true}
-              />
-            ))}
-          </div>
-        )}
-
-        <form className="inner-container" onSubmit={handleSendMessage}>
-          <div className="tools-container">
-            <div className="spacer-div"></div>
-            <div className="tools-expand">
-              <Icon name="more" size={1.75} className="icon" />
+      <div className="composer">
+        <form className="composer-card" onSubmit={handleSendMessage}>
+          {selectedFiles.length > 0 && (
+            <div className="composer-file-previews">
+              {selectedFiles.map((file, index) => (
+                <FileThumbnail
+                  key={`${file.id}-${index}`}
+                  file={file}
+                  onRemove={() => removeFile(index)}
+                  showRemoveButton={true}
+                />
+              ))}
             </div>
-            <button type="button" className="attach" onClick={handleFileUpload}>
-              <Icon name="attach" size={1.75} className="icon" />
+          )}
+
+          <textarea
+            ref={textareaRef}
+            className="composer-textarea t-body-lg"
+            rows={2}
+            placeholder={t('chat.messagePlaceholder')}
+            onKeyDown={handleKeyDown}
+            onChange={(e) => setCharCount(e.target.value.length)}
+          />
+
+          <div className="composer-toolbar">
+            <button
+              type="button"
+              className="composer-tool-button"
+              onClick={handleFileUpload}
+              title={t('chat.attachFile')}
+            >
+              <Icon name="attach" size={1.0625} className="icon" />
             </button>
-            <div className="assistant-selector-wrapper">
-              <AssistantSelector />
-            </div>
-          </div>
-
-          <div className="input-container">
-            <textarea
-              ref={textareaRef}
-              className="input-box"
-              placeholder={t('chat.messagePlaceholder')}
-              onKeyDown={handleKeyDown}
-            />
-          </div>
+            <AssistantSelector className="composer-assistant" />
+            <div className="composer-spacer" />
+            {charCount > 0 && (
+              <div className="composer-char-count t-meta">{t('chat.charCount', { count: charCount })}</div>
+            )}
             <button
               type="submit"
-              className="send-container"
+              className="composer-send t-ui"
               title={t('chat.sendMessage')}
             >
-              <Icon name="send" size={1.75} className="icon" />
+              <Icon name="send" size={0.9375} className="icon" />
             </button>
+          </div>
 
           <input
             type="file"
@@ -175,8 +180,12 @@ export default function ChatInput() {
             accept={SUPPORTED_IMPORT_ACCEPT}
           />
         </form>
+
+        <div className="composer-hints t-hint">
+          <span className="composer-hint-keys">{t('chat.enterHint')}</span>
+          <span>{t('chat.disclaimer')}</span>
+        </div>
       </div>
     </div>
   );
 }
-

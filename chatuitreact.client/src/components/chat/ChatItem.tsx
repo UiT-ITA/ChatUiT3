@@ -9,6 +9,7 @@ import type { ChatHeaderDto } from "../../types/chatModels";
 
 interface ChatItemProps {
   chat: ChatHeaderDto;
+  onNavigate?: () => void;
 }
 
 interface MenuState {
@@ -17,7 +18,7 @@ interface MenuState {
   y: number;
 }
 
-export function ChatItem({ chat }: ChatItemProps) {
+export function ChatItem({ chat, onNavigate }: ChatItemProps) {
   useSignals();
   const { t } = useTranslation();
   const [menu, setMenu] = useState<MenuState | null>(null);
@@ -46,6 +47,7 @@ export function ChatItem({ chat }: ChatItemProps) {
 
   const handleChatClick = (chat: ChatHeaderDto) => {
     navigate(`/chat/${chat.id}`);
+    onNavigate?.();
   };
 
   const handleMoreClick = (
@@ -77,7 +79,7 @@ export function ChatItem({ chat }: ChatItemProps) {
         title={chat.name}
         onClick={() => handleChatClick(chat)}
       >
-        <span className="chat-item-main">
+        <span className="chat-item-main t-ui">
           {chat.name}
         </span>
         <span
@@ -106,7 +108,7 @@ export function ChatItem({ chat }: ChatItemProps) {
                   e.stopPropagation();
                   handleMenuClick(option, menu.chat);
                 }}
-                className="chat-context-menu-item"
+                className="chat-context-menu-item t-ui-plain"
               >
                 <span className="menu-icon">{option.icon}</span>
                 <span>{option.label}</span>

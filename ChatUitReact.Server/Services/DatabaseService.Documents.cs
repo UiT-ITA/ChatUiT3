@@ -33,6 +33,7 @@ public partial class DatabaseService
         public CosmosContainerOptions Models { get; set; } = new CosmosContainerOptions { Name = "Models", PartitionKeyPath = "/partitionKey" };
         public CosmosContainerOptions ModelEndpoints { get; set; } = new CosmosContainerOptions { Name = "ModelEndpoints", PartitionKeyPath = "/partitionKey" };
         public CosmosContainerOptions Assistants { get; set; } = new CosmosContainerOptions { Name = "Assistants", PartitionKeyPath = "/partitionKey" };
+        public CosmosContainerOptions AssistantContent { get; set; } = new CosmosContainerOptions { Name = "AssistantContent", PartitionKeyPath = "/assistantId" };
     }
 
     private sealed class CosmosContainerOptions
@@ -211,8 +212,53 @@ public partial class DatabaseService
         [JsonProperty("chatSettings")]
         public AssistantChatSettingsDocument ChatSettings { get; set; } = new();
 
+        [JsonProperty("files")]
+        public List<StoredAssistantFileDocument> Files { get; set; } = new();
+
         [JsonProperty("ownerId")]
         public string OwnerId { get; set; } = string.Empty;
+    }
+
+    private sealed class StoredAssistantFileDocument
+    {
+        [JsonProperty("id")]
+        public string Id { get; set; } = string.Empty;
+
+        [JsonProperty("sourceFilename")]
+        public string SourceFilename { get; set; } = string.Empty;
+
+        [JsonProperty("category")]
+        public string Category { get; set; } = AssistantFileCategories.AlwaysLoaded;
+
+        [JsonProperty("description")]
+        public string? Description { get; set; }
+
+        [JsonProperty("chunks")]
+        public List<StoredFileChunkDocument> Chunks { get; set; } = new();
+    }
+
+    private sealed class AssistantContentBlockDocument
+    {
+        [JsonProperty("id")]
+        public string Id { get; set; } = string.Empty;
+
+        [JsonProperty("assistantId")]
+        public string AssistantId { get; set; } = string.Empty;
+
+        [JsonProperty("ownerId")]
+        public string OwnerId { get; set; } = string.Empty;
+
+        [JsonProperty("contentType")]
+        public StoredContentType ContentType { get; set; }
+
+        [JsonProperty("chunkIndex")]
+        public int ChunkIndex { get; set; }
+
+        [JsonProperty("isEncrypted")]
+        public bool IsEncrypted { get; set; }
+
+        [JsonProperty("payload")]
+        public string Payload { get; set; } = string.Empty;
     }
 
     private sealed class AssistantChatSettingsDocument

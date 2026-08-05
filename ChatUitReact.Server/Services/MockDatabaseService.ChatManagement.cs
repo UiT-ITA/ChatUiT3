@@ -12,12 +12,24 @@ public partial class MockDatabaseService
         return Task.FromResult(chatHeaders);
     }
 
-    public Task<Chat?> GetChatByIdAsync(string userId, string chatId)
+    public Task<Chat?> GetChatByIdAsync(string userId, string chatId, bool includeFileContent = true)
     {
         AddUser(userId);
 
         var chat = _chatStorage[userId].FirstOrDefault(c => c.Id == chatId);
         return Task.FromResult(chat != null ? DeepCopyChat(chat) : null);
+    }
+
+    public Task<ChatFile?> GetChatFileAsync(string userId, string chatId, string fileId)
+    {
+        AddUser(userId);
+
+        var chat = _chatStorage[userId].FirstOrDefault(c => c.Id == chatId);
+        var file = chat?.Messages
+            .SelectMany(message => message.Files)
+            .FirstOrDefault(f => f.Id == fileId);
+
+        return Task.FromResult(file);
     }
 
     public Task AddChatAsync(string userId, Chat chat)

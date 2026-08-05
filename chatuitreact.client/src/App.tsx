@@ -6,9 +6,11 @@ import MainLayout from './components/layout/MainLayout';
 import LoadingIndicator from './components/common/LoadingIndicator';
 import './App.css';
 import './styles/theme.css';
+import './styles/typography.css';
 import ChatPage from './components/chat/ChatPage';
 import AssistantsPage from './components/assistants/AssistantsPage';
 import AdminPage from './components/admin/AdminPage';
+import SettingsPage from './components/settings/SettingsPage';
 import ProtectedRoute from './components/common/ProtectedRoute';
 
 const App: React.FC = () => {
@@ -40,13 +42,32 @@ const App: React.FC = () => {
           <Route path="/chat/new" element={<ChatPage />} />
           <Route path="/chat/:chatId" element={<ChatPage />} />
           <Route path="/assistants" element={<AssistantsPage />} />
-          <Route 
-            path="/admin" 
+          <Route path="/assistants/:assistantId" element={<AssistantsPage />} />
+          <Route path="/settings" element={<SettingsPage />} />
+          <Route path="/settings/:tab" element={<SettingsPage />} />
+          <Route
+            path="/admin"
             element={
               <ProtectedRoute requiredRole="admin">
                 <AdminPage />
               </ProtectedRoute>
-            } 
+            }
+          />
+          <Route
+            path="/admin/:tab"
+            element={
+              <ProtectedRoute requiredRole="admin">
+                <AdminPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/admin/:tab/:id"
+            element={
+              <ProtectedRoute requiredRole="admin">
+                <AdminPage />
+              </ProtectedRoute>
+            }
           />
           <Route path="*" element={<Navigate to="/" replace />} />
         </Route>

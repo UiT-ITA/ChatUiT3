@@ -1,13 +1,11 @@
 import { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'
-import { PublicClientApplication, EventType } from '@azure/msal-browser'
+import { EventType } from '@azure/msal-browser'
 import { MsalProvider } from '@azure/msal-react'
-import { msalConfig } from './authConfig'
+import { msalInstance } from './msalInstance'
 import App from './App.tsx'
 import { AuthProvider } from './contexts/AuthContext.tsx'
 import { SettingsProvider } from './contexts/SettingsContext.tsx'
-
-export const msalInstance = new PublicClientApplication(msalConfig)
 
 msalInstance.initialize().then(() => {
   if (!msalInstance.getActiveAccount() && msalInstance.getAllAccounts().length > 0) {

@@ -23,10 +23,11 @@ import { getCodeblockTheme } from '../../utils/themeUtils';
 
 interface ChatMessageProps {
   message: ChatMessageDto;
+  assistantName?: string;
   onStreamingChunk?: () => void;
 }
 
-function ChatMessage({ message, onStreamingChunk }: ChatMessageProps) {
+function ChatMessage({ message, assistantName, onStreamingChunk }: ChatMessageProps) {
   useSignals();
   const { t } = useTranslation();
   const { settings } = useSettings();
@@ -40,9 +41,9 @@ function ChatMessage({ message, onStreamingChunk }: ChatMessageProps) {
   };
 
   const currentCodeblockStyle = useMemo(() => {
-    const themeName = getCodeblockTheme(settings.theme);
+    const themeName = getCodeblockTheme(settings.mode);
     return styleMap[themeName as keyof typeof styleMap] || atomDark;
-  }, [settings.theme]);
+  }, [settings.mode]);
 
   const streamSignal = useMemo(() => {
     return message.status === "Generating" ? getStreamSignal(message.id) : null;
@@ -132,9 +133,9 @@ function ChatMessage({ message, onStreamingChunk }: ChatMessageProps) {
           return (
             <div className="code-block-wrapper">
               <div className="code-block-header">
-                <span className="language-name">Mermaid Diagram</span>
+                <span className="language-name t-overline">Mermaid Diagram</span>
                 <button
-                  className="copy-code-button"
+                  className="copy-code-button t-caption-strong"
                   onClick={() => handleCopyCode(codeText)}
                   title={t('chat.actions.copyCode')}
                 >
@@ -150,9 +151,9 @@ function ChatMessage({ message, onStreamingChunk }: ChatMessageProps) {
         return (
           <div className="code-block-wrapper">
             <div className="code-block-header">
-              <span className="language-name">{language}</span>
+              <span className="language-name t-overline">{language}</span>
               <button
-                className="copy-code-button"
+                className="copy-code-button t-caption-strong"
                 onClick={() => handleCopyCode(codeText)}
                 title={t('chat.actions.copyCode')}
               >
@@ -193,6 +194,15 @@ function ChatMessage({ message, onStreamingChunk }: ChatMessageProps) {
 
   return (
     <div className={`chat-message ${isUser ? 'user-message' : isAssistant ? 'assistant-message' : 'system-message'} ${isStreaming ? 'streaming' : ''}`}>
+      {isAssistant && (
+        <div className="message-meta">
+          <span className="message-meta-name t-overline">{assistantName || t('chat.assistantLabel')}</span>
+          <span className="message-time t-meta">
+            {new Date(message.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+          </span>
+        </div>
+      )}
+
       {message.files && message.files.length > 0 && (
         <div className="message-files">
           <div className="message-file-previews">
@@ -234,7 +244,7 @@ function ChatMessage({ message, onStreamingChunk }: ChatMessageProps) {
       <div className="message-toolbar">
         {isUser ? (
           <>
-            <span className="message-time">
+            <span className="message-time t-meta">
               {new Date(message.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
             </span>
             <div className="message-actions">
@@ -266,9 +276,6 @@ function ChatMessage({ message, onStreamingChunk }: ChatMessageProps) {
                 </>
               )}
             </div>
-            <span className="message-time">
-              {new Date(message.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-            </span>
           </>
         )}
       </div>

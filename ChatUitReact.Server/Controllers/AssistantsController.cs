@@ -56,6 +56,27 @@ public class AssistantsController : ControllerBase
         }
     }
 
+    [HttpGet("{assistantId}/files/{fileId}")]
+    public async Task<ActionResult<AssistantFileDto>> GetAssistantFile(string assistantId, string fileId)
+    {
+        try
+        {
+            var file = await _assistantService.GetAssistantFileDtoAsync(assistantId, fileId);
+
+            if (file == null)
+            {
+                return NotFound("File not found");
+            }
+
+            return Ok(file);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error getting file {FileId} for assistant {AssistantId}", fileId, assistantId);
+            return StatusCode(500, "Internal server error");
+        }
+    }
+
     [HttpPost]
     public async Task<ActionResult> CreateAssistant([FromBody] CreateAssistantDto createDto)
     {

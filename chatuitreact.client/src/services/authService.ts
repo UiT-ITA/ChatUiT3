@@ -1,5 +1,5 @@
 import { AccountInfo, InteractionRequiredAuthError, BrowserAuthError } from "@azure/msal-browser";
-import { msalInstance } from "../main";
+import { msalInstance } from "../msalInstance";
 import { loginRequest, apiRequest } from "../authConfig";
 
 class AuthService {

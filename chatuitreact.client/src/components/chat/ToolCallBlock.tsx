@@ -43,28 +43,28 @@ export default function ToolCallBlock({
 
   return (
     <details className={`toolcall ${isComplete ? "complete" : "running"}`}>
-      <summary className="toolcall-summary">
+      <summary className="toolcall-summary t-ui-plain">
         <span className="toolcall-title-clip">
-          <strong className="toolcall-name">{functionName ?? t('toolCall.defaultName')}</strong>
+          <strong className="toolcall-name t-overline">{functionName ?? t('toolCall.defaultName')}</strong>
           {functionName ? (
-            <span className="toolcall-args-inline">({argsPreview})</span>
+            <span className="toolcall-args-inline t-meta">({argsPreview})</span>
           ) : (
             <span>: {functionLine}</span>
           )}
         </span>
-        <span className="toolcall-status">{isComplete ? t('chat.status.done') : t('chat.status.running')}</span>
+        <span className="toolcall-status t-overline">{isComplete ? t('chat.status.done') : t('chat.status.running')}</span>
       </summary>
       <div className="toolcall-body">
         {argsText && (
           <div className="toolcall-section">
-            <div className="toolcall-title">{t('toolCall.arguments')}</div>
-            <pre className="toolcall-pre">{prettyArgs}</pre>
+            <div className="toolcall-title t-overline">{t('toolCall.arguments')}</div>
+            <pre className="toolcall-pre t-code">{prettyArgs}</pre>
           </div>
         )}
         {resultText && (
           <div className="toolcall-section">
-            <div className="toolcall-title">{t('toolCall.result')}</div>
-            <pre className="toolcall-pre">{prettyResult}</pre>
+            <div className="toolcall-title t-overline">{t('toolCall.result')}</div>
+            <pre className="toolcall-pre t-code">{prettyResult}</pre>
           </div>
         )}
       </div>

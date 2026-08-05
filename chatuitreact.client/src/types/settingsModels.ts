@@ -1,6 +1,7 @@
 export interface AppSettings {
   // Appearance
-  theme: 'light' | 'dim' | 'dark';
+  theme: 'blue' | 'grey';
+  mode: 'light' | 'dark' | 'system';
   size: 'small' | 'medium' | 'large' | 'xl';
   language: 'en-US' | 'no-NB';
   
@@ -19,7 +20,8 @@ export interface AppSettings {
 
 export const DEFAULT_SETTINGS: AppSettings = {
   // Appearance
-  theme: 'dim',
+  theme: 'blue',
+  mode: 'system',
   size: 'medium',
   language: 'en-US',
   

@@ -3,34 +3,34 @@
   z-index: 1000;
   display: flex;
   flex-direction: column;
-  gap: 8px;
-  max-width: 420px;
+  gap: 0.5rem;
+  max-width: 26.25rem;
   pointer-events: none;
 }
 
 .toast-container.top-right {
-  top: 16px;
-  right: 16px;
+  top: 1rem;
+  right: 1rem;
 }
 
 .toast {
   display: flex;
   align-items: flex-start;
-  gap: 12px;
-  border-radius: 8px;
-  padding: 10px 12px;
-  color: #0f172a;
-  background: #f8fafc;
-  border: 1px solid #e2e8f0;
-  box-shadow: 0 6px 16px rgba(0,0,0,0.08);
+  gap: 0.75rem;
+  padding: 0.625rem 0.75rem;
+  color: var(--text);
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-top: 3px solid var(--accent-2);
+  box-shadow: var(--shadow-overlay);
   pointer-events: auto;
+  animation: fade-in 140ms ease;
 }
 
 .toast .toast-message {
   flex: 1;
   white-space: pre-wrap;
   word-break: break-word;
-  font-size: 14px;
   line-height: 1.35;
 }
 
@@ -38,33 +38,29 @@
   border: none;
   background: transparent;
   color: inherit;
-  font-size: 18px;
   cursor: pointer;
-  padding: 0 4px;
+  padding: 0 0.25rem;
   line-height: 1;
   opacity: 0.7;
 }
+
 .toast .toast-close:hover {
   opacity: 1;
 }
 
-/* Level variants */
+/* Level variants — accent bar carries the status colour */
 .toast-info {
-  border-color: #93c5fd;
-  background: #eff6ff;
+  border-top-color: var(--accent);
 }
 
 .toast-success {
-  border-color: #86efac;
-  background: #f0fdf4;
+  border-top-color: var(--success);
 }
 
 .toast-warning {
-  border-color: #facc15;
-  background: #fefce8;
+  border-top-color: var(--warn);
 }
 
 .toast-error {
-  border-color: #f87171;
-  background: #fef2f2;
+  border-top-color: var(--danger);
 }

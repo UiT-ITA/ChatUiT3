@@ -123,7 +123,7 @@ export const Dialog: React.FC<DialogProps> = ({
         <div className={`dialog-container dialog-size-${size}`} onClick={(e) => e.stopPropagation()}>
           {/* Header */}
           <div className="dialog-header">
-            <h2 className="dialog-title">{title}</h2>
+            <h2 className="dialog-title t-title">{title}</h2>
             <button className="dialog-close-button" onClick={onClose}>
               <Icon name="close" size={1.5} />
             </button>
@@ -138,7 +138,7 @@ export const Dialog: React.FC<DialogProps> = ({
                   return (
                     <button
                       key={id}
-                      className={`dialog-sidebar-button ${activePageId === id ? 'active' : ''}`}
+                      className={`dialog-sidebar-button t-ui ${activePageId === id ? 'active' : ''}`}
                       onClick={() => setActivePageId(id)}
                     >
                       {icon && <Icon name={icon} size={1.2} />}
@@ -198,7 +198,7 @@ export const DialogButton: React.FC<DialogButtonProps> = ({
 }) => {
   return (
     <button
-      className={`dialog-button dialog-button-${variant}`}
+      className={`dialog-button dialog-button-${variant} t-ui`}
       onClick={onClick}
       disabled={disabled || loading}
     >

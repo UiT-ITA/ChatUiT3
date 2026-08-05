@@ -1,17 +1,16 @@
 /* ===================================================
    Chat Message Markdown Styling
-   ===================================================
-   
-   This file contains all markdown-specific styling for
-   chat messages, separated from component layout styles.
-*/
+   =================================================== */
 
 /* ===================================================
    HEADERS
    =================================================== */
 .message-content :is(h1, h2, h3, h4, h5, h6) {
   margin-top: 1.5rem;
+  color: var(--text);
+  line-height: 1.2;
 }
+
 
 .message-content :is(h1, h2, h3, h4, h5, h6) + p {
   margin-top: 0rem;
@@ -35,7 +34,7 @@
 }
 
 /* ===================================================
-   LISTS - FIXED INDENTATION
+   LISTS
    =================================================== */
 .message-content ul,
 .message-content ol {
@@ -44,14 +43,12 @@
   list-style-position: outside;
 }
 
-/* Root level list items */
 .message-content ul > li,
 .message-content ol > li {
   margin: 0.25rem 0;
   margin-left: 1.5rem;
 }
 
-/* Nested lists - proper indentation */
 .message-content li ul,
 .message-content li ol {
   margin: 0.25rem 0;
@@ -59,14 +56,12 @@
   padding-left: 0;
 }
 
-/* Nested list items */
 .message-content li ul > li,
 .message-content li ol > li {
   margin: 0.125rem 0;
   margin-left: 1.5rem;
 }
 
-/* Third level nesting */
 .message-content li li ul,
 .message-content li li ol {
   margin-left: 1.5rem;
@@ -77,39 +72,38 @@
   margin-left: 1.5rem;
 }
 
+.message-content ol > li::marker {
+  color: var(--accent);
+}
+
 /* ===================================================
-   TABLES
+   TABLES — flat, brand rule under the header
    =================================================== */
+.message-content .table-wrapper,
+.message-content table {
+  margin: 1rem 0;
+}
+
 .message-content table {
   border-collapse: collapse;
-  border: 1px solid var(--border-primary);
-  margin: 1rem 0;
   width: 100%;
-  font-size: 0.875rem;
-  background-color: var(--bg-secondary);
 }
 
 .message-content th {
-  background-color: var(--bg-code-header);
-  border: 1px solid var(--border-primary);
-  padding: 0.75rem;
+  border-bottom: 2px solid var(--brand);
+  padding: 0.4375rem 0.625rem;
   text-align: left;
-  font-weight: 600;
-  color: var(--text-primary);
+  color: var(--text);
 }
 
 .message-content td {
-  border: 1px solid var(--border-primary);
-  padding: 0.75rem;
-  color: var(--text-primary);
+  border-bottom: 1px solid var(--line-soft);
+  padding: 0.5rem 0.625rem;
+  color: var(--text-2);
 }
 
-.message-content tr:nth-child(even) {
-  background-color: var(--bg-tertiary);
-}
-
-.message-content tr:hover {
-  background-color: var(--bg-accent-hover);
+.message-content td:first-child {
+  color: var(--text);
 }
 
 /* ===================================================
@@ -119,16 +113,42 @@
   max-width: 100%;
   height: auto;
   display: block;
-  border-radius: 0.25rem;
+  border-radius: var(--radius-sm);
   margin: 0.5rem 0;
 }
 
 /* ===================================================
-   CODE BLOCKS
+   INLINE CODE
+   =================================================== */
+.message-content :not(pre) > code {
+  background: var(--code-bg);
+  border: 1px solid var(--line-soft);
+  border-radius: var(--radius-sm);
+  padding: 0.0625rem 0.3125rem;
+}
+
+/* ===================================================
+   BLOCKQUOTE + HR
+   =================================================== */
+.message-content blockquote {
+  margin: 0.75rem 0;
+  padding: 0.125rem 0 0.125rem 0.875rem;
+  border-left: 3px solid var(--accent-2);
+  color: var(--text-2);
+}
+
+.message-content hr {
+  border: none;
+  border-top: 1px solid var(--line);
+  margin: 1.25rem 0;
+}
+
+/* ===================================================
+   CODE BLOCKS — header bar with label + copy button
    =================================================== */
 .message-content .code-block-wrapper {
-  border: 1px solid var(--border-primary);
-  border-radius: 0.5rem;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-md);
   margin: 0.625rem 0;
   overflow: hidden;
   position: relative;
@@ -138,37 +158,29 @@
   display: flex;
   justify-content: space-between;
   align-items: center;
-  background-color: var(--bg-code-header);
-  padding: 0.375rem 0.75rem;
-  color: var(--text-primary);
-  font-size: 0.875rem;
-  border-bottom: 1px solid var(--border-primary);
+  background: var(--panel);
+  padding: 0.375rem 0.625rem;
+  border-bottom: 1px solid var(--line);
 }
 
 .message-content .language-name {
-  text-transform: lowercase;
+  color: var(--text-3);
 }
 
 .message-content .copy-code-button {
-  background-color: var(--bg-code-button);
-  color: var(--text-primary);
+  background: transparent;
+  color: var(--text-2);
   border: none;
-  border-radius: 0.25rem;
-  padding: 0.25rem 0.5rem;
   cursor: pointer;
-  font-size: 0.8125rem;
   display: flex;
   align-items: center;
-  gap: 0.25rem;
-  transition: background-color 0.2s ease;
+  gap: 0.3125rem;
+  padding: 0.125rem 0.25rem;
+  transition: color var(--dur-fast) var(--ease-standard);
 }
 
 .message-content .copy-code-button:hover {
-  background-color: var(--bg-accent-hover);
-}
-
-.message-content .copy-code-button:active {
-  background-color: var(--bg-accent-active);
+  color: var(--accent);
 }
 
 .message-content .code-block-wrapper > div,
@@ -179,42 +191,46 @@
 
 .message-content .code-block-wrapper div[class*="syntax-highlighter"] {
   margin: 0 !important;
-  padding: 1rem !important;
-  border-radius: 0 0 0.5rem 0.5rem !important;
+  padding: 0.75rem !important;
+  border-radius: 0 !important;
   overflow-x: auto;
-  background-color: var(--bg-code-block) !important;
+  background-color: var(--code-bg) !important;
+}
+
+.message-content .code-block-wrapper pre,
+.message-content .code-block-wrapper code {
+  line-height: 1.6 !important;
 }
 
 /* ===================================================
    CONTENT SPACING ADJUSTMENTS
    =================================================== */
-/* Negative margins to keep bubbles compact while allowing internal spacing */
 .message-content > *:first-child {
-  margin-top: -0.375rem;
+  margin-top: 0;
 }
 
 .message-content > *:last-child {
-  margin-bottom: -0.375rem;
+  margin-bottom: 0;
 }
 
+/* ===================================================
+   LINKS
+   =================================================== */
 .message-content a,
 .message-content a:visited {
-  color: inherit;
-  text-decoration: none;
-  border-bottom: 1px dotted currentColor;
+  color: var(--accent);
+  text-decoration: underline;
+  text-underline-offset: 0.125rem;
 }
 
 .message-content a:hover,
 .message-content a:focus-visible {
-  color: var(--accent-primary);
-  border-bottom-color: currentColor;
-  outline: none;
+  color: var(--brand);
 }
 
 .message-content a::after {
   content: "↗";
   margin-left: 0.25rem;
-  font-size: 0.85em;
   opacity: 0.8;
   color: currentColor;
 }

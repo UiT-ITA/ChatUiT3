@@ -47,17 +47,17 @@ export default function AssistantSelector({ className }: AssistantSelectorProps)
     <div className={`assistant-selector-container ${className || ''}`} ref={selectorRef}>
       <button 
         type="button"
-        className="assistant-selector-button"
+        className="assistant-selector-button t-ui"
         onClick={toggleDropdown}
         title={t('welcome.selectAssistant')}
       >
         <div className="assistant-icon">
-          <Icon name="assistants" size={1.75} className="icon" />
+          <Icon name="assistants" size={1} className="icon" />
         </div>
         <span className="assistant-name">{selectedAssistant?.name || t('assistants.defaultAssistant')}</span>
-        <Icon 
-          name={isOpen ? "arrowDown" : "arrowUp"} 
-          size={1.25} 
+        <Icon
+          name={isOpen ? "arrowDown" : "arrowUp"}
+          size={0.875}
           className="expand-icon"
         />
       </button>
