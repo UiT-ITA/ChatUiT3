@@ -457,5 +457,10 @@
         }
       }
     }
+  },
+  "initError": {
+    "title": "Noe gikk galt under oppstart av appen",
+    "retry": "Prøv igjen",
+    "signOut": "Logg ut"
   }
 }

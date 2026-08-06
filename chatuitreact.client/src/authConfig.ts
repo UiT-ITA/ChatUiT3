@@ -14,6 +14,11 @@ export const msalConfig = {
     }
 };
 
+// Blank page used as redirect target for silent (iframe) token renewal,
+// so the renewal iframe never loads the full SPA. Must be registered as a
+// SPA redirect URI in the Entra app registration.
+export const silentRedirectUri = `${window.location.origin}/blank.html`;
+
 export const loginRequest = {
     scopes: ["User.Read", "openid", "profile"]
 };

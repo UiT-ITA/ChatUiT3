@@ -464,5 +464,10 @@
         }
       }
     }
+  },
+  "initError": {
+    "title": "Something went wrong while starting the app",
+    "retry": "Retry",
+    "signOut": "Sign out"
   }
 }

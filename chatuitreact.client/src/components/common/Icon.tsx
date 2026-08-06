@@ -1,6 +1,6 @@
 import { PiSidebarSimple } from "react-icons/pi";
 import { VscLayoutSidebarLeft, VscLayoutSidebarLeftOff  } from "react-icons/vsc";
-import { RiSettings3Line, RiChatAiLine, RiAdminLine, RiUserLine, RiRobot2Line, RiMenuLine } from 'react-icons/ri';
+import { RiSettings3Line, RiChat1Line, RiChatAiLine, RiAdminLine, RiUserLine, RiRobot2Line, RiMenuLine } from 'react-icons/ri';
 import { GrHelpBook } from "react-icons/gr";
 import { MdOutlineVpnKey, MdContentCopy, MdCheck, MdRefresh, MdEdit, MdCallSplit, MdKeyboardArrowDown, MdMoreHoriz, MdAttachFile, MdSend, MdKeyboardArrowUp, MdInfo, MdRemoveRedEye, MdPublic, MdPsychology, MdMoreVert, MdClose, MdInsertDriveFile, MdOutlineLightMode, MdOutlineDarkMode, MdSearch, MdAdd, MdArrowBack } from "react-icons/md";
 import { FaStar, FaTrash } from "react-icons/fa";
@@ -10,7 +10,8 @@ const iconMap = {
   sidebarOpen: VscLayoutSidebarLeft, // Not in use
   sidebarToggle: PiSidebarSimple,
   settings: RiSettings3Line,
-  chat: RiChatAiLine,
+  chat: RiChat1Line,
+  chatNew: RiChatAiLine,
   admin: RiAdminLine,
   user: RiUserLine,
   assistants: RiRobot2Line,

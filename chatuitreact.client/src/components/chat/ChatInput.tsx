@@ -1,5 +1,5 @@
 import './ChatInput.css';
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { useSignals } from '@preact/signals-react/runtime';
 import { useTranslation } from 'react-i18next';
 import { sendMessage, getCurrentChatId, getCurrentAssistantId, createChat } from '../../services/chatService';
@@ -25,6 +25,10 @@ export default function ChatInput() {
   const currentChatId = getCurrentChatId();
   const currentAssistantId = getCurrentAssistantId();
   const chatId = currentChatId.value;
+
+  useEffect(() => {
+    textareaRef.current?.focus();
+  }, [chatId]);
 
   const handleSendMessage = async (e: React.FormEvent) => {
     e.preventDefault();

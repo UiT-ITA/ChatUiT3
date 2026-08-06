@@ -9,11 +9,13 @@ interface AuthContextType {
   isInitializing: boolean;
   isSignalRConnected: boolean;
   isAppReady: boolean;
+  initError: string | null;
   account: AccountInfo | null;
   roles: string[];
   isAdmin: boolean;
   login: () => Promise<void>;
   logout: () => void;
+  retryInit: () => void;
   getAccessToken: () => Promise<string | null>;
 }
 
@@ -24,14 +26,20 @@ interface AuthProviderProps {
 }
 
 export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
-  const { accounts } = useMsal();
+  const { instance, accounts } = useMsal();
   const isAuthenticated = useIsAuthenticated();
   const [isInitializing, setIsInitializing] = useState<boolean>(true);
   const [isSignalRConnected, setIsSignalRConnected] = useState<boolean>(false);
+  const [initError, setInitError] = useState<string | null>(null);
+  const [initAttempt, setInitAttempt] = useState<number>(0);
   const [roles, setRoles] = useState<string[]>([]);
   const [isAdmin, setIsAdmin] = useState<boolean>(false);
 
-  const account = accounts[0] || null;
+  // Prefer the active account, but resolve it to the stable object from the
+  // `accounts` array: getActiveAccount() returns a fresh object on every
+  // call, and an unstable identity here re-triggers the init effect forever.
+  const activeHomeAccountId = instance.getActiveAccount()?.homeAccountId;
+  const account = accounts.find(a => a.homeAccountId === activeHomeAccountId) ?? accounts[0] ?? null;
 
   useEffect(() => {
     const initializeApp = async () => {
@@ -48,6 +56,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       try {
         await signalrService.ensureConnection();
         setIsSignalRConnected(signalrService.isConnected());
+        setInitError(null);
 
         const userRoles: string[] = [];
         
@@ -67,13 +76,23 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       } catch (signalrError) {
         console.warn('Failed to start SignalR connection:', signalrError);
         setIsSignalRConnected(false);
+        setInitError(signalrError instanceof Error ? signalrError.message : String(signalrError));
       } finally {
         setIsInitializing(false);
       }
     };
 
     initializeApp();
-  }, [isAuthenticated, account]);
+    // Depend on the account's id, not the object, so an unstable object
+    // identity can never re-trigger this effect in a loop.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isAuthenticated, account?.homeAccountId, initAttempt]);
+
+  const retryInit = () => {
+    setInitError(null);
+    setIsInitializing(true);
+    setInitAttempt(attempt => attempt + 1);
+  };
 
   const isAppReady = isAuthenticated && isSignalRConnected && !isInitializing;
 
@@ -82,11 +101,13 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     isInitializing,
     isSignalRConnected,
     isAppReady,
+    initError,
     account,
     roles,
     isAdmin,
     login: () => authService.login(),
     logout: () => authService.logout(),
+    retryInit,
     getAccessToken: () => authService.getAccessToken(),
   };
 

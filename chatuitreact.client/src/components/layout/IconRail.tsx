@@ -70,7 +70,7 @@ const IconRail = ({ isMobile }: IconRailProps) => {
       )}
 
       <button className="rail-new-chat" onClick={() => go('/chat/new')} title={t('sidebar.newChat')}>
-        <Icon name="add" size={1.25} />
+        <Icon name="chatNew" size={1.25} />
       </button>
 
       {!isMobile && <div className="rail-gap" />}

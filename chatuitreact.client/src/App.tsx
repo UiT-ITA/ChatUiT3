@@ -4,6 +4,7 @@ import { BrowserAuthError } from '@azure/msal-browser';
 import { useAuth } from './contexts/AuthContext';
 import MainLayout from './components/layout/MainLayout';
 import LoadingIndicator from './components/common/LoadingIndicator';
+import InitErrorScreen from './components/common/InitErrorScreen';
 import './App.css';
 import './styles/theme.css';
 import './styles/typography.css';
@@ -14,7 +15,7 @@ import SettingsPage from './components/settings/SettingsPage';
 import ProtectedRoute from './components/common/ProtectedRoute';
 
 const App: React.FC = () => {
-  const { isAuthenticated, isInitializing, isAppReady, login } = useAuth();
+  const { isAuthenticated, isInitializing, isAppReady, initError, login, logout, retryInit } = useAuth();
   const loginInitiatedRef = useRef(false);
 
   useEffect(() => {
@@ -30,6 +31,9 @@ const App: React.FC = () => {
   }, [isInitializing, isAuthenticated, login]);
 
   if (!isAppReady) {
+    if (initError) {
+      return <InitErrorScreen message={initError} onRetry={retryInit} onSignOut={logout} />;
+    }
     return <LoadingIndicator />;
   }
 

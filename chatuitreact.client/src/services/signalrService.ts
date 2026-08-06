@@ -30,8 +30,11 @@ class SignalrService {
     }
 
     this.initPromise = this.initialize();
-    await this.initPromise;
-    this.initPromise = null;
+    try {
+      await this.initPromise;
+    } finally {
+      this.initPromise = null;
+    }
   }
 
   private async initialize(): Promise<void> {
