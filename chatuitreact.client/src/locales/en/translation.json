@@ -32,6 +32,7 @@
     "noChats": "No chats found",
     "moreOptions": "More options",
     "favorite": "Favorite",
+    "unfavorite": "Remove from favorites",
     "rename": "Rename",
     "delete": "Delete"
   },
@@ -53,9 +54,16 @@
     "disclaimer": "ChatUiT can make mistakes. Check important answers against the source.",
     "charCount": "{{count}} characters",
     "groups": {
+      "favorites": "Favorites",
       "today": "Today",
       "yesterday": "Yesterday",
-      "earlier": "Earlier"
+      "lastWeek": "Last week",
+      "thisMonth": "This month",
+      "lastMonth": "Last month"
+    },
+    "deleteDialog": {
+      "title": "Delete chat",
+      "confirm": "Delete \"{{name}}\"? This cannot be undone."
     },
     "panel": {
       "title": "In this conversation",
@@ -87,7 +95,6 @@
     "header": "Welcome to ChatUiT",
     "greeting": "Hello, {{name}}.",
     "subheader": "Ask a question, paste a text, or upload a file.",
-    "chooseAssistant": "Choose your assistant:",
     "selectAssistant": "Select AI assistant",
     "tips": {
       "title": "Tips:",

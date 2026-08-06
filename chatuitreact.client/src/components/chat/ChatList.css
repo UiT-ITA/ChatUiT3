@@ -51,6 +51,29 @@
   white-space: nowrap;
 }
 
+.chat-item-star {
+  display: inline-flex;
+  flex: 0 0 auto;
+  margin-left: 0.5rem;
+  color: var(--accent);
+}
+
+.chat-item-rename-input {
+  flex: 1 1 auto;
+  min-width: 0;
+  background: var(--surface);
+  color: var(--text);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+  padding: 0.0625rem 0.25rem;
+  margin: -0.125rem 0;
+  outline: none;
+}
+
+.chat-item-rename-input:focus {
+  border-color: var(--accent-2);
+}
+
 .chat-item-more {
   display: none;
   margin-left: 0.5rem;

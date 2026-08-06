@@ -43,6 +43,7 @@ export interface ChatHeaderDto {
   createdAt: string;
   updatedAt: string;
   status: AiChatStatus;
+  isFavorite: boolean;
 }
 
 export interface ChatDto extends ChatHeaderDto {
@@ -65,4 +66,9 @@ export interface SendMessageDto {
 export interface CreateChatDto {
   assistantId: string;
   messages: SendMessageDto[];
+}
+
+export interface UpdateChatDto {
+  name?: string;
+  isFavorite?: boolean;
 }

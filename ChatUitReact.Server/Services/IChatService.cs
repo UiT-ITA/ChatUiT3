@@ -10,6 +10,7 @@ public interface IChatService
     Task<ChatFile?> GetChatFileAsync(string userId, string chatId, string fileId);
     Task<Chat> CreateChatAsync(string userId, string assistantId, List<ChatMessage> messages);
     Task UpdateChatAsync(string userId, string chatId, string? newTitle, string? newAssistantId = null);
+    Task SetChatFavoriteAsync(string userId, string chatId, bool isFavorite);
     Task DeleteChatAsync(string userId, string chatId);
     
     // Message Operations

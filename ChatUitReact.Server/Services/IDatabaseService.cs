@@ -17,6 +17,7 @@ public interface IDatabaseService
     Task AddChatAsync(string userId, Chat chat);
     Task DeleteChatAsync(string userId, string chatId);
     Task UpdateChatAsync(string userId, string chatId, string? newTitle, string? newAssistantId = null);
+    Task SetChatFavoriteAsync(string userId, string chatId, bool isFavorite);
 
     // Message management
     Task AddMessageAsync(string userId, string chatId, ChatMessage message);

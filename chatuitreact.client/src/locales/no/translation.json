@@ -32,6 +32,7 @@
     "noChats": "Ingen samtaler funnet",
     "moreOptions": "Flere alternativer",
     "favorite": "Favoritt",
+    "unfavorite": "Fjern favoritt",
     "rename": "Gi nytt navn",
     "delete": "Slett"
   },
@@ -53,9 +54,16 @@
     "disclaimer": "ChatUiT kan gjøre feil. Sjekk viktige svar mot kilden.",
     "charCount": "{{count}} tegn",
     "groups": {
+      "favorites": "Favoritter",
       "today": "I dag",
       "yesterday": "I går",
-      "earlier": "Tidligere"
+      "lastWeek": "Forrige uke",
+      "thisMonth": "Denne måneden",
+      "lastMonth": "Forrige måned"
+    },
+    "deleteDialog": {
+      "title": "Slett samtale",
+      "confirm": "Slett «{{name}}»? Dette kan ikke angres."
     },
     "panel": {
       "title": "I denne samtalen",
@@ -87,7 +95,6 @@
     "header": "Velkommen til ChatUiT",
     "greeting": "Hei, {{name}}.",
     "subheader": "Spør om noe, lim inn en tekst, eller last opp en fil.",
-    "chooseAssistant": "Velg din assistent:",
     "selectAssistant": "Velg AI-assistent",
     "tips": {
       "title": "Tips:",

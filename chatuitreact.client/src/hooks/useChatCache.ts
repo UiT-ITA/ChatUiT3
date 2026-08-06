@@ -36,6 +36,10 @@ export function useChatCache(currentChatId: string | undefined): string[] {
   return updated
 }
 
+export function removeCachedChat(chatId: string) {
+  cachedChatIds.value = cachedChatIds.peek().filter(id => id !== chatId)
+}
+
 export function clearChatCache() {
   cachedChatIds.value = []
 }

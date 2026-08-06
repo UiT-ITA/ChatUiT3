@@ -63,6 +63,7 @@ public partial class DatabaseService
             CreatedAt = chatDocument.CreatedAt,
             UpdatedAt = chatDocument.UpdatedAt,
             Status = chatDocument.Status,
+            IsFavorite = chatDocument.IsFavorite,
             Messages = messages
         };
     }
@@ -109,7 +110,8 @@ public partial class DatabaseService
             Name = chat.Name,
             CreatedAt = createdAt,
             UpdatedAt = updatedAt,
-            Status = chat.Status
+            Status = chat.Status,
+            IsFavorite = chat.IsFavorite
         };
 
         await _chatContainer!.CreateItemAsync(chatDocument, new PartitionKey(userId));
@@ -153,7 +155,33 @@ public partial class DatabaseService
                 .WithParameter("@chatId", chatId),
             userId);
 
-        await _chatContainer!.DeleteItemAsync<ChatDocument>(chatId, new PartitionKey(userId));
+        try
+        {
+            await _chatContainer!.DeleteItemAsync<ChatDocument>(chatId, new PartitionKey(userId));
+        }
+        catch (CosmosException ex) when (ex.StatusCode == System.Net.HttpStatusCode.NotFound)
+        {
+        }
+    }
+
+    public async Task SetChatFavoriteAsync(string userId, string chatId, bool isFavorite)
+    {
+        await EnsureInitializedAsync();
+
+        // Favoriting is metadata, not activity — leave updatedAt alone so the chat keeps
+        // its place in the list ordering.
+        var patchOperations = new List<PatchOperation>
+        {
+            PatchOperation.Set("/isFavorite", isFavorite)
+        };
+
+        try
+        {
+            await _chatContainer!.PatchItemAsync<ChatDocument>(chatId, new PartitionKey(userId), patchOperations);
+        }
+        catch (CosmosException ex) when (ex.StatusCode == System.Net.HttpStatusCode.NotFound)
+        {
+        }
     }
 
     public async Task UpdateChatAsync(string userId, string chatId, string? newTitle, string? newAssistantId = null)
@@ -165,10 +193,10 @@ public partial class DatabaseService
             return;
         }
 
-        var patchOperations = new List<PatchOperation>
-        {
-            PatchOperation.Set("/updatedAt", DateTime.UtcNow)
-        };
+        // Renaming is metadata, not activity — updatedAt is maintained by TouchChatAsync on
+        // every message write, so it must not be bumped here or a renamed chat would jump
+        // to the top of the list.
+        var patchOperations = new List<PatchOperation>();
 
         if (!string.IsNullOrWhiteSpace(newTitle))
         {
@@ -319,7 +347,8 @@ public partial class DatabaseService
             Name = chatDocument.Name,
             CreatedAt = chatDocument.CreatedAt,
             UpdatedAt = chatDocument.UpdatedAt,
-            Status = chatDocument.Status
+            Status = chatDocument.Status,
+            IsFavorite = chatDocument.IsFavorite
         };
     }
 

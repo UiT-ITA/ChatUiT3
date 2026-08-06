@@ -136,6 +136,12 @@ public class ChatService : IChatService
         }
     }
 
+    public async Task SetChatFavoriteAsync(string userId, string chatId, bool isFavorite)
+    {
+        await _databaseService.SetChatFavoriteAsync(userId, chatId, isFavorite);
+        NotifyChatListUpdated(userId);
+    }
+
     public async Task DeleteChatAsync(string userId, string chatId)
     {
         await _databaseService.DeleteChatAsync(userId, chatId);

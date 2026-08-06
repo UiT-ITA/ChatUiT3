@@ -53,6 +53,19 @@ public partial class MockDatabaseService
         return Task.CompletedTask;
     }
 
+    public Task SetChatFavoriteAsync(string userId, string chatId, bool isFavorite)
+    {
+        AddUser(userId);
+
+        var chat = _chatStorage[userId].FirstOrDefault(c => c.Id == chatId);
+        if (chat != null)
+        {
+            chat.IsFavorite = isFavorite;
+        }
+
+        return Task.CompletedTask;
+    }
+
     public Task UpdateChatAsync(string userId, string chatId, string? newTitle, string? newAssistantId = null)
     {
         if (string.IsNullOrEmpty(newTitle) && string.IsNullOrEmpty(newAssistantId))

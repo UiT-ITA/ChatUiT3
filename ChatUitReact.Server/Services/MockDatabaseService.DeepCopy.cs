@@ -82,6 +82,7 @@ public partial class MockDatabaseService
             CreatedAt = chat.CreatedAt,
             UpdatedAt = chat.UpdatedAt,
             Status = chat.Status,
+            IsFavorite = chat.IsFavorite,
             AssistantId = chat.AssistantId,
             Messages = chat.Messages.Select(m => new ChatMessage
             {
@@ -103,7 +104,8 @@ public partial class MockDatabaseService
             Name = chatHeader.Name,
             CreatedAt = chatHeader.CreatedAt,
             UpdatedAt = chatHeader.UpdatedAt,
-            Status = chatHeader.Status
+            Status = chatHeader.Status,
+            IsFavorite = chatHeader.IsFavorite
         };
     }
 

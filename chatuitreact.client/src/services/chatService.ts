@@ -1,5 +1,5 @@
 import { signal, Signal, computed } from "@preact/signals-react";
-import type { ChatDto, ChatFileDto, ChatHeaderDto, CreateChatDto } from "../types/chatModels";
+import type { ChatDto, ChatFileDto, ChatHeaderDto, CreateChatDto, UpdateChatDto } from "../types/chatModels";
 import apiService from "./apiService";
 import type { SendMessageDto } from "../types/chatModels";
 import { getAssistants, getAssistant } from "./assistantService";
@@ -85,6 +85,75 @@ export async function createChat(content: string, assistantId: string, files?: C
 
   } catch (error) {
     console.error("Error creating chat:", error);
+    throw error;
+  }
+}
+
+// The server broadcasts ChatListUpdated after each of these, which refetches the list.
+// The local signal writes below only exist so the UI does not lag a round-trip.
+
+export async function renameChat(chatId: string, name: string): Promise<void> {
+  const trimmed = name.trim();
+
+  try {
+    const update: UpdateChatDto = { name: trimmed };
+    await apiService(`/api/Chats/${chatId}`, {
+      method: 'PATCH',
+      body: JSON.stringify(update),
+    });
+
+    chatListSignal.value = chatListSignal.value?.map(chat =>
+      chat.id === chatId ? { ...chat, name: trimmed } : chat
+    );
+
+    // The main header reads the name off the full chat, not the list header.
+    const chatSignal = chatCache.get(chatId);
+    if (chatSignal?.value) {
+      chatSignal.value = { ...chatSignal.value, name: trimmed };
+    }
+  } catch (error) {
+    console.error(`Error renaming chat ${chatId}:`, error);
+    throw error;
+  }
+}
+
+export async function setChatFavorite(chatId: string, isFavorite: boolean): Promise<void> {
+  try {
+    const update: UpdateChatDto = { isFavorite };
+    await apiService(`/api/Chats/${chatId}`, {
+      method: 'PATCH',
+      body: JSON.stringify(update),
+    });
+
+    chatListSignal.value = chatListSignal.value?.map(chat =>
+      chat.id === chatId ? { ...chat, isFavorite } : chat
+    );
+
+    const chatSignal = chatCache.get(chatId);
+    if (chatSignal?.value) {
+      chatSignal.value = { ...chatSignal.value, isFavorite };
+    }
+  } catch (error) {
+    console.error(`Error updating favorite for chat ${chatId}:`, error);
+    throw error;
+  }
+}
+
+export async function deleteChat(chatId: string): Promise<void> {
+  try {
+    await apiService(`/api/Chats/${chatId}`, { method: 'DELETE' });
+
+    chatListSignal.value = chatListSignal.value?.filter(chat => chat.id !== chatId);
+
+    chatCache.delete(chatId);
+    chatNotFoundCache.delete(chatId);
+    for (const key of Array.from(fileContentCache.keys())) {
+      if (key.startsWith(`${chatId}/`)) {
+        fileContentCache.delete(key);
+      }
+    }
+  } catch (error) {
+    console.error(`Error deleting chat ${chatId}:`, error);
     throw error;
   }
 }

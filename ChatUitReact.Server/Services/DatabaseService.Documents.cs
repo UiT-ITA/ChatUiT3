@@ -64,6 +64,9 @@ public partial class DatabaseService
 
         [JsonProperty("status")]
         public AiChatStatus Status { get; set; }
+
+        [JsonProperty("isFavorite")]
+        public bool IsFavorite { get; set; }
     }
 
     private sealed class ChatMessageDocument

@@ -118,6 +118,14 @@ app.UseAuthorization();
 
 app.MapControllers();
 app.MapHub<ChatHub>("/chatHub");
-app.MapFallbackToFile("/index.html");
+app.MapFallbackToFile("/index.html", new StaticFileOptions
+{
+    OnPrepareResponse = context =>
+    {
+        // index.html references hashed asset filenames that change on every deploy,
+        // so it must be revalidated instead of cached
+        context.Context.Response.Headers.CacheControl = "no-cache";
+    }
+});
 
 app.Run();

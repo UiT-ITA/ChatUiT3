@@ -13,6 +13,8 @@ namespace ChatUitReact.Server.Controllers;
 [Authorize]
 public class ChatsController : ControllerBase
 {
+    private const int MaxChatNameLength = 200;
+
     private readonly IChatService _chatService;
     private readonly UserService _userService;
     private readonly ILogger<ChatsController> _logger;
@@ -239,6 +241,7 @@ public class ChatsController : ControllerBase
             CreatedAt = chat.CreatedAt,
             UpdatedAt = chat.UpdatedAt,
             Status = chat.Status,
+            IsFavorite = chat.IsFavorite,
             AssistantId = chat.AssistantId
         };
     }
@@ -252,6 +255,7 @@ public class ChatsController : ControllerBase
             CreatedAt = chat.CreatedAt,
             UpdatedAt = chat.UpdatedAt,
             Status = chat.Status,
+            IsFavorite = chat.IsFavorite,
             AssistantId = chat.AssistantId,
             Messages = chat.Messages.Select(MapMessageToDto).ToList()
         };
@@ -284,6 +288,46 @@ public class ChatsController : ControllerBase
                 Base64 = c.Base64
             }).ToList()
         }).ToList();
+    }
+
+    [HttpPatch("{chatId}")]
+    public async Task<ActionResult> UpdateChat(string chatId, [FromBody] UpdateChatDto request)
+    {
+        try
+        {
+            var userId = GetCurrentUserId();
+
+            string? newName = null;
+            if (request.Name != null)
+            {
+                newName = request.Name.Trim();
+                if (newName.Length == 0)
+                {
+                    return BadRequest("Chat name cannot be empty");
+                }
+                if (newName.Length > MaxChatNameLength)
+                {
+                    return BadRequest($"Chat name cannot be longer than {MaxChatNameLength} characters");
+                }
+            }
+
+            if (newName != null)
+            {
+                await _chatService.UpdateChatAsync(userId, chatId, newName);
+            }
+
+            if (request.IsFavorite.HasValue)
+            {
+                await _chatService.SetChatFavoriteAsync(userId, chatId, request.IsFavorite.Value);
+            }
+
+            return NoContent();
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error updating chat {ChatId}", chatId);
+            return StatusCode(500, "Internal server error");
+        }
     }
 
     [HttpDelete("{chatId}")]

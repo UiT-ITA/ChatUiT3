@@ -11,6 +11,7 @@ public class ChatHeaderDto
     public DateTime CreatedAt { get; set; }
     public DateTime UpdatedAt { get; set; }
     public AiChatStatus Status { get; set; }
+    public bool IsFavorite { get; set; }
 }
 
 public class ChatDto : ChatHeaderDto
@@ -53,6 +54,12 @@ public class CreateChatDto
 {
     public string AssistantId { get; set; } = string.Empty;
     public List<SendMessageDto> Messages { get; set; } = new List<SendMessageDto>();
+}
+
+public class UpdateChatDto
+{
+    public string? Name { get; set; }
+    public bool? IsFavorite { get; set; }
 }
 
 public class SendMessageDto
