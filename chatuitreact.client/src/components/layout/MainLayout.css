@@ -99,3 +99,13 @@
 .layout.mobile-layout {
   flex-direction: column;
 }
+
+/* Mobile shows one of the pair at a time. Both stay mounted and only their
+   visibility changes, so navigating never unmounts the chats in the main column. */
+.layout.mobile-layout.show-list > .main-column {
+  display: none;
+}
+
+.layout.mobile-layout.show-detail > .context-column {
+  display: none;
+}

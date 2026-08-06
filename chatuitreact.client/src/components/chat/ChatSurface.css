@@ -1,4 +1,4 @@
-.chat-page {
+.chat-surface {
   display: flex;
   flex-direction: column;
   height: 100%;
@@ -6,14 +6,14 @@
   overflow: hidden;
 }
 
-.chat-page-body {
+.chat-surface-body {
   flex: 1;
   min-height: 0;
   display: flex;
   overflow: hidden;
 }
 
-.chat-page-main {
+.chat-surface-main {
   flex: 1;
   min-width: 0;
   display: flex;
@@ -21,16 +21,11 @@
   overflow: hidden;
 }
 
-.chat-page-history {
+/* One pane per mounted chat (and one for the welcome screen). Panes are never
+   unmounted — only the active one is displayed. */
+.chat-surface-pane {
   flex: 1;
   min-height: 0;
   display: flex;
   flex-direction: column;
-}
-
-.chat-page-loading {
-  flex: 1;
-  display: flex;
-  align-items: center;
-  justify-content: center;
 }

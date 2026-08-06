@@ -82,6 +82,7 @@ function ChatHistory({ chatId }: ChatHistoryProps) {
         {messages.map((message) => (
           <ChatMessage
             key={message.id}
+            chatId={chatId}
             message={message}
             assistantName={assistantName}
             onStreamingChunk={scrollToBottomIfPinned}

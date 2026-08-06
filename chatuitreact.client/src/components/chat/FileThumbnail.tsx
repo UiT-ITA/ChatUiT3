@@ -4,7 +4,7 @@ import type { ChatFileDto, CreateChatFileDto } from '../../types/chatModels';
 import { Icon } from '../common/Icon';
 import { getFileExtension } from '../../utils/fileUtils';
 import type { ChatFile } from '../../types/fileModels';
-import { fetchChatFile, getCurrentChatId } from '../../services/chatService';
+import { fetchChatFile } from '../../services/chatService';
 import FilePreviewModal from './FilePreviewModal';
 import './FileThumbnail.css';
 
@@ -12,6 +12,13 @@ type AnyChatFile = ChatFile | ChatFileDto | CreateChatFileDto;
 
 interface FileThumbnailProps {
   file: AnyChatFile;
+  /**
+   * The chat this file belongs to. Required to fetch persisted content — it must
+   * come from the owning chat, never from "whichever chat is open", since chats
+   * stay mounted while hidden. Omitted for composer files, which always carry
+   * their content and so never fetch.
+   */
+  chatId?: string;
   onRemove?: () => void;
   showRemoveButton?: boolean;
 }
@@ -22,7 +29,7 @@ function hasFullContent(file: AnyChatFile): boolean {
   );
 }
 
-const FileThumbnail = ({ file, onRemove, showRemoveButton = false }: FileThumbnailProps) => {
+const FileThumbnail = ({ file, chatId, onRemove, showRemoveButton = false }: FileThumbnailProps) => {
   const { t } = useTranslation();
   const [selectedFile, setSelectedFile] = useState<AnyChatFile | null>(null);
   const [loadedFile, setLoadedFile] = useState<ChatFileDto | null>(null);
@@ -37,7 +44,6 @@ const FileThumbnail = ({ file, onRemove, showRemoveButton = false }: FileThumbna
       return effectiveFile;
     }
 
-    const chatId = getCurrentChatId().value;
     if (!chatId) {
       return effectiveFile;
     }
@@ -84,7 +90,7 @@ const FileThumbnail = ({ file, onRemove, showRemoveButton = false }: FileThumbna
       void ensureContent();
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isImage, imageBase64, needsFetch]);
+  }, [isImage, imageBase64, needsFetch, chatId]);
 
   return (
     <>

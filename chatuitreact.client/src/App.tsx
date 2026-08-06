@@ -8,7 +8,6 @@ import InitErrorScreen from './components/common/InitErrorScreen';
 import './App.css';
 import './styles/theme.css';
 import './styles/typography.css';
-import ChatPage from './components/chat/ChatPage';
 import AssistantsPage from './components/assistants/AssistantsPage';
 import AdminPage from './components/admin/AdminPage';
 import SettingsPage from './components/settings/SettingsPage';
@@ -41,10 +40,13 @@ const App: React.FC = () => {
     <BrowserRouter>
       <Routes>
         <Route element={<MainLayout />}>
-          <Route path="/" element={<ChatPage />} />
-          <Route path="/chat" element={<ChatPage />} />
-          <Route path="/chat/new" element={<ChatPage />} />
-          <Route path="/chat/:chatId" element={<ChatPage />} />
+          {/* Chat routes render nothing here on purpose: the chat surface is
+              mounted permanently by MainLayout so opened chats are never
+              unmounted. These routes only drive which chat it displays. */}
+          <Route path="/" element={null} />
+          <Route path="/chat" element={null} />
+          <Route path="/chat/new" element={null} />
+          <Route path="/chat/:chatId" element={null} />
           <Route path="/assistants" element={<AssistantsPage />} />
           <Route path="/assistants/:assistantId" element={<AssistantsPage />} />
           <Route path="/settings" element={<SettingsPage />} />

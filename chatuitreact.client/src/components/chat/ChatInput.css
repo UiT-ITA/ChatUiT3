@@ -20,10 +20,6 @@
   box-shadow: var(--shadow-card);
 }
 
-.composer-card:focus-within {
-  border-color: var(--accent);
-}
-
 .composer-file-previews {
   display: flex;
   flex-wrap: wrap;
@@ -43,6 +39,15 @@
   line-height: 1.55;
   color: var(--text);
   max-height: 12.5rem;
+}
+
+/* The composer shows no focus or hover affordance at all — the caret is the only
+   indicator. Selector is class + pseudo-class so it beats the global
+   :focus-visible ring in App.css regardless of stylesheet order. */
+.composer-textarea:focus,
+.composer-textarea:focus-visible {
+  outline: none;
+  box-shadow: none;
 }
 
 .composer-textarea::placeholder {

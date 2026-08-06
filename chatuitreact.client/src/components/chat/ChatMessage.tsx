@@ -22,12 +22,14 @@ import { useSettings } from '../../contexts/SettingsContext';
 import { getCodeblockTheme } from '../../utils/themeUtils';
 
 interface ChatMessageProps {
+  /** The chat this message belongs to — attachments resolve their content against it. */
+  chatId: string;
   message: ChatMessageDto;
   assistantName?: string;
   onStreamingChunk?: () => void;
 }
 
-function ChatMessage({ message, assistantName, onStreamingChunk }: ChatMessageProps) {
+function ChatMessage({ chatId, message, assistantName, onStreamingChunk }: ChatMessageProps) {
   useSignals();
   const { t } = useTranslation();
   const { settings } = useSettings();
@@ -209,6 +211,7 @@ function ChatMessage({ message, assistantName, onStreamingChunk }: ChatMessagePr
             {message.files.map((file) => (
               <FileThumbnail
                 key={file.id}
+                chatId={chatId}
                 file={file}
                 showRemoveButton={false}
               />

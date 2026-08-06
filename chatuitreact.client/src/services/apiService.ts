@@ -61,7 +61,7 @@ async function apiService<T>(
       status >= 500 ? "Internal server error. Please try again." :
       `Request failed (${status}).`;
 
-    // Avoid duplicate toasts: let ChatPage handle 404 for GET /api/Chats/:id
+    // Avoid duplicate toasts: let ChatSurface handle 404 for GET /api/Chats/:id
     const method = (options.method || 'GET').toUpperCase();
     const isChatGet404 = status === 404 && method === 'GET' && /^\/api\/Chats\/[^/]+$/.test(endpoint);
     if (!isChatGet404) {
