@@ -1,3 +1,4 @@
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using ChatUitReact.Server.Models;
 using ChatUitReact.Server.Services;
@@ -6,6 +7,7 @@ namespace ChatUitReact.Server.Controllers;
 
 [ApiController]
 [Route("api/admin/models")]
+[Authorize(Roles = "Admin")]
 public class AdminModelsController : ControllerBase
 {
     private readonly IModelService _modelService;
@@ -21,27 +23,7 @@ public class AdminModelsController : ControllerBase
         try
         {
             var models = await _modelService.GetAllModelsAsync();
-            var modelDtos = models.Select(m => new ModelDto
-            {
-                Id = m.Id,
-                ModelId = m.ModelId,
-                ModelName = m.ModelName,
-                Description = m.Description,
-                EndpointId = m.EndpointId,
-                AllowedRoles = m.AllowedRoles,
-                Capabilities = new ModelCapabilitiesDto
-                {
-                    SupportsVision = m.Capabilities.SupportsVision,
-                    SupportsReasoning = m.Capabilities.SupportsReasoning,
-                    SupportsFunctionCalling = m.Capabilities.SupportsFunctionCalling,
-                    SupportsTemperature = m.Capabilities.SupportsTemperature,
-                    MaxContextLength = m.Capabilities.MaxContextLength,
-                    MaxOutputLength = m.Capabilities.MaxOutputLength,
-                    KnowledgeCutoff = m.Capabilities.KnowledgeCutoff
-                }
-            }).ToList();
-
-            return Ok(modelDtos);
+            return Ok(models.Select(ToDto).ToList());
         }
         catch (Exception ex)
         {
@@ -60,27 +42,7 @@ public class AdminModelsController : ControllerBase
                 return NotFound($"Model with id {id} not found");
             }
 
-            var modelDto = new ModelDto
-            {
-                Id = model.Id,
-                ModelId = model.ModelId,
-                ModelName = model.ModelName,
-                Description = model.Description,
-                EndpointId = model.EndpointId,
-                AllowedRoles = model.AllowedRoles,
-                Capabilities = new ModelCapabilitiesDto
-                {
-                    SupportsVision = model.Capabilities.SupportsVision,
-                    SupportsReasoning = model.Capabilities.SupportsReasoning,
-                    SupportsFunctionCalling = model.Capabilities.SupportsFunctionCalling,
-                    SupportsTemperature = model.Capabilities.SupportsTemperature,
-                    MaxContextLength = model.Capabilities.MaxContextLength,
-                    MaxOutputLength = model.Capabilities.MaxOutputLength,
-                    KnowledgeCutoff = model.Capabilities.KnowledgeCutoff
-                }
-            };
-
-            return Ok(modelDto);
+            return Ok(ToDto(model));
         }
         catch (Exception ex)
         {
@@ -100,42 +62,13 @@ public class AdminModelsController : ControllerBase
                 Description = createDto.Description,
                 EndpointId = createDto.EndpointId,
                 AllowedRoles = createDto.AllowedRoles,
-                Capabilities = new ModelCapabilities
-                {
-                    SupportsVision = createDto.Capabilities.SupportsVision,
-                    SupportsReasoning = createDto.Capabilities.SupportsReasoning,
-                    SupportsFunctionCalling = createDto.Capabilities.SupportsFunctionCalling,
-                    SupportsTemperature = createDto.Capabilities.SupportsTemperature,
-                    MaxContextLength = createDto.Capabilities.MaxContextLength,
-                    MaxOutputLength = createDto.Capabilities.MaxOutputLength,
-                    KnowledgeCutoff = createDto.Capabilities.KnowledgeCutoff
-                }
+                Capabilities = ToCapabilities(createDto.Capabilities)
             };
 
             var createdId = await _modelService.CreateModelAsync(model);
             model.Id = createdId;
 
-            var modelDto = new ModelDto
-            {
-                Id = model.Id,
-                ModelId = model.ModelId,
-                ModelName = model.ModelName,
-                Description = model.Description,
-                EndpointId = model.EndpointId,
-                AllowedRoles = model.AllowedRoles,
-                Capabilities = new ModelCapabilitiesDto
-                {
-                    SupportsVision = model.Capabilities.SupportsVision,
-                    SupportsReasoning = model.Capabilities.SupportsReasoning,
-                    SupportsFunctionCalling = model.Capabilities.SupportsFunctionCalling,
-                    SupportsTemperature = model.Capabilities.SupportsTemperature,
-                    MaxContextLength = model.Capabilities.MaxContextLength,
-                    MaxOutputLength = model.Capabilities.MaxOutputLength,
-                    KnowledgeCutoff = model.Capabilities.KnowledgeCutoff
-                }
-            };
-
-            return CreatedAtAction(nameof(GetModel), new { id = createdId }, modelDto);
+            return CreatedAtAction(nameof(GetModel), new { id = createdId }, ToDto(model));
         }
         catch (Exception ex)
         {
@@ -161,16 +94,7 @@ public class AdminModelsController : ControllerBase
                 Description = updateDto.Description,
                 EndpointId = updateDto.EndpointId,
                 AllowedRoles = updateDto.AllowedRoles,
-                Capabilities = new ModelCapabilities
-                {
-                    SupportsVision = updateDto.Capabilities.SupportsVision,
-                    SupportsReasoning = updateDto.Capabilities.SupportsReasoning,
-                    SupportsFunctionCalling = updateDto.Capabilities.SupportsFunctionCalling,
-                    SupportsTemperature = updateDto.Capabilities.SupportsTemperature,
-                    MaxContextLength = updateDto.Capabilities.MaxContextLength,
-                    MaxOutputLength = updateDto.Capabilities.MaxOutputLength,
-                    KnowledgeCutoff = updateDto.Capabilities.KnowledgeCutoff
-                }
+                Capabilities = ToCapabilities(updateDto.Capabilities)
             };
 
             var updated = await _modelService.UpdateModelAsync(model);
@@ -179,27 +103,7 @@ public class AdminModelsController : ControllerBase
                 return NotFound($"Model with id {id} not found");
             }
 
-            var modelDto = new ModelDto
-            {
-                Id = model.Id,
-                ModelId = model.ModelId,
-                ModelName = model.ModelName,
-                Description = model.Description,
-                EndpointId = model.EndpointId,
-                AllowedRoles = model.AllowedRoles,
-                Capabilities = new ModelCapabilitiesDto
-                {
-                    SupportsVision = model.Capabilities.SupportsVision,
-                    SupportsReasoning = model.Capabilities.SupportsReasoning,
-                    SupportsFunctionCalling = model.Capabilities.SupportsFunctionCalling,
-                    SupportsTemperature = model.Capabilities.SupportsTemperature,
-                    MaxContextLength = model.Capabilities.MaxContextLength,
-                    MaxOutputLength = model.Capabilities.MaxOutputLength,
-                    KnowledgeCutoff = model.Capabilities.KnowledgeCutoff
-                }
-            };
-
-            return Ok(modelDto);
+            return Ok(ToDto(model));
         }
         catch (Exception ex)
         {
@@ -225,4 +129,44 @@ public class AdminModelsController : ControllerBase
             return StatusCode(500, $"Internal server error: {ex.Message}");
         }
     }
+
+    private static ModelDto ToDto(Model model) => new()
+    {
+        Id = model.Id,
+        ModelId = model.ModelId,
+        ModelName = model.ModelName,
+        Description = model.Description,
+        EndpointId = model.EndpointId,
+        AllowedRoles = model.AllowedRoles,
+        Capabilities = new ModelCapabilitiesDto
+        {
+            SupportsVision = model.Capabilities.SupportsVision,
+            SupportsFunctionCalling = model.Capabilities.SupportsFunctionCalling,
+            Temperature = model.Capabilities.Temperature,
+            SupportedEfforts = model.Capabilities.SupportedEfforts,
+            MaxContextTokens = model.Capabilities.MaxContextTokens,
+            MaxOutputTokens = model.Capabilities.MaxOutputTokens,
+            DefaultMaxOutputTokens = model.Capabilities.DefaultMaxOutputTokens,
+            KnowledgeCutoff = model.Capabilities.KnowledgeCutoff
+        }
+    };
+
+    private static ModelCapabilities ToCapabilities(ModelCapabilitiesDto dto) => new()
+    {
+        SupportsVision = dto.SupportsVision,
+        SupportsFunctionCalling = dto.SupportsFunctionCalling,
+        Temperature = dto.Temperature,
+        SupportedEfforts = NormalizeEfforts(dto.SupportedEfforts),
+        MaxContextTokens = dto.MaxContextTokens,
+        MaxOutputTokens = dto.MaxOutputTokens,
+        // A model that never emits output is a misconfiguration, and Anthropic requires
+        // max_tokens on every request — fall back to the ceiling rather than storing 0.
+        DefaultMaxOutputTokens = dto.DefaultMaxOutputTokens > 0 ? dto.DefaultMaxOutputTokens : dto.MaxOutputTokens,
+        KnowledgeCutoff = dto.KnowledgeCutoff
+    };
+
+    // Stored ascending and deduplicated so LowestEffort and the client's slider can both
+    // rely on the order without re-sorting.
+    private static List<ReasoningEffort> NormalizeEfforts(List<ReasoningEffort>? efforts) =>
+        efforts == null ? new List<ReasoningEffort>() : efforts.Distinct().OrderBy(e => e).ToList();
 }

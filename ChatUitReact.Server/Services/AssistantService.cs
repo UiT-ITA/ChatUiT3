@@ -269,18 +269,41 @@ namespace ChatUitReact.Server.Services
                 Name = createDto.Name,
                 Description = createDto.Description,
                 Tags = createDto.Tags,
-                ChatSettings = new ChatSettings
-                {
-                    SystemPrompt = createDto.SystemPrompt,
-                    Temperature = model.Capabilities.SupportsTemperature ? createDto.Temperature : 1f,
-                    ReasoningEffort = model.Capabilities.SupportsReasoning ? createDto.ReasoningEffort : ReasoningEffort.None,
-                    Model = model,
-                    AvailableToolIds = model.Capabilities.SupportsFunctionCalling
-                        ? createDto.AvailableToolIds ?? new List<string>()
-                        : new List<string>()
-                },
+                ChatSettings = BuildChatSettings(
+                    model,
+                    createDto.SystemPrompt,
+                    createDto.Temperature,
+                    createDto.ReasoningEffort,
+                    createDto.AvailableToolIds),
                 Files = MapAssistantFiles(createDto.Files),
                 OwnerId = ownerId
+            };
+        }
+
+        // Stores only settings the model can actually honour, so an assistant configured
+        // against one model cannot carry an impossible combination onto another.
+        private static ChatSettings BuildChatSettings(
+            Model model,
+            string systemPrompt,
+            float temperature,
+            ReasoningEffort requestedEffort,
+            List<string>? requestedToolIds)
+        {
+            var capabilities = model.Capabilities;
+
+            var effort = capabilities.SupportsEffort(requestedEffort)
+                ? requestedEffort
+                : capabilities.ClampEffort(requestedEffort);
+
+            return new ChatSettings
+            {
+                SystemPrompt = systemPrompt,
+                Temperature = capabilities.Temperature == TemperatureSupport.Unsupported ? 1f : temperature,
+                ReasoningEffort = effort,
+                Model = model,
+                AvailableToolIds = capabilities.SupportsFunctionCalling
+                    ? requestedToolIds ?? new List<string>()
+                    : new List<string>()
             };
         }
 
@@ -295,16 +318,12 @@ namespace ChatUitReact.Server.Services
             assistant.Name = updateDto.Name;
             assistant.Description = updateDto.Description;
             assistant.Tags = updateDto.Tags;
-            assistant.ChatSettings = new ChatSettings
-            {
-                SystemPrompt = updateDto.SystemPrompt,
-                Temperature = model.Capabilities.SupportsTemperature ? updateDto.Temperature : 1f,
-                ReasoningEffort = model.Capabilities.SupportsReasoning ? updateDto.ReasoningEffort : ReasoningEffort.None,
-                Model = model,
-                AvailableToolIds = model.Capabilities.SupportsFunctionCalling
-                    ? updateDto.AvailableToolIds ?? new List<string>()
-                    : new List<string>()
-            };
+            assistant.ChatSettings = BuildChatSettings(
+                model,
+                updateDto.SystemPrompt,
+                updateDto.Temperature,
+                updateDto.ReasoningEffort,
+                updateDto.AvailableToolIds);
             assistant.Files = MapAssistantFiles(updateDto.Files);
 
             return true;

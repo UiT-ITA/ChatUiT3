@@ -2,20 +2,34 @@ import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { useSignals } from '@preact/signals-react/runtime';
-import { createModel, updateModel, deleteModel } from '../../services/adminService';
+import { createModel, updateModel, deleteModel, getModelCatalog } from '../../services/adminService';
 import { adminEndpointsSignal, adminModelsSignal, loadAdminData } from '../../services/adminDataService';
-import type { UserRole, ModelCapabilities } from '../../types/admin';
+import type {
+  UserRole,
+  ModelCapabilities,
+  TemperatureSupport,
+  ReasoningEffortLevel,
+  CatalogModelDto,
+} from '../../types/admin';
+import { REASONING_EFFORT_ORDER } from '../../types/admin';
 
 const ALL_ROLES: UserRole[] = ['User', 'Admin', 'Beta', 'Super', 'External'];
 
+const TEMPERATURE_OPTIONS: TemperatureSupport[] = [
+  'Unsupported',
+  'Supported',
+  'SupportedWhenReasoningDisabled',
+];
+
 const defaultCapabilities: ModelCapabilities = {
   supportsVision: false,
-  supportsReasoning: false,
   supportsFunctionCalling: false,
-  supportsTemperature: false,
-  maxContextLength: 16000,
-  maxOutputLength: 16000,
-  knowledgeCutoff: '2024-01-01T00:00:00Z',
+  temperature: 'Unsupported',
+  supportedEfforts: [],
+  maxContextTokens: 16000,
+  maxOutputTokens: 16000,
+  defaultMaxOutputTokens: 16000,
+  knowledgeCutoff: null,
 };
 
 interface ModelEditorProps {
@@ -38,9 +52,12 @@ const ModelEditor: React.FC<ModelEditorProps> = ({ modelId: editId }) => {
   const [capabilities, setCapabilities] = useState<ModelCapabilities>(defaultCapabilities);
   const [knowledgeCutoffMonth, setKnowledgeCutoffMonth] = useState<string>('');
   const [saving, setSaving] = useState(false);
+  const [catalog, setCatalog] = useState<CatalogModelDto[]>([]);
 
   useEffect(() => {
     loadAdminData();
+    // A failed catalog fetch must not block the form — it only prefills.
+    getModelCatalog().then(setCatalog).catch(() => setCatalog([]));
   }, []);
 
   useEffect(() => {
@@ -51,7 +68,7 @@ const ModelEditor: React.FC<ModelEditorProps> = ({ modelId: editId }) => {
     setAllowedRoles(model?.allowedRoles ?? []);
     const caps = model?.capabilities ?? defaultCapabilities;
     setCapabilities(caps);
-    const iso = caps.knowledgeCutoff || defaultCapabilities.knowledgeCutoff;
+    const iso = caps.knowledgeCutoff;
     setKnowledgeCutoffMonth(typeof iso === 'string' && iso.length >= 7 ? iso.slice(0, 7) : '');
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [model, endpoints.length]);
@@ -77,16 +94,43 @@ const ModelEditor: React.FC<ModelEditorProps> = ({ modelId: editId }) => {
     setCapabilities(prev => ({ ...prev, [key]: value }));
   };
 
+  // Kept in the canonical ascending order so the assistant form's slider and the server's
+  // clamping both see the same ladder without re-sorting.
+  const toggleEffort = (level: ReasoningEffortLevel, checked: boolean) => {
+    setCapabilities(prev => {
+      const next = new Set(prev.supportedEfforts);
+      if (checked) next.add(level);
+      else next.delete(level);
+      return {
+        ...prev,
+        supportedEfforts: REASONING_EFFORT_ORDER.filter(l => next.has(l)),
+      };
+    });
+  };
+
+  // Prefill from a known model. Everything stays editable afterwards, so an admin can still
+  // register a preview or self-hosted model the catalog has never heard of.
+  const applyCatalogEntry = (entry: CatalogModelDto) => {
+    setModelId(entry.modelId);
+    setCapabilities(entry.capabilities);
+    const cutoff = entry.capabilities.knowledgeCutoff;
+    setKnowledgeCutoffMonth(typeof cutoff === 'string' && cutoff.length >= 7 ? cutoff.slice(0, 7) : '');
+    if (!modelName) setModelName(entry.displayName);
+    if (!description) setDescription(entry.description);
+  };
+
   const canSave =
     !!modelId &&
     !!modelName &&
     !!description &&
     !!endpointId &&
-    Number.isFinite(capabilities.maxContextLength) &&
-    Number(capabilities.maxContextLength) > 0 &&
-    Number.isFinite(capabilities.maxOutputLength) &&
-    Number(capabilities.maxOutputLength) > 0 &&
-    !!knowledgeCutoffMonth;
+    // AllowedRoles is now enforced, so a model saved with no roles would be invisible to
+    // everyone with nothing to explain why.
+    allowedRoles.length > 0 &&
+    Number(capabilities.maxContextTokens) > 0 &&
+    Number(capabilities.maxOutputTokens) > 0 &&
+    Number(capabilities.defaultMaxOutputTokens) > 0 &&
+    Number(capabilities.defaultMaxOutputTokens) <= Number(capabilities.maxOutputTokens);
 
   const handleSave = async () => {
     if (!canSave || saving) return;
@@ -94,7 +138,7 @@ const ModelEditor: React.FC<ModelEditorProps> = ({ modelId: editId }) => {
     try {
       const capsToSend: ModelCapabilities = {
         ...capabilities,
-        knowledgeCutoff: `${knowledgeCutoffMonth}-01T00:00:00Z`,
+        knowledgeCutoff: knowledgeCutoffMonth ? `${knowledgeCutoffMonth}-01T00:00:00Z` : null,
       };
       const payload = { modelId, modelName, description, endpointId, allowedRoles, capabilities: capsToSend };
 
@@ -125,6 +169,28 @@ const ModelEditor: React.FC<ModelEditorProps> = ({ modelId: editId }) => {
       </h1>
       <div className="page-title-bar" />
 
+      {catalog.length > 0 && (
+        <div className="admin-field">
+          <label className="admin-label t-label">{t('admin.models.fields.knownModel')}</label>
+          <select
+            className="admin-select t-body"
+            value={catalog.some(c => c.modelId === modelId) ? modelId : ''}
+            onChange={(e) => {
+              const entry = catalog.find(c => c.modelId === e.target.value);
+              if (entry) applyCatalogEntry(entry);
+            }}
+          >
+            <option value="">{t('admin.models.fields.knownModelCustom')}</option>
+            {catalog.map(entry => (
+              <option key={entry.modelId} value={entry.modelId}>
+                {entry.displayName} ({t(`admin.endpointType.${entry.provider}`)})
+              </option>
+            ))}
+          </select>
+          <div className="af-note t-ui-plain">{t('admin.models.fields.knownModelHint')}</div>
+        </div>
+      )}
+
       <div className="admin-field-grid">
         <div className="admin-field">
           <label className="admin-label t-label">{t('admin.models.fields.modelId')}</label>
@@ -132,7 +198,7 @@ const ModelEditor: React.FC<ModelEditorProps> = ({ modelId: editId }) => {
             className="admin-input t-body"
             value={modelId}
             onChange={(e) => setModelId(e.target.value)}
-            placeholder="gpt-4o, claude-sonnet-5 …"
+            placeholder="gpt-5.4, claude-opus-5 …"
           />
         </div>
         <div className="admin-field">
@@ -182,6 +248,9 @@ const ModelEditor: React.FC<ModelEditorProps> = ({ modelId: editId }) => {
             </label>
           ))}
         </div>
+        {allowedRoles.length === 0 && (
+          <div className="af-note t-ui-plain">{t('admin.models.fields.allowedRolesRequired')}</div>
+        )}
       </div>
 
       <div className="t-overline">{t('admin.models.fields.capabilities')}</div>
@@ -199,49 +268,77 @@ const ModelEditor: React.FC<ModelEditorProps> = ({ modelId: editId }) => {
           <label className="admin-checkbox-label t-table">
             <input
               type="checkbox"
-              checked={capabilities.supportsReasoning}
-              onChange={(e) => updateCaps('supportsReasoning', e.target.checked)}
-            />
-            {t('admin.models.fields.supportsReasoning')}
-          </label>
-          <label className="admin-checkbox-label t-table">
-            <input
-              type="checkbox"
               checked={capabilities.supportsFunctionCalling}
               onChange={(e) => updateCaps('supportsFunctionCalling', e.target.checked)}
             />
             {t('admin.models.fields.supportsFunctionCalling')}
           </label>
-          <label className="admin-checkbox-label t-table">
-            <input
-              type="checkbox"
-              checked={capabilities.supportsTemperature}
-              onChange={(e) => updateCaps('supportsTemperature', e.target.checked)}
-            />
-            {t('admin.models.fields.supportsTemperature')}
-          </label>
         </div>
+      </div>
+
+      <div className="admin-field">
+        <label className="admin-label t-label">{t('admin.models.fields.temperature')}</label>
+        <select
+          className="admin-select t-body"
+          value={capabilities.temperature}
+          onChange={(e) => updateCaps('temperature', e.target.value as TemperatureSupport)}
+        >
+          {TEMPERATURE_OPTIONS.map(option => (
+            <option key={option} value={option}>
+              {t(`admin.models.temperatureSupport.${option}`)}
+            </option>
+          ))}
+        </select>
+        <div className="af-note t-ui-plain">{t('admin.models.fields.temperatureHint')}</div>
+      </div>
+
+      <div className="admin-field">
+        <label className="admin-label t-label">{t('admin.models.fields.supportedEfforts')}</label>
+        <div className="admin-checkbox-group">
+          {REASONING_EFFORT_ORDER.map(level => (
+            <label key={level} className="admin-checkbox-label t-table">
+              <input
+                type="checkbox"
+                checked={capabilities.supportedEfforts.includes(level)}
+                onChange={(e) => toggleEffort(level, e.target.checked)}
+              />
+              {t(`assistants.form.reasoningLevels.${level.toLowerCase()}`)}
+            </label>
+          ))}
+        </div>
+        <div className="af-note t-ui-plain">{t('admin.models.fields.supportedEffortsHint')}</div>
       </div>
 
       <div className="admin-field-grid">
         <div className="admin-field">
-          <label className="admin-label t-label">{t('admin.models.fields.maxContextLength')}</label>
+          <label className="admin-label t-label">{t('admin.models.fields.maxContextTokens')}</label>
           <input
             className="admin-input t-body"
             type="number"
             min={1}
-            value={capabilities.maxContextLength}
-            onChange={(e) => updateCaps('maxContextLength', parseInt(e.target.value || '0', 10))}
+            value={capabilities.maxContextTokens}
+            onChange={(e) => updateCaps('maxContextTokens', parseInt(e.target.value || '0', 10))}
           />
         </div>
         <div className="admin-field">
-          <label className="admin-label t-label">{t('admin.models.fields.maxOutputLength')}</label>
+          <label className="admin-label t-label">{t('admin.models.fields.maxOutputTokens')}</label>
           <input
             className="admin-input t-body"
             type="number"
             min={1}
-            value={capabilities.maxOutputLength}
-            onChange={(e) => updateCaps('maxOutputLength', parseInt(e.target.value || '0', 10))}
+            value={capabilities.maxOutputTokens}
+            onChange={(e) => updateCaps('maxOutputTokens', parseInt(e.target.value || '0', 10))}
+          />
+        </div>
+        <div className="admin-field">
+          <label className="admin-label t-label">{t('admin.models.fields.defaultMaxOutputTokens')}</label>
+          <input
+            className="admin-input t-body"
+            type="number"
+            min={1}
+            max={capabilities.maxOutputTokens || undefined}
+            value={capabilities.defaultMaxOutputTokens}
+            onChange={(e) => updateCaps('defaultMaxOutputTokens', parseInt(e.target.value || '0', 10))}
           />
         </div>
         <div className="admin-field">

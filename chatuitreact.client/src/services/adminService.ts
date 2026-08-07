@@ -10,7 +10,8 @@ import type {
   CreateAdminAssistantDto,
   UpdateAdminAssistantDto,
   AppSettingsDto,
-  UpdateAppSettingsDto
+  UpdateAppSettingsDto,
+  CatalogModelDto
 } from '../types/admin';
 
 export async function getEndpoints(): Promise<EndpointDto[]> {
@@ -71,4 +72,8 @@ export async function getAppSettings(): Promise<AppSettingsDto> {
 
 export async function updateAppSettings(data: UpdateAppSettingsDto): Promise<AppSettingsDto> {
   return apiService.put<AppSettingsDto>('/api/admin/settings', data);
+}
+
+export async function getModelCatalog(): Promise<CatalogModelDto[]> {
+  return apiService<CatalogModelDto[]>('/api/admin/model-catalog');
 }

@@ -63,11 +63,12 @@ public partial class MockDatabaseService
             Capabilities = new ModelCapabilities
             {
                 SupportsVision = model.Capabilities.SupportsVision,
-                SupportsReasoning = model.Capabilities.SupportsReasoning,
                 SupportsFunctionCalling = model.Capabilities.SupportsFunctionCalling,
-                SupportsTemperature = model.Capabilities.SupportsTemperature,
-                MaxContextLength = model.Capabilities.MaxContextLength,
-                MaxOutputLength = model.Capabilities.MaxOutputLength,
+                Temperature = model.Capabilities.Temperature,
+                SupportedEfforts = new List<ReasoningEffort>(model.Capabilities.SupportedEfforts),
+                MaxContextTokens = model.Capabilities.MaxContextTokens,
+                MaxOutputTokens = model.Capabilities.MaxOutputTokens,
+                DefaultMaxOutputTokens = model.Capabilities.DefaultMaxOutputTokens,
                 KnowledgeCutoff = model.Capabilities.KnowledgeCutoff
             }
         };

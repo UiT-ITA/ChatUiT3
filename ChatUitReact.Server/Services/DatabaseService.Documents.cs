@@ -171,11 +171,44 @@ public partial class DatabaseService
         [JsonProperty("endpointId")]
         public string EndpointId { get; set; } = string.Empty;
 
-        [JsonProperty("allowedRoles")]
+        [JsonProperty("allowedRoles", ItemConverterType = typeof(StringEnumConverter))]
         public List<UserRole> AllowedRoles { get; set; } = new();
 
         [JsonProperty("capabilities")]
-        public ModelCapabilities Capabilities { get; set; } = new();
+        public ModelCapabilitiesDocument Capabilities { get; set; } = new();
+    }
+
+    /// <summary>
+    /// The persisted shape of <see cref="ModelCapabilities"/>. Kept separate from the domain
+    /// type on purpose: previously the domain model was stored directly, so any change to it
+    /// silently changed the database schema.
+    /// </summary>
+    private sealed class ModelCapabilitiesDocument
+    {
+        [JsonProperty("supportsVision")]
+        public bool SupportsVision { get; set; }
+
+        [JsonProperty("supportsFunctionCalling")]
+        public bool SupportsFunctionCalling { get; set; }
+
+        [JsonProperty("temperature")]
+        [JsonConverter(typeof(StringEnumConverter))]
+        public TemperatureSupport Temperature { get; set; }
+
+        [JsonProperty("supportedEfforts", ItemConverterType = typeof(StringEnumConverter))]
+        public List<ReasoningEffort> SupportedEfforts { get; set; } = new();
+
+        [JsonProperty("maxContextTokens")]
+        public int MaxContextTokens { get; set; }
+
+        [JsonProperty("maxOutputTokens")]
+        public int MaxOutputTokens { get; set; }
+
+        [JsonProperty("defaultMaxOutputTokens")]
+        public int DefaultMaxOutputTokens { get; set; }
+
+        [JsonProperty("knowledgeCutoff")]
+        public DateTime? KnowledgeCutoff { get; set; }
     }
 
     private sealed class AppSettingsDocument
@@ -208,6 +241,7 @@ public partial class DatabaseService
         public string ApiKey { get; set; } = string.Empty;
 
         [JsonProperty("endpointType")]
+        [JsonConverter(typeof(StringEnumConverter))]
         public EndpointType EndpointType { get; set; }
     }
 
@@ -292,6 +326,7 @@ public partial class DatabaseService
         public float Temperature { get; set; } = 0.5f;
 
         [JsonProperty("reasoningEffort")]
+        [JsonConverter(typeof(StringEnumConverter))]
         public ReasoningEffort ReasoningEffort { get; set; } = ReasoningEffort.None;
 
         [JsonProperty("availableToolIds")]

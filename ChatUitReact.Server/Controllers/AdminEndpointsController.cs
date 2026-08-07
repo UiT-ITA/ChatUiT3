@@ -1,11 +1,14 @@
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using ChatUitReact.Server.Models;
 using ChatUitReact.Server.Services;
 
 namespace ChatUitReact.Server.Controllers;
 
+// Endpoints carry provider API keys, so this must never be reachable unauthenticated.
 [ApiController]
 [Route("api/admin/endpoints")]
+[Authorize(Roles = "Admin")]
 public class AdminEndpointsController : ControllerBase
 {
     private readonly IModelService _modelService;

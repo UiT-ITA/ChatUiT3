@@ -162,8 +162,11 @@
         "none": "None",
         "low": "Low",
         "medium": "Medium",
-        "high": "High"
-      }
+        "high": "High",
+        "xhigh": "Extra high",
+        "max": "Max"
+      },
+      "temperatureUnavailableWithReasoning": "This model only accepts a temperature while reasoning is off."
     },
     "capabilities": {
       "vision": "Vision",
@@ -401,7 +404,8 @@
       "fields": {
         "url": "URL",
         "apiKey": "API Key",
-        "provider": "Provider"
+        "provider": "Provider",
+        "urlHelpAnthropic": "Use the base URL only, without /v1 — for example https://<resource>.services.ai.azure.com/anthropic. The /v1/messages part is added automatically, so a trailing /v1 makes the request fail."
       }
     },
     "endpointType": {
@@ -440,12 +444,24 @@
         "allowedRoles": "Allowed roles",
         "capabilities": "Capabilities",
         "supportsVision": "Supports Vision",
-        "supportsReasoning": "Supports Reasoning",
         "supportsFunctionCalling": "Supports Function Calling",
-        "supportsTemperature": "Supports Temperature",
-        "maxContextLength": "Max Context Length",
-        "maxOutputLength": "Max Output Length",
-        "knowledgeCutoff": "Knowledge Cutoff"
+        "knowledgeCutoff": "Knowledge Cutoff",
+        "temperature": "Temperature support",
+        "temperatureHint": "gpt-5.x models only accept a temperature while reasoning is switched off. Claude Opus/Sonnet reject it entirely.",
+        "supportedEfforts": "Reasoning levels",
+        "supportedEffortsHint": "Leave all unchecked for a model that does not reason. Omit \"None\" for a model that always reasons and cannot be asked not to.",
+        "maxContextTokens": "Max context tokens",
+        "maxOutputTokens": "Max output tokens",
+        "defaultMaxOutputTokens": "Default output tokens",
+        "knownModel": "Start from a known model",
+        "knownModelCustom": "Custom / not listed",
+        "knownModelHint": "Fills in the capabilities we have verified for this model. Everything stays editable.",
+        "allowedRolesRequired": "Pick at least one role, or nobody will see this model."
+      },
+      "temperatureSupport": {
+        "Unsupported": "Not supported",
+        "Supported": "Supported",
+        "SupportedWhenReasoningDisabled": "Only without reasoning"
       }
     },
     "assistants": {

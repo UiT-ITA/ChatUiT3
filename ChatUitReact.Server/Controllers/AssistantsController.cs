@@ -219,7 +219,9 @@ public class AssistantsController : ControllerBase
     {
         try
         {
-            var models = await _modelService.GetAllModelsAsync();
+            // Models carry AllowedRoles; until now every user was shown every model
+            // regardless, so the setting existed but was never enforced.
+            var models = await _modelService.GetAvailableModelsForUserAsync(_userService.GetUserRoles(User));
             var modelDtos = models.Select(m => new UserModelDto
             {
                 Id = m.Id,
@@ -228,12 +230,12 @@ public class AssistantsController : ControllerBase
                 Capabilities = new UserModelCapabilitiesDto
                 {
                     Vision = m.Capabilities.SupportsVision,
-                    Reasoning = m.Capabilities.SupportsReasoning,
                     Tools = m.Capabilities.SupportsFunctionCalling,
-                    SupportsTemperature = m.Capabilities.SupportsTemperature,
-                    ContextSize = m.Capabilities.MaxContextLength,
-                    MaxOutputTokens = m.Capabilities.MaxOutputLength,
-                    KnowledgeCutoff = m.Capabilities.KnowledgeCutoff.ToString("yyyy-MM")
+                    Temperature = m.Capabilities.Temperature,
+                    SupportedEfforts = m.Capabilities.SupportedEfforts,
+                    ContextSize = m.Capabilities.MaxContextTokens,
+                    MaxOutputTokens = m.Capabilities.MaxOutputTokens,
+                    KnowledgeCutoff = m.Capabilities.KnowledgeCutoff?.ToString("yyyy-MM")
                 }
             }).ToArray();
             return Ok(modelDtos);

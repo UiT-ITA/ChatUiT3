@@ -1,6 +1,5 @@
 using System.Text.Json;
 using ChatUitReact.Server.Models;
-using OpenAI.Chat;
 
 namespace ChatUitReact.Server.Services
 {
@@ -17,21 +16,15 @@ namespace ChatUitReact.Server.Services
             });
         }
 
-        public IEnumerable<OpenAI.Chat.ChatTool> GetAvailableTools()
+        public IEnumerable<ChatTool> GetToolDefinitions(IEnumerable<string> toolIds)
         {
-            return ToolCatalog.All.Select(ConvertToAzureOpenAITool);
-        }
-
-        public IEnumerable<OpenAI.Chat.ChatTool> GetToolsForChat(ChatSettings settings)
-        {
-            if (settings?.AvailableToolIds == null || settings.AvailableToolIds.Count == 0)
+            var ids = toolIds?.ToHashSet();
+            if (ids == null || ids.Count == 0)
             {
-                return Enumerable.Empty<OpenAI.Chat.ChatTool>();
+                return Enumerable.Empty<ChatTool>();
             }
 
-            return ToolCatalog.All
-                .Where(tool => settings.AvailableToolIds.Contains(tool.Id))
-                .Select(ConvertToAzureOpenAITool);
+            return ToolCatalog.All.Where(tool => ids.Contains(tool.Id));
         }
 
         public async Task<string> ExecuteToolCallAsync(string functionName, JsonElement arguments, ToolContext context, CancellationToken cancellationToken = default)
@@ -52,16 +45,6 @@ namespace ChatUitReact.Server.Services
             }
         }
 
-        public OpenAI.Chat.ChatTool ConvertToAzureOpenAITool(Models.ChatTool tool)
-        {
-            var parametersJson = BuildParametersJson(tool);
-            return OpenAI.Chat.ChatTool.CreateFunctionTool(
-                functionName: tool.FunctionName,
-                functionDescription: tool.Description,
-                functionParameters: BinaryData.FromString(parametersJson)
-            );
-        }
-
         public ToolContext CreateToolContext(string userId, string chatId, string toolCallId)
         {
             return new ToolContext
@@ -70,36 +53,6 @@ namespace ChatUitReact.Server.Services
                 ChatId = chatId,
                 ToolCallId = toolCallId
             };
-        }
-
-        private string BuildParametersJson(Models.ChatTool tool)
-        {
-            var properties = new Dictionary<string, object>();
-            
-            foreach (var param in tool.Parameters)
-            {
-                var property = new Dictionary<string, object>
-                {
-                    ["type"] = param.Type,
-                    ["description"] = param.Description
-                };
-
-                if (param.Enum != null && param.Enum.Length > 0)
-                {
-                    property["enum"] = param.Enum;
-                }
-
-                properties[param.Name] = property;
-            }
-
-            var schema = new
-            {
-                type = "object",
-                properties = properties,
-                required = tool.RequiredParameters.ToArray()
-            };
-
-            return JsonSerializer.Serialize(schema);
         }
     }
 }

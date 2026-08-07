@@ -162,8 +162,11 @@
         "none": "Ingen",
         "low": "Lav",
         "medium": "Middels",
-        "high": "Høy"
-      }
+        "high": "Høy",
+        "xhigh": "Ekstra høy",
+        "max": "Maks"
+      },
+      "temperatureUnavailableWithReasoning": "Denne modellen godtar kun temperatur når resonnering er av."
     },
     "capabilities": {
       "vision": "Visjon",
@@ -401,7 +404,8 @@
       "fields": {
         "url": "URL",
         "apiKey": "API-nøkkel",
-        "provider": "Tilbyder"
+        "provider": "Tilbyder",
+        "urlHelpAnthropic": "Bruk kun grunn-URL-en, uten /v1 – for eksempel https://<ressurs>.services.ai.azure.com/anthropic. Delen /v1/messages legges til automatisk, så en avsluttende /v1 gjør at forespørselen feiler."
       }
     },
     "models": {
@@ -433,12 +437,24 @@
         "allowedRoles": "Tillatte roller",
         "capabilities": "Egenskaper",
         "supportsVision": "Støtter visjon",
-        "supportsReasoning": "Støtter resonnering",
         "supportsFunctionCalling": "Støtter funksjonskall",
-        "supportsTemperature": "Støtter temperatur",
-        "maxContextLength": "Maksimal kontekstlengde",
-        "maxOutputLength": "Maksimal utdata-lengde",
-        "knowledgeCutoff": "Kunnskapsgrense"
+        "knowledgeCutoff": "Kunnskapsgrense",
+        "temperature": "Temperaturstøtte",
+        "temperatureHint": "gpt-5.x-modeller godtar kun temperatur når resonnering er slått av. Claude Opus/Sonnet avviser den helt.",
+        "supportedEfforts": "Resonneringsnivåer",
+        "supportedEffortsHint": "La alle stå avhuket for en modell som ikke resonnerer. Utelat «Ingen» for en modell som alltid resonnerer.",
+        "maxContextTokens": "Maks kontekst-tokens",
+        "maxOutputTokens": "Maks utdata-tokens",
+        "defaultMaxOutputTokens": "Standard utdata-tokens",
+        "knownModel": "Start fra en kjent modell",
+        "knownModelCustom": "Egendefinert / ikke i listen",
+        "knownModelHint": "Fyller inn egenskapene vi har verifisert for denne modellen. Alt kan fortsatt redigeres.",
+        "allowedRolesRequired": "Velg minst én rolle, ellers ser ingen denne modellen."
+      },
+      "temperatureSupport": {
+        "Unsupported": "Ikke støttet",
+        "Supported": "Støttet",
+        "SupportedWhenReasoningDisabled": "Kun uten resonnering"
       }
     },
     "assistants": {

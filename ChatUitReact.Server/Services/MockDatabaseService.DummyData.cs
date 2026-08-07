@@ -55,101 +55,116 @@ public partial class MockDatabaseService
                     Capabilities = new ModelCapabilities
                     {
                         SupportsVision = true,
-                        SupportsReasoning = false,
                         SupportsFunctionCalling = true,
-                        SupportsTemperature = true,
-                        MaxContextLength = 128_000,
-                        MaxOutputLength = 16_000,
+                        Temperature = TemperatureSupport.Supported,
+                        SupportedEfforts = new List<ReasoningEffort>(),
+                        MaxContextTokens = 128_000,
+                        MaxOutputTokens = 16_384,
+                        DefaultMaxOutputTokens = 16_384,
                         KnowledgeCutoff = new DateTime(2023, 10, 1)
                     }
                 };
                 _models[gpt4oModel.Id] = gpt4oModel;
 
-                var gpt5Model = new Model
+                var gpt55Model = new Model
                 {
-                    Id = "gpt-5",
-                    ModelId = "gpt-5",
-                    ModelName = "GPT 5",
-                    Description = "Powerful reasoning model",
+                    Id = "gpt-5.5",
+                    ModelId = "gpt-5.5",
+                    ModelName = "GPT 5.5",
+                    Description = "Most capable reasoning model",
                     EndpointId = "real-azure-endpoint",
                     AllowedRoles = new List<UserRole> { UserRole.Admin, UserRole.Beta, UserRole.Super },
                     Capabilities = new ModelCapabilities
                     {
                         SupportsVision = true,
-                        SupportsReasoning = true,
                         SupportsFunctionCalling = true,
-                        SupportsTemperature = false,
-                        MaxContextLength = 400_000,
-                        MaxOutputLength = 128_000,
-                        KnowledgeCutoff = new DateTime(2024, 6, 1)
+                        Temperature = TemperatureSupport.SupportedWhenReasoningDisabled,
+                        SupportedEfforts = new List<ReasoningEffort>
+                        {
+                            ReasoningEffort.None, ReasoningEffort.Low, ReasoningEffort.Medium,
+                            ReasoningEffort.High, ReasoningEffort.XHigh
+                        },
+                        MaxContextTokens = 1_050_000,
+                        MaxOutputTokens = 128_000,
+                        DefaultMaxOutputTokens = 32_000,
+                        KnowledgeCutoff = new DateTime(2025, 12, 1)
                     }
                 };
-                _models[gpt5Model.Id] = gpt5Model;
+                _models[gpt55Model.Id] = gpt55Model;
 
-                var gpt5MiniModel = new Model
+                var gpt54Model = new Model
                 {
-                    Id = "gpt-5-mini",
-                    ModelId = "gpt-5-mini",
-                    ModelName = "GPT 5 Mini",
-                    Description = "fast and cheap reasoning model",
+                    Id = "gpt-5.4",
+                    ModelId = "gpt-5.4",
+                    ModelName = "GPT 5.4",
+                    Description = "Reasoning-heavy tasks needing deliberate control",
                     EndpointId = "real-azure-endpoint",
                     AllowedRoles = new List<UserRole> { UserRole.User, UserRole.Admin, UserRole.Beta, UserRole.Super },
                     Capabilities = new ModelCapabilities
                     {
                         SupportsVision = true,
-                        SupportsReasoning = true,
                         SupportsFunctionCalling = true,
-                        SupportsTemperature = false,
-                        MaxContextLength = 400_000,
-                        MaxOutputLength = 128_000,
-                        KnowledgeCutoff = new DateTime(2024, 6, 1)
+                        Temperature = TemperatureSupport.SupportedWhenReasoningDisabled,
+                        SupportedEfforts = new List<ReasoningEffort>
+                        {
+                            ReasoningEffort.None, ReasoningEffort.Low, ReasoningEffort.Medium,
+                            ReasoningEffort.High, ReasoningEffort.XHigh
+                        },
+                        MaxContextTokens = 1_050_000,
+                        MaxOutputTokens = 128_000,
+                        DefaultMaxOutputTokens = 32_000,
+                        KnowledgeCutoff = new DateTime(2025, 8, 31)
                     }
                 };
-                _models[gpt5MiniModel.Id] = gpt5MiniModel;
+                _models[gpt54Model.Id] = gpt54Model;
 
-
-                var o4MiniModel = new Model
+                var gpt54MiniModel = new Model
                 {
-                    Id = "o4-mini",
-                    ModelId = "o4-mini",
-                    ModelName = "o4 Mini",
-                    Description = "fast and cheap reasoning model",
+                    Id = "gpt-5.4-mini",
+                    ModelId = "gpt-5.4-mini",
+                    ModelName = "GPT 5.4 Mini",
+                    Description = "Fast and cheap reasoning model",
                     EndpointId = "real-azure-endpoint",
                     AllowedRoles = new List<UserRole> { UserRole.User, UserRole.Admin, UserRole.Beta, UserRole.Super },
                     Capabilities = new ModelCapabilities
                     {
                         SupportsVision = true,
-                        SupportsReasoning = true,
                         SupportsFunctionCalling = true,
-                        SupportsTemperature = false,
-                        MaxContextLength = 200_000,
-                        MaxOutputLength = 100_000,
-                        KnowledgeCutoff = new DateTime(2024, 6, 1)
+                        Temperature = TemperatureSupport.SupportedWhenReasoningDisabled,
+                        SupportedEfforts = new List<ReasoningEffort>
+                        {
+                            ReasoningEffort.None, ReasoningEffort.Low, ReasoningEffort.Medium,
+                            ReasoningEffort.High, ReasoningEffort.XHigh
+                        },
+                        MaxContextTokens = 400_000,
+                        MaxOutputTokens = 128_000,
+                        DefaultMaxOutputTokens = 32_000,
+                        KnowledgeCutoff = new DateTime(2025, 8, 31)
                     }
                 };
-                _models[o4MiniModel.Id] = o4MiniModel;
+                _models[gpt54MiniModel.Id] = gpt54MiniModel;
 
-
-                var gpt41MiniModel = new Model
+                var gpt41Model = new Model
                 {
-                    Id = "gpt-4.1-mini",
-                    ModelId = "gpt-4.1-mini",
-                    ModelName = "GPT-4.1 Mini",
-                    Description = "Fast and cheap model with very large context window",
+                    Id = "gpt-4.1",
+                    ModelId = "gpt-4.1",
+                    ModelName = "GPT 4.1",
+                    Description = "Fast model with a very large context window",
                     EndpointId = "real-azure-endpoint",
                     AllowedRoles = new List<UserRole> { UserRole.User, UserRole.Admin, UserRole.Beta, UserRole.Super },
                     Capabilities = new ModelCapabilities
                     {
                         SupportsVision = true,
-                        SupportsReasoning = false,
                         SupportsFunctionCalling = true,
-                        SupportsTemperature = true,
-                        MaxContextLength = 1_000_000,
-                        MaxOutputLength = 32_000,
+                        Temperature = TemperatureSupport.Supported,
+                        SupportedEfforts = new List<ReasoningEffort>(),
+                        MaxContextTokens = 1_047_576,
+                        MaxOutputTokens = 32_768,
+                        DefaultMaxOutputTokens = 32_768,
                         KnowledgeCutoff = new DateTime(2024, 6, 1)
                     }
                 };
-                _models[gpt41MiniModel.Id] = gpt41MiniModel;
+                _models[gpt41Model.Id] = gpt41Model;
             }
 
 
@@ -169,12 +184,13 @@ public partial class MockDatabaseService
             Capabilities = new ModelCapabilities
             {
                 SupportsVision = true,
-                SupportsReasoning = false,
                 SupportsFunctionCalling = true,
-                SupportsTemperature = true,
-                MaxContextLength = 128_000,
-                MaxOutputLength = 16_000,
-                KnowledgeCutoff = new DateTime(2024, 6, 1)
+                Temperature = TemperatureSupport.Supported,
+                SupportedEfforts = new List<ReasoningEffort>(),
+                MaxContextTokens = 128_000,
+                MaxOutputTokens = 16_384,
+                DefaultMaxOutputTokens = 16_384,
+                KnowledgeCutoff = new DateTime(2023, 10, 1)
             }
         };
 

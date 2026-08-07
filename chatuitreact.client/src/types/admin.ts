@@ -23,19 +23,34 @@ export interface UpdateEndpointDto {
 
 export type UserRole = 'User' | 'Admin' | 'Beta' | 'Super' | 'External';
 
+/**
+ * How a model handles the `temperature` parameter. A boolean cannot express the gpt-5.x
+ * rule, where temperature is only accepted while reasoning is switched off.
+ */
+export type TemperatureSupport = 'Unsupported' | 'Supported' | 'SupportedWhenReasoningDisabled';
+
+/** Ascending; the ladder differs per model. */
+export type ReasoningEffortLevel = 'None' | 'Low' | 'Medium' | 'High' | 'XHigh' | 'Max';
+
+export const REASONING_EFFORT_ORDER: ReasoningEffortLevel[] = [
+  'None', 'Low', 'Medium', 'High', 'XHigh', 'Max',
+];
+
 export interface ModelCapabilities {
   supportsVision: boolean;
-  supportsReasoning: boolean;
   supportsFunctionCalling: boolean;
-  supportsTemperature: boolean;
-  maxContextLength: number;
-  maxOutputLength: number;
-  knowledgeCutoff: string; // ISO date string
+  temperature: TemperatureSupport;
+  /** Empty means the model does not reason; omitting 'None' means reasoning cannot be turned off. */
+  supportedEfforts: ReasoningEffortLevel[];
+  maxContextTokens: number;
+  maxOutputTokens: number;
+  defaultMaxOutputTokens: number;
+  knowledgeCutoff: string | null; // ISO date string, null when unknown
 }
 
 export interface ModelDto {
   id: string;
-  modelId: string;      // Provider model identifier (e.g. "gpt-4o")
+  modelId: string;      // Provider model identifier (e.g. "gpt-5.4")
   modelName: string;    // Friendly/display name
   description: string;
   endpointId: string;
@@ -59,6 +74,18 @@ export interface UpdateModelDto {
   description: string;
   endpointId: string;
   allowedRoles: UserRole[];
+  capabilities: ModelCapabilities;
+}
+
+/**
+ * A model we have verified capability defaults for. Used to prefill the admin form; the
+ * saved model row is still what the server sends at request time.
+ */
+export interface CatalogModelDto {
+  modelId: string;
+  displayName: string;
+  description: string;
+  provider: EndpointType;
   capabilities: ModelCapabilities;
 }
 

@@ -82,11 +82,14 @@ export interface UpdateAssistantDto {
     files?: AssistantFileDto[];
 }
 
+/** Which levels a given model actually accepts varies — see UserModelCapabilitiesDto.supportedEfforts. */
 export type ReasoningEffort =
-    "None" 
-    | "Low" 
-    | "Medium" 
-    | "High";
+    "None"
+    | "Low"
+    | "Medium"
+    | "High"
+    | "XHigh"
+    | "Max";
 
 export interface ChatToolDto {
     id: string;

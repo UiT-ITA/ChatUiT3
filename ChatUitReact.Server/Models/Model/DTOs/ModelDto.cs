@@ -10,22 +10,30 @@ public class ModelCapabilitiesDto
     public bool SupportsVision { get; set; }
 
     [Required]
-    public bool SupportsReasoning { get; set; }
-
-    [Required]
     public bool SupportsFunctionCalling { get; set; }
 
+    /// <summary>"Unsupported" | "Supported" | "SupportedWhenReasoningDisabled".</summary>
     [Required]
-    public bool SupportsTemperature { get; set; }
+    public TemperatureSupport Temperature { get; set; }
+
+    /// <summary>
+    /// Ascending list of accepted reasoning levels. Empty means the model does not reason;
+    /// omitting "None" means reasoning cannot be switched off.
+    /// </summary>
+    [Required]
+    public List<ReasoningEffort> SupportedEfforts { get; set; } = new List<ReasoningEffort>();
 
     [Required]
-    public int MaxContextLength { get; set; }
+    public int MaxContextTokens { get; set; }
 
     [Required]
-    public int MaxOutputLength { get; set; }
+    public int MaxOutputTokens { get; set; }
 
     [Required]
-    public DateTime KnowledgeCutoff { get; set; }
+    public int DefaultMaxOutputTokens { get; set; }
+
+    /// <summary>Null when unknown.</summary>
+    public DateTime? KnowledgeCutoff { get; set; }
 }
 
 public class ModelDto
@@ -34,7 +42,7 @@ public class ModelDto
     public string Id { get; set; } = string.Empty;
 
     [Required]
-    public string ModelId { get; set; } = string.Empty; // Provider model identifier (e.g., "gpt-4o")
+    public string ModelId { get; set; } = string.Empty; // Provider model identifier (e.g., "gpt-5.4")
 
     [Required]
     public string ModelName { get; set; } = string.Empty; // Friendly/display name

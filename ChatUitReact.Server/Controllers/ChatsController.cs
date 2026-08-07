@@ -19,17 +19,45 @@ public class ChatsController : ControllerBase
     private readonly UserService _userService;
     private readonly ILogger<ChatsController> _logger;
     private readonly IHubContext<ChatHub, IChatHubClient> _hubContext;
-    
+    private readonly IAssistantService _assistantService;
+    private readonly IModelService _modelService;
+
     public ChatsController(
         IChatService chatService,
         UserService userService,
         ILogger<ChatsController> logger,
-        IHubContext<ChatHub, IChatHubClient> hubContext)
+        IHubContext<ChatHub, IChatHubClient> hubContext,
+        IAssistantService assistantService,
+        IModelService modelService)
     {
         _chatService = chatService;
         _userService = userService;
         _logger = logger;
         _hubContext = hubContext;
+        _assistantService = assistantService;
+        _modelService = modelService;
+    }
+
+    /// <summary>
+    /// Whether the caller may use the model behind an assistant. Filtering the model picker
+    /// is not enough on its own — an assistant id can be posted directly.
+    /// </summary>
+    private async Task<bool> CanUseAssistantAsync(string? assistantId)
+    {
+        if (string.IsNullOrWhiteSpace(assistantId))
+        {
+            return true; // Missing assistant is handled downstream with its own error.
+        }
+
+        var assistant = await _assistantService.GetAssistantByIdAsync(assistantId);
+        var modelId = assistant?.ChatSettings?.Model?.Id;
+
+        if (string.IsNullOrWhiteSpace(modelId))
+        {
+            return true;
+        }
+
+        return await _modelService.GetModelForUserAsync(modelId, _userService.GetUserRoles(User)) != null;
     }
 
     private string GetCurrentUserId()
@@ -104,7 +132,12 @@ public class ChatsController : ControllerBase
         try
         {
             var userId = GetCurrentUserId();
-            
+
+            if (!await CanUseAssistantAsync(request.AssistantId))
+            {
+                return Forbid();
+            }
+
             // Map DTO messages to domain messages
             var initialMessages = new List<ChatMessage>();
             foreach (var msgDto in request.Messages)
@@ -139,7 +172,12 @@ public class ChatsController : ControllerBase
         try
         {
             var userId = GetCurrentUserId();
-            
+
+            if (!await CanUseAssistantAsync(request.AssistantId))
+            {
+                return Forbid();
+            }
+
             var message = new ChatMessage
             {
                 Role = AiChatRole.User,

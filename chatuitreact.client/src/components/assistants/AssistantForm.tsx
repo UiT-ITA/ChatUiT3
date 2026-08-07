@@ -19,6 +19,33 @@ const createEmptyKnowledgeFiles = (): Record<KnowledgeFileCategory, KnowledgeFil
   ragLoaded: []
 });
 
+/**
+ * Maps a chosen effort onto the nearest level the model accepts, mirroring the server's
+ * clamping. A model that cannot reason resolves to 'None'; a model that always reasons
+ * resolves 'None' up to its weakest level.
+ */
+const clampEffort = (
+  requested: ReasoningEffort | undefined,
+  supported: ReasoningEffort[] | undefined,
+): ReasoningEffort => {
+  const levels = supported ?? [];
+  if (levels.length === 0) return 'None';
+
+  const effort = requested ?? 'None';
+  if (levels.includes(effort)) return effort;
+
+  return levels[0];
+};
+
+/** True when a temperature control makes sense for the model at the current effort. */
+const showsTemperature = (model: UserModelDto | undefined, effort: ReasoningEffort | undefined) => {
+  if (!model) return false;
+  if (model.capabilities.temperature === 'Supported') return true;
+  // gpt-5.x rejects a non-default temperature while reasoning is active.
+  return model.capabilities.temperature === 'SupportedWhenReasoningDisabled'
+    && (effort ?? 'None') === 'None';
+};
+
 interface AssistantFormProps {
   editingAssistant: FullAssistantDto | null;
   onCreate?: (assistant: CreateAssistantDto) => Promise<unknown>;
@@ -66,6 +93,8 @@ const AssistantForm: React.FC<AssistantFormProps> = ({
 
   const models: UserModelDto[] = modelsSignal.value ?? [];
   const selectedModel = models.find(m => m.id === formData.modelId);
+  const supportedEfforts = selectedModel?.capabilities.supportedEfforts ?? [];
+  const currentEffort = clampEffort(formData.reasoningEffort, supportedEfforts);
 
   // The admin-configured default model, only once it is known to be selectable
   const defaultModelId = appDefaultsSignal.value?.defaultModelId ?? '';
@@ -169,14 +198,10 @@ const AssistantForm: React.FC<AssistantFormProps> = ({
 
   const handleModelChange = (modelId: string) => {
     const newModel = models.find(m => m.id === modelId);
+    const effort = clampEffort(formData.reasoningEffort, newModel?.capabilities.supportedEfforts);
 
-    // If switching to a non-reasoning model, reset reasoning effort to None
-    if (newModel && !newModel.capabilities.reasoning && formData.reasoningEffort !== 'None') {
-      setFormData(prev => ({
-        ...prev,
-        modelId,
-        reasoningEffort: 'None'
-      }));
+    if (effort !== formData.reasoningEffort) {
+      setFormData(prev => ({ ...prev, modelId, reasoningEffort: effort }));
     } else {
       handleChange('modelId', modelId);
     }
@@ -280,14 +305,15 @@ const AssistantForm: React.FC<AssistantFormProps> = ({
     // Normalize unsupported params on submit
     const normalized: CreateAssistantDto = { ...formData, files: buildFileDtos() };
     if (selectedModel) {
-      if (!selectedModel.capabilities.supportsTemperature) {
+      normalized.reasoningEffort = clampEffort(
+        formData.reasoningEffort,
+        selectedModel.capabilities.supportedEfforts,
+      );
+      if (!showsTemperature(selectedModel, normalized.reasoningEffort)) {
         normalized.temperature = 1;
       }
       if (!selectedModel.capabilities.tools) {
         normalized.availableToolIds = [];
-      }
-      if (!selectedModel.capabilities.reasoning) {
-        normalized.reasoningEffort = 'None';
       }
     }
 
@@ -362,14 +388,16 @@ const AssistantForm: React.FC<AssistantFormProps> = ({
                       <div className="af-model-capabilities">
                         {renderCapabilityIcon('Vision', model.capabilities.vision, <MdImage size="1rem" />)}
                         {renderCapabilityIcon('Tools', model.capabilities.tools, <MdPublic size="1rem" />)}
-                        {renderCapabilityIcon('Reasoning', model.capabilities.reasoning, <MdPsychology size="1rem" />)}
+                        {renderCapabilityIcon('Reasoning', model.capabilities.supportedEfforts.length > 0, <MdPsychology size="1rem" />)}
                       </div>
                     </div>
                     <div className="af-model-description t-caption">{model.description}</div>
                     <div className="af-model-specs t-meta">
                       <span>Context: {model.capabilities.contextSize.toLocaleString()}</span>
                       <span>Output: {model.capabilities.maxOutputTokens.toLocaleString()}</span>
-                      <span>Knowledge: {model.capabilities.knowledgeCutoff}</span>
+                      {model.capabilities.knowledgeCutoff && (
+                        <span>Knowledge: {model.capabilities.knowledgeCutoff}</span>
+                      )}
                     </div>
                   </div>
                 ))}
@@ -498,7 +526,7 @@ const AssistantForm: React.FC<AssistantFormProps> = ({
         </div>
 
         <div className="af-field">
-          {selectedModel?.capabilities.supportsTemperature && (
+          {showsTemperature(selectedModel, formData.reasoningEffort) && (
             <div className="af-slider-field">
               <div className="af-label-row">
                 <label className="af-label t-label">{t('assistants.form.temperature')}</label>
@@ -517,24 +545,27 @@ const AssistantForm: React.FC<AssistantFormProps> = ({
             </div>
           )}
 
-          {selectedModel?.capabilities.reasoning && (
+          {/* Explains why the temperature control disappeared once reasoning was turned on. */}
+          {selectedModel?.capabilities.temperature === 'SupportedWhenReasoningDisabled'
+            && (formData.reasoningEffort ?? 'None') !== 'None' && (
+            <div className="af-note t-ui-plain">{t('assistants.form.temperatureUnavailableWithReasoning')}</div>
+          )}
+
+          {supportedEfforts.length > 0 && (
             <div className="af-slider-field">
               <div className="af-label-row">
                 <label className="af-label t-label">{t('assistants.form.reasoningEffort')}</label>
-                <span className="af-char-count t-meta">{t(`assistants.form.reasoningLevels.${(formData.reasoningEffort || 'None').toLowerCase()}`)}</span>
+                <span className="af-char-count t-meta">{t(`assistants.form.reasoningLevels.${currentEffort.toLowerCase()}`)}</span>
               </div>
               <input
                 type="range"
                 min="0"
-                max="3"
+                max={supportedEfforts.length - 1}
                 step="1"
-                value={['None', 'Low', 'Medium', 'High'].indexOf(formData.reasoningEffort || 'None')}
-                onChange={(e) => {
-                  const levels: ReasoningEffort[] = ['None', 'Low', 'Medium', 'High'];
-                  handleChange('reasoningEffort', levels[parseInt(e.target.value)]);
-                }}
+                value={Math.max(0, supportedEfforts.indexOf(currentEffort))}
+                onChange={(e) => handleChange('reasoningEffort', supportedEfforts[parseInt(e.target.value)])}
                 className="af-slider"
-                disabled={loading}
+                disabled={loading || supportedEfforts.length === 1}
               />
             </div>
           )}

@@ -220,7 +220,7 @@ const AssistantsPage: React.FC = () => {
                   <span className="assistant-readonly-model-name t-body-strong">{model?.modelName || '—'}</span>
                   {model?.capabilities.vision && <span className="af-capability-icon" title={t('assistants.capabilities.vision')}><MdImage size="1rem" /></span>}
                   {model?.capabilities.tools && <span className="af-capability-icon" title={t('assistants.capabilities.tools')}><MdPublic size="1rem" /></span>}
-                  {model?.capabilities.reasoning && <span className="af-capability-icon" title={t('assistants.capabilities.reasoning')}><MdPsychology size="1rem" /></span>}
+                  {(model?.capabilities.supportedEfforts.length ?? 0) > 0 && <span className="af-capability-icon" title={t('assistants.capabilities.reasoning')}><MdPsychology size="1rem" /></span>}
                 </div>
                 {model?.description && <div className="assistant-readonly-note t-caption">{model.description}</div>}
               </div>

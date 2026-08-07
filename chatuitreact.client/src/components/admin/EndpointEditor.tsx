@@ -75,6 +75,9 @@ const EndpointEditor: React.FC<EndpointEditorProps> = ({ endpointId }) => {
 
       <div className="admin-field">
         <label className="admin-label t-label">{t('admin.endpoints.fields.url')}</label>
+        {endpointType === 'Anthropic' && (
+          <div className="admin-field-help t-caption">{t('admin.endpoints.fields.urlHelpAnthropic')}</div>
+        )}
         <input
           className="admin-input t-body"
           value={url}

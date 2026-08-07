@@ -1,6 +1,7 @@
 using ChatUitReact.Server.Hubs;
 using ChatUitReact.Server.Models;
 using ChatUitReact.Server.Services;
+using ChatUitReact.Server.Services.AiProviders;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.Identity.Web;
 using Microsoft.IdentityModel.Logging;
@@ -92,7 +93,12 @@ builder.Services.AddSingleton<IModelService, ModelService>();
 builder.Services.AddSingleton<ISettingsService, SettingsService>();
 builder.Services.AddSingleton<IChatService, ChatService>();
 builder.Services.AddSingleton<IAssistantService, AssistantService>();
-builder.Services.AddSingleton<AzureOpenAiService>();
+// One IAiProvider per supported EndpointType; the registry resolves by type, so adding a
+// provider is a single registration and nothing else dispatches on EndpointType.
+builder.Services.AddSingleton<IAiProvider, AzureOpenAiProvider>();
+builder.Services.AddSingleton<IAiProvider, AnthropicProvider>();
+builder.Services.AddSingleton<IAiProviderRegistry, AiProviderRegistry>();
+builder.Services.AddSingleton<AiConversationRunner>();
 builder.Services.AddSingleton<IToolService, ToolService>();
 
 var app = builder.Build();

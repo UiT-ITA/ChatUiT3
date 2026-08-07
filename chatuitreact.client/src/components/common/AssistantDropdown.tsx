@@ -62,7 +62,7 @@ export default function AssistantDropdown({ isOpen, direction, onClose }: Assist
         const capabilities = {
           vision: !!modelResolved?.capabilities.vision,
           tools: !!modelResolved?.capabilities.tools,
-          reasoning: !!modelResolved?.capabilities.reasoning,
+          reasoning: (modelResolved?.capabilities.supportedEfforts.length ?? 0) > 0,
         };
         
         return (

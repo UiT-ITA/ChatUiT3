@@ -1,6 +1,7 @@
 using Microsoft.AspNetCore.SignalR;
 using ChatUitReact.Server.Hubs;
 using ChatUitReact.Server.Models;
+using ChatUitReact.Server.Services.AiProviders;
 using System.Text;
 
 namespace ChatUitReact.Server.Services;
@@ -10,7 +11,14 @@ public class ChatService : IChatService
     private const string GenerationFailedText = "*The response could not be completed because an error occurred while generating it.*";
     private static readonly TimeSpan StaleGenerationThreshold = TimeSpan.FromMinutes(5);
 
-    private readonly AzureOpenAiService _azureOpenAiService;
+    /// <summary>
+    /// Upper bound on a single generation, tool rounds included. Matches the threshold that
+    /// marks an abandoned message as failed, so a run can never outlive its own message.
+    /// </summary>
+    private static readonly TimeSpan GenerationTimeout = StaleGenerationThreshold;
+
+    private readonly AiConversationRunner _conversationRunner;
+    private readonly IAiProviderRegistry _providers;
     private readonly IHubContext<ChatHub, IChatHubClient> _hubContext;
     private readonly ILogger<ChatService> _logger;
     private readonly IDatabaseService _databaseService;
@@ -21,7 +29,8 @@ public class ChatService : IChatService
     private readonly ISettingsService _settingsService;
 
     public ChatService(
-        AzureOpenAiService azureOpenAiService,
+        AiConversationRunner conversationRunner,
+        IAiProviderRegistry providers,
         IHubContext<ChatHub, IChatHubClient> hubContext,
         ILogger<ChatService> logger,
         IDatabaseService databaseService,
@@ -31,7 +40,8 @@ public class ChatService : IChatService
         IToolService toolService,
         ISettingsService settingsService)
     {
-        _azureOpenAiService = azureOpenAiService;
+        _conversationRunner = conversationRunner;
+        _providers = providers;
         _hubContext = hubContext;
         _logger = logger;
         _databaseService = databaseService;
@@ -211,27 +221,33 @@ public class ChatService : IChatService
         var settings = await GetChatSettingsFromAssistant(userId, effectiveAssistantId);
         
         var modelWithEndpoint = await _modelService.GetModelWithEndpointAsync(settings.Model.Id);
-if (modelWithEndpoint == null)
-{
-    await _hubContext.Clients.Group(userId).Notify(NotifyLevel.Error, "Selected model is unavailable or misconfigured.");
-    throw new InvalidOperationException($"Model {settings.Model.Id} not found or has no endpoint configured");
-}
-        
+        if (modelWithEndpoint == null)
+        {
+            await _hubContext.Clients.Group(userId).Notify(NotifyLevel.Error, "Selected model is unavailable or misconfigured.");
+            throw new InvalidOperationException($"Model {settings.Model.Id} not found or has no endpoint configured");
+        }
+
         var (endpoint, model) = modelWithEndpoint.Value;
-        
-if (endpoint.EndpointType != EndpointType.AzureOpenAI)
-{
-    await _hubContext.Clients.Group(userId).Notify(NotifyLevel.Error, "The selected provider is not supported.");
-    throw new NotSupportedException($"Provider {endpoint.EndpointType} is not supported. Only Azure OpenAI is currently supported.");
-}
+
+        if (!_providers.Supports(endpoint.EndpointType))
+        {
+            await _hubContext.Clients.Group(userId).Notify(NotifyLevel.Error, "The selected provider is not supported.");
+            throw new NotSupportedException($"No AI provider is registered for endpoint type {endpoint.EndpointType}.");
+        }
+
+        var request = BuildAiRequest(model, endpoint, settings, messages);
 
         _ = Task.Run(async () =>
         {
             var content = new StringBuilder();
 
+            // Without a token a run that hangs — or keeps calling tools — outlives the
+            // client that started it, with no way to stop it.
+            using var cancellation = new CancellationTokenSource(GenerationTimeout);
+
             try
             {
-                await foreach (var chunk in _azureOpenAiService.StreamChatAsync(messages, settings, userId, chatId))
+                await foreach (var chunk in _conversationRunner.StreamAsync(request, userId, chatId, cancellation.Token))
                 {
                     if (!chunk.IsComplete)
                     {
@@ -353,6 +369,27 @@ if (endpoint.EndpointType != EndpointType.AzureOpenAI)
         };
     }
 
+    // The one place assistant settings become a provider request: capabilities are reconciled
+    // once here, so no provider has to re-derive what the model will accept.
+    private AiRequest BuildAiRequest(
+        Model model,
+        ModelEndpoint endpoint,
+        ChatSettings settings,
+        List<Models.ChatMessage> messages)
+    {
+        var parameters = ChatParameterResolver.Resolve(model.Capabilities, settings);
+
+        return new AiRequest
+        {
+            Model = model,
+            Endpoint = endpoint,
+            SystemPrompt = settings.SystemPrompt,
+            Messages = messages,
+            Parameters = parameters,
+            Tools = _toolService.GetToolDefinitions(parameters.ToolIds).ToList()
+        };
+    }
+
     private static string AppendKnowledgeFiles(string systemPrompt, List<AssistantFile> files)
     {
         // Only always-loaded files go into the system message, and only their text
@@ -409,8 +446,42 @@ if (endpoint.EndpointType != EndpointType.AzureOpenAI)
             return null;
         }
 
-        return await _azureOpenAiService.GetChatName(resolved.Value.endpoint, resolved.Value.model, prompt);
+        var (endpoint, model) = resolved.Value;
+        if (!_providers.Supports(endpoint.EndpointType))
+        {
+            _logger.LogWarning("Chat naming model {ModelId} uses unsupported endpoint type {EndpointType}.", settings.ChatNamingModelId, endpoint.EndpointType);
+            return null;
+        }
+
+        // Naming is a fixed one-shot prompt: no tools, and no reasoning requested (a model
+        // that always reasons still gets its lowest level via the resolver).
+        var namingSettings = new ChatSettings
+        {
+            Model = model,
+            Temperature = 1f,
+            ReasoningEffort = ReasoningEffort.None
+        };
+
+        var request = new AiRequest
+        {
+            Model = model,
+            Endpoint = endpoint,
+            SystemPrompt = string.Empty,
+            Messages = new List<Models.ChatMessage>
+            {
+                new() { Role = AiChatRole.User, Content = ChatNamingPrompt + prompt }
+            },
+            Parameters = ChatParameterResolver.Resolve(model.Capabilities, namingSettings)
+        };
+
+        return await _providers.For(endpoint.EndpointType).CompleteTextAsync(request);
     }
+
+    private const string ChatNamingPrompt =
+        "Create a name for this chat based on the users initial message. The name must be shorter than 30 characters. " +
+        "Make the name as descriptive as possible. You should **only** respond with the name, exactly the way the name " +
+        "should be written. It should have no quotes around it. It should not have any formating. It will be set " +
+        "directly as the name of the chat. The user's message:\n\n";
 
     private async void SetChatName(string userId, string chatId, string prompt)
     {

@@ -200,7 +200,7 @@ public partial class DatabaseService
             Description = document.Description,
             EndpointId = document.EndpointId,
             AllowedRoles = document.AllowedRoles,
-            Capabilities = document.Capabilities
+            Capabilities = MapModelCapabilities(document.Capabilities)
         };
     }
 
@@ -215,7 +215,37 @@ public partial class DatabaseService
             Description = model.Description,
             EndpointId = model.EndpointId,
             AllowedRoles = model.AllowedRoles,
-            Capabilities = model.Capabilities
+            Capabilities = MapModelCapabilitiesDocument(model.Capabilities)
+        };
+    }
+
+    private static ModelCapabilities MapModelCapabilities(ModelCapabilitiesDocument document)
+    {
+        return new ModelCapabilities
+        {
+            SupportsVision = document.SupportsVision,
+            SupportsFunctionCalling = document.SupportsFunctionCalling,
+            Temperature = document.Temperature,
+            SupportedEfforts = document.SupportedEfforts,
+            MaxContextTokens = document.MaxContextTokens,
+            MaxOutputTokens = document.MaxOutputTokens,
+            DefaultMaxOutputTokens = document.DefaultMaxOutputTokens,
+            KnowledgeCutoff = document.KnowledgeCutoff
+        };
+    }
+
+    private static ModelCapabilitiesDocument MapModelCapabilitiesDocument(ModelCapabilities capabilities)
+    {
+        return new ModelCapabilitiesDocument
+        {
+            SupportsVision = capabilities.SupportsVision,
+            SupportsFunctionCalling = capabilities.SupportsFunctionCalling,
+            Temperature = capabilities.Temperature,
+            SupportedEfforts = capabilities.SupportedEfforts,
+            MaxContextTokens = capabilities.MaxContextTokens,
+            MaxOutputTokens = capabilities.MaxOutputTokens,
+            DefaultMaxOutputTokens = capabilities.DefaultMaxOutputTokens,
+            KnowledgeCutoff = capabilities.KnowledgeCutoff
         };
     }
 }

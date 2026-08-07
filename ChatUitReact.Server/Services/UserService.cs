@@ -1,4 +1,5 @@
 ﻿using System.Security.Claims;
+using ChatUitReact.Server.Models;
 using System.Text;
 
 namespace ChatUitReact.Server.Services;
@@ -81,6 +82,40 @@ public class UserService
         identity.UserId = identity.Username;
 
         return identity;
+    }
+
+    /// <summary>
+    /// The application roles this user holds, as the enum that model rows are gated on.
+    ///
+    /// Every authenticated user counts as <see cref="UserRole.User"/> even without a
+    /// matching claim: models are gated by ticking roles in the admin panel, and a tenant
+    /// that emits no app-role claims would otherwise leave everyone with access to nothing.
+    /// Elevated roles (Admin, Beta, Super) still have to come from a claim.
+    ///
+    /// Role claims that do not map to a <see cref="UserRole"/> are ignored — an unknown
+    /// directory group should never silently widen access.
+    ///
+    /// Note this means an <see cref="UserRole.External"/> user also counts as User. If
+    /// External is meant to withhold baseline access, skip the fallback for that role.
+    /// </summary>
+    public List<UserRole> GetUserRoles(ClaimsPrincipal user)
+    {
+        if (user?.Identity?.IsAuthenticated != true)
+        {
+            return new List<UserRole>();
+        }
+
+        var roles = user.FindAll(ClaimTypes.Role)
+            .Select(claim => Enum.TryParse<UserRole>(claim.Value, ignoreCase: true, out var role)
+                ? (UserRole?)role
+                : null)
+            .Where(role => role.HasValue)
+            .Select(role => role!.Value)
+            .ToHashSet();
+
+        roles.Add(UserRole.User);
+
+        return roles.ToList();
     }
 
     public bool UserHasRole(ClaimsPrincipal user, string role)
