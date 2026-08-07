@@ -3,10 +3,11 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { useSignals } from '@preact/signals-react/runtime';
 import './AdminPage.css';
-import { adminEndpointsSignal, adminModelsSignal, adminAssistantsSignal, loadAdminData } from '../../services/adminDataService';
+import { adminEndpointsSignal, adminModelsSignal, adminAssistantsSignal, adminSettingsSignal, loadAdminData } from '../../services/adminDataService';
 import EndpointEditor from './EndpointEditor';
 import ModelEditor from './ModelEditor';
 import AdminAssistantEditor from './AdminAssistantEditor';
+import SettingsEditor from './SettingsEditor';
 
 const AdminPage: React.FC = () => {
   useSignals();
@@ -17,12 +18,19 @@ const AdminPage: React.FC = () => {
   const endpoints = adminEndpointsSignal.value;
   const models = adminModelsSignal.value;
   const assistants = adminAssistantsSignal.value;
+  const settings = adminSettingsSignal.value;
+
+  const modelNameById = (id: string) =>
+    models?.find(m => m.id === id)?.modelName ?? t('admin.settings.fields.none');
 
   useEffect(() => {
     loadAdminData();
   }, []);
 
   const renderContent = () => {
+    if (tab === 'settings') {
+      return <SettingsEditor />;
+    }
     if (tab === 'endpoints' && id) {
       return <EndpointEditor endpointId={id === 'new' ? undefined : id} />;
     }
@@ -124,6 +132,26 @@ const AdminPage: React.FC = () => {
               ))}
               <button className="admin-list-add t-ui" onClick={() => navigate('/admin/assistants/new')}>
                 + {t('admin.assistants.add.title')}
+              </button>
+            </div>
+          )}
+        </div>
+
+        <div className="admin-overview-group">
+          <div className="t-overline">{t('admin.tabs.settings')}</div>
+          {settings === undefined ? (
+            <div className="admin-empty t-ui-plain">{t('common.loading')}</div>
+          ) : (
+            <div className="admin-list">
+              <button className="admin-list-row" onClick={() => navigate('/admin/settings')}>
+                <div className="admin-row-main">
+                  <div className="admin-row-title t-table-strong">{t('admin.settings.title')}</div>
+                  <div className="admin-row-sub t-caption">
+                    {t('admin.settings.fields.defaultModel')}: {modelNameById(settings.defaultModelId)}
+                    {' · '}
+                    {t('admin.settings.fields.chatNamingModel')}: {modelNameById(settings.chatNamingModelId)}
+                  </div>
+                </div>
               </button>
             </div>
           )}

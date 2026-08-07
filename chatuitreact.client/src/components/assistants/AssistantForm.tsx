@@ -4,6 +4,7 @@ import { MdImage, MdPublic, MdPsychology, MdExpandMore, MdExpandLess } from 'rea
 import { useSignals } from '@preact/signals-react/runtime';
 import type { AssistantFileDto, CreateAssistantDto, FullAssistantDto, ReasoningEffort, ChatToolDto, UpdateAssistantDto } from '../../types/assistantModels';
 import { getModels } from '../../services/modelService';
+import { getAppDefaults } from '../../services/appSettingsService';
 import { getTools } from '../../services/toolService';
 import type { UserModelDto } from '../../types/modelModels';
 import { createAssistant, updateAssistant, fetchAssistantFile } from '../../services/assistantService';
@@ -40,6 +41,7 @@ const AssistantForm: React.FC<AssistantFormProps> = ({
   useSignals();
   const { t } = useTranslation();
   const modelsSignal = getModels();
+  const appDefaultsSignal = getAppDefaults();
   const toolsSignal = getTools();
   const [isModelDropdownOpen, setIsModelDropdownOpen] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -64,6 +66,10 @@ const AssistantForm: React.FC<AssistantFormProps> = ({
 
   const models: UserModelDto[] = modelsSignal.value ?? [];
   const selectedModel = models.find(m => m.id === formData.modelId);
+
+  // The admin-configured default model, only once it is known to be selectable
+  const defaultModelId = appDefaultsSignal.value?.defaultModelId ?? '';
+  const selectableDefaultModelId = models.some(m => m.id === defaultModelId) ? defaultModelId : '';
 
   const availableTools: ChatToolDto[] = toolsSignal.value || [];
   const knowledgeSections: Array<{
@@ -130,6 +136,13 @@ const AssistantForm: React.FC<AssistantFormProps> = ({
       setSelectedToolIds([]);
     }
   }, [editingAssistant]);
+
+  // Preselect the admin-configured default model when creating a new assistant.
+  // Runs separately because models and app defaults load asynchronously.
+  useEffect(() => {
+    if (editingAssistant || !selectableDefaultModelId) return;
+    setFormData(prev => (prev.modelId ? prev : { ...prev, modelId: selectableDefaultModelId }));
+  }, [editingAssistant, selectableDefaultModelId]);
 
   // Close dropdown when clicking outside
   useEffect(() => {

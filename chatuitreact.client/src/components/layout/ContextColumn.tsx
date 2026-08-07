@@ -215,6 +215,14 @@ const ContextColumn = ({ isMobile }: ContextColumnProps) => {
           >
             + {t('admin.assistants.add.title')}
           </button>
+
+          <div className="context-group-label t-group-label">{t('admin.tabs.settings')}</div>
+          <button
+            className={`context-nav-row t-ui ${activeAdminTab === 'settings' ? 'active' : ''}`}
+            onClick={() => adminNav('/admin/settings')}
+          >
+            {t('admin.settings.title')}
+          </button>
         </div>
       )}
     </aside>

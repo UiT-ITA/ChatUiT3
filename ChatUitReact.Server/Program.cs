@@ -1,4 +1,5 @@
 using ChatUitReact.Server.Hubs;
+using ChatUitReact.Server.Models;
 using ChatUitReact.Server.Services;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.Identity.Web;
@@ -88,12 +89,45 @@ builder.Services.AddSingleton<StreamingService>();
 //builder.Services.AddSingleton<IDatabaseService, MockDatabaseService>();
 builder.Services.AddSingleton<IDatabaseService, DatabaseService>();
 builder.Services.AddSingleton<IModelService, ModelService>();
+builder.Services.AddSingleton<ISettingsService, SettingsService>();
 builder.Services.AddSingleton<IChatService, ChatService>();
 builder.Services.AddSingleton<IAssistantService, AssistantService>();
 builder.Services.AddSingleton<AzureOpenAiService>();
 builder.Services.AddSingleton<IToolService, ToolService>();
 
 var app = builder.Build();
+
+// The AzureOpenAI configuration is only used to seed an endpoint into the database on first
+// run. Everything at request time reads endpoints from the database instead.
+var seedEndpointUrl = app.Configuration["AzureOpenAI:Endpoint"];
+var seedEndpointKey = app.Configuration["AzureOpenAI:ApiKey"];
+
+if (!string.IsNullOrWhiteSpace(seedEndpointUrl) && !string.IsNullOrWhiteSpace(seedEndpointKey))
+{
+    var seedLogger = app.Services.GetRequiredService<ILogger<Program>>();
+    try
+    {
+        var modelService = app.Services.GetRequiredService<IModelService>();
+        var existingEndpoints = await modelService.GetAllEndpointsAsync();
+        var alreadySeeded = existingEndpoints.Any(e =>
+            string.Equals(e.Url.TrimEnd('/'), seedEndpointUrl.TrimEnd('/'), StringComparison.OrdinalIgnoreCase));
+
+        if (!alreadySeeded)
+        {
+            await modelService.CreateEndpointAsync(new ModelEndpoint
+            {
+                Url = seedEndpointUrl,
+                ApiKey = seedEndpointKey,
+                EndpointType = EndpointType.AzureOpenAI
+            });
+            seedLogger.LogInformation("Seeded Azure OpenAI endpoint {Url} from configuration.", seedEndpointUrl);
+        }
+    }
+    catch (Exception ex)
+    {
+        seedLogger.LogError(ex, "Failed to seed the Azure OpenAI endpoint from configuration.");
+    }
+}
 
 app.UseDefaultFiles();
 app.MapStaticAssets();

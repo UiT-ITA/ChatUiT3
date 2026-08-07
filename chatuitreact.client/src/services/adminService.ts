@@ -8,7 +8,9 @@ import type {
   UpdateModelDto,
   AdminAssistantDto,
   CreateAdminAssistantDto,
-  UpdateAdminAssistantDto
+  UpdateAdminAssistantDto,
+  AppSettingsDto,
+  UpdateAppSettingsDto
 } from '../types/admin';
 
 export async function getEndpoints(): Promise<EndpointDto[]> {
@@ -61,4 +63,12 @@ export async function updateAdminAssistant(id: string, data: UpdateAdminAssistan
 
 export async function deleteAdminAssistant(id: string): Promise<void> {
   return apiService.delete<void>(`/api/admin/assistants/${id}`);
+}
+
+export async function getAppSettings(): Promise<AppSettingsDto> {
+  return apiService<AppSettingsDto>('/api/admin/settings');
+}
+
+export async function updateAppSettings(data: UpdateAppSettingsDto): Promise<AppSettingsDto> {
+  return apiService.put<AppSettingsDto>('/api/admin/settings', data);
 }

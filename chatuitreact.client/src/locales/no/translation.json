@@ -373,7 +373,8 @@
     "tabs": {
       "endpoints": "Endepunkter",
       "models": "Modeller",
-      "assistants": "Systemassistenter"
+      "assistants": "Systemassistenter",
+      "settings": "Innstillinger"
     },
     "endpoints": {
       "title": "Endepunkter",
@@ -455,6 +456,17 @@
         "delete": {
           "confirm": "Er du sikker på at du vil slette denne assistenten?"
         }
+      }
+    },
+    "settings": {
+      "title": "Generelle innstillinger",
+      "intro": "Velg hvilke av de registrerte modellene ChatUiT bruker til sine innebygde oppgaver.",
+      "fields": {
+        "none": "Ikke valgt",
+        "defaultModel": "Standardmodell",
+        "defaultModelHelp": "Forhåndsvalgt i modellisten når du oppretter en ny assistent.",
+        "chatNamingModel": "Modell for navngiving av chatter",
+        "chatNamingModelHelp": "Brukes til å lage et navn på en ny chat ut fra den første meldingen. Nye chatter beholder plassholdernavnet sitt når denne ikke er valgt."
       }
     }
   },

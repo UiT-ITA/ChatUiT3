@@ -373,7 +373,8 @@
     "tabs": {
       "endpoints": "Endpoints",
       "models": "Models",
-      "assistants": "Assistants"
+      "assistants": "Assistants",
+      "settings": "Settings"
     },
     "endpoints": {
       "title": "Endpoints",
@@ -462,6 +463,17 @@
         "delete": {
           "confirm": "Are you sure you want to delete this assistant?"
         }
+      }
+    },
+    "settings": {
+      "title": "General settings",
+      "intro": "Choose which of the registered models ChatUiT uses for its built-in tasks.",
+      "fields": {
+        "none": "Not selected",
+        "defaultModel": "Default model",
+        "defaultModelHelp": "Preselected in the model list when creating a new assistant.",
+        "chatNamingModel": "Model for naming chats",
+        "chatNamingModelHelp": "Used to generate a name for a new chat from the first message. New chats keep their placeholder name when this is not selected."
       }
     }
   },

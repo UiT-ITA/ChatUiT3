@@ -45,9 +45,10 @@ a:hover {
   color: var(--sel-fg);
 }
 
+/* No focus outline anywhere in the app, by design. Do not add one back. */
+:focus,
 :focus-visible {
-  outline: var(--focus-ring);
-  outline-offset: 2px;
+  outline: none;
 }
 
 /* Default colours for the typography roles (faces defined in typography.css) */

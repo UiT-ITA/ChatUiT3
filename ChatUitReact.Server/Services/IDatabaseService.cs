@@ -24,6 +24,10 @@ public interface IDatabaseService
     Task UpdateMessageAsync(string userId, string chatId, ChatMessage message);
     Task DeleteMessageAsync(string userId, string chatId, string messageId);
 
+    // App settings
+    Task<AppSettings> GetAppSettingsAsync();
+    Task UpdateAppSettingsAsync(AppSettings settings);
+
     // Endpoint management
     Task<List<ModelEndpoint>> GetEndpointsAsync();
     Task<ModelEndpoint?> GetEndpointByIdAsync(string endpointId);

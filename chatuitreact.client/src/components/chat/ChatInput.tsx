@@ -9,13 +9,14 @@ import AssistantSelector from '../common/AssistantSelector';
 import FileThumbnail from './FileThumbnail';
 import type { ChatFile } from '../../types/fileModels';
 import { SUPPORTED_IMPORT_ACCEPT, isValidFileType } from '../../utils/fileUtils';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { addNotification } from '../../services/notificationService';
 
 export default function ChatInput() {
   useSignals();
   const { t } = useTranslation();
   const navigate = useNavigate();
+  const location = useLocation();
 
   const [selectedFiles, setSelectedFiles] = useState<ChatFile[]>([]);
   const [charCount, setCharCount] = useState(0);
@@ -26,9 +27,12 @@ export default function ChatInput() {
   const currentAssistantId = getCurrentAssistantId();
   const chatId = currentChatId.value;
 
+  // Keyed on the path, not the chat id: the composer never unmounts, and coming
+  // back from /admin or /settings to a new chat leaves the chat id undefined both
+  // before and after — so a chat-id dep would never fire.
   useEffect(() => {
     textareaRef.current?.focus();
-  }, [chatId]);
+  }, [location.pathname]);
 
   const handleSendMessage = async (e: React.FormEvent) => {
     e.preventDefault();

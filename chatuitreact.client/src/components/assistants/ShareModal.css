@@ -73,11 +73,6 @@
   transform: scale(0.95);
 }
 
-.share-copy-button:focus {
-  outline: 2px solid var(--accent);
-  outline-offset: 2px;
-}
-
 /* Mobile responsive adjustments */
 @media (max-width: 768px) {
   .share-content {
@@ -99,13 +94,6 @@
     height: auto;
     padding: 0.75rem;
   }
-}
-
-/* Focus and accessibility improvements */
-.share-input:focus,
-.share-copy-button:focus {
-  outline: 2px solid var(--accent);
-  outline-offset: 2px;
 }
 
 /* Text selection for inputs */

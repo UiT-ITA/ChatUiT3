@@ -76,7 +76,6 @@
   --shadow-card: 0 1px 2px rgba(0, 51, 73, .08), 0 2px 8px rgba(0, 51, 73, .10);
   --shadow-overlay: 0 8px 40px rgba(0, 51, 73, .22);
   --scrim: rgba(0, 27, 40, .5);
-  --focus-ring: 3px solid var(--uit-yellow);
 
   /* ---- Motion. No bounce, no spring. ---- */
   --dur-fast: 120ms;

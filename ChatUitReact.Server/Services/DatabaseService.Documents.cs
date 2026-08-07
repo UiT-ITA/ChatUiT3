@@ -34,6 +34,7 @@ public partial class DatabaseService
         public CosmosContainerOptions ModelEndpoints { get; set; } = new CosmosContainerOptions { Name = "ModelEndpoints", PartitionKeyPath = "/partitionKey" };
         public CosmosContainerOptions Assistants { get; set; } = new CosmosContainerOptions { Name = "Assistants", PartitionKeyPath = "/partitionKey" };
         public CosmosContainerOptions AssistantContent { get; set; } = new CosmosContainerOptions { Name = "AssistantContent", PartitionKeyPath = "/assistantId" };
+        public CosmosContainerOptions AppSettings { get; set; } = new CosmosContainerOptions { Name = "AppSettings", PartitionKeyPath = "/partitionKey" };
     }
 
     private sealed class CosmosContainerOptions
@@ -175,6 +176,21 @@ public partial class DatabaseService
 
         [JsonProperty("capabilities")]
         public ModelCapabilities Capabilities { get; set; } = new();
+    }
+
+    private sealed class AppSettingsDocument
+    {
+        [JsonProperty("id")]
+        public string Id { get; set; } = string.Empty;
+
+        [JsonProperty("partitionKey")]
+        public string PartitionKey { get; set; } = string.Empty;
+
+        [JsonProperty("defaultModelId")]
+        public string DefaultModelId { get; set; } = string.Empty;
+
+        [JsonProperty("chatNamingModelId")]
+        public string ChatNamingModelId { get; set; } = string.Empty;
     }
 
     private sealed class ModelEndpointDocument

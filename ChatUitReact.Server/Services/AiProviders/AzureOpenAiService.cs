@@ -16,33 +16,48 @@ using System.Text;
 using System.Text.Json;
 using System.Runtime.CompilerServices;
 using System.Dynamic;
+using System.Collections.Concurrent;
 
 public class AzureOpenAiService
 {
-    private readonly AzureOpenAIClient _client; // ONLY used for development
+    private readonly AzureOpenAIClient? _client; // ONLY used by the unused legacy completion methods below
     private readonly ILogger<AzureOpenAiService> _logger;
     private readonly IAssistantService _assistantService;
     private readonly IToolService _toolService;
+    private readonly IModelService _modelService;
 
-    public AzureOpenAiService(IConfiguration configuration, ILogger<AzureOpenAiService> logger, IAssistantService assistantService, IToolService toolService)
+    // One client per configured ModelEndpoint — endpoints come from the database, not configuration
+    private readonly ConcurrentDictionary<string, AzureOpenAIClient> _clients = new();
+
+    public AzureOpenAiService(IConfiguration configuration, ILogger<AzureOpenAiService> logger, IAssistantService assistantService, IToolService toolService, IModelService modelService)
     {
         _logger = logger;
         _assistantService = assistantService;
         _toolService = toolService;
+        _modelService = modelService;
 
-        // Get Azure OpenAI configuration
-        // Will be replaced with propper configuration management
-        var endpoint = configuration["AzureOpenAI:Endpoint"]; // Remove
+        // Only used to seed an endpoint into the database at startup; nothing here relies on it at request time
+        var endpoint = configuration["AzureOpenAI:Endpoint"];
         var key = configuration["AzureOpenAI:ApiKey"];
-        
+
         if (string.IsNullOrEmpty(endpoint) || string.IsNullOrEmpty(key))
         {
-            throw new ArgumentException("Azure OpenAI endpoint and key must be configured");
+            _logger.LogWarning("No AzureOpenAI:Endpoint/ApiKey configured. Endpoints must be registered in the admin panel.");
+            _client = null;
         }
+        else
+        {
+            _client = new AzureOpenAIClient(
+                new Uri(endpoint),
+                new AzureKeyCredential(key));
+        }
+    }
 
-        _client = new AzureOpenAIClient(
-            new Uri(endpoint),
-            new AzureKeyCredential(key));
+    private AzureOpenAIClient GetClientForEndpoint(ModelEndpoint endpoint)
+    {
+        return _clients.GetOrAdd(endpoint.Id, _ => new AzureOpenAIClient(
+            new Uri(endpoint.Url),
+            new AzureKeyCredential(endpoint.ApiKey)));
     }
 
 
@@ -54,14 +69,14 @@ public class AzureOpenAiService
     {
         try
         {
-            var chatClient = _client.GetChatClient(settings.Model.ModelId);
+            var chatClient = _client!.GetChatClient(settings.Model.ModelId);
             var chatMessages = ConvertToChatMessages(messages);
             if (!string.IsNullOrEmpty(settings.SystemPrompt))
             {
                 chatMessages.Insert(0, new SystemChatMessage(settings.SystemPrompt));
             }
             var options = BuildCompletionOptions(settings);
-            
+
             var completion = await chatClient.CompleteChatAsync(chatMessages, options, cancellationToken);
             
             var response = completion.Value.Content[0].Text;
@@ -87,7 +102,7 @@ public class AzureOpenAiService
     {
         try
         {
-            var chatClient = _client.GetChatClient(model.ModelId);
+            var chatClient = _client!.GetChatClient(model.ModelId);
             var chatMessages = ConvertToChatMessages(messages);
             if (!string.IsNullOrEmpty(settings.SystemPrompt))
             {
@@ -115,7 +130,13 @@ public class AzureOpenAiService
         string chatId,
         [EnumeratorCancellation] CancellationToken cancellationToken = default)
     {
-        var chatClient = _client.GetChatClient(settings.Model.ModelId);
+        var resolved = await _modelService.GetModelWithEndpointAsync(settings.Model.Id);
+        if (resolved == null)
+        {
+            throw new InvalidOperationException($"Model {settings.Model.Id} has no registered endpoint");
+        }
+
+        var chatClient = GetClientForEndpoint(resolved.Value.endpoint).GetChatClient(resolved.Value.model.ModelId);
         var chatMessages = ConvertToChatMessages(messages);
         if (!string.IsNullOrEmpty(settings.SystemPrompt))
         {
@@ -222,11 +243,11 @@ public class AzureOpenAiService
         yield return new ChatResponseChunk { Content = "", IsComplete = true };
     }
 
-    public async Task<string> GetChatName(string prompt)
+    public async Task<string> GetChatName(ModelEndpoint endpoint, Model model, string prompt)
     {
         try
         {
-            var chatClient = _client.GetChatClient("gpt-4o-mini");
+            var chatClient = GetClientForEndpoint(endpoint).GetChatClient(model.ModelId);
             var chatMessages = new List<OpenAI.Chat.ChatMessage> {
                 new SystemChatMessage("Create a name for this chat based on the users initial message. The name must be shorter than 30 characters. Make the name as descriptive as possible. You should **only** respond with the name, exactly the way the name should be written. It should have no quotes around it. It should not have any formating. It will be set directly as the name of the chat. The user's message:\n\n" + prompt)
             };

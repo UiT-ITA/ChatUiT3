@@ -18,6 +18,7 @@ public class ChatService : IChatService
     private readonly IAssistantService _assistantService;
     private readonly IModelService _modelService;
     private readonly IToolService _toolService;
+    private readonly ISettingsService _settingsService;
 
     public ChatService(
         AzureOpenAiService azureOpenAiService,
@@ -27,7 +28,8 @@ public class ChatService : IChatService
         StreamingService streamingService,
         IAssistantService assistantService,
         IModelService modelService,
-        IToolService toolService)
+        IToolService toolService,
+        ISettingsService settingsService)
     {
         _azureOpenAiService = azureOpenAiService;
         _hubContext = hubContext;
@@ -37,6 +39,7 @@ public class ChatService : IChatService
         _assistantService = assistantService;
         _modelService = modelService;
         _toolService = toolService;
+        _settingsService = settingsService;
     }
 
     #region Chat management
@@ -112,8 +115,11 @@ public class ChatService : IChatService
         NotifyChatListUpdated(userId);
 
         _ = Task.Run(async () => {
-            var name = await _azureOpenAiService.GetChatName(messages[0].Content);
-            await UpdateChatAsync(userId, newChat.Id, name, null);
+            var name = await GenerateChatNameAsync(messages[0].Content);
+            if (name != null)
+            {
+                await UpdateChatAsync(userId, newChat.Id, name, null);
+            }
         });
 
         await SendStreamingMessageAsync(userId, newChat.Id, lastMessage, assistantId);
@@ -384,10 +390,35 @@ if (endpoint.EndpointType != EndpointType.AzureOpenAI)
 
     #region Internal methods
 
+    // Generates a chat name using the model configured in the admin settings.
+    // Returns null when no naming model is configured or it can no longer be resolved.
+    private async Task<string?> GenerateChatNameAsync(string prompt)
+    {
+        var settings = await _settingsService.GetAppSettingsAsync();
+
+        if (string.IsNullOrWhiteSpace(settings.ChatNamingModelId))
+        {
+            _logger.LogInformation("No chat naming model configured. Skipping chat name generation.");
+            return null;
+        }
+
+        var resolved = await _modelService.GetModelWithEndpointAsync(settings.ChatNamingModelId);
+        if (resolved == null)
+        {
+            _logger.LogWarning("Configured chat naming model {ModelId} could not be resolved to a model and endpoint.", settings.ChatNamingModelId);
+            return null;
+        }
+
+        return await _azureOpenAiService.GetChatName(resolved.Value.endpoint, resolved.Value.model, prompt);
+    }
+
     private async void SetChatName(string userId, string chatId, string prompt)
     {
-        var name = await _azureOpenAiService.GetChatName(prompt);
-        await UpdateChatAsync(userId, chatId, null, name);
+        var name = await GenerateChatNameAsync(prompt);
+        if (name != null)
+        {
+            await UpdateChatAsync(userId, chatId, null, name);
+        }
     }
 
     private async void NotifyChatListUpdated(string userId)

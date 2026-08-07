@@ -62,6 +62,16 @@ export interface UpdateModelDto {
   capabilities: ModelCapabilities;
 }
 
+export interface AppSettingsDto {
+  defaultModelId: string;      // Model.id preselected when creating assistants
+  chatNamingModelId: string;   // Model.id used to name new chats
+}
+
+export interface UpdateAppSettingsDto {
+  defaultModelId: string;
+  chatNamingModelId: string;
+}
+
 export type AdminAssistantDto = FullAssistantDto;
 export type CreateAdminAssistantDto = CreateAssistantDto;
 export type UpdateAdminAssistantDto = UpdateAssistantDto;

@@ -82,11 +82,6 @@
   opacity: 1;
 }
 
-.tag-remove:focus {
-  outline: 0.125rem solid rgba(255, 255, 255, 0.5);
-  outline-offset: 0.0625rem;
-}
-
 .tag-input {
   flex: 1;
   min-width: 6rem;
@@ -174,7 +169,3 @@
   cursor: pointer;
 }
 
-.tag-remove:focus-visible {
-  outline: 0.125rem solid var(--accent);
-  outline-offset: 0.125rem;
-}
