@@ -38,7 +38,45 @@ public static class ModelCatalog
     [
         // ---- OpenAI / Azure OpenAI -------------------------------------------------
         // The gpt-5.x family accepts a temperature only while reasoning.effort is "none".
-        new("gpt-5.5", "GPT-5.5", "Most capable OpenAI reasoning model.", EndpointType.AzureOpenAI, new ModelCapabilities
+        // The 5.6 family adds "max" above "xhigh"; all three variants share the same
+        // context window, output ceiling and cutoff, and differ only in cost and depth.
+        new("gpt-5.6-sol", "GPT-5.6 Sol", "Most capable OpenAI model; deepest reasoning.", EndpointType.AzureOpenAI, new ModelCapabilities
+        {
+            SupportsVision = true,
+            SupportsFunctionCalling = true,
+            Temperature = TemperatureSupport.SupportedWhenReasoningDisabled,
+            SupportedEfforts = Efforts(ReasoningEffort.None, ReasoningEffort.Low, ReasoningEffort.Medium, ReasoningEffort.High, ReasoningEffort.XHigh, ReasoningEffort.Max),
+            MaxContextTokens = 1_050_000,
+            MaxOutputTokens = 128_000,
+            DefaultMaxOutputTokens = 32_000,
+            KnowledgeCutoff = new DateTime(2026, 2, 16)
+        }),
+
+        new("gpt-5.6-terra", "GPT-5.6 Terra", "Strong performance at lower cost than Sol.", EndpointType.AzureOpenAI, new ModelCapabilities
+        {
+            SupportsVision = true,
+            SupportsFunctionCalling = true,
+            Temperature = TemperatureSupport.SupportedWhenReasoningDisabled,
+            SupportedEfforts = Efforts(ReasoningEffort.None, ReasoningEffort.Low, ReasoningEffort.Medium, ReasoningEffort.High, ReasoningEffort.XHigh, ReasoningEffort.Max),
+            MaxContextTokens = 1_050_000,
+            MaxOutputTokens = 128_000,
+            DefaultMaxOutputTokens = 32_000,
+            KnowledgeCutoff = new DateTime(2026, 2, 16)
+        }),
+
+        new("gpt-5.6-luna", "GPT-5.6 Luna", "Efficient model for high-volume workloads.", EndpointType.AzureOpenAI, new ModelCapabilities
+        {
+            SupportsVision = true,
+            SupportsFunctionCalling = true,
+            Temperature = TemperatureSupport.SupportedWhenReasoningDisabled,
+            SupportedEfforts = Efforts(ReasoningEffort.None, ReasoningEffort.Low, ReasoningEffort.Medium, ReasoningEffort.High, ReasoningEffort.XHigh, ReasoningEffort.Max),
+            MaxContextTokens = 1_050_000,
+            MaxOutputTokens = 128_000,
+            DefaultMaxOutputTokens = 32_000,
+            KnowledgeCutoff = new DateTime(2026, 2, 16)
+        }),
+
+        new("gpt-5.5", "GPT-5.5", "Previous-generation OpenAI reasoning model.", EndpointType.AzureOpenAI, new ModelCapabilities
         {
             SupportsVision = true,
             SupportsFunctionCalling = true,
@@ -100,7 +138,19 @@ public static class ModelCatalog
 
         // ---- Anthropic --------------------------------------------------------------
         // Models after Claude Opus 4.6 reject any non-default temperature with a 400.
-        // Opus 5 also always reasons, so its effort ladder deliberately omits "None".
+        // Fable 5 and Opus 5 always reason, so their effort ladders deliberately omit
+        // "None" — asking Fable 5 not to think is a 400, not a slower answer.
+        new("claude-fable-5", "Claude Fable 5", "Anthropic's most capable model; hardest reasoning and long-horizon agentic work.", EndpointType.Anthropic, new ModelCapabilities
+        {
+            SupportsVision = true,
+            SupportsFunctionCalling = true,
+            Temperature = TemperatureSupport.Unsupported,
+            SupportedEfforts = Efforts(ReasoningEffort.Low, ReasoningEffort.Medium, ReasoningEffort.High, ReasoningEffort.XHigh, ReasoningEffort.Max),
+            MaxContextTokens = 1_000_000,
+            MaxOutputTokens = 128_000,
+            DefaultMaxOutputTokens = 32_000
+        }),
+
         new("claude-opus-5", "Claude Opus 5", "Most capable Claude model for agentic and long-horizon work.", EndpointType.Anthropic, new ModelCapabilities
         {
             SupportsVision = true,

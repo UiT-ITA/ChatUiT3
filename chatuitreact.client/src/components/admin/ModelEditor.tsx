@@ -65,7 +65,9 @@ const ModelEditor: React.FC<ModelEditorProps> = ({ modelId: editId }) => {
     setModelName(model?.modelName ?? '');
     setDescription(model?.description ?? '');
     setEndpointId(model?.endpointId ?? (endpoints[0]?.id ?? ''));
-    setAllowedRoles(model?.allowedRoles ?? []);
+    // A new model is available to everyone; an existing one keeps exactly the roles
+    // it was saved with, so opening the form can never widen access on its own.
+    setAllowedRoles(model ? (model.allowedRoles ?? []) : [...ALL_ROLES]);
     const caps = model?.capabilities ?? defaultCapabilities;
     setCapabilities(caps);
     const iso = caps.knowledgeCutoff;
