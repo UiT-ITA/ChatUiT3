@@ -21,6 +21,11 @@ public interface IChatService
     Task AddMessageAsync(string userId, string chatId, ChatMessage message);
     Task DeleteMessageAsync(string userId, string chatId, string messageId);
 
+    /// <summary>
+    /// Stops a running generation and undoes the send. False when no generation was running.
+    /// </summary>
+    Task<bool> CancelGenerationAsync(string userId, string chatId, string messageId);
+
     // AI Response
     Task<string> GetResponseAsync(string userId, string chatId, ChatMessage userMessage);
     Task<string> GetResponseAsync(string userId, string chatId);

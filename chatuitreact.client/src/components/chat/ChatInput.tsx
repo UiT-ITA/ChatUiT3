@@ -2,7 +2,7 @@ import './ChatInput.css';
 import { useState, useRef, useEffect } from 'react';
 import { useSignals } from '@preact/signals-react/runtime';
 import { useTranslation } from 'react-i18next';
-import { sendMessage, getCurrentChatId, getCurrentAssistantId, createChat } from '../../services/chatService';
+import { sendMessage, getCurrentChatId, getCurrentAssistantId, createChat, getChat, cancelGeneration, forgetChat } from '../../services/chatService';
 import { FileProcessingService } from '../../services/fileProcessingService';
 import { Icon } from '../common/Icon';
 import AssistantSelector from '../common/AssistantSelector';
@@ -20,12 +20,25 @@ export default function ChatInput() {
 
   const [selectedFiles, setSelectedFiles] = useState<ChatFile[]>([]);
   const [charCount, setCharCount] = useState(0);
+  const [isCancelling, setIsCancelling] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+
+  // What was last sent per chat, so a cancel can put it straight back in the composer.
+  // A ref, not state: the composer never unmounts, and this must not trigger renders.
+  const lastSentRef = useRef(new Map<string, { text: string; files: ChatFile[] }>());
 
   const currentChatId = getCurrentChatId();
   const currentAssistantId = getCurrentAssistantId();
   const chatId = currentChatId.value;
+
+  // Same source of truth ChatMessage uses: the assistant message the server marked Generating.
+  const chatSignal = chatId !== undefined ? getChat(chatId) : undefined;
+  const chat = chatSignal?.value;
+  const generatingMessage = chat?.messages.find(
+    m => m.role === 'Assistant' && m.status === 'Generating'
+  );
+  const isGenerating = generatingMessage !== undefined;
 
   // Keyed on the path, not the chat id: the composer never unmounts, and coming
   // back from /admin or /settings to a new chat leaves the chat id undefined both
@@ -37,6 +50,11 @@ export default function ChatInput() {
   const handleSendMessage = async (e: React.FormEvent) => {
     e.preventDefault();
 
+    // While a response is generating the composer shows Cancel, but Enter still submits.
+    if (isGenerating) {
+      return;
+    }
+
     const message = textareaRef.current?.value?.trim() || '';
 
     if (!message && selectedFiles.length === 0) {
@@ -44,16 +62,20 @@ export default function ChatInput() {
       return;
     }
 
+    const sentFiles = selectedFiles;
+
     try {
       if (chatId !== undefined) {
-        await sendMessage(chatId, message, selectedFiles);
+        await sendMessage(chatId, message, sentFiles);
+        lastSentRef.current.set(chatId, { text: message, files: sentFiles });
       } else {
-        const newChatId = await createChat(message, currentAssistantId.value!, selectedFiles);
+        const newChatId = await createChat(message, currentAssistantId.value!, sentFiles);
 
         if (!newChatId) {
           console.error('Failed to create new chat');
           return;
         }
+        lastSentRef.current.set(newChatId, { text: message, files: sentFiles });
         navigate('/chat/' + newChatId);
       }
 
@@ -62,6 +84,54 @@ export default function ChatInput() {
       console.error('Failed to send message:', error);
     }
 
+  };
+
+  const handleCancel = async () => {
+    if (chatId === undefined || !generatingMessage || isCancelling) {
+      return;
+    }
+
+    setIsCancelling(true);
+
+    try {
+      const cancelled = await cancelGeneration(chatId, generatingMessage.id);
+
+      // Already finished before the click landed — the answer stands, leave the composer alone.
+      if (!cancelled) {
+        return;
+      }
+
+      // The server deleted both messages, so put the send back exactly as it was.
+      // Without a snapshot (a page reload since sending) the text is still recoverable
+      // from the chat itself; the attachments are not.
+      const snapshot = lastSentRef.current.get(chatId);
+      const cancelledUserMessage = [...(chat?.messages ?? [])]
+        .reverse()
+        .find(m => m.role === 'User');
+      const text = snapshot?.text ?? cancelledUserMessage?.content ?? '';
+
+      if (textareaRef.current) {
+        textareaRef.current.value = text;
+      }
+      setCharCount(text.length);
+      setSelectedFiles(snapshot?.files ?? []);
+      lastSentRef.current.delete(chatId);
+
+      // The server drops a chat left with no messages, so leave it behind here too.
+      const survivingMessages = (chat?.messages ?? []).filter(
+        m => m.id !== generatingMessage.id && m.id !== cancelledUserMessage?.id
+      );
+      if (survivingMessages.length === 0) {
+        navigate('/');
+        forgetChat(chatId);
+      }
+
+      textareaRef.current?.focus();
+    } catch (error) {
+      console.error('Failed to cancel generation:', error);
+    } finally {
+      setIsCancelling(false);
+    }
   };
 
   const handleCleanup = () => {
@@ -170,13 +240,25 @@ export default function ChatInput() {
             {charCount > 0 && (
               <div className="composer-char-count t-meta">{t('chat.charCount', { count: charCount })}</div>
             )}
-            <button
-              type="submit"
-              className="composer-send t-ui"
-              title={t('chat.sendMessage')}
-            >
-              <Icon name="send" size={0.9375} className="icon" />
-            </button>
+            {isGenerating ? (
+              <button
+                type="button"
+                className="composer-send composer-cancel t-ui"
+                onClick={handleCancel}
+                disabled={isCancelling}
+                title={t('chat.cancelGeneration')}
+              >
+                <Icon name="stop" size={0.9375} className="icon" />
+              </button>
+            ) : (
+              <button
+                type="submit"
+                className="composer-send t-ui"
+                title={t('chat.sendMessage')}
+              >
+                <Icon name="send" size={0.9375} className="icon" />
+              </button>
+            )}
           </div>
 
           <input

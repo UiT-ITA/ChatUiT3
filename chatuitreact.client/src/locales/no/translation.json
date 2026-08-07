@@ -38,6 +38,7 @@
   },
   "chat": {
     "sendMessage": "Send melding",
+    "cancelGeneration": "Stopp genereringen",
     "chatNotFound": "Samtale ikke funnet. Du kan starte en ny samtale nedenfor.",
     "messagePlaceholder": "Spør ChatUiT om noe…",
     "loadingChat": "Laster samtale...",

@@ -38,6 +38,7 @@
   },
   "chat": {
     "sendMessage": "Send message",
+    "cancelGeneration": "Stop generating",
     "chatNotFound": "Chat not found. You can start a new chat below.",
     "messagePlaceholder": "Ask ChatUiT anything…",
     "loadingChat": "Loading chat...",

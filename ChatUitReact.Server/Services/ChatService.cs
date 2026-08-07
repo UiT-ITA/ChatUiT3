@@ -244,6 +244,7 @@ public class ChatService : IChatService
             // Without a token a run that hangs — or keeps calling tools — outlives the
             // client that started it, with no way to stop it.
             using var cancellation = new CancellationTokenSource(GenerationTimeout);
+            _streamingService.RegisterGeneration(userId, assistantMessage.Id, cancellation);
 
             try
             {
@@ -255,17 +256,31 @@ public class ChatService : IChatService
                         content.Append(chunk.Content);
                     }
                 }
-                
+
+                // The token can fire after the last chunk but before we save. The user has already
+                // been told the cancel succeeded, so the undo has to win over the success path.
+                if (_streamingService.WasCancelledByUser(userId, assistantMessage.Id))
+                {
+                    await UndoCancelledGenerationAsync();
+                    return;
+                }
+
                 assistantMessage.Content = content.ToString();
                 _streamingService.CompleteMessage(userId, assistantMessage.Id);
-                
+
                 assistantMessage.Status = AiChatStatus.Success;
                 await _databaseService.UpdateMessageAsync(userId, chatId, assistantMessage);
-                
+
                 NotifyChatUpdated(userId, chatId);
             }
             catch (Exception ex)
             {
+                if (_streamingService.WasCancelledByUser(userId, assistantMessage.Id))
+                {
+                    await UndoCancelledGenerationAsync();
+                    return;
+                }
+
                 _logger.LogError(ex, "Error getting chat completion");
                 _streamingService.CompleteMessage(userId, assistantMessage.Id);
 
@@ -278,6 +293,31 @@ public class ChatService : IChatService
                 NotifyChatUpdated(userId, chatId);
                 await _hubContext.Clients.Group(userId).Notify(NotifyLevel.Error, "The model failed to complete your request. Please try again.");
             }
+            finally
+            {
+                _streamingService.UnregisterGeneration(userId, assistantMessage.Id);
+            }
+
+            // A cancel undoes the send entirely: both messages go away and the client puts the
+            // text back in the composer, as if it was never sent.
+            async Task UndoCancelledGenerationAsync()
+            {
+                _logger.LogInformation("Generation cancelled by user for message {MessageId}", assistantMessage.Id);
+                _streamingService.CompleteMessage(userId, assistantMessage.Id);
+
+                await _databaseService.DeleteMessageAsync(userId, chatId, assistantMessage.Id);
+                await _databaseService.DeleteMessageAsync(userId, chatId, userMessage.Id);
+
+                var remainingChat = await GetChatByIdAsync(userId, chatId, includeFileContent: false);
+                if (remainingChat == null || remainingChat.Messages.Count == 0)
+                {
+                    await DeleteChatAsync(userId, chatId);
+                }
+                else
+                {
+                    NotifyChatUpdated(userId, chatId);
+                }
+            }
         });
     }
 
@@ -289,6 +329,11 @@ public class ChatService : IChatService
     public Task DeleteMessageAsync(string userId, string chatId, string messageId)
     {
         throw new NotImplementedException("DeleteMessageAsync is not implemented yet.");
+    }
+
+    public Task<bool> CancelGenerationAsync(string userId, string chatId, string messageId)
+    {
+        return Task.FromResult(_streamingService.TryCancelGeneration(userId, messageId));
     }
 
     #endregion Message operations

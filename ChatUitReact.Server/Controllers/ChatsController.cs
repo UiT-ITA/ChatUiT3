@@ -215,6 +215,26 @@ public class ChatsController : ControllerBase
         }
     }
 
+    [HttpPost("{chatId}/messages/{messageId}/cancel")]
+    public async Task<ActionResult<object>> CancelMessage(string chatId, string messageId)
+    {
+        try
+        {
+            var userId = GetCurrentUserId();
+
+            // False means the generation already finished (or was never this user's): the client
+            // leaves the completed message alone instead of restoring the composer.
+            var cancelled = await _chatService.CancelGenerationAsync(userId, chatId, messageId);
+
+            return Ok(new { cancelled });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error cancelling message {MessageId} in chat {ChatId}", messageId, chatId);
+            return StatusCode(500, "Internal server error");
+        }
+    }
+
     private List<ChatFile> MapDtoToFiles(IEnumerable<CreateChatFileDto> fileDtos)
     {
         var result = new List<ChatFile>();

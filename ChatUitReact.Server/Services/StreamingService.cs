@@ -11,11 +11,60 @@ public class StreamingService
     private readonly ILogger<StreamingService> _logger;
     private readonly IHubContext<ChatHub, IChatHubClient> _hubContext;
     private readonly ConcurrentDictionary<string, MessageStream> _activeStreams = new();
+    private readonly ConcurrentDictionary<string, GenerationHandle> _activeGenerations = new();
 
     public StreamingService(ILogger<StreamingService> logger, IHubContext<ChatHub, IChatHubClient> hubContext)
     {
         _logger = logger;
         _hubContext = hubContext;
+    }
+
+    /// <summary>
+    /// Registers the token source driving a generation so it can be cancelled from another request.
+    /// Ownership (disposal) stays with the caller.
+    /// </summary>
+    public void RegisterGeneration(string userId, string messageId, CancellationTokenSource cancellationTokenSource)
+    {
+        _activeGenerations[GetStreamKey(userId, messageId)] = new GenerationHandle { Cts = cancellationTokenSource };
+    }
+
+    /// <summary>
+    /// Cancels a running generation on the user's behalf. False when nothing is running — the
+    /// generation already finished, or the message belongs to someone else (the key embeds the user).
+    /// </summary>
+    public bool TryCancelGeneration(string userId, string messageId)
+    {
+        if (!_activeGenerations.TryGetValue(GetStreamKey(userId, messageId), out var handle))
+        {
+            return false;
+        }
+
+        // Flag before cancelling: the generation task reads it the moment the token fires.
+        handle.UserCancelled = true;
+
+        try
+        {
+            handle.Cts.Cancel();
+        }
+        catch (ObjectDisposedException)
+        {
+            return false;
+        }
+
+        return true;
+    }
+
+    /// <summary>
+    /// Distinguishes a user-requested cancel from the generation timeout, which fires the same token.
+    /// </summary>
+    public bool WasCancelledByUser(string userId, string messageId)
+    {
+        return _activeGenerations.TryGetValue(GetStreamKey(userId, messageId), out var handle) && handle.UserCancelled;
+    }
+
+    public void UnregisterGeneration(string userId, string messageId)
+    {
+        _activeGenerations.TryRemove(GetStreamKey(userId, messageId), out _);
     }
 
     public void StartMessage(string userId, string messageId)
@@ -108,6 +157,12 @@ public class StreamingService
     }
 
     private static string GetStreamKey(string userId, string messageId) => $"{userId}:{messageId}";
+
+    private sealed class GenerationHandle
+    {
+        public required CancellationTokenSource Cts { get; init; }
+        public volatile bool UserCancelled;
+    }
 }
 
 internal class MessageStream : IDisposable

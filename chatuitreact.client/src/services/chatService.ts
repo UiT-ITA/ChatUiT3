@@ -139,19 +139,24 @@ export async function setChatFavorite(chatId: string, isFavorite: boolean): Prom
   }
 }
 
+// Drops every local trace of a chat that no longer exists on the server.
+function purgeChatCaches(chatId: string): void {
+  chatListSignal.value = chatListSignal.value?.filter(chat => chat.id !== chatId);
+
+  chatCache.delete(chatId);
+  chatNotFoundCache.delete(chatId);
+  for (const key of Array.from(fileContentCache.keys())) {
+    if (key.startsWith(`${chatId}/`)) {
+      fileContentCache.delete(key);
+    }
+  }
+}
+
 export async function deleteChat(chatId: string): Promise<void> {
   try {
     await apiService(`/api/Chats/${chatId}`, { method: 'DELETE' });
 
-    chatListSignal.value = chatListSignal.value?.filter(chat => chat.id !== chatId);
-
-    chatCache.delete(chatId);
-    chatNotFoundCache.delete(chatId);
-    for (const key of Array.from(fileContentCache.keys())) {
-      if (key.startsWith(`${chatId}/`)) {
-        fileContentCache.delete(key);
-      }
-    }
+    purgeChatCaches(chatId);
   } catch (error) {
     console.error(`Error deleting chat ${chatId}:`, error);
     throw error;
@@ -180,6 +185,32 @@ export async function sendMessage(chatId: string, content: string, files?: ChatF
     console.error(`Error sending message to chat ${chatId}:`, error);
     throw error; // Re-throw to allow component to handle
   }
+}
+
+/**
+ * Stops a running generation. The server undoes the whole send — both the assistant message
+ * and the user message that triggered it are deleted, and the chat too if it is left empty —
+ * so the caller is responsible for putting the text back in the composer.
+ *
+ * Returns false when the generation had already finished: nothing was undone, leave the chat alone.
+ */
+export async function cancelGeneration(chatId: string, messageId: string): Promise<boolean> {
+  try {
+    const response = await apiService.post<{ cancelled: boolean }>(
+      `/api/Chats/${chatId}/messages/${messageId}/cancel`,
+      {}
+    );
+    return response?.cancelled === true;
+  } catch (error) {
+    console.error(`Error cancelling generation for message ${messageId}:`, error);
+    throw error;
+  }
+}
+
+// The chat is gone server-side once its last exchange is cancelled away; drop it locally too
+// instead of waiting for a refetch that would 404.
+export function forgetChat(chatId: string): void {
+  purgeChatCaches(chatId);
 }
 
 // Chat file content is loaded on demand (the chat DTO only carries file metadata).
@@ -239,10 +270,11 @@ export async function invalidateChat(chatId: string): Promise<void> {
       
       chat.messages = mergedMessages;
       
-      // Clean up stream caches for messages that are no longer generating
+      // Clean up stream caches for messages that are no longer generating — including
+      // messages that vanished entirely, which is what a cancelled generation leaves behind.
       currentChat.messages.forEach(oldMessage => {
         const newMessage = mergedMessages.find(m => m.id === oldMessage.id);
-        if (oldMessage.status === "Generating" && newMessage && newMessage.status !== "Generating") {
+        if (oldMessage.status === "Generating" && (!newMessage || newMessage.status !== "Generating")) {
           messageStreamCache.delete(oldMessage.id);
         }
       });

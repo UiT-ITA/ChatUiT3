@@ -118,6 +118,12 @@ public sealed class AiConversationRunner
 
             return new ToolOutcome(result, result, false);
         }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+        {
+            // A cancelled run must stop here, not report a tool failure to a model that will
+            // never be asked again.
+            throw;
+        }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error executing tool {ToolName}", call.FunctionName);
