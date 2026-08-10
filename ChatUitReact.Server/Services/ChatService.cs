@@ -476,11 +476,11 @@ public class ChatService : IChatService
     // Returns null when no naming model is configured or it can no longer be resolved.
     private async Task<string?> GenerateChatNameAsync(string prompt)
     {
-        var settings = await _settingsService.GetAppSettingsAsync();
+        var settings = await _settingsService.GetEffectiveAppSettingsAsync();
 
         if (string.IsNullOrWhiteSpace(settings.ChatNamingModelId))
         {
-            _logger.LogInformation("No chat naming model configured. Skipping chat name generation.");
+            _logger.LogWarning("No chat naming model configured and no models are registered. Skipping chat name generation.");
             return null;
         }
 

@@ -29,7 +29,8 @@ public class AdminSettingsController : ControllerBase
     {
         try
         {
-            var settings = await _settingsService.GetAppSettingsAsync();
+            // Effective, so the page shows the model actually in use rather than a blank selection
+            var settings = await _settingsService.GetEffectiveAppSettingsAsync();
             return Ok(new AppSettingsDto
             {
                 DefaultModelId = settings.DefaultModelId,

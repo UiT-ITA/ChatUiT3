@@ -26,7 +26,7 @@ public class AppSettingsController : ControllerBase
     {
         try
         {
-            var settings = await _settingsService.GetAppSettingsAsync();
+            var settings = await _settingsService.GetEffectiveAppSettingsAsync();
             return Ok(new PublicAppSettingsDto
             {
                 DefaultModelId = settings.DefaultModelId

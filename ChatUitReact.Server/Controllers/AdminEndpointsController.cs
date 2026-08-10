@@ -115,11 +115,18 @@ public class AdminEndpointsController : ControllerBase
                 return BadRequest($"Invalid endpoint type: {updateDto.EndpointType}");
             }
 
+            var existing = await _modelService.GetEndpointByIdAsync(updateDto.Id);
+            if (existing == null)
+            {
+                return NotFound($"Endpoint with id {id} not found");
+            }
+
             var endpoint = new ModelEndpoint
             {
                 Id = updateDto.Id,
                 Url = updateDto.Url,
-                ApiKey = updateDto.ApiKey,
+                // An empty api key means "leave the existing key alone"
+                ApiKey = string.IsNullOrWhiteSpace(updateDto.ApiKey) ? existing.ApiKey : updateDto.ApiKey,
                 EndpointType = endpointType
             };
 

@@ -93,6 +93,7 @@ const EndpointEditor: React.FC<EndpointEditorProps> = ({ endpointId }) => {
           type="password"
           value={apiKey}
           onChange={(e) => setApiKey(e.target.value)}
+          placeholder={endpoint ? '••••••••••••••••••••' : undefined}
         />
       </div>
 
