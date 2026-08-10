@@ -38,8 +38,4 @@
     <Folder Include="Models\Chat\" />
   </ItemGroup>
 
-  <ItemGroup>
-    <InternalsVisibleTo Include="ChatUitReact.Server.Tests" />
-  </ItemGroup>
-
 </Project>
