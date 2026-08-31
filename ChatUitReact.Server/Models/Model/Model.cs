@@ -44,8 +44,8 @@ public class ModelCapabilities
     public int MaxOutputTokens { get; set; } = 16_000;
 
     /// <summary>
-    /// What Anthropic requests send as <c>max_tokens</c>, which that API requires.
-    /// Azure OpenAI requests send no output limit.
+    /// What is actually sent as the output limit. Never null: Anthropic requires
+    /// <c>max_tokens</c> on every request.
     /// </summary>
     public int DefaultMaxOutputTokens { get; set; } = 16_000;
 
