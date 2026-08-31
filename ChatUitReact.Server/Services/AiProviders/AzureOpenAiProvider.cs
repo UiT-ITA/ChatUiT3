@@ -1,12 +1,12 @@
 using System;
+using System.ClientModel;
 using System.Collections.Generic;
 using System.Runtime.CompilerServices;
 using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
-using Azure;
-using Azure.AI.OpenAI;
 using Microsoft.Extensions.Logging;
+using OpenAI;
 using OpenAI.Responses;
 
 // The OpenAI SDK ships its Responses surface as [Experimental].
@@ -87,13 +87,16 @@ public sealed class AzureOpenAiProvider : IAiProvider
     /// A new client for each call, built from the endpoint row as it is right now. Endpoints
     /// are edited in the admin panel while the server runs, so a client kept between calls
     /// would go on using the URL and key it was created with until the next restart.
+    /// Targets the resource's <c>/openai/v1</c> surface, which is where Azure serves the
+    /// Responses API; the endpoint row holds the resource base URL.
     /// </summary>
     private static ResponsesClient GetClient(AiRequest request)
     {
-        return new AzureOpenAIClient(
-                new Uri(request.Endpoint.Url),
-                new AzureKeyCredential(request.Endpoint.ApiKey))
-            .GetResponsesClient();
+        var baseUrl = request.Endpoint.Url.TrimEnd('/');
+
+        return new ResponsesClient(
+            credential: new ApiKeyCredential(request.Endpoint.ApiKey),
+            options: new OpenAIClientOptions { Endpoint = new Uri($"{baseUrl}/openai/v1") });
     }
 
     /// <summary>
