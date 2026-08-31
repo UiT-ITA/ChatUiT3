@@ -519,16 +519,7 @@ public class ChatService : IChatService
             Parameters = ChatParameterResolver.Resolve(model.Capabilities, namingSettings)
         };
 
-        try
-        {
-            return await _providers.For(endpoint.EndpointType).GenerateChatNameAsync(request);
-        }
-        catch (Exception ex)
-        {
-            // A failed naming call leaves the chat unnamed.
-            _logger.LogWarning(ex, "Chat name generation with model {ModelId} failed.", settings.ChatNamingModelId);
-            return null;
-        }
+        return await _providers.For(endpoint.EndpointType).CompleteTextAsync(request);
     }
 
     private const string ChatNamingPrompt =
