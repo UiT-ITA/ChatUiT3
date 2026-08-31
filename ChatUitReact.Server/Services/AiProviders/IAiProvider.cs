@@ -20,8 +20,8 @@ public interface IAiProvider
 
     IAiConversation StartConversation(AiRequest request);
 
-    /// <summary>A single non-streamed completion. Used for chat naming.</summary>
-    Task<string> CompleteTextAsync(AiRequest request, CancellationToken cancellationToken = default);
+    /// <summary>Generates a chat name with a single non-streamed, length-bounded completion.</summary>
+    Task<string> GenerateChatNameAsync(AiRequest request, CancellationToken cancellationToken = default);
 }
 
 /// <summary>Resolves the provider registered for an endpoint's type.</summary>
