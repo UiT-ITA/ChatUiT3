@@ -283,6 +283,10 @@ public sealed class AzureOpenAiProvider : IAiProvider
         {
             // Options are rebuilt each turn from the endpoint row as it is right now.
             var options = BuildOptions(_request, _items);
+
+            // The SDK refuses CreateResponseStreamingAsync unless the options say so.
+            options.StreamingEnabled = true;
+
             var stream = GetClient(_request).CreateResponseStreamingAsync(options, cancellationToken);
 
             var toolCalls = new List<FunctionCallResponseItem>();
