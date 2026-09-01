@@ -34,6 +34,14 @@ export interface ChatMessageDto {
   content: string;
   status: AiChatStatus;
   files: ChatFileDto[];
+  /**
+   * The assistant that produced this message, stamped when it was created. Empty on user
+   * messages and on messages written before per-message attribution existed — fall back to
+   * the conversation's assistant in that case.
+   */
+  assistantId: string;
+  /** Snapshot of the assistant's name, so a rename or deletion does not blank out history. */
+  assistantName: string;
 }
 
 export interface ChatHeaderDto {

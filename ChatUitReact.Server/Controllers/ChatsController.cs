@@ -328,7 +328,9 @@ public class ChatsController : ControllerBase
             Timestamp = message.Timestamp,
             Content = message.Content,
             Status = message.Status,
-            Files = MapFilesToDto(message.Files)
+            Files = MapFilesToDto(message.Files),
+            AssistantId = message.AssistantId,
+            AssistantName = message.AssistantName
         };
     }
 

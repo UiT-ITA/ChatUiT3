@@ -95,6 +95,14 @@ public partial class DatabaseService
 
         [JsonProperty("files")]
         public List<StoredFileDocument> Files { get; set; } = new();
+
+        // Absent on messages written before per-message attribution existed; an empty value
+        // means "fall back to the chat's assistant" rather than "no assistant".
+        [JsonProperty("assistantId")]
+        public string AssistantId { get; set; } = string.Empty;
+
+        [JsonProperty("assistantName")]
+        public string AssistantName { get; set; } = string.Empty;
     }
 
     private sealed class StoredFileDocument
