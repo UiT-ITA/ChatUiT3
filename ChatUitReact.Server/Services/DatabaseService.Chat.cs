@@ -239,7 +239,9 @@ public partial class DatabaseService
                 Timestamp = timestamp,
                 Status = message.Status,
                 ContentBlockIds = await WriteTextContentAsync(userId, chatId, messageId, message.Content, writtenBlockIds),
-                Files = await WriteFilesAsync(userId, chatId, message.Files, writtenBlockIds)
+                Files = await WriteFilesAsync(userId, chatId, message.Files, writtenBlockIds),
+                AssistantId = message.AssistantId,
+                AssistantName = message.AssistantName
             };
 
             await _chatMessageContainer!.CreateItemAsync(messageDocument, new PartitionKey(userId));
@@ -295,7 +297,15 @@ public partial class DatabaseService
                 Timestamp = timestamp,
                 Status = status,
                 ContentBlockIds = contentBlockIds,
-                Files = files
+                Files = files,
+                // A full replace, so anything not carried here is wiped. Callers that build a
+                // partial message (the stale-generation fixup, for one) leave these blank.
+                AssistantId = string.IsNullOrWhiteSpace(message.AssistantId)
+                    ? existingMessage.AssistantId
+                    : message.AssistantId,
+                AssistantName = string.IsNullOrWhiteSpace(message.AssistantName)
+                    ? existingMessage.AssistantName
+                    : message.AssistantName
             };
 
             await _chatMessageContainer!.ReplaceItemAsync(replacement, replacement.Id, new PartitionKey(userId));
@@ -364,7 +374,9 @@ public partial class DatabaseService
             Timestamp = messageDocument.Timestamp,
             Content = ReadTextContent(messageDocument.ContentBlockIds, contentBlocksById),
             Status = messageDocument.Status,
-            Files = ReadFiles(messageDocument.Files, contentBlocksById, includeFileContent)
+            Files = ReadFiles(messageDocument.Files, contentBlocksById, includeFileContent),
+            AssistantId = messageDocument.AssistantId,
+            AssistantName = messageDocument.AssistantName
         };
     }
 

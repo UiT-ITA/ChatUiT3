@@ -261,7 +261,8 @@ export async function invalidateChat(chatId: string): Promise<void> {
         if (existingMessage && 
             existingMessage.content === newMessage.content &&
             existingMessage.status === newMessage.status &&
-            existingMessage.timestamp === newMessage.timestamp) {
+            existingMessage.timestamp === newMessage.timestamp &&
+            existingMessage.assistantName === newMessage.assistantName) {
           return existingMessage; // Preserve reference to avoid rerender
         }
         

@@ -25,11 +25,12 @@ interface ChatMessageProps {
   /** The chat this message belongs to — attachments resolve their content against it. */
   chatId: string;
   message: ChatMessageDto;
-  assistantName?: string;
+  /** Used only when the message has no assistant of its own. */
+  fallbackAssistantName?: string;
   onStreamingChunk?: () => void;
 }
 
-function ChatMessage({ chatId, message, assistantName, onStreamingChunk }: ChatMessageProps) {
+function ChatMessage({ chatId, message, fallbackAssistantName, onStreamingChunk }: ChatMessageProps) {
   useSignals();
   const { t } = useTranslation();
   const { settings } = useSettings();
@@ -198,7 +199,7 @@ function ChatMessage({ chatId, message, assistantName, onStreamingChunk }: ChatM
     <div className={`chat-message ${isUser ? 'user-message' : isAssistant ? 'assistant-message' : 'system-message'} ${isStreaming ? 'streaming' : ''}`}>
       {isAssistant && (
         <div className="message-meta">
-          <span className="message-meta-name t-overline">{assistantName || t('chat.assistantLabel')}</span>
+          <span className="message-meta-name t-overline">{message.assistantName || fallbackAssistantName || t('chat.assistantLabel')}</span>
           <span className="message-time t-meta">
             {new Date(message.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
           </span>

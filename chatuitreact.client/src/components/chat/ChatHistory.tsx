@@ -17,7 +17,9 @@ function ChatHistory({ chatId }: ChatHistoryProps) {
   const chat = getChat(chatId)
   const messages = chat.value?.messages || []
   const assistants = getSelectableAssistants().value || []
-  const assistantName = assistants.find((a) => a.id === chat.value?.assistantId)?.name
+  // Only a fallback: messages carry their own assistant. This covers messages written before
+  // per-message attribution existed, and any message whose snapshot is empty.
+  const fallbackAssistantName = assistants.find((a) => a.id === chat.value?.assistantId)?.name
 
   const chatHistoryRef = useRef<HTMLDivElement>(null)
   const bottomSentinelRef = useRef<HTMLDivElement>(null)
@@ -84,7 +86,7 @@ function ChatHistory({ chatId }: ChatHistoryProps) {
             key={message.id}
             chatId={chatId}
             message={message}
-            assistantName={assistantName}
+            fallbackAssistantName={fallbackAssistantName}
             onStreamingChunk={scrollToBottomIfPinned}
           />
         ))}
