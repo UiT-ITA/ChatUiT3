@@ -47,7 +47,7 @@ public sealed class AnthropicProvider : IAiProvider
         return new Conversation(request, BuildMessages(request), _logger);
     }
 
-    public async Task<string> CompleteTextAsync(AiRequest request, CancellationToken cancellationToken = default)
+    public async Task<string> GenerateChatNameAsync(AiRequest request, CancellationToken cancellationToken = default)
     {
         var parameters = BuildParams(
             request,
