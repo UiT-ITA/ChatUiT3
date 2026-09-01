@@ -3,6 +3,7 @@ import type { ChatDto, ChatFileDto, ChatHeaderDto, CreateChatDto, UpdateChatDto 
 import apiService from "./apiService";
 import type { SendMessageDto } from "../types/chatModels";
 import { getAssistants, getAssistant } from "./assistantService";
+import { getAppDefaults } from "./appSettingsService";
 import type { AssistantDto } from "../types/assistantModels";
 import type { ChatFile } from "../types/fileModels";
 import { formatFileSize, mapToCreateChatFileDto } from "../utils/fileUtils";
@@ -410,21 +411,47 @@ export function setCurrentChatId(chatId: string | undefined): void {
   userSelectedAssistantIdSignal.value = undefined;
 }
 
+/**
+ * Where a new chat starts, in order: the assistant this user pinned, the org-wide default an
+ * admin chose, then the first system assistant as a last resort.
+ *
+ * A pin is re-checked here on every read rather than being cleared when it stops being usable,
+ * so switching a pinned assistant's model to one that is not default-eligible makes the pin
+ * inactive, and switching it back makes it work again. Visibility is deliberately not part of
+ * this: hiding an assistant from the selector must not silently unset the pin.
+ */
+function getResolvedDefaultAssistantId(): Signal<string | undefined> {
+  return computed(() => {
+    const assistantList = getAssistants().value;
+    if (!assistantList) return undefined;
+
+    const all = [...assistantList.owned, ...assistantList.system, ...assistantList.shared];
+
+    const pinned = assistantList.defaultAssistantId
+      ? all.find(a => a.id === assistantList.defaultAssistantId)
+      : undefined;
+    if (pinned?.canBeDefault) return pinned.id;
+
+    const orgDefaultId = getAppDefaults().value?.defaultAssistantId;
+    const orgDefault = orgDefaultId ? all.find(a => a.id === orgDefaultId) : undefined;
+    if (orgDefault) return orgDefault.id;
+
+    return assistantList.system[0]?.id;
+  });
+}
+
 function getAutomaticAssistantId(): Signal<string | undefined> {
   return computed(() => {
     const chatId = currentChatIdSignal.value;
-    
-    if (chatId === "new") {
-      const assistants = getAssistants().value;
-      return assistants?.system[0]?.id;
-    } else if (chatId) {
+
+    // An existing chat keeps the assistant it was created with.
+    if (chatId && chatId !== "new") {
       const chats = chatListSignal.value;
       const chatHeader = chats?.find(c => c.id === chatId);
-      return chatHeader?.assistantId || (getAssistants().value?.system[0]?.id);
-    } else {
-      const assistants = getAssistants().value;
-      return assistants?.system[0]?.id;
+      if (chatHeader?.assistantId) return chatHeader.assistantId;
     }
+
+    return getResolvedDefaultAssistantId().value;
   });
 }
 
@@ -448,9 +475,12 @@ export function getSelectableAssistants(): Signal<AssistantDto[]> {
     const currentAssistantId = getCurrentAssistantId().value;
     
     if (!assistantList) return [];
-    
-    // Always include default (system[0])
-    const defaultAssistant = assistantList.system[0];
+
+    // Always include whichever assistant a new chat actually starts on, so it can never be
+    // missing from the picker.
+    const resolvedDefaultId = getResolvedDefaultAssistantId().value;
+    const defaultAssistant = [...assistantList.owned, ...assistantList.system, ...assistantList.shared]
+      .find(a => a.id === resolvedDefaultId);
     
     // All visible assistants
     const visibleAssistants = [

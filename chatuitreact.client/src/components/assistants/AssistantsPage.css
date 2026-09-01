@@ -92,7 +92,8 @@
   color: var(--text-3);
 }
 
-.assistants-overview-hidden {
+.assistants-overview-hidden,
+.assistants-overview-default {
   flex: 0 0 auto;
   display: inline-flex;
   color: var(--text-3);
@@ -149,6 +150,16 @@
 
 .assistant-action-button:hover {
   background: var(--panel);
+}
+
+.assistant-action-button:disabled {
+  color: var(--text-3);
+  border-color: var(--line);
+  cursor: not-allowed;
+}
+
+.assistant-action-button:disabled:hover {
+  background: transparent;
 }
 
 .assistant-action-button.danger {

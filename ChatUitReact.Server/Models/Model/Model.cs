@@ -13,6 +13,16 @@ public class Model
     public string Description { get; set; } = string.Empty;
     public string EndpointId { get; set; } = string.Empty;
     public List<UserRole> AllowedRoles { get; set; } = new List<UserRole>();
+
+    /// <summary>
+    /// Whether a user may pin an assistant on this model as their default assistant for new
+    /// chats. A cost control, not a capability: it says nothing about what the model can do,
+    /// only that the operator is willing to have it run unprompted on every new conversation.
+    /// Not eligible unless explicitly set. The admin form starts a new model ticked, but a
+    /// model row that never carried the flag stays off.
+    /// </summary>
+    public bool AllowedAsDefault { get; set; } = false;
+
     public ModelCapabilities Capabilities { get; set; } = new ModelCapabilities();
 }
 

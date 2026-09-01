@@ -7,7 +7,7 @@ import { getModels } from '../../services/modelService';
 import { getAppDefaults } from '../../services/appSettingsService';
 import { getTools } from '../../services/toolService';
 import type { UserModelDto } from '../../types/modelModels';
-import { createAssistant, updateAssistant, fetchAssistantFile } from '../../services/assistantService';
+import { createAssistant, updateAssistant, fetchAssistantFile, getAssistants } from '../../services/assistantService';
 import TagField from '../common/TagField';
 import KnowledgeFileList, { type KnowledgeFileCategory, type KnowledgeFileItemData } from './KnowledgeFileList';
 import type { ChatFile } from '../../types/fileModels';
@@ -99,6 +99,16 @@ const AssistantForm: React.FC<AssistantFormProps> = ({
   // The admin-configured default model, only once it is known to be selectable
   const defaultModelId = appDefaultsSignal.value?.defaultModelId ?? '';
   const selectableDefaultModelId = models.some(m => m.id === defaultModelId) ? defaultModelId : '';
+
+  // Saving a model that is not default-eligible does not clear the pin, it just stops it
+  // resolving — so warn before the save rather than after.
+  const isPinnedAssistant =
+    editingAssistant != null && getAssistants().value?.defaultAssistantId === editingAssistant.id;
+  const pinWillGoInactive =
+    isPinnedAssistant &&
+    selectedModel != null &&
+    !selectedModel.allowedAsDefault &&
+    formData.modelId !== editingAssistant?.modelId;
 
   const availableTools: ChatToolDto[] = toolsSignal.value || [];
   const knowledgeSections: Array<{
@@ -404,6 +414,9 @@ const AssistantForm: React.FC<AssistantFormProps> = ({
               </div>
             )}
           </div>
+          {pinWillGoInactive && (
+            <div className="af-note t-ui-plain">{t('assistants.form.modelNotDefaultEligible')}</div>
+          )}
         </div>
       </div>
 

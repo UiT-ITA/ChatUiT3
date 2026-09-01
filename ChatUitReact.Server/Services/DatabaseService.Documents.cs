@@ -182,6 +182,9 @@ public partial class DatabaseService
         [JsonProperty("allowedRoles", ItemConverterType = typeof(StringEnumConverter))]
         public List<UserRole> AllowedRoles { get; set; } = new();
 
+        [JsonProperty("allowedAsDefault")]
+        public bool AllowedAsDefault { get; set; }
+
         [JsonProperty("capabilities")]
         public ModelCapabilitiesDocument Capabilities { get; set; } = new();
     }
@@ -232,6 +235,9 @@ public partial class DatabaseService
 
         [JsonProperty("chatNamingModelId")]
         public string ChatNamingModelId { get; set; } = string.Empty;
+
+        [JsonProperty("defaultAssistantId")]
+        public string DefaultAssistantId { get; set; } = string.Empty;
     }
 
     private sealed class ModelEndpointDocument
