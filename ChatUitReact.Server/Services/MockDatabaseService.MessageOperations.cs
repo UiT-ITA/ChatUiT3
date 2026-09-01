@@ -33,6 +33,15 @@ public partial class MockDatabaseService
                 {
                     existingMessage.Files = message.Files;
                 }
+                // Same reason as files: callers that build a partial message leave these blank.
+                if (!string.IsNullOrWhiteSpace(message.AssistantId))
+                {
+                    existingMessage.AssistantId = message.AssistantId;
+                }
+                if (!string.IsNullOrWhiteSpace(message.AssistantName))
+                {
+                    existingMessage.AssistantName = message.AssistantName;
+                }
             }
             chat.UpdatedAt = DateTime.Now;
         }

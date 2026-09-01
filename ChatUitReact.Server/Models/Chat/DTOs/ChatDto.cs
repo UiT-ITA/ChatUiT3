@@ -27,6 +27,8 @@ public class ChatMessageDto
     public string Content { get; set; } = string.Empty;
     public AiChatStatus Status { get; set; }
     public List<ChatFileDto> Files { get; set; } = new List<ChatFileDto>();
+    public string AssistantId { get; set; } = string.Empty;
+    public string AssistantName { get; set; } = string.Empty;
 }
 
 public class ChatFileChunkDto
