@@ -25,6 +25,7 @@ export interface FullAssistantDto {
     reasoningEffort: ReasoningEffort;
     availableToolIds: string[];
     isVisible: boolean;
+    isFavorite: boolean;
     files: AssistantFileDto[];
 }
 
@@ -35,6 +36,7 @@ export interface AssistantSummaryDto {
     tags: string[];
     modelId: string;
     isVisible: boolean;
+    isFavorite: boolean;
     createdBy?: string;
 }
 
@@ -54,6 +56,7 @@ export interface AssistantDto {
     temperature?: number;
     reasoningEffort?: ReasoningEffort;
     isVisible: boolean;
+    isFavorite: boolean;
     type: 'owned' | 'system' | 'shared';
 }
 

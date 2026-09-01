@@ -181,7 +181,9 @@
       "editAssistant": "Edit assistant",
       "deleteAssistant": "Delete assistant",
       "copyLink": "Copy link",
-      "copyId": "Copy ID"
+      "copyId": "Copy ID",
+      "addFavorite": "Add to favorites",
+      "removeFavorite": "Remove from favorites"
     },
     "knowledge": {
       "title": "Knowledge",
@@ -218,7 +220,20 @@
     "shareDescription": "Share \"{{name}}\" with others:",
     "shareLink": "Share Link",
     "assistantId": "Assistant ID",
-    "systemBadge": "System"
+    "systemBadge": "System",
+    "picker": {
+      "searchPlaceholder": "Search assistants...",
+      "noResults": "No assistants match",
+      "noFavorites": "No favorites yet",
+      "filterTitle": "Capabilities",
+      "categories": {
+        "all": "All assistants",
+        "favorites": "Favorites",
+        "system": "System assistants",
+        "owned": "My assistants",
+        "shared": "Shared with me"
+      }
+    }
   },
   "settings": {
     "title": "Settings",
