@@ -32,7 +32,8 @@ public partial class DatabaseService
         return new AppSettings
         {
             DefaultModelId = document.DefaultModelId,
-            ChatNamingModelId = document.ChatNamingModelId
+            ChatNamingModelId = document.ChatNamingModelId,
+            DefaultAssistantId = document.DefaultAssistantId
         };
     }
 
@@ -43,7 +44,8 @@ public partial class DatabaseService
             Id = AppSettingsDocumentId,
             PartitionKey = ConfigurationPartitionKeyValue,
             DefaultModelId = settings.DefaultModelId,
-            ChatNamingModelId = settings.ChatNamingModelId
+            ChatNamingModelId = settings.ChatNamingModelId,
+            DefaultAssistantId = settings.DefaultAssistantId
         };
     }
 }

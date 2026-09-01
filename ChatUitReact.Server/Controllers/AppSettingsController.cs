@@ -29,7 +29,8 @@ public class AppSettingsController : ControllerBase
             var settings = await _settingsService.GetEffectiveAppSettingsAsync();
             return Ok(new PublicAppSettingsDto
             {
-                DefaultModelId = settings.DefaultModelId
+                DefaultModelId = settings.DefaultModelId,
+                DefaultAssistantId = settings.DefaultAssistantId
             });
         }
         catch (Exception ex)

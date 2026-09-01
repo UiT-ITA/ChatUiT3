@@ -56,6 +56,12 @@ public class ModelDto
     [Required]
     public List<UserRole> AllowedRoles { get; set; } = new List<UserRole>();
 
+    /// <summary>
+    /// Whether a user may pin an assistant on this model as their default assistant.
+    /// Cost control, not a capability.
+    /// </summary>
+    public bool AllowedAsDefault { get; set; }
+
     [Required]
     public ModelCapabilitiesDto Capabilities { get; set; } = new ModelCapabilitiesDto();
 }
@@ -76,6 +82,12 @@ public class CreateModelDto
 
     [Required]
     public List<UserRole> AllowedRoles { get; set; } = new List<UserRole>();
+
+    /// <summary>
+    /// Whether a user may pin an assistant on this model as their default assistant.
+    /// Cost control, not a capability.
+    /// </summary>
+    public bool AllowedAsDefault { get; set; }
 
     [Required]
     public ModelCapabilitiesDto Capabilities { get; set; } = new ModelCapabilitiesDto();
@@ -100,6 +112,12 @@ public class UpdateModelDto
 
     [Required]
     public List<UserRole> AllowedRoles { get; set; } = new List<UserRole>();
+
+    /// <summary>
+    /// Whether a user may pin an assistant on this model as their default assistant.
+    /// Cost control, not a capability.
+    /// </summary>
+    public bool AllowedAsDefault { get; set; }
 
     [Required]
     public ModelCapabilitiesDto Capabilities { get; set; } = new ModelCapabilitiesDto();

@@ -167,7 +167,8 @@
         "xhigh": "Extra high",
         "max": "Max"
       },
-      "temperatureUnavailableWithReasoning": "This model only accepts a temperature while reasoning is off."
+      "temperatureUnavailableWithReasoning": "This model only accepts a temperature while reasoning is off.",
+      "modelNotDefaultEligible": "This is your default assistant. This model cannot be used as a default, so saving will stop new chats from starting here."
     },
     "capabilities": {
       "vision": "Vision",
@@ -181,7 +182,11 @@
       "editAssistant": "Edit assistant",
       "deleteAssistant": "Delete assistant",
       "copyLink": "Copy link",
-      "copyId": "Copy ID"
+      "copyId": "Copy ID",
+      "setAsDefault": "Set as default",
+      "clearDefault": "Default",
+      "isDefault": "Your default assistant",
+      "cannotBeDefault": "This assistant’s model cannot be used as a default"
     },
     "knowledge": {
       "title": "Knowledge",
@@ -218,7 +223,8 @@
     "shareDescription": "Share \"{{name}}\" with others:",
     "shareLink": "Share Link",
     "assistantId": "Assistant ID",
-    "systemBadge": "System"
+    "systemBadge": "System",
+    "defaultInactiveNote": "You pinned this assistant, but its current model cannot be used as a default, so new chats start elsewhere. Switch it back to a model that can be a default to use it again."
   },
   "settings": {
     "title": "Settings",
@@ -457,7 +463,9 @@
         "knownModel": "Start from a known model",
         "knownModelCustom": "Custom / not listed",
         "knownModelHint": "Fills in the capabilities we have verified for this model. Everything stays editable.",
-        "allowedRolesRequired": "Pick at least one role, or nobody will see this model."
+        "allowedRolesRequired": "Pick at least one role, or nobody will see this model.",
+        "allowedAsDefault": "Can be a default assistant model",
+        "allowedAsDefaultHelp": "Lets users pin an assistant built on this model as their default for every new chat. Leave off for expensive models. It does not affect who may use the model — that is Allowed roles."
       },
       "temperatureSupport": {
         "Unsupported": "Not supported",
@@ -490,7 +498,9 @@
         "defaultModel": "Default model",
         "defaultModelHelp": "Preselected in the model list when creating a new assistant.",
         "chatNamingModel": "Model for naming chats",
-        "chatNamingModelHelp": "Used to generate a name for a new chat from the first message. New chats keep their placeholder name when this is not selected."
+        "chatNamingModelHelp": "Used to generate a name for a new chat from the first message. New chats keep their placeholder name when this is not selected.",
+        "defaultAssistant": "Default assistant",
+        "defaultAssistantHelp": "The system assistant a new chat starts on when the user has not pinned one of their own."
       }
     }
   },

@@ -12,15 +12,18 @@ public class AdminSettingsController : ControllerBase
 {
     private readonly ISettingsService _settingsService;
     private readonly IModelService _modelService;
+    private readonly IAssistantService _assistantService;
     private readonly ILogger<AdminSettingsController> _logger;
 
     public AdminSettingsController(
         ISettingsService settingsService,
         IModelService modelService,
+        IAssistantService assistantService,
         ILogger<AdminSettingsController> logger)
     {
         _settingsService = settingsService;
         _modelService = modelService;
+        _assistantService = assistantService;
         _logger = logger;
     }
 
@@ -34,7 +37,8 @@ public class AdminSettingsController : ControllerBase
             return Ok(new AppSettingsDto
             {
                 DefaultModelId = settings.DefaultModelId,
-                ChatNamingModelId = settings.ChatNamingModelId
+                ChatNamingModelId = settings.ChatNamingModelId,
+                DefaultAssistantId = settings.DefaultAssistantId
             });
         }
         catch (Exception ex)
@@ -59,10 +63,16 @@ public class AdminSettingsController : ControllerBase
                 return BadRequest($"Unknown model id {updateDto.ChatNamingModelId}");
             }
 
+            if (!await IsSystemAssistantAsync(updateDto.DefaultAssistantId))
+            {
+                return BadRequest($"Unknown system assistant id {updateDto.DefaultAssistantId}");
+            }
+
             var settings = new AppSettings
             {
                 DefaultModelId = updateDto.DefaultModelId,
-                ChatNamingModelId = updateDto.ChatNamingModelId
+                ChatNamingModelId = updateDto.ChatNamingModelId,
+                DefaultAssistantId = updateDto.DefaultAssistantId
             };
 
             await _settingsService.UpdateAppSettingsAsync(settings);
@@ -70,7 +80,8 @@ public class AdminSettingsController : ControllerBase
             return Ok(new AppSettingsDto
             {
                 DefaultModelId = settings.DefaultModelId,
-                ChatNamingModelId = settings.ChatNamingModelId
+                ChatNamingModelId = settings.ChatNamingModelId,
+                DefaultAssistantId = settings.DefaultAssistantId
             });
         }
         catch (Exception ex)
@@ -89,5 +100,18 @@ public class AdminSettingsController : ControllerBase
         }
 
         return await _modelService.GetModelByIdAsync(modelId) != null;
+    }
+
+    // Deliberately not checked against Model.AllowedAsDefault: that flag exists so users cannot
+    // pin an expensive model, and an admin choosing the org-wide default is exactly who should
+    // be trusted with that decision. Only "is this a real system assistant" is enforced.
+    private async Task<bool> IsSystemAssistantAsync(string assistantId)
+    {
+        if (string.IsNullOrWhiteSpace(assistantId))
+        {
+            return true;
+        }
+
+        return await _assistantService.GetSystemAssistantForAdminAsync(assistantId) != null;
     }
 }

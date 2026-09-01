@@ -25,7 +25,8 @@ public partial class MockDatabaseService
                 },
                 SharedAssistantIds = new List<string>(userInfo.Preferences.SharedAssistantIds),
                 FavoritedAssistantIds = new List<string>(userInfo.Preferences.FavoritedAssistantIds),
-                HiddenAssistantIds = new List<string>(userInfo.Preferences.HiddenAssistantIds)
+                HiddenAssistantIds = new List<string>(userInfo.Preferences.HiddenAssistantIds),
+                DefaultAssistantId = userInfo.Preferences.DefaultAssistantId
             }
         };
     }
@@ -60,6 +61,7 @@ public partial class MockDatabaseService
             Description = model.Description,
             EndpointId = model.EndpointId,
             AllowedRoles = new List<UserRole>(model.AllowedRoles),
+            AllowedAsDefault = model.AllowedAsDefault,
             Capabilities = new ModelCapabilities
             {
                 SupportsVision = model.Capabilities.SupportsVision,
