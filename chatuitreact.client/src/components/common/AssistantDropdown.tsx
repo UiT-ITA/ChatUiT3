@@ -1,7 +1,9 @@
+import { useState } from 'react';
 import { useSignals } from '@preact/signals-react/runtime';
 import { useTranslation } from 'react-i18next';
-import { Icon } from './Icon';
+import { Icon, type IconName } from './Icon';
 import { getSelectableAssistants, getCurrentAssistantId, setUserSelectedAssistantId } from '../../services/chatService';
+import { toggleFavorite } from '../../services/assistantService';
 import { getModels } from '../../services/modelService';
 import type { AssistantDto } from '../../types/assistantModels';
 import type { UserModelDto } from '../../types/modelModels';
@@ -13,9 +15,39 @@ interface AssistantDropdownProps {
   onClose?: () => void;
 }
 
+type Category = 'all' | 'favorites' | 'system' | 'owned' | 'shared';
+type Capability = 'vision' | 'tools' | 'reasoning';
+
+const CATEGORIES: { key: Category; icon: IconName }[] = [
+  { key: 'all', icon: 'grid' },
+  { key: 'favorites', icon: 'star' },
+  { key: 'system', icon: 'shield' },
+  { key: 'owned', icon: 'user' },
+  { key: 'shared', icon: 'people' },
+];
+
+const CAPABILITIES: { key: Capability; icon: IconName }[] = [
+  { key: 'vision', icon: 'eye' },
+  { key: 'tools', icon: 'globe' },
+  { key: 'reasoning', icon: 'brain' },
+];
+
+/** Categories map onto AssistantDto.type, except 'all' and the per-user 'favorites'. */
+const ROW_ICON: Record<AssistantDto['type'], IconName> = {
+  system: 'shield',
+  owned: 'user',
+  shared: 'people',
+};
+
+const rowIcon = (type: AssistantDto['type']): IconName => ROW_ICON[type] ?? 'assistants';
+
 export default function AssistantDropdown({ isOpen, direction, onClose }: AssistantDropdownProps) {
   useSignals();
   const { t } = useTranslation();
+  const [category, setCategory] = useState<Category>('all');
+  const [query, setQuery] = useState('');
+  const [filterOpen, setFilterOpen] = useState(false);
+  const [capabilityFilter, setCapabilityFilter] = useState<Capability[]>([]);
 
   const selectableAssistants = getSelectableAssistants().value || [];
   const currentAssistantId = getCurrentAssistantId().value;
@@ -24,6 +56,18 @@ export default function AssistantDropdown({ isOpen, direction, onClose }: Assist
   const modelsSignal = getModels();
   const models: UserModelDto[] = modelsSignal.value ?? [];
 
+  const capabilitiesOf = (assistant: AssistantDto) => {
+    const model = models.find(m => m.id === assistant.modelId);
+    return {
+      vision: !!model?.capabilities.vision,
+      tools: !!model?.capabilities.tools,
+      reasoning: (model?.capabilities.supportedEfforts.length ?? 0) > 0,
+    };
+  };
+
+  const modelNameOf = (assistant: AssistantDto) =>
+    models.find(m => m.id === assistant.modelId)?.modelName;
+
   const handleSelectAssistant = (assistant: AssistantDto) => {
     setUserSelectedAssistantId(assistant.id);
     if (onClose) {
@@ -31,68 +75,204 @@ export default function AssistantDropdown({ isOpen, direction, onClose }: Assist
     }
   };
 
-  const renderCapabilityIcon = (capability: string, enabled: boolean) => {
-    if (!enabled) return null;
-    
-    const iconProps = {
-      size: 1,
-      className: "capability-icon"
-    };
-    
-    switch (capability) {
-      case 'vision':
-        return <Icon key="vision" name="eye" {...iconProps} title={t('assistants.capabilities.vision')} />;
-      case 'tools':
-        return <Icon key="tools" name="globe" {...iconProps} title={t('assistants.capabilities.tools')} />;
-      case 'reasoning':
-        return <Icon key="reasoning" name="brain" {...iconProps} title={t('assistants.capabilities.reasoning')} />;
-      default:
-        return null;
+  const handleToggleFavorite = (assistant: AssistantDto) => {
+    // The server pushes AssistantsUpdated, which re-fetches the list.
+    void toggleFavorite(assistant.id);
+  };
+
+  const toggleCapabilityFilter = (capability: Capability) => {
+    setCapabilityFilter(current =>
+      current.includes(capability)
+        ? current.filter(c => c !== capability)
+        : [...current, capability]
+    );
+  };
+
+  const matchesCategory = (assistant: AssistantDto) => {
+    if (category === 'all') return true;
+    if (category === 'favorites') return assistant.isFavorite;
+    return assistant.type === category;
+  };
+
+  const matchesQuery = (assistant: AssistantDto) => {
+    const needle = query.trim().toLowerCase();
+    if (!needle) return true;
+    return [assistant.name, assistant.description ?? '', ...assistant.tags]
+      .some(field => field.toLowerCase().includes(needle));
+  };
+
+  const matchesCapabilities = (assistant: AssistantDto) => {
+    if (capabilityFilter.length === 0) return true;
+    const capabilities = capabilitiesOf(assistant);
+    return capabilityFilter.every(capability => capabilities[capability]);
+  };
+
+  const visibleAssistants = selectableAssistants.filter(
+    a => matchesCategory(a) && matchesQuery(a) && matchesCapabilities(a)
+  );
+
+  const emptyMessage = () => {
+    if (query.trim() || capabilityFilter.length > 0) return t('assistants.picker.noResults');
+    switch (category) {
+      case 'favorites': return t('assistants.picker.noFavorites');
+      case 'system': return t('assistants.emptyStates.noSystemAssistants');
+      case 'owned': return t('assistants.emptyStates.noPersonalAssistants');
+      case 'shared': return t('assistants.emptyStates.noSharedAssistants');
+      default: return t('assistants.picker.noResults');
     }
   };
 
-  if (!isOpen) return null;
+  if (!isOpen) {
+    // The component stays mounted, so transient state has to be reset by hand.
+    if (filterOpen) setFilterOpen(false);
+    return null;
+  }
 
   const dropdownClass = direction === 'above' ? 'assistant-dropdown-above' : 'assistant-dropdown-below';
 
   return (
     <div className={`assistant-dropdown ${dropdownClass}`}>
-      {selectableAssistants.map((assistant) => {
-        const modelResolved = models.find(m => m.id === (assistant as any).modelId);
-        const capabilities = {
-          vision: !!modelResolved?.capabilities.vision,
-          tools: !!modelResolved?.capabilities.tools,
-          reasoning: (modelResolved?.capabilities.supportedEfforts.length ?? 0) > 0,
-        };
-        
-        return (
-          <div 
-            key={assistant.id}
-            className={`assistant-option ${selectedAssistant?.id === assistant.id ? 'selected' : ''}`}
-            onClick={() => handleSelectAssistant(assistant)}
+      <div className="ap-search-wrap">
+        <div className="ap-search">
+          <Icon name="search" size={0.9375} className="ap-search-icon" />
+          <input
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            placeholder={t('assistants.picker.searchPlaceholder')}
+            className="t-ui-plain"
+            autoFocus
+          />
+          {query.length > 0 && (
+            <button
+              type="button"
+              className="ap-search-clear"
+              onClick={() => setQuery('')}
+              title={t('common.clear')}
+            >
+              <Icon name="close" size={0.875} />
+            </button>
+          )}
+        </div>
+        <div className="ap-filter">
+          <button
+            type="button"
+            className={`ap-filter-button ${capabilityFilter.length > 0 ? 'active' : ''}`}
+            onClick={() => setFilterOpen(open => !open)}
+            title={t('assistants.picker.filterTitle')}
           >
-            <div className="assistant-info">
-              <span className="assistant-option-name t-ui">{assistant.name}</span>
-              {assistant.type === 'system' && (
-                <span className="system-badge t-tag">{t('assistants.systemBadge')}</span>
-              )}
-              <div className="info-tooltip-container">
-                <Icon 
-                  name="info" 
-                  size={1} 
-                  className="info-icon" 
-                />
-                <div className="info-tooltip t-caption">{assistant.description || t('assistants.noDescriptionAvailable')}</div>
+            <Icon name="filter" size={1.125} />
+          </button>
+          {filterOpen && (
+            <div className="ap-filter-popover">
+              <div className="ap-filter-title t-overline">{t('assistants.picker.filterTitle')}</div>
+              {CAPABILITIES.map(({ key, icon }) => (
+                <button
+                  type="button"
+                  key={key}
+                  className={`ap-filter-option t-ui ${capabilityFilter.includes(key) ? 'active' : ''}`}
+                  onClick={() => toggleCapabilityFilter(key)}
+                >
+                  <Icon name={icon} size={1} className="ap-filter-option-icon" />
+                  <span className="ap-filter-option-label">{t(`assistants.capabilities.${key}`)}</span>
+                  {capabilityFilter.includes(key) && <Icon name="check" size={0.9375} />}
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
+      </div>
+
+      <div className="ap-body" onMouseDown={() => setFilterOpen(false)}>
+        <div className="ap-rail">
+          {CATEGORIES.map(({ key, icon }, index) => (
+            <div key={key} className="ap-rail-slot">
+              {index === 1 && <div className="ap-rail-divider" />}
+              <button
+                type="button"
+                className={`ap-rail-item ${category === key ? 'active' : ''}`}
+                onClick={() => setCategory(key)}
+                title={t(`assistants.picker.categories.${key}`)}
+              >
+                <Icon name={icon} size={1.125} />
+              </button>
+            </div>
+          ))}
+        </div>
+
+        <div className="ap-list" role="listbox" aria-label={t('welcome.selectAssistant')}>
+          {visibleAssistants.length === 0 && (
+            <div className="ap-empty t-ui-plain">{emptyMessage()}</div>
+          )}
+
+          {visibleAssistants.map((assistant) => {
+            const capabilities = capabilitiesOf(assistant);
+            const modelName = modelNameOf(assistant);
+
+            return (
+              // A focusable div rather than a button: the favorite toggle is a
+              // button that has to sit inline with the name, and buttons cannot nest.
+              <div
+                key={assistant.id}
+                role="option"
+                tabIndex={0}
+                aria-selected={selectedAssistant?.id === assistant.id}
+                className={`assistant-option ${selectedAssistant?.id === assistant.id ? 'selected' : ''}`}
+                onClick={() => handleSelectAssistant(assistant)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' || e.key === ' ') {
+                    e.preventDefault();
+                    handleSelectAssistant(assistant);
+                  }
+                }}
+              >
+                <div className="ap-row-main">
+                  <div className="ap-row-head">
+                    <Icon name={rowIcon(assistant.type)} size={1} className="ap-row-type-icon" />
+                    <span className="assistant-option-name t-body-strong">{assistant.name}</span>
+                    {modelName && <span className="ap-row-model t-meta">{modelName}</span>}
+                    <button
+                      type="button"
+                      className={`ap-row-favorite ${assistant.isFavorite ? 'active' : ''}`}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleToggleFavorite(assistant);
+                      }}
+                      title={assistant.isFavorite
+                        ? t('assistants.actions.removeFavorite')
+                        : t('assistants.actions.addFavorite')}
+                    >
+                      <Icon name={assistant.isFavorite ? 'star' : 'starOutline'} size={0.9375} />
+                    </button>
+                  </div>
+                  <div className="ap-row-desc t-caption">
+                    {assistant.description || t('assistants.noDescriptionAvailable')}
+                  </div>
+                </div>
+
+                <div className="ap-row-aside">
+                  <div className="assistant-capabilities">
+                    {CAPABILITIES.map(({ key, icon }) => capabilities[key] && (
+                      <Icon
+                        key={key}
+                        name={icon}
+                        size={1}
+                        className="capability-icon"
+                        title={t(`assistants.capabilities.${key}`)}
+                      />
+                    ))}
+                  </div>
+                  <div className="info-tooltip-container">
+                    <Icon name="info" size={1} className="info-icon" />
+                    <div className="info-tooltip t-caption">
+                      {assistant.description || t('assistants.noDescriptionAvailable')}
+                    </div>
+                  </div>
+                </div>
               </div>
-            </div>
-            <div className="assistant-capabilities">
-              {renderCapabilityIcon('vision', capabilities.vision)}
-              {renderCapabilityIcon('tools', capabilities.tools)}
-              {renderCapabilityIcon('reasoning', capabilities.reasoning)}
-            </div>
-          </div>
-        );
-      })}
+            );
+          })}
+        </div>
+      </div>
     </div>
   );
 }

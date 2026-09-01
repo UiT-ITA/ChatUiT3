@@ -21,6 +21,7 @@ public class FullAssistantDto
     public ReasoningEffort ReasoningEffort { get; set; } = ReasoningEffort.None;
     public List<string> AvailableToolIds { get; set; } = new List<string>();
     public bool IsVisible { get; set; }
+    public bool IsFavorite { get; set; }
     public List<AssistantFileDto> Files { get; set; } = new List<AssistantFileDto>();
 }
 
@@ -46,6 +47,7 @@ public class AssistantSummaryDto
     public List<string> Tags { get; set; } = new List<string>();
     public string ModelId { get; set; } = string.Empty;
     public bool IsVisible { get; set; }
+    public bool IsFavorite { get; set; }
     public string CreatedBy { get; set; } = string.Empty;
 }
 

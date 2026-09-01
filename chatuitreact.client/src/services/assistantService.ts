@@ -120,6 +120,43 @@ export async function toggleVisibility(id: string): Promise<void> {
     }
 }
 
+/**
+ * Flips isFavorite in the cached list first so the star reacts immediately, then
+ * writes to the server. The server's AssistantsUpdated push refetches the list
+ * and confirms it; a failure rolls the local flip back.
+ */
+export async function toggleFavorite(id: string): Promise<void> {
+    const apply = (isFavorite: boolean) => {
+        const list = assistantListSignal.value;
+        if (!list) return;
+
+        const set = <T extends { id: string; isFavorite: boolean }>(assistants: T[]): T[] =>
+            assistants.map(a => (a.id === id ? { ...a, isFavorite } : a));
+
+        assistantListSignal.value = {
+            owned: set(list.owned),
+            system: set(list.system),
+            shared: set(list.shared),
+        };
+    };
+
+    const list = assistantListSignal.value;
+    const current = [...(list?.owned ?? []), ...(list?.system ?? []), ...(list?.shared ?? [])]
+        .find(a => a.id === id)?.isFavorite ?? false;
+
+    apply(!current);
+
+    try {
+        await apiService(`/api/Assistants/${id}/favorite`, {
+            method: 'POST',
+        });
+    } catch (error) {
+        apply(current);
+        console.error(`Failed to toggle favorite for assistant with ID ${id}:`, error);
+        throw error;
+    }
+}
+
 export async function addSharedAssistant(assistantId: string): Promise<void> {
     try {
         await apiService(`/api/Assistants/shared/${assistantId}`, {

@@ -181,7 +181,9 @@
       "editAssistant": "Rediger assistent",
       "deleteAssistant": "Slett assistent",
       "copyLink": "Kopier lenke",
-      "copyId": "Kopier ID"
+      "copyId": "Kopier ID",
+      "addFavorite": "Legg til i favoritter",
+      "removeFavorite": "Fjern fra favoritter"
     },
     "knowledge": {
       "title": "Kunnskap",
@@ -218,7 +220,20 @@
     "shareDescription": "Del \"{{name}}\" med andre:",
     "shareLink": "Delingslenke",
     "assistantId": "Assistent-ID",
-    "systemBadge": "System"
+    "systemBadge": "System",
+    "picker": {
+      "searchPlaceholder": "Søk i assistenter...",
+      "noResults": "Ingen assistenter passer",
+      "noFavorites": "Ingen favoritter ennå",
+      "filterTitle": "Egenskaper",
+      "categories": {
+        "all": "Alle assistenter",
+        "favorites": "Favoritter",
+        "system": "Systemassistenter",
+        "owned": "Mine assistenter",
+        "shared": "Delt med meg"
+      }
+    }
   },
   "settings": {
     "title": "Innstillinger",

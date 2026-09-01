@@ -2,8 +2,8 @@ import { PiSidebarSimple } from "react-icons/pi";
 import { VscLayoutSidebarLeft, VscLayoutSidebarLeftOff  } from "react-icons/vsc";
 import { RiSettings3Line, RiChat1Line, RiChatAiLine, RiAdminLine, RiUserLine, RiRobot2Line, RiMenuLine } from 'react-icons/ri';
 import { GrHelpBook } from "react-icons/gr";
-import { MdOutlineVpnKey, MdContentCopy, MdCheck, MdRefresh, MdEdit, MdCallSplit, MdKeyboardArrowDown, MdMoreHoriz, MdAttachFile, MdSend, MdKeyboardArrowUp, MdInfo, MdRemoveRedEye, MdPublic, MdPsychology, MdMoreVert, MdClose, MdInsertDriveFile, MdOutlineLightMode, MdOutlineDarkMode, MdSearch, MdAdd, MdArrowBack, MdStop } from "react-icons/md";
-import { FaStar, FaTrash } from "react-icons/fa";
+import { MdOutlineVpnKey, MdContentCopy, MdCheck, MdRefresh, MdEdit, MdCallSplit, MdKeyboardArrowDown, MdMoreHoriz, MdAttachFile, MdSend, MdKeyboardArrowUp, MdInfo, MdRemoveRedEye, MdPublic, MdPsychology, MdMoreVert, MdClose, MdInsertDriveFile, MdOutlineLightMode, MdOutlineDarkMode, MdSearch, MdAdd, MdArrowBack, MdStop, MdGridView, MdOutlineVerifiedUser, MdOutlinePeopleAlt, MdFilterList } from "react-icons/md";
+import { FaStar, FaRegStar, FaTrash } from "react-icons/fa";
 
 const iconMap = {
   sidebar:  VscLayoutSidebarLeftOff, // Not in use
@@ -43,6 +43,11 @@ const iconMap = {
   search: MdSearch,
   add: MdAdd,
   back: MdArrowBack,
+  grid: MdGridView,
+  shield: MdOutlineVerifiedUser,
+  people: MdOutlinePeopleAlt,
+  filter: MdFilterList,
+  starOutline: FaRegStar,
 } as const;
 
 interface IconProps {
