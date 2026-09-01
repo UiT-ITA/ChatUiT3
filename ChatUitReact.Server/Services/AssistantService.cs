@@ -60,13 +60,25 @@ namespace ChatUitReact.Server.Services
             var assistant = await _databaseService.GetAssistantByIdAsync(updateDto.Id);
             if (assistant == null || assistant.OwnerId != userId) return false;
 
+            var previousModelId = assistant.ChatSettings.Model.Id;
+
             var updated = await ApplyAssistantUpdateAsync(assistant, updateDto);
             if (!updated) return false;
 
             var updatedAssistant = await _databaseService.UpdateAssistantAsync(assistant);
             if (updatedAssistant == null) return false;
 
-            await NotifyAssistantsUpdated(userId);
+            // A model change can invalidate a pin held by someone this assistant was shared
+            // with, so notify everyone rather than just the owner's group. Otherwise their open
+            // tab keeps its cached list and keeps starting new chats on the old model.
+            if (assistant.ChatSettings.Model.Id != previousModelId)
+            {
+                await NotifyAllUsersAssistantsUpdated();
+            }
+            else
+            {
+                await NotifyAssistantsUpdated(userId);
+            }
 
             return true;
         }
@@ -77,9 +89,8 @@ namespace ChatUitReact.Server.Services
             if (assistant == null || assistant.OwnerId != userId) return false;
 
             var user = await _databaseService.GetUserAsync(userId);
-            if (user != null && user.Preferences.HiddenAssistantIds.Contains(assistantId))
+            if (user != null && ForgetAssistantInPreferences(user, assistantId))
             {
-                user.Preferences.HiddenAssistantIds.Remove(assistantId);
                 await _databaseService.UpdateUserAsync(user);
             }
 
@@ -125,11 +136,76 @@ namespace ChatUitReact.Server.Services
             if (user.Preferences.SharedAssistantIds.Contains(assistantId))
             {
                 user.Preferences.SharedAssistantIds.Remove(assistantId);
+                ForgetAssistantInPreferences(user, assistantId);
                 await _databaseService.UpdateUserAsync(user);
                 await NotifyAssistantsUpdated(userId);
             }
 
             return true;
+        }
+
+        public async Task<bool> SetDefaultAssistantAsync(string assistantId, string userId, List<UserRole> roles)
+        {
+            var user = await _databaseService.GetUserAsync(userId);
+            if (user == null) return false;
+
+            // Membership, not existence: GetAssistantByIdAsync has no access check, so any
+            // assistant GUID would otherwise be pinnable.
+            var assistants = await GetUserAssistantsAsync(userId);
+            var assistant = assistants.Owned
+                .Concat(assistants.System)
+                .Concat(assistants.Shared)
+                .FirstOrDefault(a => a.Id == assistantId);
+
+            if (assistant == null) return false;
+            if (!await IsModelDefaultEligibleAsync(assistant.ChatSettings.Model.Id, roles)) return false;
+
+            user.Preferences.DefaultAssistantId = assistantId;
+            await _databaseService.UpdateUserAsync(user);
+            await NotifyAssistantsUpdated(userId);
+
+            return true;
+        }
+
+        public async Task<bool> ClearDefaultAssistantAsync(string userId)
+        {
+            var user = await _databaseService.GetUserAsync(userId);
+            if (user == null) return false;
+
+            if (user.Preferences.DefaultAssistantId != null)
+            {
+                user.Preferences.DefaultAssistantId = null;
+                await _databaseService.UpdateUserAsync(user);
+                await NotifyAssistantsUpdated(userId);
+            }
+
+            return true;
+        }
+
+        // Drops every reference to an assistant from a user's own preferences. Returns whether
+        // anything changed, so the caller writes the user document at most once.
+        private static bool ForgetAssistantInPreferences(UserInfo user, string assistantId)
+        {
+            var changed = user.Preferences.HiddenAssistantIds.Remove(assistantId);
+
+            if (user.Preferences.DefaultAssistantId == assistantId)
+            {
+                user.Preferences.DefaultAssistantId = null;
+                changed = true;
+            }
+
+            return changed;
+        }
+
+        // Resolved through ModelService rather than off the assistant's embedded Model: only the
+        // model id is persisted on an assistant, so a null result covers a deleted model, a model
+        // this user's roles cannot reach, and a stale snapshot all at once.
+        private async Task<bool> IsModelDefaultEligibleAsync(string? modelId, List<UserRole> roles)
+        {
+            if (string.IsNullOrWhiteSpace(modelId)) return false;
+
+            var model = await _modelService.GetModelForUserAsync(modelId, roles);
+            return model?.AllowedAsDefault == true;
         }
 
         public async Task<bool> ToggleAssistantVisibilityAsync(string assistantId, string userId)
@@ -185,17 +261,47 @@ namespace ChatUitReact.Server.Services
             return $"/assistants?add={assistantId}";
         }
 
-        public async Task<AssistantListDto> GetUserAssistantsDtoAsync(string userId)
+        // Roles come from the caller's claims, not from the stored user document: nothing ever
+        // writes claim roles into a user document, so UserInfo.Roles is empty in production.
+        public async Task<AssistantListDto> GetUserAssistantsDtoAsync(string userId, List<UserRole> roles)
         {
             var result = await GetUserAssistantsAsync(userId);
             var user = await _databaseService.GetUserAsync(userId);
-            
+
+            var allAssistants = result.Owned.Concat(result.System).Concat(result.Shared);
+            var eligibleModelIds = await GetDefaultEligibleModelIdsAsync(allAssistants, roles);
+
             return new AssistantListDto
             {
-                Owned = result.Owned.Select(assistant => MapToFullAssistantDto(assistant, user)).ToList(),
-                System = result.System.Select(assistant => MapToAssistantSummaryDto(assistant, user)).ToList(),
-                Shared = result.Shared.Select(assistant => MapToAssistantSummaryDto(assistant, user)).ToList()
+                Owned = result.Owned.Select(assistant => MapToFullAssistantDto(assistant, user, eligibleModelIds)).ToList(),
+                System = result.System.Select(assistant => MapToAssistantSummaryDto(assistant, user, eligibleModelIds)).ToList(),
+                Shared = result.Shared.Select(assistant => MapToAssistantSummaryDto(assistant, user, eligibleModelIds)).ToList(),
+                DefaultAssistantId = user?.Preferences.DefaultAssistantId
             };
+        }
+
+        // Resolved once per distinct model id so the mappers stay synchronous.
+        private async Task<HashSet<string>> GetDefaultEligibleModelIdsAsync(
+            IEnumerable<Assistant> assistants,
+            List<UserRole> roles)
+        {
+            var modelIds = assistants
+                .Select(a => a.ChatSettings.Model.Id)
+                .Where(id => !string.IsNullOrWhiteSpace(id))
+                .Distinct()
+                .ToList();
+
+            var eligible = new HashSet<string>();
+
+            foreach (var modelId in modelIds)
+            {
+                if (await IsModelDefaultEligibleAsync(modelId, roles))
+                {
+                    eligible.Add(modelId);
+                }
+            }
+
+            return eligible;
         }
 
         public async Task<List<FullAssistantDto>> GetSystemAssistantsForAdminAsync()
@@ -220,7 +326,7 @@ namespace ChatUitReact.Server.Services
             var assistant = await BuildAssistantAsync(createDto, "System");
             var createdAssistant = await _databaseService.CreateAssistantAsync(assistant);
 
-            await NotifySystemAssistantsUpdated();
+            await NotifyAllUsersAssistantsUpdated();
 
             return MapToFullAssistantDto(createdAssistant);
         }
@@ -245,7 +351,7 @@ namespace ChatUitReact.Server.Services
                 return null;
             }
 
-            await NotifySystemAssistantsUpdated();
+            await NotifyAllUsersAssistantsUpdated();
 
             return MapToFullAssistantDto(savedAssistant);
         }
@@ -261,7 +367,7 @@ namespace ChatUitReact.Server.Services
             var deleted = await _databaseService.DeleteAssistantAsync(assistantId);
             if (deleted)
             {
-                await NotifySystemAssistantsUpdated();
+                await NotifyAllUsersAssistantsUpdated();
             }
 
             return deleted;
@@ -272,7 +378,9 @@ namespace ChatUitReact.Server.Services
             await _hubContext.Clients.Group(userId).AssistantsUpdated();
         }
 
-        private async Task NotifySystemAssistantsUpdated()
+        // Used when a change can affect users beyond the one who made it: a system assistant,
+        // or a model change on an assistant that others have shared or pinned.
+        private async Task NotifyAllUsersAssistantsUpdated()
         {
             await _hubContext.Clients.All.AssistantsUpdated();
         }
@@ -350,7 +458,11 @@ namespace ChatUitReact.Server.Services
             return true;
         }
 
-        private static FullAssistantDto MapToFullAssistantDto(Assistant assistant, UserInfo? user = null)
+        // eligibleModelIds is null on the admin paths, which have no user to pin anything for.
+        private static FullAssistantDto MapToFullAssistantDto(
+            Assistant assistant,
+            UserInfo? user = null,
+            HashSet<string>? eligibleModelIds = null)
         {
             return new FullAssistantDto
             {
@@ -365,6 +477,7 @@ namespace ChatUitReact.Server.Services
                 AvailableToolIds = assistant.ChatSettings.AvailableToolIds,
                 IsVisible = !(user?.Preferences.HiddenAssistantIds.Contains(assistant.Id) ?? false),
                 IsFavorite = user?.Preferences.FavoritedAssistantIds.Contains(assistant.Id) ?? false,
+                CanBeDefault = eligibleModelIds?.Contains(assistant.ChatSettings.Model.Id) ?? false,
                 Files = assistant.Files.Select(MapAssistantFileDto).ToList()
             };
         }
@@ -410,7 +523,10 @@ namespace ChatUitReact.Server.Services
             };
         }
 
-        private static AssistantSummaryDto MapToAssistantSummaryDto(Assistant assistant, UserInfo? user = null)
+        private static AssistantSummaryDto MapToAssistantSummaryDto(
+            Assistant assistant,
+            UserInfo? user = null,
+            HashSet<string>? eligibleModelIds = null)
         {
             return new AssistantSummaryDto
             {
@@ -421,6 +537,7 @@ namespace ChatUitReact.Server.Services
                 ModelId = assistant.ChatSettings.Model.Id,
                 IsVisible = !(user?.Preferences.HiddenAssistantIds.Contains(assistant.Id) ?? false),
                 IsFavorite = user?.Preferences.FavoritedAssistantIds.Contains(assistant.Id) ?? false,
+                CanBeDefault = eligibleModelIds?.Contains(assistant.ChatSettings.Model.Id) ?? false,
                 CreatedBy = assistant.OwnerId
             };
         }

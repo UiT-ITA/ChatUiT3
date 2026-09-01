@@ -62,6 +62,7 @@ public class AdminModelsController : ControllerBase
                 Description = createDto.Description,
                 EndpointId = createDto.EndpointId,
                 AllowedRoles = createDto.AllowedRoles,
+                AllowedAsDefault = createDto.AllowedAsDefault,
                 Capabilities = ToCapabilities(createDto.Capabilities)
             };
 
@@ -94,6 +95,7 @@ public class AdminModelsController : ControllerBase
                 Description = updateDto.Description,
                 EndpointId = updateDto.EndpointId,
                 AllowedRoles = updateDto.AllowedRoles,
+                AllowedAsDefault = updateDto.AllowedAsDefault,
                 Capabilities = ToCapabilities(updateDto.Capabilities)
             };
 
@@ -138,6 +140,7 @@ public class AdminModelsController : ControllerBase
         Description = model.Description,
         EndpointId = model.EndpointId,
         AllowedRoles = model.AllowedRoles,
+        AllowedAsDefault = model.AllowedAsDefault,
         Capabilities = new ModelCapabilitiesDto
         {
             SupportsVision = model.Capabilities.SupportsVision,

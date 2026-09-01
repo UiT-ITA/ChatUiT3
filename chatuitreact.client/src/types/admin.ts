@@ -55,6 +55,8 @@ export interface ModelDto {
   description: string;
   endpointId: string;
   allowedRoles: UserRole[];
+  /** Whether a user may pin an assistant on this model as their default. Policy, not capability. */
+  allowedAsDefault: boolean;
   capabilities: ModelCapabilities;
 }
 
@@ -64,6 +66,8 @@ export interface CreateModelDto {
   description: string;
   endpointId: string;
   allowedRoles: UserRole[];
+  /** Whether a user may pin an assistant on this model as their default. Policy, not capability. */
+  allowedAsDefault: boolean;
   capabilities: ModelCapabilities;
 }
 
@@ -74,6 +78,8 @@ export interface UpdateModelDto {
   description: string;
   endpointId: string;
   allowedRoles: UserRole[];
+  /** Whether a user may pin an assistant on this model as their default. Policy, not capability. */
+  allowedAsDefault: boolean;
   capabilities: ModelCapabilities;
 }
 
@@ -92,11 +98,13 @@ export interface CatalogModelDto {
 export interface AppSettingsDto {
   defaultModelId: string;      // Model.id preselected when creating assistants
   chatNamingModelId: string;   // Model.id used to name new chats
+  defaultAssistantId: string;  // Assistant.id a new chat starts on when the user has no pin
 }
 
 export interface UpdateAppSettingsDto {
   defaultModelId: string;
   chatNamingModelId: string;
+  defaultAssistantId: string;
 }
 
 export type AdminAssistantDto = FullAssistantDto;

@@ -200,6 +200,7 @@ public partial class DatabaseService
             Description = document.Description,
             EndpointId = document.EndpointId,
             AllowedRoles = document.AllowedRoles,
+            AllowedAsDefault = document.AllowedAsDefault,
             Capabilities = MapModelCapabilities(document.Capabilities)
         };
     }
@@ -215,6 +216,7 @@ public partial class DatabaseService
             Description = model.Description,
             EndpointId = model.EndpointId,
             AllowedRoles = model.AllowedRoles,
+            AllowedAsDefault = model.AllowedAsDefault,
             Capabilities = MapModelCapabilitiesDocument(model.Capabilities)
         };
     }

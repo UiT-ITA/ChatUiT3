@@ -7,6 +7,14 @@ public class AssistantListDto
     public List<FullAssistantDto> Owned { get; set; } = new List<FullAssistantDto>();
     public List<AssistantSummaryDto> System { get; set; } = new List<AssistantSummaryDto>();
     public List<AssistantSummaryDto> Shared { get; set; } = new List<AssistantSummaryDto>();
+
+    /// <summary>
+    /// The assistant the user pinned, exactly as stored, or null. It is deliberately not
+    /// filtered against eligibility: the client needs to tell "no pin" apart from "pinned but
+    /// currently inactive" so it can explain the fallback instead of degrading silently.
+    /// Check the pinned assistant's <c>CanBeDefault</c> to know which it is.
+    /// </summary>
+    public string? DefaultAssistantId { get; set; }
 }
 
 public class FullAssistantDto
@@ -22,6 +30,15 @@ public class FullAssistantDto
     public List<string> AvailableToolIds { get; set; } = new List<string>();
     public bool IsVisible { get; set; }
     public bool IsFavorite { get; set; }
+
+    /// <summary>
+    /// Whether this user may pin this assistant as their default. False when the assistant's
+    /// model is gone, is not available to this user's roles, or is not flagged
+    /// <see cref="Model.AllowedAsDefault"/>. Computed server-side so the client never has to
+    /// re-derive the rule from its role-filtered model list.
+    /// </summary>
+    public bool CanBeDefault { get; set; }
+
     public List<AssistantFileDto> Files { get; set; } = new List<AssistantFileDto>();
 }
 
@@ -48,6 +65,10 @@ public class AssistantSummaryDto
     public string ModelId { get; set; } = string.Empty;
     public bool IsVisible { get; set; }
     public bool IsFavorite { get; set; }
+
+    /// <inheritdoc cref="FullAssistantDto.CanBeDefault"/>
+    public bool CanBeDefault { get; set; }
+
     public string CreatedBy { get; set; } = string.Empty;
 }
 

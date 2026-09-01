@@ -2,9 +2,9 @@ import React, { useEffect, useState } from 'react';
 import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
 import { useSignals } from '@preact/signals-react/runtime';
 import { useTranslation } from 'react-i18next';
-import { MdImage, MdPublic, MdPsychology, MdVisibility, MdVisibilityOff } from 'react-icons/md';
+import { MdImage, MdPublic, MdPsychology, MdVisibility, MdVisibilityOff, MdPushPin, MdOutlinePushPin } from 'react-icons/md';
 import './AssistantsPage.css';
-import { getAssistants, deleteAssistant, toggleVisibility, addSharedAssistant, invalidateAssistants, removeSharedAssistant } from '../../services/assistantService';
+import { getAssistants, deleteAssistant, toggleVisibility, addSharedAssistant, invalidateAssistants, removeSharedAssistant, setDefaultAssistant, clearDefaultAssistant } from '../../services/assistantService';
 import { getModels } from '../../services/modelService';
 import { setUserSelectedAssistantId } from '../../services/chatService';
 import type { FullAssistantDto, AssistantSummaryDto } from '../../types/assistantModels';
@@ -55,6 +55,19 @@ const AssistantsPage: React.FC = () => {
     }
   };
 
+  // No refetch: the service updates the list optimistically and reverts on failure.
+  const handleToggleDefault = async (id: string, isDefault: boolean) => {
+    try {
+      if (isDefault) {
+        await clearDefaultAssistant();
+      } else {
+        await setDefaultAssistant(id);
+      }
+    } catch (error) {
+      console.error('Failed to change default assistant:', error);
+    }
+  };
+
   const handleDeleteAssistant = async (id: string) => {
     if (!window.confirm(t('assistants.deleteConfirmation'))) return;
 
@@ -96,7 +109,7 @@ const AssistantsPage: React.FC = () => {
     return <div className="assistants-page"><div className="assistants-page-content">{t('common.loading')}</div></div>;
   }
 
-  const { owned, system, shared } = assistantList.value;
+  const { owned, system, shared, defaultAssistantId } = assistantList.value;
 
   const findAssistant = (): { assistant: FullAssistantDto | AssistantSummaryDto; variant: AssistantVariant } | undefined => {
     const ownedMatch = owned.find(a => a.id === assistantId);
@@ -144,9 +157,28 @@ const AssistantsPage: React.FC = () => {
 
     const { assistant, variant } = found;
     const model = models.find(m => m.id === assistant.modelId);
+    const isDefault = defaultAssistantId === assistant.id;
+    // A pin stays stored when its model stops being default-eligible, so say so rather than
+    // letting the user wonder why new chats no longer start here.
+    const isDefaultInactive = isDefault && !assistant.canBeDefault;
 
     const headerActions = (
       <div className="assistant-detail-actions">
+        <button
+          className="assistant-action-button t-ui"
+          onClick={() => handleToggleDefault(assistant.id, isDefault)}
+          disabled={!isDefault && !assistant.canBeDefault}
+          title={
+            isDefault
+              ? t('assistants.actions.clearDefault')
+              : assistant.canBeDefault
+                ? t('assistants.actions.setAsDefault')
+                : t('assistants.actions.cannotBeDefault')
+          }
+        >
+          {isDefault && assistant.canBeDefault ? <MdPushPin size="1.125rem" /> : <MdOutlinePushPin size="1.125rem" />}
+          {isDefault ? t('assistants.actions.clearDefault') : t('assistants.actions.setAsDefault')}
+        </button>
         <button
           className="assistant-action-button t-ui"
           onClick={() => handleToggleVisibility(assistant.id)}
@@ -194,6 +226,10 @@ const AssistantsPage: React.FC = () => {
           <h1 className="t-page-title">{assistant.name}</h1>
           <div className="page-title-bar" />
           {headerActions}
+
+          {isDefaultInactive && (
+            <div className="af-note t-ui-plain">{t('assistants.defaultInactiveNote')}</div>
+          )}
 
           {variant === 'owned' ? (
             <AssistantForm
@@ -267,6 +303,14 @@ const AssistantsPage: React.FC = () => {
                 <span className="assistants-overview-name t-table-strong">{assistant.name}</span>
                 <span className="assistants-overview-desc t-caption">{assistant.description || ''}</span>
                 <span className="assistants-overview-model t-meta">{model?.modelName || ''}</span>
+                {defaultAssistantId === assistant.id && (
+                  <span
+                    className="assistants-overview-default"
+                    title={assistant.canBeDefault ? t('assistants.actions.isDefault') : t('assistants.defaultInactiveNote')}
+                  >
+                    {assistant.canBeDefault ? <MdPushPin size="1rem" /> : <MdOutlinePushPin size="1rem" />}
+                  </span>
+                )}
                 {!assistant.isVisible && (
                   <span className="assistants-overview-hidden" title={t('assistants.actions.showInSelector')}>
                     <MdVisibilityOff size="1rem" />
