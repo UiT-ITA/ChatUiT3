@@ -31,5 +31,13 @@ public class UserModelDto
     public string Id { get; set; } = string.Empty;
     public string ModelName { get; set; } = string.Empty;
     public string Description { get; set; } = string.Empty;
+
+    /// <summary>
+    /// Whether an assistant on this model may be pinned as the user's default assistant.
+    /// Sits on the model, not on <see cref="UserModelCapabilitiesDto"/>, because it is
+    /// operator policy rather than something the model can or cannot do.
+    /// </summary>
+    public bool AllowedAsDefault { get; set; }
+
     public UserModelCapabilitiesDto Capabilities { get; set; } = new UserModelCapabilitiesDto();
 }

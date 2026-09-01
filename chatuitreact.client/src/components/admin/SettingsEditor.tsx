@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { useSignals } from '@preact/signals-react/runtime';
 import { updateAppSettings } from '../../services/adminService';
-import { adminModelsSignal, adminSettingsSignal, loadAdminData } from '../../services/adminDataService';
+import { adminAssistantsSignal, adminModelsSignal, adminSettingsSignal, loadAdminData } from '../../services/adminDataService';
 import { refreshAppDefaults } from '../../services/appSettingsService';
 import type { ModelDto } from '../../types/admin';
 
@@ -12,10 +12,12 @@ const SettingsEditor: React.FC = () => {
   const { t } = useTranslation();
   const navigate = useNavigate();
   const models = adminModelsSignal.value;
+  const assistants = adminAssistantsSignal.value;
   const settings = adminSettingsSignal.value;
 
   const [defaultModelId, setDefaultModelId] = useState('');
   const [chatNamingModelId, setChatNamingModelId] = useState('');
+  const [defaultAssistantId, setDefaultAssistantId] = useState('');
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
@@ -25,9 +27,10 @@ const SettingsEditor: React.FC = () => {
   useEffect(() => {
     setDefaultModelId(settings?.defaultModelId ?? '');
     setChatNamingModelId(settings?.chatNamingModelId ?? '');
+    setDefaultAssistantId(settings?.defaultAssistantId ?? '');
   }, [settings]);
 
-  if (settings === undefined || models === undefined) {
+  if (settings === undefined || models === undefined || assistants === undefined) {
     return <div className="admin-empty t-ui-plain">{t('common.loading')}</div>;
   }
 
@@ -35,7 +38,7 @@ const SettingsEditor: React.FC = () => {
     if (saving) return;
     setSaving(true);
     try {
-      await updateAppSettings({ defaultModelId, chatNamingModelId });
+      await updateAppSettings({ defaultModelId, chatNamingModelId, defaultAssistantId });
       await loadAdminData(true);
       await refreshAppDefaults();
     } finally {
@@ -74,6 +77,23 @@ const SettingsEditor: React.FC = () => {
         <label className="admin-label t-label">{t('admin.settings.fields.chatNamingModel')}</label>
         {renderModelSelect(chatNamingModelId, setChatNamingModelId)}
         <div className="admin-field-help t-caption">{t('admin.settings.fields.chatNamingModelHelp')}</div>
+      </div>
+
+      <div className="admin-field">
+        <label className="admin-label t-label">{t('admin.settings.fields.defaultAssistant')}</label>
+        <select
+          className="admin-select t-body"
+          value={defaultAssistantId}
+          onChange={(e) => setDefaultAssistantId(e.target.value)}
+        >
+          <option value="">{t('admin.settings.fields.none')}</option>
+          {assistants.map((assistant) => (
+            <option key={assistant.id} value={assistant.id}>
+              {assistant.name}
+            </option>
+          ))}
+        </select>
+        <div className="admin-field-help t-caption">{t('admin.settings.fields.defaultAssistantHelp')}</div>
       </div>
 
       <div className="admin-form-footer">

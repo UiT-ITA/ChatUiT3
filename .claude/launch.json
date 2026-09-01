@@ -1,0 +1,18 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "chatuitreact",
+      "runtimeExecutable": "dotnet",
+      "runtimeArgs": [
+        "run",
+        "--project",
+        "ChatUitReact.Server/ChatUitReact.Server.csproj",
+        "--launch-profile",
+        "https"
+      ],
+      "port": 54979,
+      "url": "https://localhost:54979"
+    }
+  ]
+}
