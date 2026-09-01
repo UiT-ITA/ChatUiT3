@@ -19,5 +19,7 @@ export interface UserModelDto {
     id: string;
     modelName: string;
     description: string;
+    /** Whether an assistant on this model may be pinned as the user's default assistant. */
+    allowedAsDefault: boolean;
     capabilities: UserModelCapabilitiesDto;
 }

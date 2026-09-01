@@ -46,7 +46,7 @@ public class AssistantsController : ControllerBase
         try
         {
             var userId = GetCurrentUserId();
-            var assistants = await _assistantService.GetUserAssistantsDtoAsync(userId);
+            var assistants = await _assistantService.GetUserAssistantsDtoAsync(userId, _userService.GetUserRoles(User));
             return Ok(assistants);
         }
         catch (Exception ex)
@@ -157,6 +157,52 @@ public class AssistantsController : ControllerBase
         }
     }
 
+    // Pinning is gated on the assistant's model carrying Model.AllowedAsDefault, so an expensive
+    // model cannot become someone's always-on default for every new chat. It does not gate access
+    // to the model itself — that is Model.AllowedRoles, enforced in ChatsController.
+    [HttpPost("{assistantId}/default")]
+    public async Task<ActionResult> SetDefaultAssistant(string assistantId)
+    {
+        try
+        {
+            var userId = GetCurrentUserId();
+            var success = await _assistantService.SetDefaultAssistantAsync(assistantId, userId, _userService.GetUserRoles(User));
+
+            if (!success)
+            {
+                return BadRequest("This assistant cannot be set as your default.");
+            }
+
+            await _hubContext.Clients.Group(userId).AssistantsUpdated();
+
+            return Ok();
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error setting default assistant");
+            return StatusCode(500, "Internal server error");
+        }
+    }
+
+    [HttpDelete("default")]
+    public async Task<ActionResult> ClearDefaultAssistant()
+    {
+        try
+        {
+            var userId = GetCurrentUserId();
+            await _assistantService.ClearDefaultAssistantAsync(userId);
+
+            await _hubContext.Clients.Group(userId).AssistantsUpdated();
+
+            return Ok();
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error clearing default assistant");
+            return StatusCode(500, "Internal server error");
+        }
+    }
+
     [HttpPost("{assistantId}/favorite")]
     public async Task<ActionResult> ToggleAssistantFavorite(string assistantId)
     {
@@ -247,6 +293,7 @@ public class AssistantsController : ControllerBase
                 Id = m.Id,
                 ModelName = m.ModelName,
                 Description = m.Description,
+                AllowedAsDefault = m.AllowedAsDefault,
                 Capabilities = new UserModelCapabilitiesDto
                 {
                     Vision = m.Capabilities.SupportsVision,

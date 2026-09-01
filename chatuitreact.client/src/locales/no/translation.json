@@ -167,7 +167,8 @@
         "xhigh": "Ekstra høy",
         "max": "Maks"
       },
-      "temperatureUnavailableWithReasoning": "Denne modellen godtar kun temperatur når resonnering er av."
+      "temperatureUnavailableWithReasoning": "Denne modellen godtar kun temperatur når resonnering er av.",
+      "modelNotDefaultEligible": "Dette er standardassistenten din. Denne modellen kan ikke være standard, så nye samtaler slutter å starte her hvis du lagrer."
     },
     "capabilities": {
       "vision": "Visjon",
@@ -182,6 +183,10 @@
       "deleteAssistant": "Slett assistent",
       "copyLink": "Kopier lenke",
       "copyId": "Kopier ID",
+      "setAsDefault": "Sett som standard",
+      "clearDefault": "Standard",
+      "isDefault": "Din standardassistent",
+      "cannotBeDefault": "Modellen til denne assistenten kan ikke brukes som standard",
       "addFavorite": "Legg til i favoritter",
       "removeFavorite": "Fjern fra favoritter"
     },
@@ -221,6 +226,7 @@
     "shareLink": "Delingslenke",
     "assistantId": "Assistent-ID",
     "systemBadge": "System",
+    "defaultInactiveNote": "Du har valgt denne assistenten som standard, men modellen den bruker nå kan ikke være standard, så nye samtaler starter et annet sted. Bytt tilbake til en modell som kan være standard for å bruke den igjen.",
     "picker": {
       "searchPlaceholder": "Søk i assistenter...",
       "noResults": "Ingen assistenter passer",
@@ -465,7 +471,9 @@
         "knownModel": "Start fra en kjent modell",
         "knownModelCustom": "Egendefinert / ikke i listen",
         "knownModelHint": "Fyller inn egenskapene vi har verifisert for denne modellen. Alt kan fortsatt redigeres.",
-        "allowedRolesRequired": "Velg minst én rolle, ellers ser ingen denne modellen."
+        "allowedRolesRequired": "Velg minst én rolle, ellers ser ingen denne modellen.",
+        "allowedAsDefault": "Kan brukes som standardassistent",
+        "allowedAsDefaultHelp": "Lar brukere velge en assistent bygget på denne modellen som standard for alle nye samtaler. Slå av for dyre modeller. Det påvirker ikke hvem som kan bruke modellen — det styres av Tillatte roller."
       },
       "temperatureSupport": {
         "Unsupported": "Ikke støttet",
@@ -498,7 +506,9 @@
         "defaultModel": "Standardmodell",
         "defaultModelHelp": "Forhåndsvalgt i modellisten når du oppretter en ny assistent.",
         "chatNamingModel": "Modell for navngiving av chatter",
-        "chatNamingModelHelp": "Brukes til å lage et navn på en ny chat ut fra den første meldingen. Nye chatter beholder plassholdernavnet sitt når denne ikke er valgt."
+        "chatNamingModelHelp": "Brukes til å lage et navn på en ny chat ut fra den første meldingen. Nye chatter beholder plassholdernavnet sitt når denne ikke er valgt.",
+        "defaultAssistant": "Standardassistent",
+        "defaultAssistantHelp": "Systemassistenten en ny samtale starter på når brukeren ikke har valgt en egen."
       }
     }
   },

@@ -26,6 +26,11 @@ export interface FullAssistantDto {
     availableToolIds: string[];
     isVisible: boolean;
     isFavorite: boolean;
+    /**
+     * Whether this user may pin this assistant as their default. Server-computed: false when the
+     * assistant's model is gone, is not available to this user, or is not default-eligible.
+     */
+    canBeDefault: boolean;
     files: AssistantFileDto[];
 }
 
@@ -37,6 +42,11 @@ export interface AssistantSummaryDto {
     modelId: string;
     isVisible: boolean;
     isFavorite: boolean;
+    /**
+     * Whether this user may pin this assistant as their default. Server-computed: false when the
+     * assistant's model is gone, is not available to this user, or is not default-eligible.
+     */
+    canBeDefault: boolean;
     createdBy?: string;
 }
 
@@ -44,6 +54,12 @@ export interface AssistantListDto {
     owned: FullAssistantDto[];
     system: AssistantSummaryDto[];
     shared: AssistantSummaryDto[];
+    /**
+     * The assistant this user pinned, exactly as stored, or null. Not filtered against
+     * eligibility on purpose: check the pinned assistant's canBeDefault to tell "pinned and
+     * active" from "pinned but currently inactive".
+     */
+    defaultAssistantId: string | null;
 }
 
 export interface AssistantDto {
@@ -57,6 +73,11 @@ export interface AssistantDto {
     reasoningEffort?: ReasoningEffort;
     isVisible: boolean;
     isFavorite: boolean;
+    /**
+     * Whether this user may pin this assistant as their default. Server-computed: false when the
+     * assistant's model is gone, is not available to this user, or is not default-eligible.
+     */
+    canBeDefault: boolean;
     type: 'owned' | 'system' | 'shared';
 }
 

@@ -49,6 +49,7 @@ const ModelEditor: React.FC<ModelEditorProps> = ({ modelId: editId }) => {
   const [description, setDescription] = useState('');
   const [endpointId, setEndpointId] = useState('');
   const [allowedRoles, setAllowedRoles] = useState<UserRole[]>([]);
+  const [allowedAsDefault, setAllowedAsDefault] = useState(false);
   const [capabilities, setCapabilities] = useState<ModelCapabilities>(defaultCapabilities);
   const [knowledgeCutoffMonth, setKnowledgeCutoffMonth] = useState<string>('');
   const [saving, setSaving] = useState(false);
@@ -68,6 +69,8 @@ const ModelEditor: React.FC<ModelEditorProps> = ({ modelId: editId }) => {
     // A new model is available to everyone; an existing one keeps exactly the roles
     // it was saved with, so opening the form can never widen access on its own.
     setAllowedRoles(model ? (model.allowedRoles ?? []) : [...ALL_ROLES]);
+    // A new model starts ticked; an admin unticks it for models too expensive to run unprompted.
+    setAllowedAsDefault(model?.allowedAsDefault ?? true);
     const caps = model?.capabilities ?? defaultCapabilities;
     setCapabilities(caps);
     const iso = caps.knowledgeCutoff;
@@ -142,7 +145,7 @@ const ModelEditor: React.FC<ModelEditorProps> = ({ modelId: editId }) => {
         ...capabilities,
         knowledgeCutoff: knowledgeCutoffMonth ? `${knowledgeCutoffMonth}-01T00:00:00Z` : null,
       };
-      const payload = { modelId, modelName, description, endpointId, allowedRoles, capabilities: capsToSend };
+      const payload = { modelId, modelName, description, endpointId, allowedRoles, allowedAsDefault, capabilities: capsToSend };
 
       if (model) {
         await updateModel(model.id, { id: model.id, ...payload });
@@ -253,6 +256,18 @@ const ModelEditor: React.FC<ModelEditorProps> = ({ modelId: editId }) => {
         {allowedRoles.length === 0 && (
           <div className="af-note t-ui-plain">{t('admin.models.fields.allowedRolesRequired')}</div>
         )}
+      </div>
+
+      <div className="admin-field">
+        <label className="admin-checkbox-label t-table">
+          <input
+            type="checkbox"
+            checked={allowedAsDefault}
+            onChange={(e) => setAllowedAsDefault(e.target.checked)}
+          />
+          {t('admin.models.fields.allowedAsDefault')}
+        </label>
+        <div className="admin-field-help t-caption">{t('admin.models.fields.allowedAsDefaultHelp')}</div>
       </div>
 
       <div className="t-overline">{t('admin.models.fields.capabilities')}</div>
