@@ -27,14 +27,20 @@ export default function AssistantSelector({ className }: AssistantSelectorProps)
       }
     };
 
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        setIsOpen(false);
+      }
+    };
+
     if (isOpen) {
       document.addEventListener('mousedown', handleClickOutside);
-    } else {
-      document.removeEventListener('mousedown', handleClickOutside);
+      document.addEventListener('keydown', handleKeyDown);
     }
 
     return () => {
       document.removeEventListener('mousedown', handleClickOutside);
+      document.removeEventListener('keydown', handleKeyDown);
     };
   }, [isOpen]);
 
@@ -50,6 +56,8 @@ export default function AssistantSelector({ className }: AssistantSelectorProps)
         className="assistant-selector-button t-ui"
         onClick={toggleDropdown}
         title={t('welcome.selectAssistant')}
+        aria-haspopup="listbox"
+        aria-expanded={isOpen}
       >
         <div className="assistant-icon">
           <Icon name="assistants" size={1} className="icon" />

@@ -4,7 +4,7 @@ import apiService from "./apiService";
 import type { SendMessageDto } from "../types/chatModels";
 import { getAssistants, getAssistant } from "./assistantService";
 import { getAppDefaults } from "./appSettingsService";
-import type { AssistantDto } from "../types/assistantModels";
+import type { AssistantDto, AssistantSummaryDto, FullAssistantDto } from "../types/assistantModels";
 import type { ChatFile } from "../types/fileModels";
 import { formatFileSize, mapToCreateChatFileDto } from "../utils/fileUtils";
 import { addNotification } from "./notificationService";
@@ -473,22 +473,29 @@ export function getSelectableAssistants(): Signal<AssistantDto[]> {
   return computed(() => {
     const assistantList = getAssistants().value;
     const currentAssistantId = getCurrentAssistantId().value;
-    
+
     if (!assistantList) return [];
 
+    // The wire format carries the category as the bucket an assistant sits in;
+    // tag each one so consumers can still tell owned/system/shared apart after
+    // the buckets are flattened.
+    const tag = (
+      assistants: (FullAssistantDto | AssistantSummaryDto)[],
+      type: AssistantDto['type']
+    ): AssistantDto[] => assistants.map(a => ({ ...a, type } as AssistantDto));
+
     // Always include whichever assistant a new chat actually starts on, so it can never be
-    // missing from the picker.
+    // missing from the picker. getAssistant resolves the category for us.
     const resolvedDefaultId = getResolvedDefaultAssistantId().value;
-    const defaultAssistant = [...assistantList.owned, ...assistantList.system, ...assistantList.shared]
-      .find(a => a.id === resolvedDefaultId);
-    
+    const defaultAssistant = resolvedDefaultId ? getAssistant(resolvedDefaultId).value : undefined;
+
     // All visible assistants
     const visibleAssistants = [
-      ...assistantList.owned.filter(a => a.isVisible),
-      ...assistantList.system.filter(a => a.isVisible),
-      ...assistantList.shared.filter(a => a.isVisible)
+      ...tag(assistantList.owned.filter(a => a.isVisible), 'owned'),
+      ...tag(assistantList.system.filter(a => a.isVisible), 'system'),
+      ...tag(assistantList.shared.filter(a => a.isVisible), 'shared')
     ];
-    
+
     // Include current assistant if it's not visible
     let hiddenCurrentAssistant = null;
     if (currentAssistantId) {
@@ -497,7 +504,7 @@ export function getSelectableAssistants(): Signal<AssistantDto[]> {
         hiddenCurrentAssistant = currentAssistant;
       }
     }
-    
+
     // Combine and deduplicate by ID
     const allAssistants = [defaultAssistant, ...visibleAssistants, hiddenCurrentAssistant].filter(Boolean) as AssistantDto[];
     return Array.from(new Map(allAssistants.map(a => [a.id, a])).values());

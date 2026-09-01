@@ -186,7 +186,9 @@
       "setAsDefault": "Set as default",
       "clearDefault": "Default",
       "isDefault": "Your default assistant",
-      "cannotBeDefault": "This assistant’s model cannot be used as a default"
+      "cannotBeDefault": "This assistant’s model cannot be used as a default",
+      "addFavorite": "Add to favorites",
+      "removeFavorite": "Remove from favorites"
     },
     "knowledge": {
       "title": "Knowledge",
@@ -224,7 +226,20 @@
     "shareLink": "Share Link",
     "assistantId": "Assistant ID",
     "systemBadge": "System",
-    "defaultInactiveNote": "You pinned this assistant, but its current model cannot be used as a default, so new chats start elsewhere. Switch it back to a model that can be a default to use it again."
+    "defaultInactiveNote": "You pinned this assistant, but its current model cannot be used as a default, so new chats start elsewhere. Switch it back to a model that can be a default to use it again.",
+    "picker": {
+      "searchPlaceholder": "Search assistants...",
+      "noResults": "No assistants match",
+      "noFavorites": "No favorites yet",
+      "filterTitle": "Capabilities",
+      "categories": {
+        "all": "All assistants",
+        "favorites": "Favorites",
+        "system": "System assistants",
+        "owned": "My assistants",
+        "shared": "Shared with me"
+      }
+    }
   },
   "settings": {
     "title": "Settings",

@@ -186,7 +186,9 @@
       "setAsDefault": "Sett som standard",
       "clearDefault": "Standard",
       "isDefault": "Din standardassistent",
-      "cannotBeDefault": "Modellen til denne assistenten kan ikke brukes som standard"
+      "cannotBeDefault": "Modellen til denne assistenten kan ikke brukes som standard",
+      "addFavorite": "Legg til i favoritter",
+      "removeFavorite": "Fjern fra favoritter"
     },
     "knowledge": {
       "title": "Kunnskap",
@@ -224,7 +226,20 @@
     "shareLink": "Delingslenke",
     "assistantId": "Assistent-ID",
     "systemBadge": "System",
-    "defaultInactiveNote": "Du har valgt denne assistenten som standard, men modellen den bruker nå kan ikke være standard, så nye samtaler starter et annet sted. Bytt tilbake til en modell som kan være standard for å bruke den igjen."
+    "defaultInactiveNote": "Du har valgt denne assistenten som standard, men modellen den bruker nå kan ikke være standard, så nye samtaler starter et annet sted. Bytt tilbake til en modell som kan være standard for å bruke den igjen.",
+    "picker": {
+      "searchPlaceholder": "Søk i assistenter...",
+      "noResults": "Ingen assistenter passer",
+      "noFavorites": "Ingen favoritter ennå",
+      "filterTitle": "Egenskaper",
+      "categories": {
+        "all": "Alle assistenter",
+        "favorites": "Favoritter",
+        "system": "Systemassistenter",
+        "owned": "Mine assistenter",
+        "shared": "Delt med meg"
+      }
+    }
   },
   "settings": {
     "title": "Innstillinger",

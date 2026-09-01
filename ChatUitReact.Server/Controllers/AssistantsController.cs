@@ -203,6 +203,26 @@ public class AssistantsController : ControllerBase
         }
     }
 
+    [HttpPost("{assistantId}/favorite")]
+    public async Task<ActionResult> ToggleAssistantFavorite(string assistantId)
+    {
+        try
+        {
+            var userId = GetCurrentUserId();
+            await _assistantService.ToggleAssistantFavoriteAsync(assistantId, userId);
+
+            // Notify all clients that assistant data has changed
+            await _hubContext.Clients.Group(userId).AssistantsUpdated();
+
+            return Ok();
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error toggling assistant favorite");
+            return StatusCode(500, "Internal server error");
+        }
+    }
+
     [HttpPost("shared/{assistantId}")]
     public async Task<ActionResult> AddSharedAssistant(string assistantId)
     {

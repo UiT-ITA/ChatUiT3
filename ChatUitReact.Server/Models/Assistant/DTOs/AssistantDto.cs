@@ -29,6 +29,7 @@ public class FullAssistantDto
     public ReasoningEffort ReasoningEffort { get; set; } = ReasoningEffort.None;
     public List<string> AvailableToolIds { get; set; } = new List<string>();
     public bool IsVisible { get; set; }
+    public bool IsFavorite { get; set; }
 
     /// <summary>
     /// Whether this user may pin this assistant as their default. False when the assistant's
@@ -63,6 +64,7 @@ public class AssistantSummaryDto
     public List<string> Tags { get; set; } = new List<string>();
     public string ModelId { get; set; } = string.Empty;
     public bool IsVisible { get; set; }
+    public bool IsFavorite { get; set; }
 
     /// <inheritdoc cref="FullAssistantDto.CanBeDefault"/>
     public bool CanBeDefault { get; set; }

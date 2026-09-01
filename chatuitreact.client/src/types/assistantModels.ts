@@ -25,6 +25,7 @@ export interface FullAssistantDto {
     reasoningEffort: ReasoningEffort;
     availableToolIds: string[];
     isVisible: boolean;
+    isFavorite: boolean;
     /**
      * Whether this user may pin this assistant as their default. Server-computed: false when the
      * assistant's model is gone, is not available to this user, or is not default-eligible.
@@ -40,6 +41,7 @@ export interface AssistantSummaryDto {
     tags: string[];
     modelId: string;
     isVisible: boolean;
+    isFavorite: boolean;
     /**
      * Whether this user may pin this assistant as their default. Server-computed: false when the
      * assistant's model is gone, is not available to this user, or is not default-eligible.
@@ -70,6 +72,7 @@ export interface AssistantDto {
     temperature?: number;
     reasoningEffort?: ReasoningEffort;
     isVisible: boolean;
+    isFavorite: boolean;
     /**
      * Whether this user may pin this assistant as their default. Server-computed: false when the
      * assistant's model is gone, is not available to this user, or is not default-eligible.

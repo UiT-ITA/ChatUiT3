@@ -229,6 +229,27 @@ namespace ChatUitReact.Server.Services
             return true;
         }
 
+        public async Task<bool> ToggleAssistantFavoriteAsync(string assistantId, string userId)
+        {
+            var user = await _databaseService.GetUserAsync(userId);
+            if (user == null) return false;
+
+            if (user.Preferences.FavoritedAssistantIds.Contains(assistantId))
+            {
+                user.Preferences.FavoritedAssistantIds.Remove(assistantId);
+            }
+            else
+            {
+                user.Preferences.FavoritedAssistantIds.Add(assistantId);
+            }
+
+            await _databaseService.UpdateUserAsync(user);
+
+            await NotifyAssistantsUpdated(userId);
+
+            return true;
+        }
+
         public async Task<string> GenerateShareLinkAsync(string assistantId, string userId)
         {
             var assistant = await _databaseService.GetAssistantByIdAsync(assistantId);
@@ -455,6 +476,7 @@ namespace ChatUitReact.Server.Services
                 ReasoningEffort = assistant.ChatSettings.ReasoningEffort,
                 AvailableToolIds = assistant.ChatSettings.AvailableToolIds,
                 IsVisible = !(user?.Preferences.HiddenAssistantIds.Contains(assistant.Id) ?? false),
+                IsFavorite = user?.Preferences.FavoritedAssistantIds.Contains(assistant.Id) ?? false,
                 CanBeDefault = eligibleModelIds?.Contains(assistant.ChatSettings.Model.Id) ?? false,
                 Files = assistant.Files.Select(MapAssistantFileDto).ToList()
             };
@@ -514,6 +536,7 @@ namespace ChatUitReact.Server.Services
                 Tags = assistant.Tags,
                 ModelId = assistant.ChatSettings.Model.Id,
                 IsVisible = !(user?.Preferences.HiddenAssistantIds.Contains(assistant.Id) ?? false),
+                IsFavorite = user?.Preferences.FavoritedAssistantIds.Contains(assistant.Id) ?? false,
                 CanBeDefault = eligibleModelIds?.Contains(assistant.ChatSettings.Model.Id) ?? false,
                 CreatedBy = assistant.OwnerId
             };

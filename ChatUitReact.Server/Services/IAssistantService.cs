@@ -14,6 +14,7 @@ public interface IAssistantService
     Task<bool> ToggleAssistantVisibilityAsync(string assistantId, string userId);
     Task<bool> SetDefaultAssistantAsync(string assistantId, string userId, List<UserRole> roles);
     Task<bool> ClearDefaultAssistantAsync(string userId);
+    Task<bool> ToggleAssistantFavoriteAsync(string assistantId, string userId);
     Task<string> GenerateShareLinkAsync(string assistantId, string userId);
     Task<AssistantListDto> GetUserAssistantsDtoAsync(string userId, List<UserRole> roles);
     Task<List<FullAssistantDto>> GetSystemAssistantsForAdminAsync();
