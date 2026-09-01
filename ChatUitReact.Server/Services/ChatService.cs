@@ -190,11 +190,23 @@ public class ChatService : IChatService
             userMessage.Timestamp = DateTime.UtcNow;
         }
 
+        // Attribution is stamped on the reply before it is written, so it survives even if the
+        // conversation's assistant is switched again later. The name is snapshotted because the
+        // assistant can be renamed, deleted, or unshared while this message stays in history.
+        // A blank assistantId only reaches here from the overloads that pass none; those leave
+        // the fields empty and the client falls back to the chat's assistant.
+        var attributedAssistantId = assistantId ?? string.Empty;
+        var attributedAssistantName = string.IsNullOrWhiteSpace(attributedAssistantId)
+            ? string.Empty
+            : (await _assistantService.GetAssistantByIdAsync(attributedAssistantId))?.Name ?? string.Empty;
+
         var assistantMessage = new Models.ChatMessage
         {
             Role = AiChatRole.Assistant,
             Status = AiChatStatus.Generating,
-            Timestamp = userMessage.Timestamp.AddSeconds(1)
+            Timestamp = userMessage.Timestamp.AddSeconds(1),
+            AssistantId = attributedAssistantId,
+            AssistantName = attributedAssistantName
         };
 
         _streamingService.StartMessage(userId, assistantMessage.Id);

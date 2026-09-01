@@ -92,7 +92,9 @@ public partial class MockDatabaseService
                 Timestamp = m.Timestamp,
                 Content = m.Content,
                 Status = m.Status,
-                Files = m.Files
+                Files = m.Files,
+                AssistantId = m.AssistantId,
+                AssistantName = m.AssistantName
             }).ToList()
         };
     }
