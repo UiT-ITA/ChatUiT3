@@ -40,7 +40,7 @@ export async function invalidateAssistants(): Promise<void> {
             assistantListSignal.value = response;
         } catch (error) {
             console.error("Failed to invalidate assistants:", error);
-            assistantListSignal.value = { owned: [], system: [], shared: [] };
+            assistantListSignal.value = { owned: [], system: [], shared: [], defaultAssistantId: null };
         } finally {
             assistantListLoadingPromise = null;
         }
@@ -116,6 +116,55 @@ export async function toggleVisibility(id: string): Promise<void> {
         });
     } catch (error) {
         console.error(`Failed to toggle visibility for assistant with ID ${id}:`, error);
+        throw error;
+    }
+}
+
+// Pinning only ever flips one field, so both of these apply it locally first and put the old
+// value back if the request fails. The server's AssistantsUpdated push reconciles the list
+// afterwards; waiting for that round trip made the pin feel broken.
+function applyDefaultAssistantLocally(id: string | null): string | null | undefined {
+    const current = assistantListSignal.value;
+    if (!current) return undefined;
+
+    const previous = current.defaultAssistantId;
+    assistantListSignal.value = { ...current, defaultAssistantId: id };
+    return previous;
+}
+
+function revertDefaultAssistant(previous: string | null | undefined): void {
+    if (previous === undefined) return;
+
+    const current = assistantListSignal.value;
+    if (current) {
+        assistantListSignal.value = { ...current, defaultAssistantId: previous };
+    }
+}
+
+export async function setDefaultAssistant(id: string): Promise<void> {
+    const previous = applyDefaultAssistantLocally(id);
+
+    try {
+        await apiService(`/api/Assistants/${id}/default`, {
+            method: 'POST',
+        });
+    } catch (error) {
+        revertDefaultAssistant(previous);
+        console.error(`Failed to set default assistant with ID ${id}:`, error);
+        throw error;
+    }
+}
+
+export async function clearDefaultAssistant(): Promise<void> {
+    const previous = applyDefaultAssistantLocally(null);
+
+    try {
+        await apiService('/api/Assistants/default', {
+            method: 'DELETE',
+        });
+    } catch (error) {
+        revertDefaultAssistant(previous);
+        console.error("Failed to clear default assistant:", error);
         throw error;
     }
 }

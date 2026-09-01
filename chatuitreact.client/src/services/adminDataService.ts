@@ -23,7 +23,7 @@ export async function loadAdminData(force = false): Promise<void> {
     adminEndpointsSignal.value = endpoints ?? [];
     adminModelsSignal.value = models ?? [];
     adminAssistantsSignal.value = assistants ?? [];
-    adminSettingsSignal.value = settings ?? { defaultModelId: '', chatNamingModelId: '' };
+    adminSettingsSignal.value = settings ?? { defaultModelId: '', chatNamingModelId: '', defaultAssistantId: '' };
   } catch (error) {
     console.error('Failed to load admin data:', error);
     if (!force) loadStarted = false;

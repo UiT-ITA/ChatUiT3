@@ -31,9 +31,10 @@ public class SettingsService : ISettingsService
             _isInitialized = true;
 
             _logger.LogInformation(
-                "Loaded app settings. DefaultModelId='{DefaultModelId}', ChatNamingModelId='{ChatNamingModelId}'",
+                "Loaded app settings. DefaultModelId='{DefaultModelId}', ChatNamingModelId='{ChatNamingModelId}', DefaultAssistantId='{DefaultAssistantId}'",
                 _settings.DefaultModelId,
-                _settings.ChatNamingModelId);
+                _settings.ChatNamingModelId,
+                _settings.DefaultAssistantId);
         }
         finally
         {
@@ -57,7 +58,10 @@ public class SettingsService : ISettingsService
         return new AppSettings
         {
             DefaultModelId = defaultModelId,
-            ChatNamingModelId = chatNamingModelId
+            ChatNamingModelId = chatNamingModelId,
+            // Passed through as stored: an assistant id cannot be resolved against the model
+            // registry, and the client's own resolution chain already falls back when it dangles.
+            DefaultAssistantId = stored.DefaultAssistantId
         };
     }
 
@@ -68,9 +72,10 @@ public class SettingsService : ISettingsService
         _settings = settings;
 
         _logger.LogInformation(
-            "Saved app settings. DefaultModelId='{DefaultModelId}', ChatNamingModelId='{ChatNamingModelId}'",
+            "Saved app settings. DefaultModelId='{DefaultModelId}', ChatNamingModelId='{ChatNamingModelId}', DefaultAssistantId='{DefaultAssistantId}'",
             settings.DefaultModelId,
-            settings.ChatNamingModelId);
+            settings.ChatNamingModelId,
+            settings.DefaultAssistantId);
     }
 
     // Keeps the stored id when it still resolves to a model, otherwise falls back to the

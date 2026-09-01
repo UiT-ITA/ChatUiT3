@@ -4,6 +4,8 @@ import apiService from "./apiService";
 // The subset of the admin app settings that every signed-in user may read
 export interface AppDefaults {
     defaultModelId: string;
+    /** Where a new chat starts when the user has not pinned an assistant of their own. */
+    defaultAssistantId: string;
 }
 
 const appDefaultsSignal = signal<AppDefaults | undefined>(undefined);
@@ -28,7 +30,7 @@ async function loadAppDefaults(): Promise<void> {
             appDefaultsSignal.value = response;
         } catch (error) {
             console.error("Failed to load app defaults:", error);
-            appDefaultsSignal.value = { defaultModelId: '' };
+            appDefaultsSignal.value = { defaultModelId: '', defaultAssistantId: '' };
         } finally {
             loadingPromise = null;
         }
