@@ -187,6 +187,7 @@
       "title": "Knowledge",
       "addFiles": "Add files",
       "noFilesAdded": "No files added",
+      "notAvailableYet": "Not available yet",
       "shortDescriptionPlaceholder": "Add short description",
       "categories": {
         "alwaysLoaded": {
