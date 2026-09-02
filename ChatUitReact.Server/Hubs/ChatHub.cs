@@ -9,7 +9,7 @@ namespace ChatUitReact.Server.Hubs;
 
 public interface IChatHubClient
 {
-    Task ReceiveMessageChunk(string messageId, string chunk);
+    Task ReceiveMessageChunk(string messageId, ChatStreamChunk chunk);
     Task ChatUpdated(string chatId);
     Task ChatListUpdated();
     Task AssistantsUpdated();

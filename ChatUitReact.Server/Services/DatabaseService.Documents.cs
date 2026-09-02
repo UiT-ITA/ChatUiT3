@@ -93,6 +93,11 @@ public partial class DatabaseService
         [JsonProperty("contentBlockIds")]
         public List<string> ContentBlockIds { get; set; } = new();
 
+        // The generation activity (thinking, tool calls, timings) as JSON, stored like message
+        // text. Empty on user messages and on assistant messages from before it was recorded.
+        [JsonProperty("activityBlockIds")]
+        public List<string> ActivityBlockIds { get; set; } = new();
+
         [JsonProperty("files")]
         public List<StoredFileDocument> Files { get; set; } = new();
 

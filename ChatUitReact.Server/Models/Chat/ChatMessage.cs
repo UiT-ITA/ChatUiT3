@@ -14,4 +14,9 @@ public class ChatMessage
     // snapshot so history keeps reading correctly after the assistant is renamed or deleted.
     public string AssistantId { get; set; } = string.Empty;
     public string AssistantName { get; set; } = string.Empty;
+    /// <summary>
+    /// Set on assistant messages generated after activity tracking existed. Null on user
+    /// messages and on older assistant messages.
+    /// </summary>
+    public MessageActivity? Activity { get; set; }
 }

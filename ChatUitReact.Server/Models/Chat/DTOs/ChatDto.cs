@@ -29,6 +29,7 @@ public class ChatMessageDto
     public List<ChatFileDto> Files { get; set; } = new List<ChatFileDto>();
     public string AssistantId { get; set; } = string.Empty;
     public string AssistantName { get; set; } = string.Empty;
+    public MessageActivity? Activity { get; set; }
 }
 
 public class ChatFileChunkDto

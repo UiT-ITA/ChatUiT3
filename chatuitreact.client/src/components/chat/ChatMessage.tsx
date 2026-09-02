@@ -3,7 +3,7 @@ import './ChatMessageMarkdown.css';
 import { useSignals } from '@preact/signals-react/runtime';
 import { useMemo, useState, useRef, useEffect, memo } from 'react';
 import { useTranslation } from 'react-i18next';
-import { getStreamSignal } from '../../services/chatService';
+import { getActivitySignal, getStreamSignal } from '../../services/chatService';
 import type { ChatMessageDto } from '../../types/chatModels';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
@@ -14,8 +14,7 @@ import { atomDark, dracula, oneLight } from 'react-syntax-highlighter/dist/esm/s
 import 'katex/dist/katex.min.css';
 import { Icon } from '../common/Icon';
 import FileThumbnail from './FileThumbnail';
-import { segmentToolCalls } from '../../utils/toolCallParser';
-import ToolCallBlock from './ToolCallBlock';
+import MessageActivity from './MessageActivity';
 import { markdownToHtml } from '../../utils/markdownUtils';
 import MermaidDiagram from './MermaidDiagram';
 import { useSettings } from '../../contexts/SettingsContext';
@@ -56,6 +55,11 @@ function ChatMessage({ chatId, message, fallbackAssistantName, onStreamingChunk 
     ? (streamSignal?.value || "")
     : message.content;
 
+  const activitySignal = useMemo(() => {
+    return message.status === "Generating" && message.role === 'Assistant' ? getActivitySignal(message.id) : null;
+  }, [message.id, message.status, message.role]);
+  const liveActivity = activitySignal?.value ?? null;
+
   const isUser = message.role === 'User';
   const isAssistant = message.role === 'Assistant';
   const isSystem = message.role === 'System';
@@ -78,8 +82,6 @@ function ChatMessage({ chatId, message, fallbackAssistantName, onStreamingChunk 
       setIsCopied(false);
     }
   };
-
-  const segments = useMemo(() => segmentToolCalls(displayContent), [displayContent]);
 
   const handleRetry = () => {
     try {
@@ -221,28 +223,18 @@ function ChatMessage({ chatId, message, fallbackAssistantName, onStreamingChunk 
         </div>
       )}
 
+      {isAssistant && (liveActivity || message.activity) && (
+        <MessageActivity activity={message.activity ?? null} live={liveActivity} />
+      )}
+
       <div className="message-content">
-        {segments.map((seg, i) => (
-          seg.type === 'text' ? (
-            <ReactMarkdown
-              key={i}
-              remarkPlugins={[remarkGfm, remarkMath]}
-              rehypePlugins={[rehypeKatex]}
-              components={markdownComponents}
-            >
-              {seg.text}
-            </ReactMarkdown>
-          ) : (
-            <ToolCallBlock
-              key={i}
-              functionLine={seg.functionLine}
-              functionName={seg.functionName}
-              argsText={seg.argsText}
-              resultText={seg.resultText}
-              isComplete={seg.isComplete}
-            />
-          )
-        ))}
+        <ReactMarkdown
+          remarkPlugins={[remarkGfm, remarkMath]}
+          rehypePlugins={[rehypeKatex]}
+          components={markdownComponents}
+        >
+          {displayContent}
+        </ReactMarkdown>
       </div>
 
       <div className="message-toolbar">

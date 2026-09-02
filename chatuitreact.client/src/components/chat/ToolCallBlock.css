@@ -69,3 +69,13 @@
   text-overflow: ellipsis;
   white-space: nowrap;
 }
+
+.toolcall.error .toolcall-status {
+  color: var(--danger, var(--warn));
+}
+
+.toolcall-duration {
+  text-transform: none;
+  letter-spacing: 0;
+  color: var(--text-3);
+}

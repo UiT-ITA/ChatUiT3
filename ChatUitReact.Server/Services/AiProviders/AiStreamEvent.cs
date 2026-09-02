@@ -4,12 +4,18 @@ namespace ChatUitReact.Server.Services.AiProviders;
 
 /// <summary>
 /// What a provider emits while streaming one turn. Deliberately small: text the user should
-/// see, tool calls the runner should execute, and the end of the turn.
+/// see, thinking summaries, and tool calls the runner should execute.
 /// </summary>
 public abstract record AiStreamEvent
 {
     /// <summary>A fragment of assistant text.</summary>
     public sealed record Text(string Delta) : AiStreamEvent;
+
+    /// <summary>A fragment of a thinking summary. Never the raw chain of thought.</summary>
+    public sealed record Thinking(string Delta) : AiStreamEvent;
+
+    /// <summary>The end of one thinking summary block or part; the next fragment starts a new paragraph.</summary>
+    public sealed record ThinkingBreak : AiStreamEvent;
 
     /// <summary>
     /// A completed tool call. Providers accumulate their own partial-argument deltas

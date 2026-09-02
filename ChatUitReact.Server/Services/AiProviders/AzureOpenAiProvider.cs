@@ -138,7 +138,12 @@ public sealed class AzureOpenAiProvider : IAiProvider
                     // The SDK names no levels above high; custom values pass through as-is.
                     ReasoningEffort.XHigh => new ResponseReasoningEffortLevel("xhigh"),
                     _ => new ResponseReasoningEffortLevel("max")
-                }
+                },
+                // Reasoning summaries are only returned when asked for. The raw reasoning is
+                // never available; this is what the activity panel shows as thinking.
+                ReasoningSummaryVerbosity = parameters.ReasoningActive
+                    ? ResponseReasoningSummaryVerbosity.Detailed
+                    : null
             };
         }
 
@@ -299,6 +304,18 @@ public sealed class AzureOpenAiProvider : IAiProvider
                     {
                         yield return new AiStreamEvent.Text(delta.Delta);
                     }
+                }
+                else if (update is StreamingResponseReasoningSummaryTextDeltaUpdate summaryDelta)
+                {
+                    if (!string.IsNullOrEmpty(summaryDelta.Delta))
+                    {
+                        yield return new AiStreamEvent.Thinking(summaryDelta.Delta);
+                    }
+                }
+                else if (update is StreamingResponseReasoningSummaryPartDoneUpdate)
+                {
+                    // Each summary part is a paragraph of its own.
+                    yield return new AiStreamEvent.ThinkingBreak();
                 }
                 else if (update is StreamingResponseOutputItemDoneUpdate done)
                 {
