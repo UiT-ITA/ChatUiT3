@@ -22,6 +22,8 @@ interface KnowledgeFileListProps {
   onLoadFile?: (item: KnowledgeFileItemData) => Promise<ChatFile | null>;
   items?: KnowledgeFileItemData[];
   disabled?: boolean;
+  /** Marks the category as not implemented yet: disables it and shows a badge. */
+  unavailable?: boolean;
   allowItemDescription?: boolean;
   itemDescriptionPlaceholder?: string;
   onItemDescriptionChange?: (itemId: string, description: string) => void;
@@ -37,6 +39,7 @@ const KnowledgeFileList = ({
   onLoadFile,
   items = [],
   disabled = false,
+  unavailable = false,
   allowItemDescription = false,
   itemDescriptionPlaceholder = '',
   onItemDescriptionChange,
@@ -46,8 +49,10 @@ const KnowledgeFileList = ({
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [previewFile, setPreviewFile] = useState<ChatFile | null>(null);
 
+  const isDisabled = disabled || unavailable;
+
   const handleAddClick = () => {
-    if (disabled) {
+    if (isDisabled) {
       return;
     }
 
@@ -109,10 +114,20 @@ const KnowledgeFileList = ({
 
   return (
     <>
-      <section className="knowledge-file-list" aria-label={title}>
+      <section
+        className={`knowledge-file-list${unavailable ? ' knowledge-file-list--unavailable' : ''}`}
+        aria-label={title}
+      >
         <div className="knowledge-file-list__header">
           <div className="knowledge-file-list__heading">
-            <h3 className="knowledge-file-list__title t-body-strong">{title}</h3>
+            <h3 className="knowledge-file-list__title t-body-strong">
+              {title}
+              {unavailable && (
+                <span className="knowledge-file-list__badge t-meta">
+                  {t('assistants.knowledge.notAvailableYet')}
+                </span>
+              )}
+            </h3>
             <p className="knowledge-file-list__description t-ui-plain">{description}</p>
           </div>
 
@@ -120,7 +135,7 @@ const KnowledgeFileList = ({
             type="button"
             className="knowledge-file-list__add-button t-ui"
             onClick={handleAddClick}
-            disabled={disabled}
+            disabled={isDisabled}
           >
             {t('assistants.knowledge.addFiles')}
           </button>
@@ -133,7 +148,7 @@ const KnowledgeFileList = ({
           multiple
           accept={SUPPORTED_IMPORT_ACCEPT}
           onChange={handleFileChange}
-          disabled={disabled}
+          disabled={isDisabled}
         />
 
         <div className="knowledge-file-list__items">
@@ -147,7 +162,7 @@ const KnowledgeFileList = ({
               allowDescription={allowItemDescription}
               descriptionPlaceholder={itemDescriptionPlaceholder}
               onDescriptionChange={(value) => onItemDescriptionChange?.(item.id, value)}
-              disabled={disabled}
+              disabled={isDisabled}
             />
           )) : (
             <div className="knowledge-file-list__empty t-ui-plain">{emptyLabel}</div>

@@ -194,6 +194,7 @@
       "title": "Kunnskap",
       "addFiles": "Legg til filer",
       "noFilesAdded": "Ingen filer lagt til",
+      "notAvailableYet": "Ikke tilgjengelig ennå",
       "shortDescriptionPlaceholder": "Legg til kort beskrivelse",
       "categories": {
         "alwaysLoaded": {

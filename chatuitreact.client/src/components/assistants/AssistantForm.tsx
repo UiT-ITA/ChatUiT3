@@ -116,6 +116,7 @@ const AssistantForm: React.FC<AssistantFormProps> = ({
     title: string;
     description: string;
     allowItemDescription?: boolean;
+    unavailable?: boolean;
   }> = [
     {
       category: 'alwaysLoaded',
@@ -126,12 +127,16 @@ const AssistantForm: React.FC<AssistantFormProps> = ({
       category: 'selectiveLoaded',
       title: t('assistants.knowledge.categories.selectiveLoaded.title'),
       description: t('assistants.knowledge.categories.selectiveLoaded.description'),
-      allowItemDescription: true
+      allowItemDescription: true,
+      // Selective loading is not implemented on the server yet.
+      unavailable: true
     },
     {
       category: 'ragLoaded',
       title: t('assistants.knowledge.categories.ragLoaded.title'),
-      description: t('assistants.knowledge.categories.ragLoaded.description')
+      description: t('assistants.knowledge.categories.ragLoaded.description'),
+      // Retrieval is not implemented on the server yet.
+      unavailable: true
     }
   ];
 
@@ -500,6 +505,7 @@ const AssistantForm: React.FC<AssistantFormProps> = ({
               onFilesSelected={(files) => handleKnowledgeFilesSelected(section.category, files)}
               onLoadFile={loadKnowledgeFileContent}
               disabled={loading}
+              unavailable={section.unavailable}
               allowItemDescription={section.allowItemDescription}
               itemDescriptionPlaceholder={t('assistants.knowledge.shortDescriptionPlaceholder')}
               onItemDescriptionChange={(itemId, description) => handleKnowledgeFileDescriptionChange(section.category, itemId, description)}
