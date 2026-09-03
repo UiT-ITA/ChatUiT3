@@ -92,9 +92,9 @@ public sealed class TokenCountingService : ITokenCountingService
             var tokens = MessageFramingTokens + textTokensByEncoding[scheme.Encoding] + imageTokens;
             total[scheme.Id] = tokens;
 
-            // The attachment share is derived by subtraction so the total (and the wire
-            // format it mirrors) stays exactly as before. The message text and the first file
-            // header share one text run, so the split can be off by a token at that boundary.
+            // The attachment share is derived by subtraction, leaving the total (and the wire
+            // format it mirrors) untouched. The message text and the first file header share
+            // one text run, so the split can be off by a token at that boundary.
             if (hasFiles)
             {
                 files[scheme.Id] = Math.Max(0, tokens - MessageFramingTokens - contentTokensByEncoding[scheme.Encoding]);

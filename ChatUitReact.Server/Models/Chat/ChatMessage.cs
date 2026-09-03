@@ -15,8 +15,8 @@ public class ChatMessage
     public string AssistantId { get; set; } = string.Empty;
     public string AssistantName { get; set; } = string.Empty;
     /// <summary>
-    /// Set on assistant messages generated after activity tracking existed. Null on user
-    /// messages and on older assistant messages.
+    /// Activity recorded while an assistant message was generated. Null on user messages
+    /// and on assistant messages that have no recorded activity.
     /// </summary>
     public MessageActivity? Activity { get; set; }
     // Scheme id → tokens this message costs on the wire, as the OpenAI provider would send it.

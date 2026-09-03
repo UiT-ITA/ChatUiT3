@@ -8,7 +8,7 @@ import ToastContainer from '../common/ToastContainer';
 import './MainLayout.css';
 
 /**
- * App shell per the design: icon rail | context column | main (header + content).
+ * App shell: icon rail | context column | main (header + content).
  * On mobile the rail becomes a top bar and the column and main area act as a
  * list/detail pair — the section root shows the list, deeper routes show the
  * detail with a back button in the header.

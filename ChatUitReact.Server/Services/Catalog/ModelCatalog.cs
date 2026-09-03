@@ -20,11 +20,11 @@ public sealed record CatalogModel(
 /// <summary>
 /// Capability defaults for models we have verified against provider documentation.
 ///
-/// This is a <em>prefill</em>, never authoritative: the stored model row still decides what
-/// is sent at request time, so an admin can register a preview or self-hosted model exactly
-/// as before, and a deploy can never silently change how a production model behaves. Its
-/// job is to stop a mistyped checkbox from becoming a runtime 400 — which is how
-/// "'temperature' does not support 0.7 with this model" happened.
+/// This is a <em>prefill</em>, never authoritative: the stored model row decides what is sent
+/// at request time, so an admin can register a preview or self-hosted model that is absent
+/// here, and a deploy cannot silently change how a production model behaves. Its job is to
+/// stop a mistyped capability checkbox from becoming a runtime 400 such as
+/// "'temperature' does not support 0.7 with this model".
 ///
 /// Adding a newly released model is one entry here.
 /// </summary>

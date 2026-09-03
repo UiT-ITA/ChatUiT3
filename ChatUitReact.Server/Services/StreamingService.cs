@@ -77,7 +77,6 @@ public class StreamingService
         // Auto-cleanup after completion + delay
         _ = Task.Run(async () =>
         {
-            // Wait for completion
             while (!stream.IsComplete)
             {
                 await Task.Delay(1000);
@@ -86,7 +85,6 @@ public class StreamingService
             // Wait additional time for late clients
             await Task.Delay(TimeSpan.FromMinutes(5));
             
-            // Cleanup
             if (_activeStreams.TryRemove(streamKey, out var removedStream))
             {
                 removedStream.Dispose();

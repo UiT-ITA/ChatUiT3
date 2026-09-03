@@ -189,7 +189,7 @@ export function ChatItem({ chat, onNavigate }: ChatItemProps) {
         createPortal(
           <ul
             className="chat-context-menu"
-            // The document-level mousedown listener below closes the menu. Without this
+            // The document-level mousedown listener closes the menu. Without this
             // guard it would unmount the list between mousedown and mouseup, so the click
             // on a menu item would never be delivered.
             onMouseDown={e => e.stopPropagation()}

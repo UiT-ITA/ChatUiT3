@@ -61,7 +61,6 @@
   color: var(--text-2);
 }
 
-/* Ensure summary title truncates with ellipsis */
 .toolcall-title-clip {
   flex: 1;
   min-width: 0;

@@ -134,7 +134,7 @@ const ModelEditor: React.FC<ModelEditorProps> = ({ modelId: editId }) => {
     !!modelName &&
     !!description &&
     !!endpointId &&
-    // AllowedRoles is now enforced, so a model saved with no roles would be invisible to
+    // AllowedRoles is enforced, so a model saved with no roles would be invisible to
     // everyone with nothing to explain why.
     allowedRoles.length > 0 &&
     Number(capabilities.maxContextTokens) > 0 &&

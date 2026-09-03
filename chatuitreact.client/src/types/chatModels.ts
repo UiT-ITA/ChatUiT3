@@ -83,12 +83,12 @@ export interface ChatMessageDto {
   content: string;
   status: AiChatStatus;
   files: ChatFileDto[];
-  /** Present on assistant messages generated after activity tracking existed. */
+  /** Set on assistant messages; absent or null when no activity was recorded. */
   activity?: MessageActivityDto | null;
   /**
    * The assistant that produced this message, stamped when it was created. Empty on user
-   * messages and on messages written before per-message attribution existed — fall back to
-   * the conversation's assistant in that case.
+   * messages and on any message carrying no attribution — fall back to the conversation's
+   * assistant in that case.
    */
   assistantId: string;
   /** Snapshot of the assistant's name, so a rename or deletion does not blank out history. */

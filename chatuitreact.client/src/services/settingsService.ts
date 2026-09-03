@@ -9,7 +9,6 @@ export class SettingsService {
     try {
       const stored = localStorage.getItem(SETTINGS_STORAGE_KEY);
       if (!stored) {
-        // No stored settings - detect browser language and create initial settings
         const browserLanguage = this.detectBrowserLanguage();
         const initialSettings = {
           ...DEFAULT_SETTINGS,
@@ -21,7 +20,6 @@ export class SettingsService {
 
       const parsed = this.migrateSettings(JSON.parse(stored));
 
-      // Merge with defaults to ensure all properties exist
       const settings: AppSettings = {
         ...DEFAULT_SETTINGS,
         ...parsed,
@@ -37,12 +35,10 @@ export class SettingsService {
   private static detectBrowserLanguage(): 'en-US' | 'no-NB' {
     const browserLang = navigator.language || navigator.languages?.[0] || 'en-US';
     
-    // Check if browser language matches our supported languages
     if (browserLang.startsWith('no') || browserLang.startsWith('nb')) {
       return 'no-NB';
     }
     
-    // Default to English for all other languages
     return 'en-US';
   }
 
@@ -54,7 +50,7 @@ export class SettingsService {
     }
   }
 
-  // Older versions stored theme as light/dim/dark; split into theme + mode
+  // Stored settings whose theme is light/dim/dark are read as the theme + mode pair
   private static migrateSettings(parsed: Record<string, unknown>): Record<string, unknown> {
     if (parsed.theme === 'light' || parsed.theme === 'dim' || parsed.theme === 'dark') {
       parsed.mode = parsed.theme === 'light' ? 'light' : 'dark';
@@ -108,7 +104,7 @@ export class SettingsService {
   }
 
   static exportData(format: 'json' | 'markdown' | 'txt'): void {
-    // Dummy implementation for now
+    // Exports the settings only. `format` picks the file extension; the payload is always JSON.
     const data = {
       settings: this.loadSettings(),
       exportDate: new Date().toISOString(),
@@ -130,7 +126,7 @@ export class SettingsService {
   }
 
   static deleteAllData(): void {
-    // Dummy implementation for now
+    // Local browser storage only — nothing stored server-side is deleted.
     if (confirm('Are you sure you want to delete all data? This action cannot be undone.')) {
       localStorage.clear();
       window.location.reload();

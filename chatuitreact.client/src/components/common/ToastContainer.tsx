@@ -19,7 +19,7 @@ function levelClass(level: NotifyLevel) {
 }
 
 const ToastContainer: React.FC = () => {
-  useSignals(); // subscribe to signal updates like ChatList.tsx
+  useSignals(); // subscribe to signal updates
   const list = notifications;
 
   return (

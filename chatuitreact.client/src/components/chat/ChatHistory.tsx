@@ -17,8 +17,8 @@ function ChatHistory({ chatId }: ChatHistoryProps) {
   const chat = getChat(chatId)
   const messages = chat.value?.messages || []
   const assistants = getSelectableAssistants().value || []
-  // Only a fallback: messages carry their own assistant. This covers messages written before
-  // per-message attribution existed, and any message whose snapshot is empty.
+  // Only a fallback: messages carry their own assistant. Used for any message whose
+  // assistant snapshot is empty.
   const fallbackAssistantName = assistants.find((a) => a.id === chat.value?.assistantId)?.name
 
   const chatHistoryRef = useRef<HTMLDivElement>(null)

@@ -185,7 +185,7 @@ export async function sendMessage(chatId: string, content: string, files?: ChatF
 
   } catch (error) {
     console.error(`Error sending message to chat ${chatId}:`, error);
-    throw error; // Re-throw to allow component to handle
+    throw error;
   }
 }
 
@@ -245,8 +245,8 @@ export function getChat(chatId: string): Signal<ChatDto | undefined> {
 }
 
 
-// Counts can arrive after the message itself (a backfill on a later read), and must not be
-// discarded by the reference-preserving merge above.
+// Counts can arrive after the message itself (a backfill on a later read), so the merge
+// compares them and must not treat a newly counted message as unchanged.
 function sameTokenCounts(a: Record<string, number> | undefined, b: Record<string, number> | undefined): boolean {
   const aKeys = Object.keys(a ?? {});
   const bKeys = Object.keys(b ?? {});
@@ -255,11 +255,9 @@ function sameTokenCounts(a: Record<string, number> | undefined, b: Record<string
 
 export async function invalidateChat(chatId: string): Promise<void> {
   try {
-    // Get current chat
     const chatSignal = chatCache.get(chatId);
     const currentChat = chatSignal?.value;
     
-    // Fetch fresh chat data
     const chat = await apiService<ChatDto>(`/api/Chats/${chatId}`);
     
     // Smart merge: preserve object references for unchanged messages to prevent unnecessary rerenders
@@ -267,17 +265,16 @@ export async function invalidateChat(chatId: string): Promise<void> {
       const mergedMessages = chat.messages.map(newMessage => {
         const existingMessage = currentChat.messages.find(m => m.id === newMessage.id);
         
-        // If message exists and hasn't changed, keep the existing object reference
         if (existingMessage && 
             existingMessage.content === newMessage.content &&
             existingMessage.status === newMessage.status &&
             existingMessage.timestamp === newMessage.timestamp &&
             existingMessage.assistantName === newMessage.assistantName &&
             sameTokenCounts(existingMessage.tokenCounts, newMessage.tokenCounts)) {
-          return existingMessage; // Preserve reference to avoid rerender
+          return existingMessage;
         }
         
-        return newMessage; // New or changed message
+        return newMessage;
       });
       
       chat.messages = mergedMessages;
@@ -293,7 +290,6 @@ export async function invalidateChat(chatId: string): Promise<void> {
       });
     }
     
-    // Update chat signal
     if (chatSignal) {
       chatSignal.value = chat;
     } else {
@@ -476,13 +472,11 @@ function flushBuffer(messageId: string): void {
   }
   getActivitySignal(messageId).value = activity;
 
-  // Clear buffer and timer
   chunkBuffers.delete(messageId);
   flushTimers.delete(messageId);
 }
 
 export function receiveMessageChunk(messageId: string, chunk: ChatStreamChunk): void {
-  // Add chunk to buffer
   let buffer = chunkBuffers.get(messageId);
   if (!buffer) {
     buffer = [];
@@ -490,7 +484,6 @@ export function receiveMessageChunk(messageId: string, chunk: ChatStreamChunk): 
   }
   buffer.push(chunk);
   
-  // Schedule flush if not already scheduled
   if (!flushTimers.has(messageId)) {
     const timer = setTimeout(() => flushBuffer(messageId), 250);
     flushTimers.set(messageId, timer);
@@ -499,11 +492,9 @@ export function receiveMessageChunk(messageId: string, chunk: ChatStreamChunk): 
 
 export function clearStreamCache(messageId?: string): void {
   if (messageId) {
-    // Clear stream signal
     messageStreamCache.delete(messageId);
     messageActivityCache.delete(messageId);
     
-    // Clear any pending buffer and timer
     const timer = flushTimers.get(messageId);
     if (timer) {
       clearTimeout(timer);
@@ -511,11 +502,9 @@ export function clearStreamCache(messageId?: string): void {
     }
     chunkBuffers.delete(messageId);
   } else {
-    // Clear all stream signals
     messageStreamCache.clear();
     messageActivityCache.clear();
     
-    // Clear all pending timers and buffers
     flushTimers.forEach(timer => clearTimeout(timer));
     flushTimers.clear();
     chunkBuffers.clear();
@@ -625,14 +614,12 @@ export function getSelectableAssistants(): Signal<AssistantDto[]> {
     const resolvedDefaultId = getResolvedDefaultAssistantId().value;
     const defaultAssistant = resolvedDefaultId ? getAssistant(resolvedDefaultId).value : undefined;
 
-    // All visible assistants
     const visibleAssistants = [
       ...tag(assistantList.owned.filter(a => a.isVisible), 'owned'),
       ...tag(assistantList.system.filter(a => a.isVisible), 'system'),
       ...tag(assistantList.shared.filter(a => a.isVisible), 'shared')
     ];
 
-    // Include current assistant if it's not visible
     let hiddenCurrentAssistant = null;
     if (currentAssistantId) {
       const currentAssistant = getAssistant(currentAssistantId).value;
@@ -641,7 +628,6 @@ export function getSelectableAssistants(): Signal<AssistantDto[]> {
       }
     }
 
-    // Combine and deduplicate by ID
     const allAssistants = [defaultAssistant, ...visibleAssistants, hiddenCurrentAssistant].filter(Boolean) as AssistantDto[];
     return Array.from(new Map(allAssistants.map(a => [a.id, a])).values());
   });

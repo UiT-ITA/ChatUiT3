@@ -10,10 +10,9 @@ public partial class MockDatabaseService : IDatabaseService
     private readonly IConfiguration _configuration;
     private readonly ILogger<MockDatabaseService> _logger;
     
-    // Per-user storage instead of shared data
+    // Per-user storage, keyed by user id
     private readonly ConcurrentDictionary<string, UserInfo> _userInfoStorage = new();
     
-    // Existing storage structures
     private ConcurrentDictionary<string, List<Chat>> _chatStorage = new();
     private ConcurrentDictionary<string, ModelEndpoint> _endpoints = new();
     private ConcurrentDictionary<string, Model> _models = new();
@@ -27,7 +26,6 @@ public partial class MockDatabaseService : IDatabaseService
 
     private void AddUser(string userId)
     {
-        // Initialize user info if doesn't exist
         _userInfoStorage.GetOrAdd(userId, _ => new UserInfo
         {
             Username = userId,
@@ -35,7 +33,6 @@ public partial class MockDatabaseService : IDatabaseService
             Preferences = DeepCopyUserInfo(new UserInfo { Preferences = _defaultUserPreferences }).Preferences
         });
 
-        // Initialize user chats if don't exist
         _chatStorage.GetOrAdd(userId, _ => 
         {
             return DeepCopyList(_dummyChatTemplate, DeepCopyChat);

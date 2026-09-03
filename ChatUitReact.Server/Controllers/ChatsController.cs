@@ -138,7 +138,6 @@ public class ChatsController : ControllerBase
                 return Forbid();
             }
 
-            // Map DTO messages to domain messages
             var initialMessages = new List<ChatMessage>();
             foreach (var msgDto in request.Messages)
             {
@@ -154,7 +153,6 @@ public class ChatsController : ControllerBase
             
             var chat = await _chatService.CreateChatAsync(userId, request.AssistantId, initialMessages);
             
-            // Notify all clients that chat list has changed
             await _hubContext.Clients.Group(userId).ChatListUpdated();
             
             return CreatedAtAction(nameof(GetChat), new { chatId = chat.Id }, MapToDto(chat));
@@ -188,21 +186,18 @@ public class ChatsController : ControllerBase
 
             if (chatId == "new")
             {
-                // Create new chat with the message
                 var messages = new List<ChatMessage> { message };
                 var chat = await _chatService.CreateChatAsync(userId, request.AssistantId, messages);
                 
-                // Notify that chat list has changed (new chat created)
                 await _hubContext.Clients.Group(userId).ChatListUpdated();
                 
                 return Ok(new { chatId = chat.Id });
             }
             else
             {
-                // Send message to existing chat using the same streaming logic as SignalR
+                // Uses the same streaming path as the SignalR hub, so both entry points behave alike.
                 await _chatService.SendStreamingMessageAsync(userId, chatId, message, request.AssistantId);
                 
-                // Notify that this specific chat has been updated
                 await _hubContext.Clients.Group(userId).ChatUpdated(chatId);
                 
                 return Ok(new { success = true });
@@ -401,7 +396,6 @@ public class ChatsController : ControllerBase
             var userId = GetCurrentUserId();
             await _chatService.DeleteChatAsync(userId, chatId);
             
-            // Notify that chat list has changed (chat deleted)
             await _hubContext.Clients.Group(userId).ChatListUpdated();
             
             return NoContent();
