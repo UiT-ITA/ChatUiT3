@@ -40,6 +40,12 @@ public class FullAssistantDto
     public bool CanBeDefault { get; set; }
 
     public List<AssistantFileDto> Files { get; set; } = new List<AssistantFileDto>();
+
+    /// <summary>
+    /// Per token counting scheme: the fixed cost every request through this assistant pays —
+    /// system prompt with knowledge files appended, tool definitions, and reply priming.
+    /// </summary>
+    public Dictionary<string, int> PromptTokenCounts { get; set; } = new();
 }
 
 public class AssistantFileDto
@@ -70,6 +76,9 @@ public class AssistantSummaryDto
     public bool CanBeDefault { get; set; }
 
     public string CreatedBy { get; set; } = string.Empty;
+
+    /// <inheritdoc cref="FullAssistantDto.PromptTokenCounts"/>
+    public Dictionary<string, int> PromptTokenCounts { get; set; } = new();
 }
 
 public class CreateAssistantDto

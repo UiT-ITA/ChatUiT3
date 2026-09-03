@@ -42,8 +42,24 @@ public partial class MockDatabaseService
                 {
                     existingMessage.AssistantName = message.AssistantName;
                 }
+                if (message.TokenCounts is { Count: > 0 })
+                {
+                    existingMessage.TokenCounts = message.TokenCounts;
+                }
             }
             chat.UpdatedAt = DateTime.Now;
+        }
+        return Task.CompletedTask;
+    }
+
+    public Task SetMessageTokenCountsAsync(string userId, string chatId, string messageId, IReadOnlyDictionary<string, int> tokenCounts)
+    {
+        AddUser(userId);
+        var chat = _chatStorage[userId].FirstOrDefault(c => c.Id == chatId);
+        var message = chat?.Messages.FirstOrDefault(m => m.Id == messageId);
+        if (message != null)
+        {
+            message.TokenCounts = new Dictionary<string, int>(tokenCounts);
         }
         return Task.CompletedTask;
     }

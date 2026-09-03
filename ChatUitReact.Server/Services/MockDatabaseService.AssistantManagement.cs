@@ -57,6 +57,7 @@ public partial class MockDatabaseService
     {
         lock (_assistantsLock)
         {
+            assistant.UpdatedAt = DateTime.UtcNow;
             var assistantCopy = DeepCopyAssistant(assistant);
             _assistants.Add(assistantCopy);
             return Task.FromResult(DeepCopyAssistant(assistantCopy));
@@ -70,6 +71,7 @@ public partial class MockDatabaseService
             var index = _assistants.FindIndex(a => a.Id == assistant.Id);
             if (index >= 0)
             {
+                assistant.UpdatedAt = DateTime.UtcNow;
                 var assistantCopy = DeepCopyAssistant(assistant);
                 _assistants[index] = assistantCopy;
                 return Task.FromResult<Assistant?>(DeepCopyAssistant(assistantCopy));

@@ -1,4 +1,5 @@
 using ChatUitReact.Server.Models;
+using ChatUitReact.Server.Services.TokenCounting;
 
 namespace ChatUitReact.Server.Services;
 
@@ -61,7 +62,8 @@ public partial class MockDatabaseService
                         MaxContextTokens = 128_000,
                         MaxOutputTokens = 16_384,
                         DefaultMaxOutputTokens = 16_384,
-                        KnowledgeCutoff = new DateTime(2023, 10, 1)
+                        KnowledgeCutoff = new DateTime(2023, 10, 1),
+                        TokenCountingScheme = TokenCountingSchemes.O200kTile
                     }
                 };
                 _models[gpt4oModel.Id] = gpt4oModel;
@@ -87,7 +89,8 @@ public partial class MockDatabaseService
                         MaxContextTokens = 1_050_000,
                         MaxOutputTokens = 128_000,
                         DefaultMaxOutputTokens = 32_000,
-                        KnowledgeCutoff = new DateTime(2025, 12, 1)
+                        KnowledgeCutoff = new DateTime(2025, 12, 1),
+                        TokenCountingScheme = TokenCountingSchemes.O200kTile
                     }
                 };
                 _models[gpt55Model.Id] = gpt55Model;
@@ -113,7 +116,8 @@ public partial class MockDatabaseService
                         MaxContextTokens = 1_050_000,
                         MaxOutputTokens = 128_000,
                         DefaultMaxOutputTokens = 32_000,
-                        KnowledgeCutoff = new DateTime(2025, 8, 31)
+                        KnowledgeCutoff = new DateTime(2025, 8, 31),
+                        TokenCountingScheme = TokenCountingSchemes.O200kTile
                     }
                 };
                 _models[gpt54Model.Id] = gpt54Model;
@@ -139,7 +143,8 @@ public partial class MockDatabaseService
                         MaxContextTokens = 400_000,
                         MaxOutputTokens = 128_000,
                         DefaultMaxOutputTokens = 32_000,
-                        KnowledgeCutoff = new DateTime(2025, 8, 31)
+                        KnowledgeCutoff = new DateTime(2025, 8, 31),
+                        TokenCountingScheme = TokenCountingSchemes.O200kPatch(1.62)
                     }
                 };
                 _models[gpt54MiniModel.Id] = gpt54MiniModel;
@@ -161,7 +166,8 @@ public partial class MockDatabaseService
                         MaxContextTokens = 1_047_576,
                         MaxOutputTokens = 32_768,
                         DefaultMaxOutputTokens = 32_768,
-                        KnowledgeCutoff = new DateTime(2024, 6, 1)
+                        KnowledgeCutoff = new DateTime(2024, 6, 1),
+                        TokenCountingScheme = TokenCountingSchemes.O200kTile
                     }
                 };
                 _models[gpt41Model.Id] = gpt41Model;
@@ -190,7 +196,8 @@ public partial class MockDatabaseService
                 MaxContextTokens = 128_000,
                 MaxOutputTokens = 16_384,
                 DefaultMaxOutputTokens = 16_384,
-                KnowledgeCutoff = new DateTime(2023, 10, 1)
+                KnowledgeCutoff = new DateTime(2023, 10, 1),
+                TokenCountingScheme = TokenCountingSchemes.O200kTile
             }
         };
 

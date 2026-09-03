@@ -244,6 +244,14 @@ export function getChat(chatId: string): Signal<ChatDto | undefined> {
 }
 
 
+// Counts can arrive after the message itself (a backfill on a later read), and must not be
+// discarded by the reference-preserving merge above.
+function sameTokenCounts(a: Record<string, number> | undefined, b: Record<string, number> | undefined): boolean {
+  const aKeys = Object.keys(a ?? {});
+  const bKeys = Object.keys(b ?? {});
+  return aKeys.length === bKeys.length && aKeys.every(key => a![key] === b?.[key]);
+}
+
 export async function invalidateChat(chatId: string): Promise<void> {
   try {
     // Get current chat
@@ -263,7 +271,8 @@ export async function invalidateChat(chatId: string): Promise<void> {
             existingMessage.content === newMessage.content &&
             existingMessage.status === newMessage.status &&
             existingMessage.timestamp === newMessage.timestamp &&
-            existingMessage.assistantName === newMessage.assistantName) {
+            existingMessage.assistantName === newMessage.assistantName &&
+            sameTokenCounts(existingMessage.tokenCounts, newMessage.tokenCounts)) {
           return existingMessage; // Preserve reference to avoid rerender
         }
         

@@ -85,10 +85,19 @@
   flex: 1;
 }
 
-.composer-char-count {
+.composer-char-count,
+.composer-token-count {
   color: var(--text-3);
   padding-right: 0.375rem;
   white-space: nowrap;
+}
+
+.composer-token-count[data-state="near"] {
+  color: var(--warn);
+}
+
+.composer-token-count[data-state="over"] {
+  color: var(--danger);
 }
 
 .composer-send {

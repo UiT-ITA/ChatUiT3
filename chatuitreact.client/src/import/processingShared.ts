@@ -198,7 +198,9 @@ async function normalizeImageDataUrlToChunk(dataUrl: string): Promise<ImageChunk
 
     return {
         type: 'image',
-        base64
+        base64,
+        width,
+        height
     };
 }
 

@@ -34,6 +34,9 @@ public class ModelCapabilitiesDto
 
     /// <summary>Null when unknown.</summary>
     public DateTime? KnowledgeCutoff { get; set; }
+
+    /// <summary>Token counting scheme id, or null when the model has no counter.</summary>
+    public string? TokenCountingScheme { get; set; }
 }
 
 public class ModelDto

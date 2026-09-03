@@ -2,6 +2,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using ChatUitReact.Server.Models;
 using ChatUitReact.Server.Services;
+using ChatUitReact.Server.Services.TokenCounting;
 
 namespace ChatUitReact.Server.Controllers;
 
@@ -55,6 +56,11 @@ public class AdminModelsController : ControllerBase
     {
         try
         {
+            if (!IsValidScheme(createDto.Capabilities.TokenCountingScheme))
+            {
+                return BadRequest($"Unknown token counting scheme '{createDto.Capabilities.TokenCountingScheme}'");
+            }
+
             var model = new Model
             {
                 ModelId = createDto.ModelId,
@@ -85,6 +91,11 @@ public class AdminModelsController : ControllerBase
             if (id != updateDto.Id)
             {
                 return BadRequest("Route id does not match request body id");
+            }
+
+            if (!IsValidScheme(updateDto.Capabilities.TokenCountingScheme))
+            {
+                return BadRequest($"Unknown token counting scheme '{updateDto.Capabilities.TokenCountingScheme}'");
             }
 
             var model = new Model
@@ -150,7 +161,8 @@ public class AdminModelsController : ControllerBase
             MaxContextTokens = model.Capabilities.MaxContextTokens,
             MaxOutputTokens = model.Capabilities.MaxOutputTokens,
             DefaultMaxOutputTokens = model.Capabilities.DefaultMaxOutputTokens,
-            KnowledgeCutoff = model.Capabilities.KnowledgeCutoff
+            KnowledgeCutoff = model.Capabilities.KnowledgeCutoff,
+            TokenCountingScheme = model.Capabilities.TokenCountingScheme
         }
     };
 
@@ -165,8 +177,12 @@ public class AdminModelsController : ControllerBase
         // A model that never emits output is a misconfiguration, and Anthropic requires
         // max_tokens on every request — fall back to the ceiling rather than storing 0.
         DefaultMaxOutputTokens = dto.DefaultMaxOutputTokens > 0 ? dto.DefaultMaxOutputTokens : dto.MaxOutputTokens,
-        KnowledgeCutoff = dto.KnowledgeCutoff
+        KnowledgeCutoff = dto.KnowledgeCutoff,
+        TokenCountingScheme = TokenCountingSchemes.Normalize(dto.TokenCountingScheme)
     };
+
+    private static bool IsValidScheme(string? scheme) =>
+        TokenCountingSchemes.Normalize(scheme) == null || TokenCountingSchemes.IsKnown(scheme);
 
     // Stored ascending and deduplicated so LowestEffort and the client's slider can both
     // rely on the order without re-sorting.

@@ -5,6 +5,7 @@ using System.Linq;
 namespace ChatUitReact.Server.Services.Catalog;
 
 using ChatUitReact.Server.Models;
+using ChatUitReact.Server.Services.TokenCounting;
 
 /// <summary>
 /// A known model and the capabilities it ships with.
@@ -49,7 +50,8 @@ public static class ModelCatalog
             MaxContextTokens = 1_050_000,
             MaxOutputTokens = 128_000,
             DefaultMaxOutputTokens = 32_000,
-            KnowledgeCutoff = new DateTime(2026, 2, 16)
+            KnowledgeCutoff = new DateTime(2026, 2, 16),
+            TokenCountingScheme = TokenCountingSchemes.O200kTile
         }),
 
         new("gpt-5.6-terra", "GPT-5.6 Terra", "Strong performance at lower cost than Sol.", EndpointType.AzureOpenAI, new ModelCapabilities
@@ -61,7 +63,8 @@ public static class ModelCatalog
             MaxContextTokens = 1_050_000,
             MaxOutputTokens = 128_000,
             DefaultMaxOutputTokens = 32_000,
-            KnowledgeCutoff = new DateTime(2026, 2, 16)
+            KnowledgeCutoff = new DateTime(2026, 2, 16),
+            TokenCountingScheme = TokenCountingSchemes.O200kTile
         }),
 
         new("gpt-5.6-luna", "GPT-5.6 Luna", "Efficient model for high-volume workloads.", EndpointType.AzureOpenAI, new ModelCapabilities
@@ -73,7 +76,8 @@ public static class ModelCatalog
             MaxContextTokens = 1_050_000,
             MaxOutputTokens = 128_000,
             DefaultMaxOutputTokens = 32_000,
-            KnowledgeCutoff = new DateTime(2026, 2, 16)
+            KnowledgeCutoff = new DateTime(2026, 2, 16),
+            TokenCountingScheme = TokenCountingSchemes.O200kTile
         }),
 
         new("gpt-5.5", "GPT-5.5", "Previous-generation OpenAI reasoning model.", EndpointType.AzureOpenAI, new ModelCapabilities
@@ -85,7 +89,8 @@ public static class ModelCatalog
             MaxContextTokens = 1_050_000,
             MaxOutputTokens = 128_000,
             DefaultMaxOutputTokens = 32_000,
-            KnowledgeCutoff = new DateTime(2025, 12, 1)
+            KnowledgeCutoff = new DateTime(2025, 12, 1),
+            TokenCountingScheme = TokenCountingSchemes.O200kTile
         }),
 
         new("gpt-5.4", "GPT-5.4", "Reasoning-heavy work that needs deliberate control.", EndpointType.AzureOpenAI, new ModelCapabilities
@@ -97,7 +102,8 @@ public static class ModelCatalog
             MaxContextTokens = 1_050_000,
             MaxOutputTokens = 128_000,
             DefaultMaxOutputTokens = 32_000,
-            KnowledgeCutoff = new DateTime(2025, 8, 31)
+            KnowledgeCutoff = new DateTime(2025, 8, 31),
+            TokenCountingScheme = TokenCountingSchemes.O200kTile
         }),
 
         new("gpt-5.4-mini", "GPT-5.4 Mini", "Faster, cheaper reasoning model.", EndpointType.AzureOpenAI, new ModelCapabilities
@@ -109,7 +115,8 @@ public static class ModelCatalog
             MaxContextTokens = 400_000,
             MaxOutputTokens = 128_000,
             DefaultMaxOutputTokens = 32_000,
-            KnowledgeCutoff = new DateTime(2025, 8, 31)
+            KnowledgeCutoff = new DateTime(2025, 8, 31),
+            TokenCountingScheme = TokenCountingSchemes.O200kPatch(1.62)
         }),
 
         new("gpt-4.1", "GPT-4.1", "Fast non-reasoning model with a very large context window.", EndpointType.AzureOpenAI, new ModelCapabilities
@@ -121,7 +128,8 @@ public static class ModelCatalog
             MaxContextTokens = 1_047_576,
             MaxOutputTokens = 32_768,
             DefaultMaxOutputTokens = 32_768,
-            KnowledgeCutoff = new DateTime(2024, 6, 1)
+            KnowledgeCutoff = new DateTime(2024, 6, 1),
+            TokenCountingScheme = TokenCountingSchemes.O200kTile
         }),
 
         new("gpt-4o", "GPT-4o", "General-purpose non-reasoning model.", EndpointType.AzureOpenAI, new ModelCapabilities
@@ -133,7 +141,8 @@ public static class ModelCatalog
             MaxContextTokens = 128_000,
             MaxOutputTokens = 16_384,
             DefaultMaxOutputTokens = 16_384,
-            KnowledgeCutoff = new DateTime(2023, 10, 1)
+            KnowledgeCutoff = new DateTime(2023, 10, 1),
+            TokenCountingScheme = TokenCountingSchemes.O200kTile
         }),
 
         // ---- Anthropic --------------------------------------------------------------

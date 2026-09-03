@@ -302,7 +302,8 @@ public class AssistantsController : ControllerBase
                     SupportedEfforts = m.Capabilities.SupportedEfforts,
                     ContextSize = m.Capabilities.MaxContextTokens,
                     MaxOutputTokens = m.Capabilities.MaxOutputTokens,
-                    KnowledgeCutoff = m.Capabilities.KnowledgeCutoff?.ToString("yyyy-MM")
+                    KnowledgeCutoff = m.Capabilities.KnowledgeCutoff?.ToString("yyyy-MM"),
+                    TokenCountingScheme = m.Capabilities.TokenCountingScheme
                 }
             }).ToArray();
             return Ok(modelDtos);
