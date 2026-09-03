@@ -78,6 +78,7 @@
       "updated": "Sist endret",
       "context": "Kontekstvindu",
       "contextUsed": "{{used}} av {{limit}} tokens",
+      "contextUsedLabel": "Brukt",
       "contextDraft": "Utkast",
       "contextReserved": "Reservert til svaret",
       "contextUnknown": "{{count}} meldinger er ikke talt opp ennå",

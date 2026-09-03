@@ -78,6 +78,7 @@
       "updated": "Last changed",
       "context": "Context window",
       "contextUsed": "{{used}} of {{limit}} tokens",
+      "contextUsedLabel": "Used",
       "contextDraft": "Draft",
       "contextReserved": "Reserved for the answer",
       "contextUnknown": "{{count}} messages not yet counted",

@@ -67,13 +67,26 @@ function ConversationPanel({ chatId }: ConversationPanelProps) {
             <div className="context-meter-fill" style={{ width: percentOf(usage.total) }} />
             <div className="context-meter-reserved" style={{ width: percentOf(Math.min(usage.maxOutputTokens, Math.max(0, usage.contextSize - usage.total))) }} />
           </div>
-          <div className="context-usage-total t-meta">
-            {usage.isEstimate && '≈ '}
-            {t('chat.panel.contextUsed', {
-              used: number(usage.total),
-              limit: formatTokensCompact(usage.contextSize, i18n.language),
-            })}
-          </div>
+          <ul className="context-legend context-legend--usage">
+            <li className="context-legend-row context-legend-row--wide t-hint">
+              <span className="context-legend-swatch" data-segment="used" />
+              <span className="context-legend-label">{t('chat.panel.contextUsedLabel')}</span>
+              <span className="context-legend-value context-usage-total">
+                {usage.isEstimate && '≈ '}
+                {t('chat.panel.contextUsed', {
+                  used: number(usage.total),
+                  limit: formatTokensCompact(usage.contextSize, i18n.language),
+                })}
+              </span>
+            </li>
+            <li className="context-legend-row context-legend-row--wide t-hint">
+              <span className="context-legend-swatch" data-segment="reserved" />
+              <span className="context-legend-label">{t('chat.panel.contextReserved')}</span>
+              <span className="context-legend-value">{number(usage.maxOutputTokens)}</span>
+            </li>
+          </ul>
+
+          <div className="context-subheader t-hint">{t('chat.panel.contextComposition')}</div>
           {usage.total > 0 && (
             <div className="context-composition" role="img" aria-label={t('chat.panel.contextComposition')}>
               {segments.filter((segment) => segment.value > 0).map((segment) => (
@@ -95,11 +108,6 @@ function ConversationPanel({ chatId }: ConversationPanelProps) {
                 <span className="context-legend-share">{t('chat.panel.contextPercent', { value: shareOf(segment.value) })}</span>
               </li>
             ))}
-            <li className="context-legend-row context-legend-row--reserved t-hint">
-              <span className="context-legend-swatch" data-segment="reserved" />
-              <span className="context-legend-label">{t('chat.panel.contextReserved')}</span>
-              <span className="context-legend-value">{number(usage.maxOutputTokens)}</span>
-            </li>
           </ul>
           {usage.unknownMessages > 0 && (
             <div className="context-usage-note t-hint">{t('chat.panel.contextUnknown', { count: usage.unknownMessages })}</div>

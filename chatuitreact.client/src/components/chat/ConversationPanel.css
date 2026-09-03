@@ -154,14 +154,37 @@
   text-align: right;
 }
 
-.context-legend-row--reserved {
-  margin-top: 0.25rem;
+/* Legend for the usage bar: two rows, no share column. */
+.context-legend-row--wide {
   grid-template-columns: 0.625rem 1fr auto;
+  align-items: start;
 }
 
-.context-legend-row--reserved .context-legend-swatch {
+.context-legend-row--wide .context-legend-label {
+  white-space: normal;
+}
+
+.context-legend-swatch[data-segment="used"] {
+  background: var(--accent);
+}
+
+.context-usage[data-state="warn"] .context-legend-swatch[data-segment="used"] {
+  background: var(--warn);
+}
+
+.context-usage[data-state="danger"] .context-legend-swatch[data-segment="used"] {
+  background: var(--danger);
+}
+
+.context-legend-swatch[data-segment="reserved"] {
   background: var(--accent);
   opacity: 0.3;
+}
+
+/* Separates the composition bar from the usage bar above it. */
+.context-subheader {
+  margin-top: 0.5rem;
+  color: var(--text-3);
 }
 
 [data-segment="prompt"] { background: var(--viz-1); }
