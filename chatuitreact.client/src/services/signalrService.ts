@@ -1,3 +1,4 @@
+import type { ChatStreamChunk } from "../types/chatModels";
 import * as signalR from "@microsoft/signalr";
 import authService from "./authService";
 import { invalidateChat, invalidateChats, receiveMessageChunk, setStreamMessageCallback } from "./chatService";
@@ -102,7 +103,7 @@ class SignalrService {
       addNotification({ level, message });
     });
 
-    this.connection.on("ReceiveMessageChunk", (messageId: string, chunk: string) => {
+    this.connection.on("ReceiveMessageChunk", (messageId: string, chunk: ChatStreamChunk) => {
       receiveMessageChunk(messageId, chunk);
     });
 

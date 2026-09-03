@@ -97,12 +97,29 @@
     "status": {
       "generating": "Generating",
       "done": "Done",
-      "running": "Running…"
+      "running": "Running…",
+      "failed": "Failed"
     },
     "roles": {
       "user": "User",
       "assistant": "Assistant",
       "system": "System"
+    },
+    "activity": {
+      "thoughtFor": "Thought for {{duration}}",
+      "toolCalls_one": "{{count}} tool call",
+      "toolCalls_other": "{{count}} tool calls",
+      "generatedIn": "Generated in {{duration}}",
+      "thinkingNow": "Thinking…",
+      "runningTool": "Running {{name}}…",
+      "writing": "Writing…",
+      "starting": "Working…",
+      "thinking": "Thinking",
+      "model": "Model",
+      "effort": "Effort",
+      "rounds_one": "{{count}} tool round",
+      "rounds_other": "{{count}} tool rounds",
+      "nothingRecorded": "No thinking or tool calls were recorded."
     }
   },
   "welcome": {
@@ -396,7 +413,6 @@
     "reasoning": "Advanced reasoning"
   },
   "toolCall": {
-    "defaultName": "ToolCall",
     "arguments": "Arguments",
     "result": "Result"
   },

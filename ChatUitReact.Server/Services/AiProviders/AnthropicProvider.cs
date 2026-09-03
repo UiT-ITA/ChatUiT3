@@ -114,6 +114,12 @@ public sealed class AnthropicProvider : IAiProvider
                 ? Math.Clamp(request.Parameters.Temperature.Value, 0f, 1f)
                 : null,
             OutputConfig = effort.HasValue ? new OutputConfig { Effort = effort.Value } : null,
+            // Adaptive thinking is the only mode current Claude models accept. "summarized"
+            // has to be explicit: models from Opus 4.7 on default to "omitted", which returns
+            // thinking blocks with empty text. The raw chain of thought is never returned.
+            Thinking = request.Parameters.ReasoningActive
+                ? new ThinkingConfigAdaptive { Display = Display.Summarized }
+                : null,
             Tools = includeTools && request.Tools.Count > 0
                 ? request.Tools.Select(tool => new ToolUnion(ToAnthropicTool(tool))).ToList()
                 : null
@@ -321,12 +327,11 @@ public sealed class AnthropicProvider : IAiProvider
 
             using var client = CreateClient(_request.Endpoint);
 
-            var assistantBlocks = new List<ContentBlockParam>();
-            var text = new StringBuilder();
-
-            // tool_use arrives as a start event with id/name, then its input streams in as
-            // partial JSON fragments keyed by content-block index.
-            var pendingToolCalls = new Dictionary<long, PendingToolCall>();
+            // Content blocks arrive as a start event, deltas, and a stop event, all keyed by
+            // index. They are kept in index order because the turn is replayed to the model
+            // as-is on the next tool round: thinking blocks must come back unchanged, with
+            // their signatures, ahead of the text and tool_use blocks they precede.
+            var blocks = new SortedDictionary<long, PendingBlock>();
 
             await foreach (var streamEvent in client.Messages.CreateStreaming(parameters, cancellationToken))
             {
@@ -334,59 +339,102 @@ public sealed class AnthropicProvider : IAiProvider
                 {
                     if (start.ContentBlock.TryPickToolUse(out var toolUse) && toolUse != null)
                     {
-                        pendingToolCalls[start.Index] = new PendingToolCall(toolUse.ID, toolUse.Name);
+                        blocks[start.Index] = new PendingBlock(PendingBlockKind.ToolUse) { Id = toolUse.ID, Name = toolUse.Name };
+                    }
+                    else if (start.ContentBlock.TryPickThinking(out var thinkingBlock) && thinkingBlock != null)
+                    {
+                        blocks[start.Index] = new PendingBlock(PendingBlockKind.Thinking) { Signature = thinkingBlock.Signature };
+                    }
+                    else if (start.ContentBlock.TryPickRedactedThinking(out var redacted) && redacted != null)
+                    {
+                        blocks[start.Index] = new PendingBlock(PendingBlockKind.RedactedThinking) { Data = redacted.Data };
+                    }
+                    else if (start.ContentBlock.TryPickText(out _))
+                    {
+                        blocks[start.Index] = new PendingBlock(PendingBlockKind.Text);
                     }
 
                     continue;
                 }
 
-                if (streamEvent.TryPickContentBlockDelta(out var delta) && delta != null)
+                if (streamEvent.TryPickContentBlockStop(out var stop) && stop != null)
+                {
+                    if (blocks.TryGetValue(stop.Index, out var stopped) && stopped.Kind == PendingBlockKind.Thinking)
+                    {
+                        yield return new AiStreamEvent.ThinkingBreak();
+                    }
+
+                    continue;
+                }
+
+                if (streamEvent.TryPickContentBlockDelta(out var delta) && delta != null
+                    && blocks.TryGetValue(delta.Index, out var block))
                 {
                     if (delta.Delta.TryPickText(out var textDelta) && textDelta != null)
                     {
-                        text.Append(textDelta.Text);
+                        block.Content.Append(textDelta.Text);
                         yield return new AiStreamEvent.Text(textDelta.Text);
                     }
-                    else if (delta.Delta.TryPickInputJson(out var jsonDelta) && jsonDelta != null
-                             && pendingToolCalls.TryGetValue(delta.Index, out var pending))
+                    else if (delta.Delta.TryPickThinking(out var thinkingDelta) && thinkingDelta != null)
                     {
-                        pending.Arguments.Append(jsonDelta.PartialJson);
+                        block.Content.Append(thinkingDelta.Thinking);
+                        yield return new AiStreamEvent.Thinking(thinkingDelta.Thinking);
+                    }
+                    else if (delta.Delta.TryPickSignature(out var signatureDelta) && signatureDelta != null)
+                    {
+                        block.Signature = signatureDelta.Signature;
+                    }
+                    else if (delta.Delta.TryPickInputJson(out var jsonDelta) && jsonDelta != null)
+                    {
+                        block.Content.Append(jsonDelta.PartialJson);
                     }
                 }
             }
 
-            if (text.Length > 0)
-            {
-                assistantBlocks.Add(new TextBlockParam { Text = text.ToString() });
-            }
+            var assistantBlocks = new List<ContentBlockParam>();
+            var toolCalls = new List<AiStreamEvent.ToolCall>();
 
-            if (pendingToolCalls.Count == 0)
+            foreach (var block in blocks.Values)
             {
-                if (assistantBlocks.Count > 0)
+                switch (block.Kind)
                 {
-                    _messages.Add(new MessageParam { Role = Role.Assistant, Content = assistantBlocks });
+                    case PendingBlockKind.Text when block.Content.Length > 0:
+                        assistantBlocks.Add(new TextBlockParam { Text = block.Content.ToString() });
+                        break;
+                    case PendingBlockKind.Thinking:
+                        assistantBlocks.Add(new ThinkingBlockParam
+                        {
+                            Thinking = block.Content.ToString(),
+                            Signature = block.Signature ?? string.Empty
+                        });
+                        break;
+                    case PendingBlockKind.RedactedThinking:
+                        assistantBlocks.Add(new RedactedThinkingBlockParam { Data = block.Data ?? string.Empty });
+                        break;
+                    case PendingBlockKind.ToolUse:
+                        var arguments = block.Content.Length > 0 ? block.Content.ToString() : "{}";
+                        assistantBlocks.Add(new ToolUseBlockParam
+                        {
+                            ID = block.Id!,
+                            Name = block.Name!,
+                            Input = ParseArguments(arguments, block.Name!)
+                        });
+                        toolCalls.Add(new AiStreamEvent.ToolCall(block.Id!, block.Name!, arguments));
+                        break;
                 }
-
-                yield break;
-            }
-
-            foreach (var (_, pending) in pendingToolCalls.OrderBy(pair => pair.Key))
-            {
-                var arguments = pending.Arguments.Length > 0 ? pending.Arguments.ToString() : "{}";
-
-                assistantBlocks.Add(new ToolUseBlockParam
-                {
-                    ID = pending.Id,
-                    Name = pending.Name,
-                    Input = ParseArguments(arguments, pending.Name)
-                });
-
-                yield return new AiStreamEvent.ToolCall(pending.Id, pending.Name, arguments);
             }
 
             // The assistant turn carrying the calls must be in history before the results,
             // or the follow-up request is rejected for unmatched tool_use ids.
-            _messages.Add(new MessageParam { Role = Role.Assistant, Content = assistantBlocks });
+            if (assistantBlocks.Count > 0)
+            {
+                _messages.Add(new MessageParam { Role = Role.Assistant, Content = assistantBlocks });
+            }
+
+            foreach (var toolCall in toolCalls)
+            {
+                yield return toolCall;
+            }
         }
 
         public void AppendToolResults(IReadOnlyList<AiToolResult> results)
@@ -422,9 +470,34 @@ public sealed class AnthropicProvider : IAiProvider
             }
         }
 
-        private sealed record PendingToolCall(string Id, string Name)
+        private enum PendingBlockKind
         {
-            public StringBuilder Arguments { get; } = new();
+            Text,
+            Thinking,
+            RedactedThinking,
+            ToolUse
+        }
+
+        /// <summary>A content block being assembled from stream events.</summary>
+        private sealed class PendingBlock
+        {
+            public PendingBlock(PendingBlockKind kind)
+            {
+                Kind = kind;
+            }
+
+            public PendingBlockKind Kind { get; }
+
+            /// <summary>Text, thinking summary, or partial tool input JSON, depending on the kind.</summary>
+            public StringBuilder Content { get; } = new();
+
+            public string? Id { get; set; }
+
+            public string? Name { get; set; }
+
+            public string? Signature { get; set; }
+
+            public string? Data { get; set; }
         }
     }
 }

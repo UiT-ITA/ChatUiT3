@@ -3,6 +3,7 @@ using System.Threading.Channels;
 using Microsoft.Extensions.Logging;
 using Microsoft.AspNetCore.SignalR;
 using ChatUitReact.Server.Hubs;
+using ChatUitReact.Server.Models;
 
 namespace ChatUitReact.Server.Services;
 
@@ -93,7 +94,7 @@ public class StreamingService
         });
     }
 
-    public void AddChunk(string userId, string messageId, string chunk)
+    public void AddChunk(string userId, string messageId, ChatStreamChunk chunk)
     {
         var streamKey = GetStreamKey(userId, messageId);
         
@@ -167,8 +168,8 @@ public class StreamingService
 
 internal class MessageStream : IDisposable
 {
-    private readonly List<string> _buffer = new();
-    private readonly List<Channel<string>> _channels = new();
+    private readonly List<ChatStreamChunk> _buffer = new();
+    private readonly List<Channel<ChatStreamChunk>> _channels = new();
     private readonly object _lock = new();
     private bool _isComplete = false;
 
@@ -192,7 +193,7 @@ internal class MessageStream : IDisposable
         }
     }
 
-    public void Publish(string chunk)
+    public void Publish(ChatStreamChunk chunk)
     {
         lock (_lock)
         {
@@ -218,9 +219,9 @@ internal class MessageStream : IDisposable
         }
     }
 
-    public IAsyncEnumerable<string> GetReader()
+    public IAsyncEnumerable<ChatStreamChunk> GetReader()
     {
-        var channel = Channel.CreateUnbounded<string>();
+        var channel = Channel.CreateUnbounded<ChatStreamChunk>();
         lock (_lock)
         {
             // Replay all existing chunks to new reader
@@ -244,7 +245,7 @@ internal class MessageStream : IDisposable
         return ReadAll(channel.Reader);
     }
 
-    private async IAsyncEnumerable<string> ReadAll(ChannelReader<string> reader)
+    private async IAsyncEnumerable<ChatStreamChunk> ReadAll(ChannelReader<ChatStreamChunk> reader)
     {
         while (await reader.WaitToReadAsync())
         {

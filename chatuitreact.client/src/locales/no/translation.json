@@ -97,12 +97,29 @@
     "status": {
       "generating": "Genererer",
       "done": "Ferdig",
-      "running": "Kjører…"
+      "running": "Kjører…",
+      "failed": "Feilet"
     },
     "roles": {
       "user": "Bruker",
       "assistant": "Assistent",
       "system": "System"
+    },
+    "activity": {
+      "thoughtFor": "Tenkte i {{duration}}",
+      "toolCalls_one": "{{count}} verktøykall",
+      "toolCalls_other": "{{count}} verktøykall",
+      "generatedIn": "Generert på {{duration}}",
+      "thinkingNow": "Tenker…",
+      "runningTool": "Kjører {{name}}…",
+      "writing": "Skriver…",
+      "starting": "Arbeider…",
+      "thinking": "Tenking",
+      "model": "Modell",
+      "effort": "Innsats",
+      "rounds_one": "{{count}} verktøyrunde",
+      "rounds_other": "{{count}} verktøyrunder",
+      "nothingRecorded": "Ingen tenking eller verktøykall ble registrert."
     }
   },
   "welcome": {
@@ -396,7 +413,6 @@
     "reasoning": "Avansert resonnering"
   },
   "toolCall": {
-    "defaultName": "Verktøykall",
     "arguments": "Argumenter",
     "result": "Resultat"
   },

@@ -2,6 +2,7 @@ using Microsoft.AspNetCore.SignalR;
 using ChatUitReact.Server.Hubs;
 using ChatUitReact.Server.Models;
 using ChatUitReact.Server.Services.AiProviders;
+using System.Diagnostics;
 using ChatUitReact.Server.Services.TokenCounting;
 using System.Text;
 
@@ -329,6 +330,10 @@ public class ChatService : IChatService
         _ = Task.Run(async () =>
         {
             var content = new StringBuilder();
+            // Owned here rather than by the runner so a failed run still leaves its partial
+            // record (tool calls made, time spent) on the message.
+            var activity = new MessageActivity();
+            var stopwatch = Stopwatch.StartNew();
 
             // Without a token a run that hangs — or keeps calling tools — outlives the
             // client that started it, with no way to stop it.
@@ -337,12 +342,13 @@ public class ChatService : IChatService
 
             try
             {
-                await foreach (var chunk in _conversationRunner.StreamAsync(request, userId, chatId, cancellation.Token))
+                await foreach (var chunk in _conversationRunner.StreamAsync(request, userId, chatId, activity, cancellation.Token))
                 {
-                    if (!chunk.IsComplete)
+                    _streamingService.AddChunk(userId, assistantMessage.Id, chunk);
+
+                    if (chunk.Kind == ChatStreamChunkKind.Text)
                     {
-                        _streamingService.AddChunk(userId, assistantMessage.Id, chunk.Content);
-                        content.Append(chunk.Content);
+                        content.Append(chunk.Text);
                     }
                 }
 
@@ -355,6 +361,7 @@ public class ChatService : IChatService
                 }
 
                 assistantMessage.Content = content.ToString();
+                assistantMessage.Activity = activity;
                 _streamingService.CompleteMessage(userId, assistantMessage.Id);
 
                 assistantMessage.Status = AiChatStatus.Success;
@@ -379,6 +386,8 @@ public class ChatService : IChatService
                     ? GenerationFailedText
                     : $"{partialContent}\n\n{GenerationFailedText}";
                 assistantMessage.Status = AiChatStatus.Error;
+                AiConversationRunner.Finish(activity, stopwatch.ElapsedMilliseconds);
+                assistantMessage.Activity = activity;
                 assistantMessage.TokenCounts = _tokenCounting.CountMessage(assistantMessage, activeSchemes);
                 await _databaseService.UpdateMessageAsync(userId, chatId, assistantMessage);
                 NotifyChatUpdated(userId, chatId);

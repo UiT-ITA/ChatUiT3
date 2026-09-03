@@ -53,7 +53,8 @@ public static class ChatExtensions
             Role = message.Role,
             Timestamp = message.Timestamp,
             Content = message.Content,
-            Status = message.Status
+            Status = message.Status,
+            Activity = message.Activity
         };
     }
 

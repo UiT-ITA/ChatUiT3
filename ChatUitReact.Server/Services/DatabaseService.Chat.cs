@@ -239,6 +239,7 @@ public partial class DatabaseService
                 Timestamp = timestamp,
                 Status = message.Status,
                 ContentBlockIds = await WriteTextContentAsync(userId, chatId, messageId, message.Content, writtenBlockIds),
+                ActivityBlockIds = await WriteTextContentAsync(userId, chatId, messageId, SerializeActivity(message.Activity), writtenBlockIds),
                 Files = await WriteFilesAsync(userId, chatId, message.Files, writtenBlockIds),
                 AssistantId = message.AssistantId,
                 AssistantName = message.AssistantName,
@@ -282,6 +283,7 @@ public partial class DatabaseService
         try
         {
             var contentBlockIds = await WriteTextContentAsync(userId, chatId, message.Id, message.Content, writtenBlockIds);
+            var activityBlockIds = await WriteTextContentAsync(userId, chatId, message.Id, SerializeActivity(message.Activity), writtenBlockIds);
 
             var files = existingMessage.Files;
             if (replaceFiles)
@@ -298,6 +300,7 @@ public partial class DatabaseService
                 Timestamp = timestamp,
                 Status = status,
                 ContentBlockIds = contentBlockIds,
+                ActivityBlockIds = activityBlockIds,
                 Files = files,
                 // A full replace, so anything not carried here is wiped. Callers that build a
                 // partial message (the stale-generation fixup, for one) leave these blank.
@@ -321,6 +324,7 @@ public partial class DatabaseService
         }
 
         await DeleteContentBlocksAsync(userId, existingMessage.ContentBlockIds);
+        await DeleteContentBlocksAsync(userId, existingMessage.ActivityBlockIds);
         if (replaceFiles)
         {
             await DeleteContentBlocksAsync(userId, CollectFileContentBlockIds(existingMessage.Files));
@@ -402,12 +406,39 @@ public partial class DatabaseService
             Role = messageDocument.Role,
             Timestamp = messageDocument.Timestamp,
             Content = ReadTextContent(messageDocument.ContentBlockIds, contentBlocksById),
+            Activity = DeserializeActivity(ReadTextContent(messageDocument.ActivityBlockIds, contentBlocksById)),
             Status = messageDocument.Status,
             Files = ReadFiles(messageDocument.Files, contentBlocksById, includeFileContent),
             AssistantId = messageDocument.AssistantId,
             AssistantName = messageDocument.AssistantName,
             TokenCounts = messageDocument.TokenCounts ?? new Dictionary<string, int>()
         };
+    }
+
+    private static readonly System.Text.Json.JsonSerializerOptions ActivityJsonOptions =
+        new(System.Text.Json.JsonSerializerDefaults.Web);
+
+    private static string? SerializeActivity(MessageActivity? activity)
+    {
+        return activity == null ? null : System.Text.Json.JsonSerializer.Serialize(activity, ActivityJsonOptions);
+    }
+
+    private static MessageActivity? DeserializeActivity(string json)
+    {
+        if (string.IsNullOrWhiteSpace(json))
+        {
+            return null;
+        }
+
+        try
+        {
+            return System.Text.Json.JsonSerializer.Deserialize<MessageActivity>(json, ActivityJsonOptions);
+        }
+        catch (System.Text.Json.JsonException)
+        {
+            // A corrupt record costs the user the activity panel, not the message.
+            return null;
+        }
     }
 
     private async Task TouchChatAsync(string userId, string chatId, DateTime updatedAt, AiChatStatus? status)

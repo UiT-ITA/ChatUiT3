@@ -1,5 +1,5 @@
 import { signal, Signal, computed } from "@preact/signals-react";
-import type { ChatDto, ChatFileDto, ChatHeaderDto, CreateChatDto, UpdateChatDto } from "../types/chatModels";
+import type { ChatDto, ChatFileDto, ChatHeaderDto, ChatStreamChunk, CreateChatDto, MessageActivityDto, ActivityEntryDto, UpdateChatDto } from "../types/chatModels";
 import apiService from "./apiService";
 import type { SendMessageDto } from "../types/chatModels";
 import { getAssistants, getAssistant } from "./assistantService";
@@ -28,10 +28,11 @@ const userSelectedAssistantIdSignal = signal<string | undefined>(undefined);
 
 const chatCache = new Map<string, Signal<ChatDto | undefined>>();
 const messageStreamCache = new Map<string, Signal<string>>();
+const messageActivityCache = new Map<string, Signal<LiveActivity>>();
 const chatNotFoundCache = new Map<string, Signal<boolean>>();
 
 // Chunk throttling buffers
-const chunkBuffers = new Map<string, string[]>();
+const chunkBuffers = new Map<string, ChatStreamChunk[]>();
 const flushTimers = new Map<string, ReturnType<typeof setTimeout>>();
 
 let chatListLoadingPromise: Promise<void> | null = null;
@@ -287,6 +288,7 @@ export async function invalidateChat(chatId: string): Promise<void> {
         const newMessage = mergedMessages.find(m => m.id === oldMessage.id);
         if (oldMessage.status === "Generating" && (!newMessage || newMessage.status !== "Generating")) {
           messageStreamCache.delete(oldMessage.id);
+          messageActivityCache.delete(oldMessage.id);
         }
       });
     }
@@ -336,27 +338,150 @@ export function getStreamSignal(messageId: string): Signal<string> {
   return streamSignal;
 }
 
+/** What the message's generation is doing right now. */
+export type GenerationPhase = "starting" | "thinking" | "tool" | "writing" | "done";
+
+/**
+ * The activity of a message as it streams in, rebuilt chunk by chunk. `final` is set once the
+ * server sends its summary; until then the totals are derived from the entries.
+ */
+export interface LiveActivity {
+  entries: ActivityEntryDto[];
+  phase: GenerationPhase;
+  /** Server-side time when the current phase began, ms since generation start. */
+  phaseStartedMs: number;
+  /** Server-side time of the latest chunk, ms since generation start. */
+  lastElapsedMs: number;
+  /** Local clock (Date.now) when the latest chunk was applied; lets the UI count on between chunks. */
+  receivedAt: number;
+  /** True once any message text has arrived; the panel collapses at that point. */
+  hasText: boolean;
+  final: MessageActivityDto | null;
+}
+
+const EMPTY_ACTIVITY: LiveActivity = {
+  entries: [],
+  phase: "starting",
+  phaseStartedMs: 0,
+  lastElapsedMs: 0,
+  receivedAt: 0,
+  hasText: false,
+  final: null,
+};
+
+export function getActivitySignal(messageId: string): Signal<LiveActivity> {
+  let activitySignal = messageActivityCache.get(messageId);
+  if (!activitySignal) {
+    // Anchored to now so the counter ticks from when the message appeared until the first
+    // chunk brings the server's own timing.
+    activitySignal = signal<LiveActivity>({ ...EMPTY_ACTIVITY, receivedAt: Date.now() });
+    messageActivityCache.set(messageId, activitySignal);
+  }
+  return activitySignal;
+}
+
+function applyChunk(activity: LiveActivity, chunk: ChatStreamChunk): LiveActivity {
+  const entries = activity.entries;
+  const last = entries[entries.length - 1];
+  const base = { ...activity, lastElapsedMs: chunk.elapsedMs, receivedAt: Date.now() };
+
+  switch (chunk.kind) {
+    case "Text":
+      return base.phase === "writing"
+        ? { ...base, hasText: true }
+        : { ...base, hasText: true, phase: "writing", phaseStartedMs: chunk.elapsedMs };
+    case "Thinking": {
+      const delta = chunk.text ?? "";
+      if (base.phase === "thinking" && last && last.type === "Thinking" && last.endedMs === null) {
+        const updated: ActivityEntryDto = { ...last, text: (last.text ?? "") + delta };
+        return { ...base, entries: [...entries.slice(0, -1), updated] };
+      }
+      const entry: ActivityEntryDto = {
+        type: "Thinking",
+        startedMs: chunk.elapsedMs,
+        endedMs: null,
+        text: delta,
+        toolCallId: null,
+        toolName: null,
+        argumentsJson: null,
+        result: null,
+        isError: false,
+      };
+      return { ...base, entries: [...closeOpenEntries(entries, chunk.elapsedMs), entry], phase: "thinking", phaseStartedMs: chunk.elapsedMs };
+    }
+    case "ToolStart": {
+      const entry: ActivityEntryDto = {
+        type: "Tool",
+        startedMs: chunk.elapsedMs,
+        endedMs: null,
+        text: null,
+        toolCallId: chunk.toolCallId,
+        toolName: chunk.toolName,
+        argumentsJson: chunk.argumentsJson,
+        result: null,
+        isError: false,
+      };
+      return { ...base, entries: [...closeOpenEntries(entries, chunk.elapsedMs), entry], phase: "tool", phaseStartedMs: chunk.elapsedMs };
+    }
+    case "ToolEnd":
+      return {
+        ...base,
+        entries: entries.map(entry =>
+          entry.type === "Tool" && entry.toolCallId === chunk.toolCallId && entry.endedMs === null
+            ? { ...entry, endedMs: chunk.elapsedMs, result: chunk.result, isError: chunk.isError }
+            : entry),
+      };
+    case "Done":
+      return {
+        ...base,
+        entries: chunk.activity?.entries ?? closeOpenEntries(entries, chunk.elapsedMs),
+        phase: "done",
+        phaseStartedMs: chunk.elapsedMs,
+        final: chunk.activity,
+      };
+    default: {
+      const _exhaustive: never = chunk.kind;
+      return _exhaustive;
+    }
+  }
+}
+
+function closeOpenEntries(entries: ActivityEntryDto[], endedMs: number): ActivityEntryDto[] {
+  return entries.map(entry => (entry.endedMs === null ? { ...entry, endedMs } : entry));
+}
+
 function flushBuffer(messageId: string): void {
   const buffer = chunkBuffers.get(messageId);
   if (!buffer || buffer.length === 0) return;
-  
-  // Concatenate all buffered chunks
-  const accumulated = buffer.join('');
-  
-  // Update stream signal
-  let streamSignal = messageStreamCache.get(messageId);
-  if (!streamSignal) {
-    streamSignal = signal<string>("");
-    messageStreamCache.set(messageId, streamSignal);
+
+  let text = "";
+  let activity = getActivitySignal(messageId).value;
+  for (const chunk of buffer) {
+    if (chunk.kind === "Text") {
+      text += chunk.text ?? "";
+    }
+    activity = applyChunk(activity, chunk);
   }
-  streamSignal.value += accumulated;
-  
+
+  // One signal write per flush, so a burst of chunks costs one render. The signal is created
+  // directly rather than through getStreamSignal: a chunk means the hub stream is already
+  // subscribed, and subscribing again would replay it.
+  if (text.length > 0) {
+    let streamSignal = messageStreamCache.get(messageId);
+    if (!streamSignal) {
+      streamSignal = signal<string>("");
+      messageStreamCache.set(messageId, streamSignal);
+    }
+    streamSignal.value += text;
+  }
+  getActivitySignal(messageId).value = activity;
+
   // Clear buffer and timer
   chunkBuffers.delete(messageId);
   flushTimers.delete(messageId);
 }
 
-export function receiveMessageChunk(messageId: string, chunk: string): void {
+export function receiveMessageChunk(messageId: string, chunk: ChatStreamChunk): void {
   // Add chunk to buffer
   let buffer = chunkBuffers.get(messageId);
   if (!buffer) {
@@ -376,6 +501,7 @@ export function clearStreamCache(messageId?: string): void {
   if (messageId) {
     // Clear stream signal
     messageStreamCache.delete(messageId);
+    messageActivityCache.delete(messageId);
     
     // Clear any pending buffer and timer
     const timer = flushTimers.get(messageId);
@@ -387,6 +513,7 @@ export function clearStreamCache(messageId?: string): void {
   } else {
     // Clear all stream signals
     messageStreamCache.clear();
+    messageActivityCache.clear();
     
     // Clear all pending timers and buffers
     flushTimers.forEach(timer => clearTimeout(timer));
