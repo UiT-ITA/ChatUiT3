@@ -92,11 +92,11 @@
   white-space: nowrap;
 }
 
-.composer-token-count[data-state="near"] {
+.composer-token-count[data-state="warn"] {
   color: var(--warn);
 }
 
-.composer-token-count[data-state="over"] {
+.composer-token-count[data-state="danger"] {
   color: var(--danger);
 }
 

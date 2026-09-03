@@ -19,7 +19,10 @@ namespace ChatUitReact.Server.Services
         // active schemes, so both an edit and a newly registered model recount.
         private readonly ConcurrentDictionary<string, PromptTokenCacheEntry> _promptTokenCache = new();
 
-        private sealed record PromptTokenCacheEntry(DateTime UpdatedAt, string SchemeKey, Dictionary<string, int> Counts);
+        private sealed record PromptTokenCacheEntry(DateTime UpdatedAt, string SchemeKey, PromptTokenCounts Counts);
+
+        // Per scheme: the whole fixed cost, and the part of it the knowledge-files section adds.
+        private sealed record PromptTokenCounts(Dictionary<string, int> Prompt, Dictionary<string, int> Knowledge);
 
         public AssistantService(
             IDatabaseService databaseService,
@@ -37,7 +40,7 @@ namespace ChatUitReact.Server.Services
 
         // The fixed cost of every request through this assistant, per scheme. Counted from the
         // same assembled prompt the provider receives.
-        private async Task<Dictionary<string, int>> GetPromptTokenCountsAsync(Assistant assistant)
+        private async Task<PromptTokenCounts> GetPromptTokenCountsAsync(Assistant assistant)
         {
             var schemes = await _tokenCounting.GetActiveSchemeIdsAsync();
             var schemeKey = string.Join(",", schemes);
@@ -65,19 +68,27 @@ namespace ChatUitReact.Server.Services
             var parameters = ChatParameterResolver.Resolve(assistant.ChatSettings.Model.Capabilities, assistant.ChatSettings);
             var tools = _toolService.GetToolDefinitions(parameters.ToolIds).ToList();
 
-            var counts = new Dictionary<string, int>();
+            var systemPrompt = assistant.ChatSettings.SystemPrompt ?? string.Empty;
+            var hasKnowledge = prompt != systemPrompt;
+
+            var promptCounts = new Dictionary<string, int>();
+            var knowledgeCounts = new Dictionary<string, int>();
             foreach (var scheme in schemes)
             {
-                counts[scheme] = _tokenCounting.CountSystemPrompt(prompt, tools, scheme);
+                promptCounts[scheme] = _tokenCounting.CountSystemPrompt(prompt, tools, scheme);
+                knowledgeCounts[scheme] = hasKnowledge
+                    ? Math.Max(0, _tokenCounting.CountText(prompt, scheme) - _tokenCounting.CountText(systemPrompt, scheme))
+                    : 0;
             }
 
+            var counts = new PromptTokenCounts(promptCounts, knowledgeCounts);
             _promptTokenCache[assistant.Id] = new PromptTokenCacheEntry(assistant.UpdatedAt, schemeKey, counts);
             return counts;
         }
 
-        private async Task<Dictionary<string, Dictionary<string, int>>> GetPromptTokenCountsAsync(IEnumerable<Assistant> assistants)
+        private async Task<Dictionary<string, PromptTokenCounts>> GetPromptTokenCountsAsync(IEnumerable<Assistant> assistants)
         {
-            var result = new Dictionary<string, Dictionary<string, int>>();
+            var result = new Dictionary<string, PromptTokenCounts>();
             foreach (var assistant in assistants)
             {
                 result[assistant.Id] = await GetPromptTokenCountsAsync(assistant);
@@ -535,13 +546,14 @@ namespace ChatUitReact.Server.Services
         // eligibleModelIds is null on the admin paths, which have no user to pin anything for.
         private static FullAssistantDto MapToFullAssistantDto(
             Assistant assistant,
-            Dictionary<string, int> promptTokenCounts,
+            PromptTokenCounts promptTokenCounts,
             UserInfo? user = null,
             HashSet<string>? eligibleModelIds = null)
         {
             return new FullAssistantDto
             {
-                PromptTokenCounts = promptTokenCounts,
+                PromptTokenCounts = promptTokenCounts.Prompt,
+                KnowledgeTokenCounts = promptTokenCounts.Knowledge,
                 Id = assistant.Id,
                 Name = assistant.Name,
                 Description = assistant.Description,
@@ -601,13 +613,14 @@ namespace ChatUitReact.Server.Services
 
         private static AssistantSummaryDto MapToAssistantSummaryDto(
             Assistant assistant,
-            Dictionary<string, int> promptTokenCounts,
+            PromptTokenCounts promptTokenCounts,
             UserInfo? user = null,
             HashSet<string>? eligibleModelIds = null)
         {
             return new AssistantSummaryDto
             {
-                PromptTokenCounts = promptTokenCounts,
+                PromptTokenCounts = promptTokenCounts.Prompt,
+                KnowledgeTokenCounts = promptTokenCounts.Knowledge,
                 Id = assistant.Id,
                 Name = assistant.Name,
                 Description = assistant.Description,

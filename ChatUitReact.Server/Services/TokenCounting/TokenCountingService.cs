@@ -60,10 +60,11 @@ public sealed class TokenCountingService : ITokenCountingService
         ImageTokenMath.Tokens(width, height, Parse(schemeId).ImageCost);
 
     public int CountMessage(ChatMessage message, string schemeId) =>
-        CountMessage(message, new[] { schemeId })[schemeId];
+        CountMessage(message, new[] { schemeId }).Total[schemeId];
 
-    public Dictionary<string, int> CountMessage(ChatMessage message, IReadOnlyList<string> schemeIds)
+    public MessageTokenCounts CountMessage(ChatMessage message, IReadOnlyList<string> schemeIds)
     {
+        var hasFiles = message.Files is { Count: > 0 };
         var schemes = schemeIds.Select(Parse).ToList();
         var parts = MessageParts.Build(message, allowImages: true);
 
@@ -71,21 +72,36 @@ public sealed class TokenCountingService : ITokenCountingService
         // image term differs between, say, o200k-tile and o200k-patch-1.62.
         var textRuns = ConcatenateTextRuns(parts);
         var textTokensByEncoding = new Dictionary<TextEncoding, int>();
+        var contentTokensByEncoding = new Dictionary<TextEncoding, int>();
         foreach (var encoding in schemes.Select(s => s.Encoding).Distinct())
         {
             textTokensByEncoding[encoding] = textRuns.Sum(run => CountText(run, encoding));
+            if (hasFiles)
+            {
+                contentTokensByEncoding[encoding] = CountText(message.Content ?? string.Empty, encoding);
+            }
         }
 
         var imageDimensions = parts.OfType<ImagePart>().Select(ReadDimensions).ToList();
 
-        var result = new Dictionary<string, int>();
+        var total = new Dictionary<string, int>();
+        var files = new Dictionary<string, int>();
         foreach (var scheme in schemes)
         {
             var imageTokens = imageDimensions.Sum(d => ImageTokenMath.Tokens(d.Width, d.Height, scheme.ImageCost));
-            result[scheme.Id] = MessageFramingTokens + textTokensByEncoding[scheme.Encoding] + imageTokens;
+            var tokens = MessageFramingTokens + textTokensByEncoding[scheme.Encoding] + imageTokens;
+            total[scheme.Id] = tokens;
+
+            // The attachment share is derived by subtraction so the total (and the wire
+            // format it mirrors) stays exactly as before. The message text and the first file
+            // header share one text run, so the split can be off by a token at that boundary.
+            if (hasFiles)
+            {
+                files[scheme.Id] = Math.Max(0, tokens - MessageFramingTokens - contentTokensByEncoding[scheme.Encoding]);
+            }
         }
 
-        return result;
+        return new MessageTokenCounts(total, files);
     }
 
     public int CountSystemPrompt(string systemPrompt, IReadOnlyList<ChatTool> tools, string schemeId)
@@ -134,16 +150,25 @@ public sealed class TokenCountingService : ITokenCountingService
     public bool FillMissingMessageCounts(ChatMessage message, IReadOnlyList<string> schemeIds)
     {
         message.TokenCounts ??= new Dictionary<string, int>();
+        message.FileTokenCounts ??= new Dictionary<string, int>();
+        var hasFiles = message.Files is { Count: > 0 };
 
-        var missing = schemeIds.Where(id => !message.TokenCounts.ContainsKey(id)).ToList();
+        var missing = schemeIds
+            .Where(id => !message.TokenCounts.ContainsKey(id) || (hasFiles && !message.FileTokenCounts.ContainsKey(id)))
+            .ToList();
         if (missing.Count == 0)
         {
             return false;
         }
 
-        foreach (var (schemeId, tokens) in CountMessage(message, missing))
+        var counts = CountMessage(message, missing);
+        foreach (var (schemeId, tokens) in counts.Total)
         {
             message.TokenCounts[schemeId] = tokens;
+        }
+        foreach (var (schemeId, tokens) in counts.Files)
+        {
+            message.FileTokenCounts[schemeId] = tokens;
         }
 
         return true;

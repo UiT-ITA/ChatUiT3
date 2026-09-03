@@ -264,7 +264,7 @@ export default function ChatInput() {
             {usage.available ? (
               <div
                 className="composer-token-count t-meta"
-                data-state={usage.overLimit ? 'over' : usage.nearLimit ? 'near' : 'ok'}
+                data-state={usage.level}
                 title={usage.isEstimate ? t('chat.contextEstimate') : undefined}
               >
                 {usage.isEstimate && '≈ '}

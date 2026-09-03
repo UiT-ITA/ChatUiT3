@@ -332,7 +332,8 @@ public class ChatsController : ControllerBase
             AssistantId = message.AssistantId,
             AssistantName = message.AssistantName,
             Activity = message.Activity,
-            TokenCounts = message.TokenCounts
+            TokenCounts = message.TokenCounts,
+            FileTokenCounts = message.FileTokenCounts
         };
     }
 

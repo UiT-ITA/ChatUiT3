@@ -22,4 +22,7 @@ public class ChatMessage
     // Scheme id → tokens this message costs on the wire, as the OpenAI provider would send it.
     // A missing key means "not yet counted", never zero.
     public Dictionary<string, int> TokenCounts { get; set; } = new();
+    // Scheme id → the share of TokenCounts spent on attachments (wrapper text, file text,
+    // images). Empty when the message has no files.
+    public Dictionary<string, int> FileTokenCounts { get; set; } = new();
 }

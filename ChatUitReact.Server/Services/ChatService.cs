@@ -103,6 +103,7 @@ public class ChatService : IChatService
             };
             _tokenCounting.FillMissingMessageCounts(fixedMessage, await _tokenCounting.GetActiveSchemeIdsAsync());
             message.TokenCounts = fixedMessage.TokenCounts;
+            message.FileTokenCounts = fixedMessage.FileTokenCounts;
             await _databaseService.UpdateMessageAsync(userId, chatId, fixedMessage);
         }
 
@@ -123,7 +124,7 @@ public class ChatService : IChatService
         }
 
         var needingCounts = chat.Messages
-            .Where(m => m.Status != AiChatStatus.Generating && schemes.Any(s => !m.TokenCounts.ContainsKey(s)))
+            .Where(m => m.Status != AiChatStatus.Generating && schemes.Any(s => LacksCount(m, s)))
             .ToList();
 
         if (needingCounts.Count == 0)
@@ -156,14 +157,25 @@ public class ChatService : IChatService
             {
                 source.TokenCounts.TryAdd(schemeId, tokens);
             }
+            foreach (var (schemeId, tokens) in message.FileTokenCounts)
+            {
+                source.FileTokenCounts.TryAdd(schemeId, tokens);
+            }
 
             if (_tokenCounting.FillMissingMessageCounts(source, schemes))
             {
                 message.TokenCounts = source.TokenCounts;
-                await _databaseService.SetMessageTokenCountsAsync(userId, chatId, message.Id, message.TokenCounts);
+                message.FileTokenCounts = source.FileTokenCounts;
+                await _databaseService.SetMessageTokenCountsAsync(userId, chatId, message.Id, message.TokenCounts, message.FileTokenCounts);
             }
         }
     }
+
+    // The attachment share only exists for messages with files; file metadata is present
+    // even on a metadata-only load, so Files.Count is reliable here.
+    private static bool LacksCount(Models.ChatMessage message, string schemeId) =>
+        !message.TokenCounts.ContainsKey(schemeId) ||
+        (message.Files.Count > 0 && !message.FileTokenCounts.ContainsKey(schemeId));
 
     public async Task<ChatFile?> GetChatFileAsync(string userId, string chatId, string fileId)
     {
@@ -365,7 +377,7 @@ public class ChatService : IChatService
                 _streamingService.CompleteMessage(userId, assistantMessage.Id);
 
                 assistantMessage.Status = AiChatStatus.Success;
-                assistantMessage.TokenCounts = _tokenCounting.CountMessage(assistantMessage, activeSchemes);
+                assistantMessage.TokenCounts = _tokenCounting.CountMessage(assistantMessage, activeSchemes).Total;
                 await _databaseService.UpdateMessageAsync(userId, chatId, assistantMessage);
 
                 NotifyChatUpdated(userId, chatId);
@@ -388,7 +400,7 @@ public class ChatService : IChatService
                 assistantMessage.Status = AiChatStatus.Error;
                 AiConversationRunner.Finish(activity, stopwatch.ElapsedMilliseconds);
                 assistantMessage.Activity = activity;
-                assistantMessage.TokenCounts = _tokenCounting.CountMessage(assistantMessage, activeSchemes);
+                assistantMessage.TokenCounts = _tokenCounting.CountMessage(assistantMessage, activeSchemes).Total;
                 await _databaseService.UpdateMessageAsync(userId, chatId, assistantMessage);
                 NotifyChatUpdated(userId, chatId);
                 await _hubContext.Clients.Group(userId).Notify(NotifyLevel.Error, "The model failed to complete your request. Please try again.");

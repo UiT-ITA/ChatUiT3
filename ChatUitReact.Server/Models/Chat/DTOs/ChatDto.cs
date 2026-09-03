@@ -32,6 +32,8 @@ public class ChatMessageDto
     public MessageActivity? Activity { get; set; }
     /// <summary>Token counting scheme id → tokens. A missing key means not yet counted.</summary>
     public Dictionary<string, int> TokenCounts { get; set; } = new();
+    /// <summary>The attachment share of <see cref="TokenCounts"/>; empty when the message has no files.</summary>
+    public Dictionary<string, int> FileTokenCounts { get; set; } = new();
 }
 
 public class ChatFileChunkDto

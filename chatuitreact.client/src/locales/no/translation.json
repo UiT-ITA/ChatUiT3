@@ -78,14 +78,18 @@
       "updated": "Sist endret",
       "context": "Kontekstvindu",
       "contextUsed": "{{used}} av {{limit}} tokens",
-      "contextPrompt": "Systemprompt og kunnskap",
-      "contextHistory": "Samtalen",
       "contextDraft": "Utkast",
       "contextReserved": "Reservert til svaret",
       "contextUnknown": "{{count}} meldinger er ikke talt opp ennå",
       "contextOver": "Samtalen får ikke lenger plass i modellens kontekstvindu. Start en ny samtale eller fjern vedlegg.",
       "contextUnavailable": "Ikke tilgjengelig for denne modellen",
-      "contextEstimate": "Anslag. Denne modellen har ingen nøyaktig tokenteller."
+      "contextEstimate": "Anslag. Denne modellen har ingen nøyaktig tokenteller.",
+      "contextSystemPrompt": "Systemprompt",
+      "contextKnowledge": "Kunnskapsfiler",
+      "contextFiles": "Filer i samtalen",
+      "contextMessages": "Meldinger",
+      "contextPercent": "{{value}} %",
+      "contextComposition": "Hva som fyller vinduet"
     },
     "actions": {
       "copy": "Kopier",

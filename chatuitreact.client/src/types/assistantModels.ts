@@ -37,6 +37,8 @@ export interface FullAssistantDto {
      * (system prompt with knowledge files, tool definitions, reply priming).
      */
     promptTokenCounts: Record<string, number>;
+    /** The part of promptTokenCounts the knowledge-files section adds, per scheme. */
+    knowledgeTokenCounts: Record<string, number>;
 }
 
 export interface AssistantSummaryDto {
@@ -55,6 +57,8 @@ export interface AssistantSummaryDto {
     createdBy?: string;
     /** See FullAssistantDto.promptTokenCounts. */
     promptTokenCounts: Record<string, number>;
+    /** The part of promptTokenCounts the knowledge-files section adds, per scheme. */
+    knowledgeTokenCounts: Record<string, number>;
 }
 
 export interface AssistantListDto {
@@ -88,6 +92,8 @@ export interface AssistantDto {
     type: 'owned' | 'system' | 'shared';
     /** See FullAssistantDto.promptTokenCounts. */
     promptTokenCounts: Record<string, number>;
+    /** The part of promptTokenCounts the knowledge-files section adds, per scheme. */
+    knowledgeTokenCounts: Record<string, number>;
 }
 
 export interface CreateAssistantDto {

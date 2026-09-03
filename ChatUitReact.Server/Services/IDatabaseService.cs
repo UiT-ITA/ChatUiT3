@@ -23,7 +23,7 @@ public interface IDatabaseService
     Task AddMessageAsync(string userId, string chatId, ChatMessage message);
     Task UpdateMessageAsync(string userId, string chatId, ChatMessage message);
     Task DeleteMessageAsync(string userId, string chatId, string messageId);
-    Task SetMessageTokenCountsAsync(string userId, string chatId, string messageId, IReadOnlyDictionary<string, int> tokenCounts);
+    Task SetMessageTokenCountsAsync(string userId, string chatId, string messageId, IReadOnlyDictionary<string, int> tokenCounts, IReadOnlyDictionary<string, int> fileTokenCounts);
 
     // App settings
     Task<AppSettings> GetAppSettingsAsync();

@@ -46,6 +46,9 @@ public class FullAssistantDto
     /// system prompt with knowledge files appended, tool definitions, and reply priming.
     /// </summary>
     public Dictionary<string, int> PromptTokenCounts { get; set; } = new();
+
+    /// <summary>Per scheme: the part of <see cref="PromptTokenCounts"/> the knowledge-files section adds.</summary>
+    public Dictionary<string, int> KnowledgeTokenCounts { get; set; } = new();
 }
 
 public class AssistantFileDto
@@ -79,6 +82,9 @@ public class AssistantSummaryDto
 
     /// <inheritdoc cref="FullAssistantDto.PromptTokenCounts"/>
     public Dictionary<string, int> PromptTokenCounts { get; set; } = new();
+
+    /// <summary>Per scheme: the part of <see cref="PromptTokenCounts"/> the knowledge-files section adds.</summary>
+    public Dictionary<string, int> KnowledgeTokenCounts { get; set; } = new();
 }
 
 public class CreateAssistantDto

@@ -119,7 +119,8 @@ public partial class MockDatabaseService
                 Files = m.Files,
                 AssistantId = m.AssistantId,
                 AssistantName = m.AssistantName,
-                TokenCounts = new Dictionary<string, int>(m.TokenCounts)
+                TokenCounts = new Dictionary<string, int>(m.TokenCounts),
+                FileTokenCounts = new Dictionary<string, int>(m.FileTokenCounts)
             }).ToList()
         };
     }

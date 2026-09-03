@@ -95,6 +95,8 @@ export interface ChatMessageDto {
   assistantName: string;
   /** Token counting scheme id → tokens this message costs. A missing key means not yet counted. */
   tokenCounts: Record<string, number>;
+  /** The attachment share of tokenCounts per scheme; empty when the message has no files. */
+  fileTokenCounts: Record<string, number>;
 }
 
 export interface ChatHeaderDto {

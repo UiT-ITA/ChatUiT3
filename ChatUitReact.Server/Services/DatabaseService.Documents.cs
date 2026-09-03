@@ -113,6 +113,10 @@ public partial class DatabaseService
         // written back when the chat is next read.
         [JsonProperty("tokenCounts")]
         public Dictionary<string, int> TokenCounts { get; set; } = new();
+
+        // The attachment share of tokenCounts; empty for messages without files.
+        [JsonProperty("fileTokenCounts")]
+        public Dictionary<string, int> FileTokenCounts { get; set; } = new();
     }
 
     private sealed class StoredFileDocument

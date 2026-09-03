@@ -64,6 +64,13 @@
 
   --sel-bg: var(--uit-light-blue);
   --sel-fg: var(--uit-dark-blue);
+
+  /* Categorical colours for the context composition bar */
+  --viz-1: var(--uit-dark-blue);
+  --viz-2: var(--uit-blue);
+  --viz-3: var(--uit-light-blue);
+  --viz-4: var(--status-success);
+  --viz-5: var(--grey-300);
 }
 
 /* =============================================================================
@@ -103,6 +110,12 @@
 
   --sel-bg: var(--uit-light-blue);
   --sel-fg: var(--uit-dark-blue);
+
+  --viz-1: var(--light-blue-40);
+  --viz-2: var(--uit-light-blue);
+  --viz-3: var(--blue-60);
+  --viz-4: #5cb893;
+  --viz-5: var(--grey-500);
 }
 
 /* =============================================================================
@@ -136,6 +149,12 @@
 
   --sel-bg: var(--grey-300);
   --sel-fg: var(--grey-900);
+
+  --viz-1: var(--grey-900);
+  --viz-2: var(--grey-700);
+  --viz-3: var(--grey-500);
+  --viz-4: var(--status-success);
+  --viz-5: var(--grey-300);
 }
 
 /* =============================================================================
@@ -175,6 +194,12 @@
 
   --sel-bg: var(--grey-300);
   --sel-fg: #16191b;
+
+  --viz-1: var(--grey-200);
+  --viz-2: #9aa4a9;
+  --viz-3: var(--grey-500);
+  --viz-4: #5cb893;
+  --viz-5: #4a5459;
 }
 
 /* Dark modes share a heavier, colour-neutral shadow + scrim */

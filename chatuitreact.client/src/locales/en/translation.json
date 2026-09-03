@@ -78,14 +78,18 @@
       "updated": "Last changed",
       "context": "Context window",
       "contextUsed": "{{used}} of {{limit}} tokens",
-      "contextPrompt": "System prompt and knowledge",
-      "contextHistory": "Conversation",
       "contextDraft": "Draft",
       "contextReserved": "Reserved for the answer",
       "contextUnknown": "{{count}} messages not yet counted",
       "contextOver": "The conversation no longer fits in the model's context window. Start a new chat or remove attachments.",
       "contextUnavailable": "Not available for this model",
-      "contextEstimate": "Estimate. This model has no exact tokenizer."
+      "contextEstimate": "Estimate. This model has no exact tokenizer.",
+      "contextSystemPrompt": "System prompt",
+      "contextKnowledge": "Knowledge files",
+      "contextFiles": "Files in conversation",
+      "contextMessages": "Messages",
+      "contextPercent": "{{value}} %",
+      "contextComposition": "What fills the window"
     },
     "actions": {
       "copy": "Copy",
