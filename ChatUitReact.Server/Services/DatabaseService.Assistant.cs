@@ -241,7 +241,8 @@ public partial class DatabaseService
                 AvailableToolIds = document.ChatSettings.AvailableToolIds
             },
             Files = ReadAssistantFiles(document.Files, contentBlocksById, includeFileContent),
-            OwnerId = document.OwnerId
+            OwnerId = document.OwnerId,
+            UpdatedAt = document.UpdatedAt
         };
     }
 
@@ -262,7 +263,8 @@ public partial class DatabaseService
                 ReasoningEffort = assistant.ChatSettings.ReasoningEffort,
                 AvailableToolIds = assistant.ChatSettings.AvailableToolIds
             },
-            OwnerId = assistant.OwnerId
+            OwnerId = assistant.OwnerId,
+            UpdatedAt = DateTime.UtcNow
         };
     }
 

@@ -11,10 +11,14 @@ import type { ChatFile } from '../../types/fileModels';
 import { SUPPORTED_IMPORT_ACCEPT, isValidFileType } from '../../utils/fileUtils';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { addNotification } from '../../services/notificationService';
+import { getContextUsage, setDraft } from '../../services/contextUsageService';
+import { formatTokens, formatTokensCompact } from '../../utils/tokenCounting';
+
+const DRAFT_COUNT_DEBOUNCE_MS = 150;
 
 export default function ChatInput() {
   useSignals();
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const navigate = useNavigate();
   const location = useLocation();
 
@@ -23,6 +27,7 @@ export default function ChatInput() {
   const [isCancelling, setIsCancelling] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const draftDebounceRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
 
   // What was last sent per chat, so a cancel can put it straight back in the composer.
   // A ref, not state: the composer never unmounts, and this must not trigger renders.
@@ -39,6 +44,19 @@ export default function ChatInput() {
     m => m.role === 'Assistant' && m.status === 'Generating'
   );
   const isGenerating = generatingMessage !== undefined;
+
+  const usage = getContextUsage(chatId).value;
+
+  // Attachments change rarely and cost the most, so they recount at once; typing is debounced.
+  useEffect(() => {
+    clearTimeout(draftDebounceRef.current);
+    setDraft(textareaRef.current?.value ?? '', selectedFiles);
+  }, [selectedFiles]);
+
+  const scheduleDraftCount = (text: string) => {
+    clearTimeout(draftDebounceRef.current);
+    draftDebounceRef.current = setTimeout(() => setDraft(text, selectedFiles), DRAFT_COUNT_DEBOUNCE_MS);
+  };
 
   // Keyed on the path, not the chat id: the composer never unmounts, and coming
   // back from /admin or /settings to a new chat leaves the chat id undefined both
@@ -115,6 +133,7 @@ export default function ChatInput() {
       }
       setCharCount(text.length);
       setSelectedFiles(snapshot?.files ?? []);
+      setDraft(text, snapshot?.files ?? []);
       lastSentRef.current.delete(chatId);
 
       // The server drops a chat left with no messages, so leave it behind here too.
@@ -140,6 +159,8 @@ export default function ChatInput() {
     }
     setSelectedFiles([]);
     setCharCount(0);
+    clearTimeout(draftDebounceRef.current);
+    setDraft('', []);
 
     if (textareaRef.current) {
       textareaRef.current.focus();
@@ -223,7 +244,10 @@ export default function ChatInput() {
             rows={2}
             placeholder={t('chat.messagePlaceholder')}
             onKeyDown={handleKeyDown}
-            onChange={(e) => setCharCount(e.target.value.length)}
+            onChange={(e) => {
+              setCharCount(e.target.value.length);
+              scheduleDraftCount(e.target.value);
+            }}
           />
 
           <div className="composer-toolbar">
@@ -237,7 +261,21 @@ export default function ChatInput() {
             </button>
             <AssistantSelector className="composer-assistant" />
             <div className="composer-spacer" />
-            {charCount > 0 && (
+            {usage.available ? (
+              <div
+                className="composer-token-count t-meta"
+                data-state={usage.overLimit ? 'over' : usage.nearLimit ? 'near' : 'ok'}
+                title={usage.isEstimate ? t('chat.contextEstimate') : undefined}
+              >
+                {usage.isEstimate && '≈ '}
+                {t('chat.tokenCount', { count: usage.draft })}
+                {' · '}
+                {t('chat.contextHint', {
+                  used: formatTokens(usage.total, i18n.language),
+                  limit: formatTokensCompact(usage.contextSize, i18n.language),
+                })}
+              </div>
+            ) : charCount > 0 && (
               <div className="composer-char-count t-meta">{t('chat.charCount', { count: charCount })}</div>
             )}
             {isGenerating ? (

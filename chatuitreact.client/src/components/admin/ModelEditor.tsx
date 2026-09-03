@@ -30,7 +30,12 @@ const defaultCapabilities: ModelCapabilities = {
   maxOutputTokens: 16000,
   defaultMaxOutputTokens: 16000,
   knowledgeCutoff: null,
+  tokenCountingScheme: null,
 };
+
+// The ids the server parses; the field stays free text so a variant such as
+// "o200k-tile-70-140" or "o200k-patch-2.46" can be entered without a client change.
+const KNOWN_TOKEN_COUNTING_SCHEMES = ['o200k-tile', 'o200k-patch-1.62', 'cl100k-tile', 'anthropic-estimate'];
 
 interface ModelEditorProps {
   modelId?: string;
@@ -144,6 +149,7 @@ const ModelEditor: React.FC<ModelEditorProps> = ({ modelId: editId }) => {
       const capsToSend: ModelCapabilities = {
         ...capabilities,
         knowledgeCutoff: knowledgeCutoffMonth ? `${knowledgeCutoffMonth}-01T00:00:00Z` : null,
+        tokenCountingScheme: capabilities.tokenCountingScheme?.trim() || null,
       };
       const payload = { modelId, modelName, description, endpointId, allowedRoles, allowedAsDefault, capabilities: capsToSend };
 
@@ -366,6 +372,23 @@ const ModelEditor: React.FC<ModelEditorProps> = ({ modelId: editId }) => {
             value={knowledgeCutoffMonth}
             onChange={(e) => setKnowledgeCutoffMonth(e.target.value)}
           />
+        </div>
+        <div className="admin-field">
+          <label className="admin-label t-label">{t('admin.models.fields.tokenCountingScheme')}</label>
+          <input
+            className="admin-input t-body"
+            type="text"
+            list="token-counting-schemes"
+            placeholder={t('admin.models.fields.tokenCountingSchemeNone')}
+            value={capabilities.tokenCountingScheme ?? ''}
+            onChange={(e) => updateCaps('tokenCountingScheme', e.target.value || null)}
+          />
+          <datalist id="token-counting-schemes">
+            {KNOWN_TOKEN_COUNTING_SCHEMES.map(scheme => (
+              <option key={scheme} value={scheme} />
+            ))}
+          </datalist>
+          <div className="af-note t-ui-plain">{t('admin.models.fields.tokenCountingSchemeHint')}</div>
         </div>
       </div>
 

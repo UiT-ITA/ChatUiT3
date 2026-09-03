@@ -2,6 +2,7 @@ using Microsoft.AspNetCore.SignalR;
 using ChatUitReact.Server.Hubs;
 using ChatUitReact.Server.Models;
 using ChatUitReact.Server.Services.AiProviders;
+using ChatUitReact.Server.Services.TokenCounting;
 using System.Text;
 
 namespace ChatUitReact.Server.Services;
@@ -27,6 +28,7 @@ public class ChatService : IChatService
     private readonly IModelService _modelService;
     private readonly IToolService _toolService;
     private readonly ISettingsService _settingsService;
+    private readonly ITokenCountingService _tokenCounting;
 
     public ChatService(
         AiConversationRunner conversationRunner,
@@ -38,7 +40,8 @@ public class ChatService : IChatService
         IAssistantService assistantService,
         IModelService modelService,
         IToolService toolService,
-        ISettingsService settingsService)
+        ISettingsService settingsService,
+        ITokenCountingService tokenCounting)
     {
         _conversationRunner = conversationRunner;
         _providers = providers;
@@ -50,6 +53,7 @@ public class ChatService : IChatService
         _modelService = modelService;
         _toolService = toolService;
         _settingsService = settingsService;
+        _tokenCounting = tokenCounting;
     }
 
     #region Chat management
@@ -81,10 +85,13 @@ public class ChatService : IChatService
             message.Content = string.IsNullOrWhiteSpace(message.Content)
                 ? GenerationFailedText
                 : $"{message.Content}\n\n{GenerationFailedText}";
+            // The content changed, so any stored counts are stale. Assistant messages carry
+            // no files, so counting the copy below is counting the message.
+            message.TokenCounts = new Dictionary<string, int>();
 
             // Persist through a copy without files: an empty file list keeps the stored
             // files untouched, which matters when this chat was loaded metadata-only.
-            await _databaseService.UpdateMessageAsync(userId, chatId, new Models.ChatMessage
+            var fixedMessage = new Models.ChatMessage
             {
                 Id = message.Id,
                 Role = message.Role,
@@ -92,10 +99,69 @@ public class ChatService : IChatService
                 Status = message.Status,
                 Content = message.Content,
                 Files = new List<ChatFile>()
-            });
+            };
+            _tokenCounting.FillMissingMessageCounts(fixedMessage, await _tokenCounting.GetActiveSchemeIdsAsync());
+            message.TokenCounts = fixedMessage.TokenCounts;
+            await _databaseService.UpdateMessageAsync(userId, chatId, fixedMessage);
         }
 
+        await BackfillTokenCountsAsync(userId, chatId, chat, includeFileContent);
+
         return chat;
+    }
+
+    // Counts are stored per message so a model switch is a key lookup on the client. Messages
+    // written before a scheme existed (or before this feature) are counted on first read and
+    // written back, so each message is counted at most once per scheme.
+    private async Task BackfillTokenCountsAsync(string userId, string chatId, Chat chat, bool includeFileContent)
+    {
+        var schemes = await _tokenCounting.GetActiveSchemeIdsAsync();
+        if (schemes.Count == 0)
+        {
+            return;
+        }
+
+        var needingCounts = chat.Messages
+            .Where(m => m.Status != AiChatStatus.Generating && schemes.Any(s => !m.TokenCounts.ContainsKey(s)))
+            .ToList();
+
+        if (needingCounts.Count == 0)
+        {
+            return;
+        }
+
+        // Attachments dominate the count and are absent from a metadata-only load. One
+        // content load for the whole chat beats one fetch per file.
+        IReadOnlyDictionary<string, Models.ChatMessage> countingSource;
+        if (!includeFileContent && needingCounts.Any(m => m.Files.Count > 0))
+        {
+            var fullChat = await _databaseService.GetChatByIdAsync(userId, chatId, includeFileContent: true);
+            countingSource = (fullChat?.Messages ?? new List<Models.ChatMessage>()).ToDictionary(m => m.Id);
+        }
+        else
+        {
+            countingSource = needingCounts.ToDictionary(m => m.Id);
+        }
+
+        foreach (var message in needingCounts)
+        {
+            if (!countingSource.TryGetValue(message.Id, out var source))
+            {
+                continue;
+            }
+
+            // Carry over what the source lacks so the fill only counts the missing keys.
+            foreach (var (schemeId, tokens) in message.TokenCounts)
+            {
+                source.TokenCounts.TryAdd(schemeId, tokens);
+            }
+
+            if (_tokenCounting.FillMissingMessageCounts(source, schemes))
+            {
+                message.TokenCounts = source.TokenCounts;
+                await _databaseService.SetMessageTokenCountsAsync(userId, chatId, message.Id, message.TokenCounts);
+            }
+        }
     }
 
     public async Task<ChatFile?> GetChatFileAsync(string userId, string chatId, string fileId)
@@ -113,6 +179,12 @@ public class ChatService : IChatService
     {
         var lastMessage = messages.Last();
         var initialMessages = messages.Take(messages.Count - 1).ToList();
+
+        var schemes = await _tokenCounting.GetActiveSchemeIdsAsync();
+        foreach (var message in initialMessages)
+        {
+            _tokenCounting.FillMissingMessageCounts(message, schemes);
+        }
 
         var newChat = new Chat 
         {
@@ -211,6 +283,11 @@ public class ChatService : IChatService
 
         _streamingService.StartMessage(userId, assistantMessage.Id);
 
+        // Files still carry their content here (they came straight from the request), so
+        // this is the one cheap moment to count the message for every scheme.
+        var activeSchemes = await _tokenCounting.GetActiveSchemeIdsAsync();
+        _tokenCounting.FillMissingMessageCounts(userMessage, activeSchemes);
+
         var userMessageTask = _databaseService.AddMessageAsync(userId, chatId, userMessage);
         var assistantMessageTask = _databaseService.AddMessageAsync(userId, chatId, assistantMessage);
 
@@ -281,6 +358,7 @@ public class ChatService : IChatService
                 _streamingService.CompleteMessage(userId, assistantMessage.Id);
 
                 assistantMessage.Status = AiChatStatus.Success;
+                assistantMessage.TokenCounts = _tokenCounting.CountMessage(assistantMessage, activeSchemes);
                 await _databaseService.UpdateMessageAsync(userId, chatId, assistantMessage);
 
                 NotifyChatUpdated(userId, chatId);
@@ -301,6 +379,7 @@ public class ChatService : IChatService
                     ? GenerationFailedText
                     : $"{partialContent}\n\n{GenerationFailedText}";
                 assistantMessage.Status = AiChatStatus.Error;
+                assistantMessage.TokenCounts = _tokenCounting.CountMessage(assistantMessage, activeSchemes);
                 await _databaseService.UpdateMessageAsync(userId, chatId, assistantMessage);
                 NotifyChatUpdated(userId, chatId);
                 await _hubContext.Clients.Group(userId).Notify(NotifyLevel.Error, "The model failed to complete your request. Please try again.");
@@ -419,7 +498,7 @@ public class ChatService : IChatService
         return new ChatSettings
         {
             Model = assistant.ChatSettings.Model,
-            SystemPrompt = AppendKnowledgeFiles(assistant.ChatSettings.SystemPrompt, assistant.Files),
+            SystemPrompt = SystemPromptAssembler.AppendKnowledgeFiles(assistant.ChatSettings.SystemPrompt, assistant.Files),
             Temperature = assistant.ChatSettings.Temperature,
             ReasoningEffort = assistant.ChatSettings.ReasoningEffort,
             AvailableToolIds = assistant.ChatSettings.AvailableToolIds
@@ -445,39 +524,6 @@ public class ChatService : IChatService
             Parameters = parameters,
             Tools = _toolService.GetToolDefinitions(parameters.ToolIds).ToList()
         };
-    }
-
-    private static string AppendKnowledgeFiles(string systemPrompt, List<AssistantFile> files)
-    {
-        // Only always-loaded files go into the system message, and only their text
-        // content — images cannot be carried in a system message.
-        var builder = new StringBuilder();
-        foreach (var file in files.Where(f => f.Category == AssistantFileCategories.AlwaysLoaded))
-        {
-            var text = string.Concat(file.Chunks
-                .Where(chunk => chunk.Type.Equals("text", StringComparison.OrdinalIgnoreCase))
-                .Select(chunk => chunk.Text));
-
-            if (string.IsNullOrWhiteSpace(text))
-            {
-                continue;
-            }
-
-            builder.AppendLine();
-            builder.AppendLine();
-            builder.AppendLine($"## {file.SourceFilename}");
-            builder.AppendLine(text);
-        }
-
-        if (builder.Length == 0)
-        {
-            return systemPrompt;
-        }
-
-        var knowledgeSection = "# Knowledge files" + builder;
-        return string.IsNullOrWhiteSpace(systemPrompt)
-            ? knowledgeSection
-            : $"{systemPrompt}\n\n{knowledgeSection}";
     }
 
     #endregion Private helper methods

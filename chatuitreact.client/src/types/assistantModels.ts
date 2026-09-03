@@ -32,6 +32,11 @@ export interface FullAssistantDto {
      */
     canBeDefault: boolean;
     files: AssistantFileDto[];
+    /**
+     * Per token counting scheme: the fixed cost every request through this assistant pays
+     * (system prompt with knowledge files, tool definitions, reply priming).
+     */
+    promptTokenCounts: Record<string, number>;
 }
 
 export interface AssistantSummaryDto {
@@ -48,6 +53,8 @@ export interface AssistantSummaryDto {
      */
     canBeDefault: boolean;
     createdBy?: string;
+    /** See FullAssistantDto.promptTokenCounts. */
+    promptTokenCounts: Record<string, number>;
 }
 
 export interface AssistantListDto {
@@ -79,6 +86,8 @@ export interface AssistantDto {
      */
     canBeDefault: boolean;
     type: 'owned' | 'system' | 'shared';
+    /** See FullAssistantDto.promptTokenCounts. */
+    promptTokenCounts: Record<string, number>;
 }
 
 export interface CreateAssistantDto {

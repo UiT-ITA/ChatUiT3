@@ -42,6 +42,8 @@ export interface ChatMessageDto {
   assistantId: string;
   /** Snapshot of the assistant's name, so a rename or deletion does not blank out history. */
   assistantName: string;
+  /** Token counting scheme id → tokens this message costs. A missing key means not yet counted. */
+  tokenCounts: Record<string, number>;
 }
 
 export interface ChatHeaderDto {

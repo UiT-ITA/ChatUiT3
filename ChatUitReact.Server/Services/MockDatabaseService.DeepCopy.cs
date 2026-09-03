@@ -47,7 +47,28 @@ public partial class MockDatabaseService
                 Model = DeepCopyModel(assistant.ChatSettings.Model),
                 AvailableToolIds = new List<string>(assistant.ChatSettings.AvailableToolIds)
             },
-            OwnerId = assistant.OwnerId
+            Files = assistant.Files.Select(DeepCopyAssistantFile).ToList(),
+            OwnerId = assistant.OwnerId,
+            UpdatedAt = assistant.UpdatedAt
+        };
+    }
+
+    private static AssistantFile DeepCopyAssistantFile(AssistantFile file)
+    {
+        return new AssistantFile
+        {
+            Id = file.Id,
+            SourceFilename = file.SourceFilename,
+            Category = file.Category,
+            Description = file.Description,
+            Chunks = file.Chunks.Select(chunk => new ChatFileChunk
+            {
+                Id = chunk.Id,
+                Type = chunk.Type,
+                Text = chunk.Text,
+                Format = chunk.Format,
+                Base64 = chunk.Base64
+            }).ToList()
         };
     }
 
@@ -71,7 +92,8 @@ public partial class MockDatabaseService
                 MaxContextTokens = model.Capabilities.MaxContextTokens,
                 MaxOutputTokens = model.Capabilities.MaxOutputTokens,
                 DefaultMaxOutputTokens = model.Capabilities.DefaultMaxOutputTokens,
-                KnowledgeCutoff = model.Capabilities.KnowledgeCutoff
+                KnowledgeCutoff = model.Capabilities.KnowledgeCutoff,
+                TokenCountingScheme = model.Capabilities.TokenCountingScheme
             }
         };
     }
@@ -96,7 +118,8 @@ public partial class MockDatabaseService
                 Status = m.Status,
                 Files = m.Files,
                 AssistantId = m.AssistantId,
-                AssistantName = m.AssistantName
+                AssistantName = m.AssistantName,
+                TokenCounts = new Dictionary<string, int>(m.TokenCounts)
             }).ToList()
         };
     }

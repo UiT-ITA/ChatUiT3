@@ -32,7 +32,8 @@ public class AdminModelCatalogController : ControllerBase
                 MaxContextTokens = entry.Capabilities.MaxContextTokens,
                 MaxOutputTokens = entry.Capabilities.MaxOutputTokens,
                 DefaultMaxOutputTokens = entry.Capabilities.DefaultMaxOutputTokens,
-                KnowledgeCutoff = entry.Capabilities.KnowledgeCutoff
+                KnowledgeCutoff = entry.Capabilities.KnowledgeCutoff,
+                TokenCountingScheme = entry.Capabilities.TokenCountingScheme
             }
         }).ToList();
 

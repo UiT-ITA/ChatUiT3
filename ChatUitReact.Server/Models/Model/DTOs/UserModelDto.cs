@@ -24,6 +24,12 @@ public class UserModelCapabilitiesDto
 
     /// <summary>Month-year string (e.g., "2025-08"), or null when unknown.</summary>
     public string? KnowledgeCutoff { get; set; }
+
+    /// <summary>
+    /// Which key to read from message and assistant token counts, and how to count the
+    /// draft. Null when the model has no counter.
+    /// </summary>
+    public string? TokenCountingScheme { get; set; }
 }
 
 public class UserModelDto

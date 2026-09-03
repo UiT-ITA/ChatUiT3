@@ -12,6 +12,8 @@ public class Assistant
     public ChatSettings ChatSettings { get; set; } = new ChatSettings();
     public List<AssistantFile> Files { get; set; } = new List<AssistantFile>();
     internal string OwnerId { get; set; } = string.Empty;
+    /// <summary>Last write. Cache key for derived per-assistant values such as prompt token counts.</summary>
+    public DateTime UpdatedAt { get; set; }
 }
 
 public static class AssistantFileCategories

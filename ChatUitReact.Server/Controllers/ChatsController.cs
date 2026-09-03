@@ -330,7 +330,8 @@ public class ChatsController : ControllerBase
             Status = message.Status,
             Files = MapFilesToDto(message.Files),
             AssistantId = message.AssistantId,
-            AssistantName = message.AssistantName
+            AssistantName = message.AssistantName,
+            TokenCounts = message.TokenCounts
         };
     }
 

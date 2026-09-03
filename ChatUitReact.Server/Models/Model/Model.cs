@@ -62,6 +62,12 @@ public class ModelCapabilities
     /// <summary>Null when unknown — <c>DateTime.MinValue</c> as a sentinel is a trap.</summary>
     public DateTime? KnowledgeCutoff { get; set; }
 
+    /// <summary>
+    /// How tokens are counted for this model's context-window meter; ids are defined in
+    /// <c>TokenCountingSchemes</c>. Null when no counter is available for the model.
+    /// </summary>
+    public string? TokenCountingScheme { get; set; }
+
     [JsonIgnore]
     public bool SupportsReasoning => SupportedEfforts.Count > 0;
 
