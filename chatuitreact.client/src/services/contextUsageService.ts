@@ -24,12 +24,22 @@ export interface ContextUsage {
     history: number;
     draft: number;
     total: number;
+    /** What fills the window. systemPrompt + knowledge = fixed; files + messages = history. */
+    systemPrompt: number;
+    knowledge: number;
+    files: number;
+    messages: number;
     /** Messages with no stored count for this scheme; the total is a lower bound then. */
     unknownMessages: number;
     overLimit: boolean;
-    /** The answer may not fit: total plus the model's output ceiling exceeds the window. */
-    nearLimit: boolean;
+    /** How full the window is: warn from 50%, danger from 80%. */
+    level: ContextLevel;
 }
+
+export type ContextLevel = 'ok' | 'warn' | 'danger';
+
+const WARN_FRACTION = 0.5;
+const DANGER_FRACTION = 0.8;
 
 const UNAVAILABLE: ContextUsage = {
     available: false,
@@ -41,9 +51,13 @@ const UNAVAILABLE: ContextUsage = {
     history: 0,
     draft: 0,
     total: 0,
+    systemPrompt: 0,
+    knowledge: 0,
+    files: 0,
+    messages: 0,
     unknownMessages: 0,
     overLimit: false,
-    nearLimit: false,
+    level: 'ok',
 };
 
 const draftSignal = signal<{ text: string; files: ChatFile[] }>({ text: '', files: [] });
@@ -72,8 +86,11 @@ export function getContextUsage(chatId: string | undefined): Signal<ContextUsage
         if (!tokenizer) return { ...UNAVAILABLE, scheme: scheme.id, isEstimate: scheme.isEstimate };
 
         const fixed = assistant.promptTokenCounts?.[scheme.id] ?? 0;
+        const knowledge = Math.min(fixed, assistant.knowledgeTokenCounts?.[scheme.id] ?? 0);
+        const systemPrompt = fixed - knowledge;
 
-        let history = 0;
+        let fileTokensTotal = 0;
+        let messages = 0;
         let unknownMessages = 0;
         const chat = chatId !== undefined ? getChat(chatId).value : undefined;
         for (const message of chat?.messages ?? []) {
@@ -81,10 +98,15 @@ export function getContextUsage(chatId: string | undefined): Signal<ContextUsage
             const tokens = message.tokenCounts?.[scheme.id];
             if (tokens === undefined) {
                 unknownMessages++;
-            } else {
-                history += tokens;
+                continue;
             }
+            // A message with files but no stored split (cached before the backfill) lands
+            // entirely under messages; the total is still right.
+            const fileTokens = message.files.length === 0 ? 0 : Math.min(tokens, message.fileTokenCounts?.[scheme.id] ?? 0);
+            fileTokensTotal += fileTokens;
+            messages += tokens - fileTokens;
         }
+        const history = fileTokensTotal + messages;
 
         const { text, files } = draftSignal.value;
         const draft = text.length > 0 || files.length > 0 ? countDraftTokens(text, files, tokenizer, scheme.image) : 0;
@@ -92,6 +114,8 @@ export function getContextUsage(chatId: string | undefined): Signal<ContextUsage
         const contextSize = model.capabilities.contextSize;
         const maxOutputTokens = model.capabilities.maxOutputTokens;
         const total = fixed + history + draft;
+        const fraction = contextSize > 0 ? total / contextSize : 0;
+        const level: ContextLevel = fraction >= DANGER_FRACTION ? 'danger' : fraction >= WARN_FRACTION ? 'warn' : 'ok';
 
         return {
             available: true,
@@ -103,9 +127,13 @@ export function getContextUsage(chatId: string | undefined): Signal<ContextUsage
             history,
             draft,
             total,
+            systemPrompt,
+            knowledge,
+            files: fileTokensTotal,
+            messages,
             unknownMessages,
             overLimit: total > contextSize,
-            nearLimit: total + maxOutputTokens > contextSize,
+            level,
         };
     });
 }

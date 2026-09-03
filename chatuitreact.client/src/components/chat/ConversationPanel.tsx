@@ -20,9 +20,18 @@ function ConversationPanel({ chatId }: ConversationPanelProps) {
 
   const files = chat?.messages.flatMap((message) => message.files || []) || [];
   const usage = getContextUsage(chatId).value;
-  const usageState = usage.overLimit ? 'over' : usage.nearLimit ? 'near' : 'ok';
   const percentOf = (value: number) => `${Math.min(100, (value / Math.max(1, usage.contextSize)) * 100)}%`;
   const number = (value: number) => formatTokens(value, i18n.language);
+  const shareOf = (value: number) => Math.round((value / Math.max(1, usage.total)) * 100);
+
+  // What fills the window, in the order the request is assembled.
+  const segments = [
+    { key: 'prompt', label: 'chat.panel.contextSystemPrompt', value: usage.systemPrompt },
+    { key: 'knowledge', label: 'chat.panel.contextKnowledge', value: usage.knowledge },
+    { key: 'files', label: 'chat.panel.contextFiles', value: usage.files },
+    { key: 'messages', label: 'chat.panel.contextMessages', value: usage.messages },
+    { key: 'draft', label: 'chat.panel.contextDraft', value: usage.draft },
+  ];
 
   const formatDate = (value: string | undefined) => {
     if (!value) return '';
@@ -53,7 +62,7 @@ function ConversationPanel({ chatId }: ConversationPanelProps) {
 
       <div className="conversation-panel-section t-overline">{t('chat.panel.context')}</div>
       {usage.available ? (
-        <div className="context-usage" data-state={usageState}>
+        <div className="context-usage" data-state={usage.level}>
           <div className="context-meter" role="meter" aria-valuemin={0} aria-valuemax={usage.contextSize} aria-valuenow={usage.total}>
             <div className="context-meter-fill" style={{ width: percentOf(usage.total) }} />
             <div className="context-meter-reserved" style={{ width: percentOf(Math.min(usage.maxOutputTokens, Math.max(0, usage.contextSize - usage.total))) }} />
@@ -65,12 +74,33 @@ function ConversationPanel({ chatId }: ConversationPanelProps) {
               limit: formatTokensCompact(usage.contextSize, i18n.language),
             })}
           </div>
-          <div className="context-usage-rows">
-            <div className="context-usage-row t-hint"><span>{t('chat.panel.contextPrompt')}</span><span>{number(usage.fixed)}</span></div>
-            <div className="context-usage-row t-hint"><span>{t('chat.panel.contextHistory')}</span><span>{number(usage.history)}</span></div>
-            <div className="context-usage-row t-hint"><span>{t('chat.panel.contextDraft')}</span><span>{number(usage.draft)}</span></div>
-            <div className="context-usage-row t-hint"><span>{t('chat.panel.contextReserved')}</span><span>{number(usage.maxOutputTokens)}</span></div>
-          </div>
+          {usage.total > 0 && (
+            <div className="context-composition" role="img" aria-label={t('chat.panel.contextComposition')}>
+              {segments.filter((segment) => segment.value > 0).map((segment) => (
+                <div
+                  key={segment.key}
+                  className="context-composition-segment"
+                  data-segment={segment.key}
+                  style={{ flexGrow: segment.value }}
+                />
+              ))}
+            </div>
+          )}
+          <ul className="context-legend">
+            {segments.map((segment) => (
+              <li key={segment.key} className="context-legend-row t-hint">
+                <span className="context-legend-swatch" data-segment={segment.key} />
+                <span className="context-legend-label">{t(segment.label)}</span>
+                <span className="context-legend-value">{number(segment.value)}</span>
+                <span className="context-legend-share">{t('chat.panel.contextPercent', { value: shareOf(segment.value) })}</span>
+              </li>
+            ))}
+            <li className="context-legend-row context-legend-row--reserved t-hint">
+              <span className="context-legend-swatch" data-segment="reserved" />
+              <span className="context-legend-label">{t('chat.panel.contextReserved')}</span>
+              <span className="context-legend-value">{number(usage.maxOutputTokens)}</span>
+            </li>
+          </ul>
           {usage.unknownMessages > 0 && (
             <div className="context-usage-note t-hint">{t('chat.panel.contextUnknown', { count: usage.unknownMessages })}</div>
           )}

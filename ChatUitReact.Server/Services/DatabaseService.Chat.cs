@@ -243,7 +243,8 @@ public partial class DatabaseService
                 Files = await WriteFilesAsync(userId, chatId, message.Files, writtenBlockIds),
                 AssistantId = message.AssistantId,
                 AssistantName = message.AssistantName,
-                TokenCounts = message.TokenCounts ?? new Dictionary<string, int>()
+                TokenCounts = message.TokenCounts ?? new Dictionary<string, int>(),
+                FileTokenCounts = message.FileTokenCounts ?? new Dictionary<string, int>()
             };
 
             await _chatMessageContainer!.CreateItemAsync(messageDocument, new PartitionKey(userId));
@@ -312,7 +313,10 @@ public partial class DatabaseService
                     : message.AssistantName,
                 TokenCounts = message.TokenCounts is { Count: > 0 }
                     ? message.TokenCounts
-                    : existingMessage.TokenCounts
+                    : existingMessage.TokenCounts,
+                FileTokenCounts = message.FileTokenCounts is { Count: > 0 }
+                    ? message.FileTokenCounts
+                    : existingMessage.FileTokenCounts
             };
 
             await _chatMessageContainer!.ReplaceItemAsync(replacement, replacement.Id, new PartitionKey(userId));
@@ -334,7 +338,7 @@ public partial class DatabaseService
         await TouchChatAsync(userId, chatId, timestamp, status);
     }
 
-    public async Task SetMessageTokenCountsAsync(string userId, string chatId, string messageId, IReadOnlyDictionary<string, int> tokenCounts)
+    public async Task SetMessageTokenCountsAsync(string userId, string chatId, string messageId, IReadOnlyDictionary<string, int> tokenCounts, IReadOnlyDictionary<string, int> fileTokenCounts)
     {
         await EnsureInitializedAsync();
 
@@ -347,7 +351,8 @@ public partial class DatabaseService
         // Counting is not activity: a patch on the message alone, no updatedAt on the chat.
         var patchOperations = new List<PatchOperation>
         {
-            PatchOperation.Set("/tokenCounts", tokenCounts)
+            PatchOperation.Set("/tokenCounts", tokenCounts),
+            PatchOperation.Set("/fileTokenCounts", fileTokenCounts)
         };
 
         try
@@ -411,7 +416,8 @@ public partial class DatabaseService
             Files = ReadFiles(messageDocument.Files, contentBlocksById, includeFileContent),
             AssistantId = messageDocument.AssistantId,
             AssistantName = messageDocument.AssistantName,
-            TokenCounts = messageDocument.TokenCounts ?? new Dictionary<string, int>()
+            TokenCounts = messageDocument.TokenCounts ?? new Dictionary<string, int>(),
+            FileTokenCounts = messageDocument.FileTokenCounts ?? new Dictionary<string, int>()
         };
     }
 

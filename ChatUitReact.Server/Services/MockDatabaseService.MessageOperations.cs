@@ -46,13 +46,17 @@ public partial class MockDatabaseService
                 {
                     existingMessage.TokenCounts = message.TokenCounts;
                 }
+                if (message.FileTokenCounts is { Count: > 0 })
+                {
+                    existingMessage.FileTokenCounts = message.FileTokenCounts;
+                }
             }
             chat.UpdatedAt = DateTime.Now;
         }
         return Task.CompletedTask;
     }
 
-    public Task SetMessageTokenCountsAsync(string userId, string chatId, string messageId, IReadOnlyDictionary<string, int> tokenCounts)
+    public Task SetMessageTokenCountsAsync(string userId, string chatId, string messageId, IReadOnlyDictionary<string, int> tokenCounts, IReadOnlyDictionary<string, int> fileTokenCounts)
     {
         AddUser(userId);
         var chat = _chatStorage[userId].FirstOrDefault(c => c.Id == chatId);
@@ -60,6 +64,7 @@ public partial class MockDatabaseService
         if (message != null)
         {
             message.TokenCounts = new Dictionary<string, int>(tokenCounts);
+            message.FileTokenCounts = new Dictionary<string, int>(fileTokenCounts);
         }
         return Task.CompletedTask;
     }
