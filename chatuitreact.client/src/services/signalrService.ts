@@ -45,7 +45,6 @@ class SignalrService {
         throw new Error("No access token available");
       }
 
-      // Only create connection if it doesn't exist or is disconnected
       if (!this.connection || this.connection.state === signalR.HubConnectionState.Disconnected) {
         this.connection = new signalR.HubConnectionBuilder()
           .withUrl("/chathub", {
@@ -127,6 +126,5 @@ class SignalrService {
   }
 }
 
-// Export singleton instance
 const signalrService = SignalrService.getInstance();
 export default signalrService;

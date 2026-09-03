@@ -66,8 +66,8 @@ public static class MessageParts
     }
 
     /// <summary>
-    /// Chunks carry a format (e.g. "png"); this used to be hardcoded to jpeg, which Azure
-    /// tolerates but stricter providers do not.
+    /// Maps a chunk's format (e.g. "png") to a media type. Stricter providers reject an image
+    /// whose declared media type does not match its actual bytes, so the format must be honoured.
     /// </summary>
     public static string ResolveMediaType(string? format)
     {

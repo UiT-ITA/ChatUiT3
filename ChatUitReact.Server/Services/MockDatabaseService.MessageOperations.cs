@@ -28,12 +28,12 @@ public partial class MockDatabaseService
                 existingMessage.Content = message.Content;
                 existingMessage.Timestamp = message.Timestamp;
                 existingMessage.Status = message.Status;
-                // CRITICAL FIX: Preserve files when updating message
+                // Callers that build a partial message leave Files blank, so keep the stored files.
                 if (message.Files != null && message.Files.Count > 0)
                 {
                     existingMessage.Files = message.Files;
                 }
-                // Same reason as files: callers that build a partial message leave these blank.
+                // Same for these: a partial message leaves them blank, so only overwrite when set.
                 if (!string.IsNullOrWhiteSpace(message.AssistantId))
                 {
                     existingMessage.AssistantId = message.AssistantId;

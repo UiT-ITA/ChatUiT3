@@ -8,9 +8,8 @@ using ChatUitReact.Server.Models;
 /// <summary>
 /// Turns an assistant's settings into parameters the selected model will actually accept.
 ///
-/// This is the single place that knows the rules, so a new provider cannot reintroduce
-/// the class of bug where a valid-looking assistant produces an HTTP 400 — the caller
-/// that reported "'temperature' does not support 0.7 with this model" was exactly that.
+/// This is the single place that knows the rules, so a valid-looking assistant cannot
+/// produce an HTTP 400 such as "'temperature' does not support 0.7 with this model".
 /// Deliberately pure and provider-agnostic: anything protocol-specific (Anthropic's 0–1
 /// temperature range, how thinking is expressed on the wire) belongs in the provider.
 /// </summary>

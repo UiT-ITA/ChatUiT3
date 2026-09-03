@@ -35,7 +35,6 @@ function ChatMessage({ chatId, message, fallbackAssistantName, onStreamingChunk 
   const { settings } = useSettings();
   const [isCopied, setIsCopied] = useState(false);
 
-  // Map theme names to actual style objects
   const styleMap = {
     oneLight: oneLight,
     atomDark: atomDark,
@@ -133,7 +132,6 @@ function ChatMessage({ chatId, message, fallbackAssistantName, onStreamingChunk 
       if (!inline && match) {
         const language = match[1];
         
-        // Handle mermaid diagrams
         if (language === 'mermaid') {
           return (
             <div className="code-block-wrapper">

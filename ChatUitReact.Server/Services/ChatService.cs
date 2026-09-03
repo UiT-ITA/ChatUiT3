@@ -113,8 +113,8 @@ public class ChatService : IChatService
     }
 
     // Counts are stored per message so a model switch is a key lookup on the client. Messages
-    // written before a scheme existed (or before this feature) are counted on first read and
-    // written back, so each message is counted at most once per scheme.
+    // lacking a count for an active scheme are counted on first read and written back, so each
+    // message is counted at most once per scheme.
     private async Task BackfillTokenCountsAsync(string userId, string chatId, Chat chat, bool includeFileContent)
     {
         var schemes = await _tokenCounting.GetActiveSchemeIdsAsync();
@@ -226,7 +226,7 @@ public class ChatService : IChatService
     {
         if (newTitle == null && newAssistantId == null)
         {
-            return; // No changes to apply
+            return;
         }
 
         await _databaseService.UpdateChatAsync(userId, chatId, newTitle, newAssistantId);

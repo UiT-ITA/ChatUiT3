@@ -285,8 +285,7 @@ public class AssistantsController : ControllerBase
     {
         try
         {
-            // Models carry AllowedRoles; until now every user was shown every model
-            // regardless, so the setting existed but was never enforced.
+            // Only models whose AllowedRoles match the caller's roles are returned.
             var models = await _modelService.GetAvailableModelsForUserAsync(_userService.GetUserRoles(User));
             var modelDtos = models.Select(m => new UserModelDto
             {

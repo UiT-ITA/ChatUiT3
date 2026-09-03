@@ -63,12 +63,10 @@ builder.Services.Configure<JwtBearerOptions>(JwtBearerDefaults.AuthenticationSch
             {
                 var path = context.HttpContext.Request.Path;
 
-                // If the request is for a hub...
                 if (path.StartsWithSegments("/testHub") ||
                     path.StartsWithSegments("/testAuthHub") ||
                     path.StartsWithSegments("/chatHub"))
                 {
-                    // Set the token for authentication
                     context.Token = accessToken;
                 }
 

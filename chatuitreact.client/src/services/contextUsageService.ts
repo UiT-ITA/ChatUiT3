@@ -100,8 +100,8 @@ export function getContextUsage(chatId: string | undefined): Signal<ContextUsage
                 unknownMessages++;
                 continue;
             }
-            // A message with files but no stored split (cached before the backfill) lands
-            // entirely under messages; the total is still right.
+            // A message with files but no stored file/text split lands entirely under
+            // messages; the total is still right.
             const fileTokens = message.files.length === 0 ? 0 : Math.min(tokens, message.fileTokenCounts?.[scheme.id] ?? 0);
             fileTokensTotal += fileTokens;
             messages += tokens - fileTokens;

@@ -122,7 +122,7 @@ export async function toggleVisibility(id: string): Promise<void> {
 
 // Pinning only ever flips one field, so both of these apply it locally first and put the old
 // value back if the request fails. The server's AssistantsUpdated push reconciles the list
-// afterwards; waiting for that round trip made the pin feel broken.
+// afterwards, so the pin reacts without waiting for that round trip.
 function applyDefaultAssistantLocally(id: string | null): string | null | undefined {
     const current = assistantListSignal.value;
     if (!current) return undefined;

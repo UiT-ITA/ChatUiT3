@@ -7,7 +7,6 @@ import rehypeKatex from 'rehype-katex';
 
 export const markdownToHtml = (markdown: string): string => {
   try {
-    // Render ReactMarkdown component to static HTML string
     let html = renderToStaticMarkup(
       ReactMarkdown({
         children: markdown,

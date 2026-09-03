@@ -94,22 +94,22 @@ public partial class DatabaseService
         public List<string> ContentBlockIds { get; set; } = new();
 
         // The generation activity (thinking, tool calls, timings) as JSON, stored like message
-        // text. Empty on user messages and on assistant messages from before it was recorded.
+        // text. Empty when a message has no recorded activity, such as user messages.
         [JsonProperty("activityBlockIds")]
         public List<string> ActivityBlockIds { get; set; } = new();
 
         [JsonProperty("files")]
         public List<StoredFileDocument> Files { get; set; } = new();
 
-        // Absent on messages written before per-message attribution existed; an empty value
-        // means "fall back to the chat's assistant" rather than "no assistant".
+        // May be absent in stored documents; an empty value means "fall back to the chat's
+        // assistant" rather than "no assistant".
         [JsonProperty("assistantId")]
         public string AssistantId { get; set; } = string.Empty;
 
         [JsonProperty("assistantName")]
         public string AssistantName { get; set; } = string.Empty;
 
-        // Scheme id → tokens this message costs on the wire. Absent keys are counted and
+        // Scheme id → tokens this message costs on the wire. Missing keys are counted and
         // written back when the chat is next read.
         [JsonProperty("tokenCounts")]
         public Dictionary<string, int> TokenCounts { get; set; } = new();
@@ -205,8 +205,8 @@ public partial class DatabaseService
 
     /// <summary>
     /// The persisted shape of <see cref="ModelCapabilities"/>. Kept separate from the domain
-    /// type on purpose: previously the domain model was stored directly, so any change to it
-    /// silently changed the database schema.
+    /// type on purpose, so that changing the domain model does not silently change the
+    /// database schema.
     /// </summary>
     private sealed class ModelCapabilitiesDocument
     {
@@ -235,7 +235,7 @@ public partial class DatabaseService
         [JsonProperty("knowledgeCutoff")]
         public DateTime? KnowledgeCutoff { get; set; }
 
-        // Absent on rows saved before the context-window meter existed; null means "no counter".
+        // May be absent in stored rows; null means "no token counter for this model".
         [JsonProperty("tokenCountingScheme")]
         public string? TokenCountingScheme { get; set; }
     }
@@ -303,7 +303,7 @@ public partial class DatabaseService
         [JsonProperty("ownerId")]
         public string OwnerId { get; set; } = string.Empty;
 
-        // Absent on rows saved before it existed; default still works as a cache key.
+        // May be absent in stored rows; the default value still works as a cache key.
         [JsonProperty("updatedAt")]
         public DateTime UpdatedAt { get; set; }
     }

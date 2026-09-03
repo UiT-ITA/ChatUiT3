@@ -41,7 +41,7 @@ const AdminPage: React.FC = () => {
       return <AdminAssistantEditor assistantId={id === 'new' ? undefined : id} />;
     }
 
-    // Overview — the three groups as bordered row lists, items open in the main area
+    // Overview — each group is a bordered row list; clicking a row opens it in the main area
     return (
       <>
         <h1 className="t-page-title">{t('contextColumn.admin')}</h1>

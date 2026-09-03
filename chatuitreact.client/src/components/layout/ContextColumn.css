@@ -127,7 +127,7 @@
   text-overflow: ellipsis;
 }
 
-/* Dashed "add new" row (design: + Ny assistent) */
+/* Dashed "add new" row */
 .context-add-row {
   display: block;
   width: 100%;

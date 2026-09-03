@@ -128,10 +128,10 @@ public sealed class AnthropicProvider : IAiProvider
     }
 
     /// <summary>
-    /// Effort is how thinking depth is expressed on current Claude models — the old fixed
-    /// thinking budget was removed and now returns 400. "None" maps to no effort at all
-    /// rather than to an explicit "disabled", because disabling thinking is itself rejected
-    /// above high effort; omitting it lets the model use its own default.
+    /// Effort is how thinking depth is expressed on Claude models; a fixed thinking budget
+    /// is rejected with a 400. "None" maps to no effort at all rather than to an explicit
+    /// "disabled", because disabling thinking is itself rejected above high effort; omitting
+    /// it lets the model use its own default.
     /// </summary>
     private static Effort? MapEffort(ReasoningEffort effort) => effort switch
     {

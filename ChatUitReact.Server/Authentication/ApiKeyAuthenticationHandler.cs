@@ -26,7 +26,6 @@ public class ApiKeyAuthenticationHandler : AuthenticationHandler<ApiKeyAuthentic
 
     protected override Task<AuthenticateResult> HandleAuthenticateAsync()
     {
-        // Try to get API key from header
         if (!Request.Headers.TryGetValue(Options.HeaderName, out var apiKeyHeaderValues))
         {
             return Task.FromResult(AuthenticateResult.NoResult());
@@ -44,7 +43,6 @@ public class ApiKeyAuthenticationHandler : AuthenticationHandler<ApiKeyAuthentic
             return Task.FromResult(AuthenticateResult.Fail("Invalid API key"));
         }
 
-        // API key is valid, create authentication ticket
         var claims = new[]
         {
             new Claim(ClaimTypes.Name, ApiKeyClientId),
