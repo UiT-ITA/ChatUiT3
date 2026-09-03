@@ -108,6 +108,11 @@ public partial class DatabaseService
 
         [JsonProperty("assistantName")]
         public string AssistantName { get; set; } = string.Empty;
+
+        // Scheme id → tokens this message costs on the wire. Absent keys are counted and
+        // written back when the chat is next read.
+        [JsonProperty("tokenCounts")]
+        public Dictionary<string, int> TokenCounts { get; set; } = new();
     }
 
     private sealed class StoredFileDocument
@@ -225,6 +230,10 @@ public partial class DatabaseService
 
         [JsonProperty("knowledgeCutoff")]
         public DateTime? KnowledgeCutoff { get; set; }
+
+        // Absent on rows saved before the context-window meter existed; null means "no counter".
+        [JsonProperty("tokenCountingScheme")]
+        public string? TokenCountingScheme { get; set; }
     }
 
     private sealed class AppSettingsDocument
@@ -289,6 +298,10 @@ public partial class DatabaseService
 
         [JsonProperty("ownerId")]
         public string OwnerId { get; set; } = string.Empty;
+
+        // Absent on rows saved before it existed; default still works as a cache key.
+        [JsonProperty("updatedAt")]
+        public DateTime UpdatedAt { get; set; }
     }
 
     private sealed class StoredAssistantFileDocument

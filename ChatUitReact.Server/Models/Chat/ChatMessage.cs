@@ -19,4 +19,7 @@ public class ChatMessage
     /// messages and on older assistant messages.
     /// </summary>
     public MessageActivity? Activity { get; set; }
+    // Scheme id → tokens this message costs on the wire, as the OpenAI provider would send it.
+    // A missing key means "not yet counted", never zero.
+    public Dictionary<string, int> TokenCounts { get; set; } = new();
 }

@@ -46,6 +46,8 @@ export interface ModelCapabilities {
   maxOutputTokens: number;
   defaultMaxOutputTokens: number;
   knowledgeCutoff: string | null; // ISO date string, null when unknown
+  /** Token counting scheme id (e.g. "o200k-tile"), or null when the model has no counter. */
+  tokenCountingScheme: string | null;
 }
 
 export interface ModelDto {

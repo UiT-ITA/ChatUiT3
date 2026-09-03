@@ -95,6 +95,7 @@
   --code-bg: #001b28;
   --info-soft: #062f41;
 
+  --warn: var(--yellow-60);
   --danger: #e08589;
   --danger-soft: #3a1418;
   --success: #5cb893;
@@ -166,6 +167,7 @@
   --code-bg: #101315;
   --info-soft: #23282b;
 
+  --warn: var(--yellow-60);
   --danger: #e08589;
   --danger-soft: #3a1418;
   --success: #5cb893;

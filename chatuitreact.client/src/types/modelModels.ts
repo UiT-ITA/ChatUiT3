@@ -13,6 +13,11 @@ export interface UserModelCapabilitiesDto {
     contextSize: number;
     maxOutputTokens: number;
     knowledgeCutoff: string | null; // "YYYY-MM", null when unknown
+    /**
+     * Which key to read from message `tokenCounts` and assistant `promptTokenCounts`, and
+     * how to count the draft. Null when the model has no counter.
+     */
+    tokenCountingScheme: string | null;
 }
 
 export interface UserModelDto {

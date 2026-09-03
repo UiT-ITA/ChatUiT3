@@ -242,7 +242,8 @@ public partial class DatabaseService
                 ActivityBlockIds = await WriteTextContentAsync(userId, chatId, messageId, SerializeActivity(message.Activity), writtenBlockIds),
                 Files = await WriteFilesAsync(userId, chatId, message.Files, writtenBlockIds),
                 AssistantId = message.AssistantId,
-                AssistantName = message.AssistantName
+                AssistantName = message.AssistantName,
+                TokenCounts = message.TokenCounts ?? new Dictionary<string, int>()
             };
 
             await _chatMessageContainer!.CreateItemAsync(messageDocument, new PartitionKey(userId));
@@ -308,7 +309,10 @@ public partial class DatabaseService
                     : message.AssistantId,
                 AssistantName = string.IsNullOrWhiteSpace(message.AssistantName)
                     ? existingMessage.AssistantName
-                    : message.AssistantName
+                    : message.AssistantName,
+                TokenCounts = message.TokenCounts is { Count: > 0 }
+                    ? message.TokenCounts
+                    : existingMessage.TokenCounts
             };
 
             await _chatMessageContainer!.ReplaceItemAsync(replacement, replacement.Id, new PartitionKey(userId));
@@ -328,6 +332,31 @@ public partial class DatabaseService
 
         message.Timestamp = timestamp;
         await TouchChatAsync(userId, chatId, timestamp, status);
+    }
+
+    public async Task SetMessageTokenCountsAsync(string userId, string chatId, string messageId, IReadOnlyDictionary<string, int> tokenCounts)
+    {
+        await EnsureInitializedAsync();
+
+        var existingMessage = await ReadItemOrDefaultAsync<ChatMessageDocument>(_chatMessageContainer!, messageId, userId);
+        if (existingMessage == null || existingMessage.ChatId != chatId)
+        {
+            return;
+        }
+
+        // Counting is not activity: a patch on the message alone, no updatedAt on the chat.
+        var patchOperations = new List<PatchOperation>
+        {
+            PatchOperation.Set("/tokenCounts", tokenCounts)
+        };
+
+        try
+        {
+            await _chatMessageContainer!.PatchItemAsync<ChatMessageDocument>(messageId, new PartitionKey(userId), patchOperations);
+        }
+        catch (CosmosException ex) when (ex.StatusCode == System.Net.HttpStatusCode.NotFound)
+        {
+        }
     }
 
     public async Task DeleteMessageAsync(string userId, string chatId, string messageId)
@@ -381,7 +410,8 @@ public partial class DatabaseService
             Status = messageDocument.Status,
             Files = ReadFiles(messageDocument.Files, contentBlocksById, includeFileContent),
             AssistantId = messageDocument.AssistantId,
-            AssistantName = messageDocument.AssistantName
+            AssistantName = messageDocument.AssistantName,
+            TokenCounts = messageDocument.TokenCounts ?? new Dictionary<string, int>()
         };
     }
 

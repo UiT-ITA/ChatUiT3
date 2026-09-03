@@ -1,5 +1,8 @@
+using System.Collections.Concurrent;
 using ChatUitReact.Server.Models;
 using ChatUitReact.Server.Hubs;
+using ChatUitReact.Server.Services.AiProviders;
+using ChatUitReact.Server.Services.TokenCounting;
 using Microsoft.AspNetCore.SignalR;
 
 namespace ChatUitReact.Server.Services
@@ -9,12 +12,77 @@ namespace ChatUitReact.Server.Services
         private readonly IDatabaseService _databaseService;
         private readonly IModelService _modelService;
         private readonly IHubContext<ChatHub, IChatHubClient> _hubContext;
+        private readonly IToolService _toolService;
+        private readonly ITokenCountingService _tokenCounting;
 
-        public AssistantService(IDatabaseService databaseService, IModelService modelService, IHubContext<ChatHub, IChatHubClient> hubContext)
+        // Keyed by assistant id. Invalidated by the assistant's UpdatedAt and by the set of
+        // active schemes, so both an edit and a newly registered model recount.
+        private readonly ConcurrentDictionary<string, PromptTokenCacheEntry> _promptTokenCache = new();
+
+        private sealed record PromptTokenCacheEntry(DateTime UpdatedAt, string SchemeKey, Dictionary<string, int> Counts);
+
+        public AssistantService(
+            IDatabaseService databaseService,
+            IModelService modelService,
+            IHubContext<ChatHub, IChatHubClient> hubContext,
+            IToolService toolService,
+            ITokenCountingService tokenCounting)
         {
             _databaseService = databaseService;
             _modelService = modelService;
             _hubContext = hubContext;
+            _toolService = toolService;
+            _tokenCounting = tokenCounting;
+        }
+
+        // The fixed cost of every request through this assistant, per scheme. Counted from the
+        // same assembled prompt the provider receives.
+        private async Task<Dictionary<string, int>> GetPromptTokenCountsAsync(Assistant assistant)
+        {
+            var schemes = await _tokenCounting.GetActiveSchemeIdsAsync();
+            var schemeKey = string.Join(",", schemes);
+
+            if (_promptTokenCache.TryGetValue(assistant.Id, out var cached) &&
+                cached.UpdatedAt == assistant.UpdatedAt &&
+                cached.SchemeKey == schemeKey)
+            {
+                return cached.Counts;
+            }
+
+            var files = assistant.Files;
+            var needsContent = files.Any(f =>
+                f.Category == AssistantFileCategories.AlwaysLoaded &&
+                f.Chunks.Any(c => c.Type.Equals("text", StringComparison.OrdinalIgnoreCase) && c.Text == null));
+            if (needsContent)
+            {
+                var loaded = await _databaseService.GetAssistantByIdAsync(assistant.Id, includeFileContent: true);
+                files = loaded?.Files ?? files;
+            }
+
+            var prompt = SystemPromptAssembler.AppendKnowledgeFiles(assistant.ChatSettings.SystemPrompt, files);
+            // Resolved against the model row rather than the stored tool ids, so a model that
+            // lost function calling after the assistant was saved counts no tools.
+            var parameters = ChatParameterResolver.Resolve(assistant.ChatSettings.Model.Capabilities, assistant.ChatSettings);
+            var tools = _toolService.GetToolDefinitions(parameters.ToolIds).ToList();
+
+            var counts = new Dictionary<string, int>();
+            foreach (var scheme in schemes)
+            {
+                counts[scheme] = _tokenCounting.CountSystemPrompt(prompt, tools, scheme);
+            }
+
+            _promptTokenCache[assistant.Id] = new PromptTokenCacheEntry(assistant.UpdatedAt, schemeKey, counts);
+            return counts;
+        }
+
+        private async Task<Dictionary<string, Dictionary<string, int>>> GetPromptTokenCountsAsync(IEnumerable<Assistant> assistants)
+        {
+            var result = new Dictionary<string, Dictionary<string, int>>();
+            foreach (var assistant in assistants)
+            {
+                result[assistant.Id] = await GetPromptTokenCountsAsync(assistant);
+            }
+            return result;
         }
 
         public async Task<UserAssistantsResult> GetUserAssistantsAsync(string userId)
@@ -67,6 +135,7 @@ namespace ChatUitReact.Server.Services
 
             var updatedAssistant = await _databaseService.UpdateAssistantAsync(assistant);
             if (updatedAssistant == null) return false;
+            _promptTokenCache.TryRemove(assistant.Id, out _);
 
             // A model change can invalidate a pin held by someone this assistant was shared
             // with, so notify everyone rather than just the owner's group. Otherwise their open
@@ -98,6 +167,7 @@ namespace ChatUitReact.Server.Services
             
             if (success)
             {
+                _promptTokenCache.TryRemove(assistantId, out _);
                 await NotifyAssistantsUpdated(userId);
             }
 
@@ -268,14 +338,15 @@ namespace ChatUitReact.Server.Services
             var result = await GetUserAssistantsAsync(userId);
             var user = await _databaseService.GetUserAsync(userId);
 
-            var allAssistants = result.Owned.Concat(result.System).Concat(result.Shared);
+            var allAssistants = result.Owned.Concat(result.System).Concat(result.Shared).ToList();
             var eligibleModelIds = await GetDefaultEligibleModelIdsAsync(allAssistants, roles);
+            var promptTokens = await GetPromptTokenCountsAsync(allAssistants);
 
             return new AssistantListDto
             {
-                Owned = result.Owned.Select(assistant => MapToFullAssistantDto(assistant, user, eligibleModelIds)).ToList(),
-                System = result.System.Select(assistant => MapToAssistantSummaryDto(assistant, user, eligibleModelIds)).ToList(),
-                Shared = result.Shared.Select(assistant => MapToAssistantSummaryDto(assistant, user, eligibleModelIds)).ToList(),
+                Owned = result.Owned.Select(assistant => MapToFullAssistantDto(assistant, promptTokens[assistant.Id], user, eligibleModelIds)).ToList(),
+                System = result.System.Select(assistant => MapToAssistantSummaryDto(assistant, promptTokens[assistant.Id], user, eligibleModelIds)).ToList(),
+                Shared = result.Shared.Select(assistant => MapToAssistantSummaryDto(assistant, promptTokens[assistant.Id], user, eligibleModelIds)).ToList(),
                 DefaultAssistantId = user?.Preferences.DefaultAssistantId
             };
         }
@@ -307,7 +378,8 @@ namespace ChatUitReact.Server.Services
         public async Task<List<FullAssistantDto>> GetSystemAssistantsForAdminAsync()
         {
             var assistants = await _databaseService.GetSystemAssistantsAsync();
-            return assistants.Select(assistant => MapToFullAssistantDto(assistant)).ToList();
+            var promptTokens = await GetPromptTokenCountsAsync(assistants);
+            return assistants.Select(assistant => MapToFullAssistantDto(assistant, promptTokens[assistant.Id])).ToList();
         }
 
         public async Task<FullAssistantDto?> GetSystemAssistantForAdminAsync(string assistantId)
@@ -318,7 +390,7 @@ namespace ChatUitReact.Server.Services
                 return null;
             }
 
-            return MapToFullAssistantDto(assistant);
+            return MapToFullAssistantDto(assistant, await GetPromptTokenCountsAsync(assistant));
         }
 
         public async Task<FullAssistantDto> CreateSystemAssistantAsync(CreateAssistantDto createDto)
@@ -328,7 +400,7 @@ namespace ChatUitReact.Server.Services
 
             await NotifyAllUsersAssistantsUpdated();
 
-            return MapToFullAssistantDto(createdAssistant);
+            return MapToFullAssistantDto(createdAssistant, await GetPromptTokenCountsAsync(createdAssistant));
         }
 
         public async Task<FullAssistantDto?> UpdateSystemAssistantAsync(string assistantId, UpdateAssistantDto updateDto)
@@ -351,9 +423,10 @@ namespace ChatUitReact.Server.Services
                 return null;
             }
 
+            _promptTokenCache.TryRemove(assistantId, out _);
             await NotifyAllUsersAssistantsUpdated();
 
-            return MapToFullAssistantDto(savedAssistant);
+            return MapToFullAssistantDto(savedAssistant, await GetPromptTokenCountsAsync(savedAssistant));
         }
 
         public async Task<bool> DeleteSystemAssistantAsync(string assistantId)
@@ -367,6 +440,7 @@ namespace ChatUitReact.Server.Services
             var deleted = await _databaseService.DeleteAssistantAsync(assistantId);
             if (deleted)
             {
+                _promptTokenCache.TryRemove(assistantId, out _);
                 await NotifyAllUsersAssistantsUpdated();
             }
 
@@ -461,11 +535,13 @@ namespace ChatUitReact.Server.Services
         // eligibleModelIds is null on the admin paths, which have no user to pin anything for.
         private static FullAssistantDto MapToFullAssistantDto(
             Assistant assistant,
+            Dictionary<string, int> promptTokenCounts,
             UserInfo? user = null,
             HashSet<string>? eligibleModelIds = null)
         {
             return new FullAssistantDto
             {
+                PromptTokenCounts = promptTokenCounts,
                 Id = assistant.Id,
                 Name = assistant.Name,
                 Description = assistant.Description,
@@ -525,11 +601,13 @@ namespace ChatUitReact.Server.Services
 
         private static AssistantSummaryDto MapToAssistantSummaryDto(
             Assistant assistant,
+            Dictionary<string, int> promptTokenCounts,
             UserInfo? user = null,
             HashSet<string>? eligibleModelIds = null)
         {
             return new AssistantSummaryDto
             {
+                PromptTokenCounts = promptTokenCounts,
                 Id = assistant.Id,
                 Name = assistant.Name,
                 Description = assistant.Description,

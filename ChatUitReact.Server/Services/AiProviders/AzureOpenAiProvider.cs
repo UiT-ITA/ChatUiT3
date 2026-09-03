@@ -15,6 +15,7 @@ using OpenAI.Responses;
 namespace ChatUitReact.Server.Services.AiProviders;
 
 using ChatUitReact.Server.Models;
+using ChatUitReact.Server.Services.TokenCounting;
 using ChatUitReact.Server.Services.Tools;
 
 /// <summary>
@@ -182,7 +183,7 @@ public sealed class AzureOpenAiProvider : IAiProvider
         return items;
     }
 
-    private ResponseItem BuildUserItem(Models.ChatMessage message, bool allowImages)
+    private static ResponseItem BuildUserItem(Models.ChatMessage message, bool allowImages)
     {
         if (message.Files == null || message.Files.Count == 0)
         {
@@ -190,79 +191,20 @@ public sealed class AzureOpenAiProvider : IAiProvider
         }
 
         var parts = new List<ResponseContentPart>();
-
-        if (!string.IsNullOrEmpty(message.Content))
+        foreach (var part in MessageParts.Build(message, allowImages))
         {
-            parts.Add(ResponseContentPart.CreateInputTextPart(message.Content));
-        }
-
-        foreach (var file in message.Files)
-        {
-            AppendFile(file, parts, allowImages);
+            switch (part)
+            {
+                case TextPart text:
+                    parts.Add(ResponseContentPart.CreateInputTextPart(text.Text));
+                    break;
+                case ImagePart image:
+                    parts.Add(ResponseContentPart.CreateInputImagePart(new Uri($"data:{image.MediaType};base64,{image.Base64}")));
+                    break;
+            }
         }
 
         return ResponseItem.CreateUserMessageItem(parts);
-    }
-
-    private void AppendFile(ChatFile file, List<ResponseContentPart> parts, bool allowImages)
-    {
-        try
-        {
-            parts.Add(ResponseContentPart.CreateInputTextPart($"\n--- ATTACHED FILE: {file.SourceFilename} ---\n"));
-
-            for (var i = 0; i < file.Chunks.Count; i++)
-            {
-                var chunk = file.Chunks[i];
-                parts.Add(ResponseContentPart.CreateInputTextPart($"[File Part {i + 1} of {file.Chunks.Count}]\n"));
-
-                if (chunk.Type.Equals("text", StringComparison.OrdinalIgnoreCase))
-                {
-                    parts.Add(ResponseContentPart.CreateInputTextPart((chunk.Text ?? string.Empty) + "\n"));
-                }
-                else if (chunk.Type.Equals("image", StringComparison.OrdinalIgnoreCase) && !string.IsNullOrWhiteSpace(chunk.Base64))
-                {
-                    if (!allowImages)
-                    {
-                        // Better a visible note than an image the model will reject.
-                        parts.Add(ResponseContentPart.CreateInputTextPart("[Image omitted: this model cannot read images]\n"));
-                        continue;
-                    }
-
-                    var imageUri = new Uri($"data:{ResolveMediaType(chunk.Format)};base64,{chunk.Base64}");
-                    parts.Add(ResponseContentPart.CreateInputImagePart(imageUri));
-                    parts.Add(ResponseContentPart.CreateInputTextPart("\n"));
-                }
-            }
-
-            parts.Add(ResponseContentPart.CreateInputTextPart($"--- END OF FILE: {file.SourceFilename} ---\n\n"));
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Error processing file {FileName}", file.SourceFilename);
-            parts.Add(ResponseContentPart.CreateInputTextPart($"\n--- ERROR: Could not process file {file.SourceFilename} ---\n"));
-        }
-    }
-
-    /// <summary>
-    /// Chunks carry a format (e.g. "png"); this used to be hardcoded to jpeg, which Azure
-    /// tolerates but stricter providers do not.
-    /// </summary>
-    private static string ResolveMediaType(string? format)
-    {
-        var normalized = (format ?? string.Empty).Trim().ToLowerInvariant();
-        if (normalized.StartsWith("image/"))
-        {
-            return normalized;
-        }
-
-        return normalized switch
-        {
-            "png" => "image/png",
-            "gif" => "image/gif",
-            "webp" => "image/webp",
-            "jpg" or "jpeg" => "image/jpeg",
-            _ => "image/jpeg"
-        };
     }
 
     /// <summary>

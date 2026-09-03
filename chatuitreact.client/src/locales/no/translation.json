@@ -54,6 +54,9 @@
     "enterHint": "Enter sender · Shift + Enter gir ny linje",
     "disclaimer": "ChatUiT kan gjøre feil. Sjekk viktige svar mot kilden.",
     "charCount": "{{count}} tegn",
+    "tokenCount": "{{count}} tokens",
+    "contextHint": "{{used}} / {{limit}}",
+    "contextEstimate": "Anslag. Denne modellen har ingen nøyaktig tokenteller.",
     "groups": {
       "favorites": "Favoritter",
       "today": "I dag",
@@ -72,7 +75,17 @@
       "noFiles": "Ingen filer ennå.",
       "assistant": "Assistent",
       "created": "Opprettet",
-      "updated": "Sist endret"
+      "updated": "Sist endret",
+      "context": "Kontekstvindu",
+      "contextUsed": "{{used}} av {{limit}} tokens",
+      "contextPrompt": "Systemprompt og kunnskap",
+      "contextHistory": "Samtalen",
+      "contextDraft": "Utkast",
+      "contextReserved": "Reservert til svaret",
+      "contextUnknown": "{{count}} meldinger er ikke talt opp ennå",
+      "contextOver": "Samtalen får ikke lenger plass i modellens kontekstvindu. Start en ny samtale eller fjern vedlegg.",
+      "contextUnavailable": "Ikke tilgjengelig for denne modellen",
+      "contextEstimate": "Anslag. Denne modellen har ingen nøyaktig tokenteller."
     },
     "actions": {
       "copy": "Kopier",
@@ -485,6 +498,9 @@
         "maxContextTokens": "Maks kontekst-tokens",
         "maxOutputTokens": "Maks utdata-tokens",
         "defaultMaxOutputTokens": "Standard utdata-tokens",
+        "tokenCountingScheme": "Tokentelling",
+        "tokenCountingSchemeNone": "Ingen teller",
+        "tokenCountingSchemeHint": "Styrer kontekstvindu-måleren. o200k-tile for gpt-4o og nyere, o200k-patch-1.62 for mini-modeller, anthropic-estimate for Claude (tegn-anslag). La stå tom for å skjule telleren.",
         "knownModel": "Start fra en kjent modell",
         "knownModelCustom": "Egendefinert / ikke i listen",
         "knownModelHint": "Fyller inn egenskapene vi har verifisert for denne modellen. Alt kan fortsatt redigeres.",

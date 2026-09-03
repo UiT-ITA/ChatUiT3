@@ -30,6 +30,8 @@ public class ChatMessageDto
     public string AssistantId { get; set; } = string.Empty;
     public string AssistantName { get; set; } = string.Empty;
     public MessageActivity? Activity { get; set; }
+    /// <summary>Token counting scheme id → tokens. A missing key means not yet counted.</summary>
+    public Dictionary<string, int> TokenCounts { get; set; } = new();
 }
 
 public class ChatFileChunkDto

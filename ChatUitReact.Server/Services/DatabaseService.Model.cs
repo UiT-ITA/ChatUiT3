@@ -232,7 +232,8 @@ public partial class DatabaseService
             MaxContextTokens = document.MaxContextTokens,
             MaxOutputTokens = document.MaxOutputTokens,
             DefaultMaxOutputTokens = document.DefaultMaxOutputTokens,
-            KnowledgeCutoff = document.KnowledgeCutoff
+            KnowledgeCutoff = document.KnowledgeCutoff,
+            TokenCountingScheme = document.TokenCountingScheme
         };
     }
 
@@ -247,7 +248,8 @@ public partial class DatabaseService
             MaxContextTokens = capabilities.MaxContextTokens,
             MaxOutputTokens = capabilities.MaxOutputTokens,
             DefaultMaxOutputTokens = capabilities.DefaultMaxOutputTokens,
-            KnowledgeCutoff = capabilities.KnowledgeCutoff
+            KnowledgeCutoff = capabilities.KnowledgeCutoff,
+            TokenCountingScheme = capabilities.TokenCountingScheme
         };
     }
 }

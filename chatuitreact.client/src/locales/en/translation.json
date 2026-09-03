@@ -54,6 +54,9 @@
     "enterHint": "Enter sends · Shift + Enter for a new line",
     "disclaimer": "ChatUiT can make mistakes. Check important answers against the source.",
     "charCount": "{{count}} characters",
+    "tokenCount": "{{count}} tokens",
+    "contextHint": "{{used}} / {{limit}}",
+    "contextEstimate": "Estimate. This model has no exact tokenizer.",
     "groups": {
       "favorites": "Favorites",
       "today": "Today",
@@ -72,7 +75,17 @@
       "noFiles": "No files yet.",
       "assistant": "Assistant",
       "created": "Created",
-      "updated": "Last changed"
+      "updated": "Last changed",
+      "context": "Context window",
+      "contextUsed": "{{used}} of {{limit}} tokens",
+      "contextPrompt": "System prompt and knowledge",
+      "contextHistory": "Conversation",
+      "contextDraft": "Draft",
+      "contextReserved": "Reserved for the answer",
+      "contextUnknown": "{{count}} messages not yet counted",
+      "contextOver": "The conversation no longer fits in the model's context window. Start a new chat or remove attachments.",
+      "contextUnavailable": "Not available for this model",
+      "contextEstimate": "Estimate. This model has no exact tokenizer."
     },
     "actions": {
       "copy": "Copy",
@@ -492,6 +505,9 @@
         "maxContextTokens": "Max context tokens",
         "maxOutputTokens": "Max output tokens",
         "defaultMaxOutputTokens": "Default output tokens",
+        "tokenCountingScheme": "Token counting",
+        "tokenCountingSchemeNone": "No counter",
+        "tokenCountingSchemeHint": "Drives the context-window meter. o200k-tile for gpt-4o and later, o200k-patch-1.62 for mini models, anthropic-estimate for Claude (character estimate). Leave empty to show no counter.",
         "knownModel": "Start from a known model",
         "knownModelCustom": "Custom / not listed",
         "knownModelHint": "Fills in the capabilities we have verified for this model. Everything stays editable.",
