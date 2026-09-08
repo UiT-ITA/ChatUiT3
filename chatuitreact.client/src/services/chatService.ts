@@ -350,7 +350,7 @@ export interface LiveActivity {
   lastElapsedMs: number;
   /** Local clock (Date.now) when the latest chunk was applied; lets the UI count on between chunks. */
   receivedAt: number;
-  /** True once any message text has arrived; the panel collapses at that point. */
+  /** True once any message text has arrived. */
   hasText: boolean;
   final: MessageActivityDto | null;
 }

@@ -198,12 +198,12 @@ function ChatMessage({ chatId, message, fallbackAssistantName, onStreamingChunk 
   return (
     <div className={`chat-message ${isUser ? 'user-message' : isAssistant ? 'assistant-message' : 'system-message'} ${isStreaming ? 'streaming' : ''}`}>
       {isAssistant && (
-        <div className="message-meta">
+        <MessageActivity activity={message.activity ?? null} live={liveActivity}>
           <span className="message-meta-name t-overline">{message.assistantName || fallbackAssistantName || t('chat.assistantLabel')}</span>
           <span className="message-time t-meta">
             {new Date(message.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
           </span>
-        </div>
+        </MessageActivity>
       )}
 
       {message.files && message.files.length > 0 && (
@@ -219,10 +219,6 @@ function ChatMessage({ chatId, message, fallbackAssistantName, onStreamingChunk 
             ))}
           </div>
         </div>
-      )}
-
-      {isAssistant && (liveActivity || message.activity) && (
-        <MessageActivity activity={message.activity ?? null} live={liveActivity} />
       )}
 
       <div className="message-content">

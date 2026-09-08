@@ -1,5 +1,5 @@
 import './MessageActivity.css';
-import { useEffect, useState } from 'react';
+import { useEffect, useState, type ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
@@ -14,43 +14,47 @@ type Props = {
   activity: MessageActivityDto | null;
   /** The in-progress state while the message is generating. */
   live: LiveActivity | null;
+  /** The assistant name and timestamp; the activity headline is placed after them on the same line. */
+  children: ReactNode;
 };
 
 /**
- * "Thought for 5 s · 2 tool calls · 14 s": what happened while the message was generated.
- * Expanded on its own while the model is thinking or calling tools, collapsed once text
- * starts arriving. After that the user's toggle wins.
+ * The assistant's meta row: name, time, and "Thought for 5 s · 2 tool calls · 14 s" for what
+ * happened while the message was generated. While the model thinks, the headline shows the
+ * latest thinking heading. The history is collapsed until the user opens it.
  */
-export default function MessageActivity({ activity, live }: Props) {
+export default function MessageActivity({ activity, live, children }: Props) {
   const { t } = useTranslation();
   const isLive = live !== null && live.phase !== "done";
-  const [userToggled, setUserToggled] = useState<boolean | null>(null);
-  const autoOpen = isLive && !live.hasText;
-  const open = userToggled ?? autoOpen;
+  const [open, setOpen] = useState(false);
 
   const entries = isLive ? live.entries : (live?.final ?? activity)?.entries ?? [];
   const summary = isLive ? null : (live?.final ?? activity);
   const liveElapsedMs = useLiveElapsed(isLive ? live : null);
-
-  if (!isLive && !summary) {
-    return null;
-  }
+  const hasActivity = isLive || summary !== null;
 
   const thinkingCount = entries.filter(entry => entry.type === "Thinking").length;
   const toolCount = entries.filter(entry => entry.type === "Tool").length;
 
   return (
-    <details
-      className={`activity ${isLive ? "live" : ""}`}
-      open={open}
-      onToggle={event => setUserToggled(event.currentTarget.open)}
-    >
-      <summary className="activity-summary t-caption">
-        <Icon name={isLive ? "refresh" : "branch"} size={0.9} />
-        <span className="activity-headline">
-          {isLive ? liveHeadline(live, liveElapsedMs, t) : doneHeadline(summary!, thinkingCount, toolCount, t)}
-        </span>
-      </summary>
+    <div className={`activity ${isLive ? "live" : ""}`}>
+      <div className="message-meta">
+        {children}
+        {hasActivity && (
+          <button
+            type="button"
+            className="activity-summary t-caption"
+            aria-expanded={open}
+            onClick={() => setOpen(current => !current)}
+          >
+            <Icon name={isLive ? "refresh" : "branch"} size={0.9} />
+            <span className="activity-headline">
+              {isLive ? liveHeadline(live, liveElapsedMs, t) : doneHeadline(summary!, thinkingCount, toolCount, t)}
+            </span>
+          </button>
+        )}
+      </div>
+      {hasActivity && open && (
       <div className="activity-body">
         {summary && (
           <div className="activity-facts t-meta">
@@ -68,7 +72,8 @@ export default function MessageActivity({ activity, live }: Props) {
           <ActivityRow key={index} entry={entry} nowMs={isLive ? liveElapsedMs : null} />
         ))}
       </div>
-    </details>
+      )}
+    </div>
   );
 }
 
@@ -111,8 +116,11 @@ type Translate = ReturnType<typeof useTranslation>['t'];
 function liveHeadline(live: LiveActivity, elapsedMs: number, t: Translate): string {
   const phaseMs = Math.max(0, elapsedMs - live.phaseStartedMs);
   switch (live.phase) {
-    case "thinking":
-      return `${t('chat.activity.thinkingNow')} ${formatDuration(phaseMs)}`;
+    case "thinking": {
+      const current = live.entries[live.entries.length - 1];
+      const heading = current?.type === "Thinking" ? thinkingHeading(current.text ?? "") : null;
+      return `${heading ?? t('chat.activity.thinkingNow')} ${formatDuration(phaseMs)}`;
+    }
     case "tool": {
       const running = [...live.entries].reverse().find(entry => entry.type === "Tool" && entry.endedMs === null);
       return `${t('chat.activity.runningTool', { name: running?.toolName ?? "" })} ${formatDuration(phaseMs)}`;
@@ -127,6 +135,28 @@ function liveHeadline(live: LiveActivity, elapsedMs: number, t: Translate): stri
       return _exhaustive;
     }
   }
+}
+
+const MAX_HEADING_LENGTH = 80;
+
+/**
+ * The heading of the thinking that is streaming in. Reasoning summaries arrive as paragraphs,
+ * often opening with a bold or hashed title line. The latest title wins; without one, the
+ * first line of the latest paragraph is used. Null while nothing readable has arrived.
+ */
+function thinkingHeading(text: string): string | null {
+  const paragraphs = text.split(/\n\s*\n/).map(paragraph => paragraph.trim()).filter(Boolean);
+  if (paragraphs.length === 0) {
+    return null;
+  }
+  const isTitle = (line: string) => /^(#{1,6}\s+\S|\*\*[^*]+\*\*$)/.test(line);
+  const titled = [...paragraphs].reverse().find(paragraph => isTitle(paragraph.split("\n")[0].trim()));
+  const source = titled ?? paragraphs[paragraphs.length - 1];
+  const line = source.split("\n")[0].trim().replace(/^#{1,6}\s+/, "").replace(/\*\*/g, "").trim();
+  if (line.length === 0) {
+    return null;
+  }
+  return line.length > MAX_HEADING_LENGTH ? `${line.slice(0, MAX_HEADING_LENGTH - 1).trimEnd()}…` : line;
 }
 
 function doneHeadline(summary: MessageActivityDto, thinkingCount: number, toolCount: number, t: Translate): string {
