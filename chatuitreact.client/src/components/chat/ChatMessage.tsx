@@ -166,7 +166,6 @@ function ChatMessage({ chatId, message, fallbackAssistantName, onStreamingChunk 
             <SyntaxHighlighter
               style={currentCodeblockStyle}
               language={language}
-              PreTag="div"
               {...props}
             >
               {codeText}
