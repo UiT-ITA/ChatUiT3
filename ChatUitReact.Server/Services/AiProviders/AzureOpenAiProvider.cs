@@ -144,7 +144,7 @@ public sealed class AzureOpenAiProvider : IAiProvider
                 // never available; this is what the activity panel shows as thinking.
                 ReasoningSummaryVerbosity = parameters.ReasoningActive
                     ? ResponseReasoningSummaryVerbosity.Detailed
-                    : null
+                    : (ResponseReasoningSummaryVerbosity?)null
             };
         }
 
