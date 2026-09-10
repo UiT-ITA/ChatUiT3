@@ -201,6 +201,11 @@ public partial class DatabaseService
 
         [JsonProperty("capabilities")]
         public ModelCapabilitiesDocument Capabilities { get; set; } = new();
+
+        // Absent in rows saved before protocols were per model; null is surfaced, not defaulted.
+        [JsonProperty("apiProtocol")]
+        [JsonConverter(typeof(StringEnumConverter))]
+        public ApiProtocol? ApiProtocol { get; set; }
     }
 
     /// <summary>

@@ -1,25 +1,27 @@
 import { signal, Signal } from '@preact/signals-react';
-import { charEstimateTokenizer, type TextEncoding, type Tokenizer } from '../utils/tokenCounting';
+import { builtInTokenizer, type ParsedScheme, type TextEncoding, type Tokenizer } from '../utils/tokenCounting';
 
 /**
  * Lazily loads one tokenizer vocabulary per encoding. Each `import()` below is a static
  * specifier so Vite emits one chunk per vocabulary, fetched the first time a model on
- * that encoding is seen and never otherwise.
+ * that encoding is seen and never otherwise. Estimate schemes need no vocabulary and are
+ * built from the scheme itself, keyed by scheme id since the ratio is part of the scheme.
  */
-const tokenizerSignals = new Map<TextEncoding, Signal<Tokenizer | undefined>>();
+const tokenizerSignals = new Map<string, Signal<Tokenizer | undefined>>();
 const loading = new Map<TextEncoding, Promise<void>>();
 
-export function getTokenizer(encoding: TextEncoding): Signal<Tokenizer | undefined> {
-    let tokenizerSignal = tokenizerSignals.get(encoding);
+export function getTokenizer(scheme: ParsedScheme): Signal<Tokenizer | undefined> {
+    const builtIn = builtInTokenizer(scheme);
+    const key = builtIn ? `scheme:${scheme.id}` : `encoding:${scheme.encoding}`;
+
+    let tokenizerSignal = tokenizerSignals.get(key);
     if (!tokenizerSignal) {
-        tokenizerSignal = signal<Tokenizer | undefined>(
-            encoding === 'char-estimate-3.5' ? charEstimateTokenizer : undefined,
-        );
-        tokenizerSignals.set(encoding, tokenizerSignal);
+        tokenizerSignal = signal<Tokenizer | undefined>(builtIn);
+        tokenizerSignals.set(key, tokenizerSignal);
     }
 
-    if (tokenizerSignal.value === undefined && !loading.has(encoding)) {
-        loading.set(encoding, load(encoding, tokenizerSignal));
+    if (tokenizerSignal.value === undefined && !loading.has(scheme.encoding)) {
+        loading.set(scheme.encoding, load(scheme.encoding, tokenizerSignal));
     }
 
     return tokenizerSignal;
@@ -45,7 +47,8 @@ function importEncoding(encoding: TextEncoding) {
             return import('gpt-tokenizer/encoding/o200k_base');
         case 'cl100k_base':
             return import('gpt-tokenizer/encoding/cl100k_base');
-        case 'char-estimate-3.5':
-            throw new Error('The character estimate needs no vocabulary.');
+        case 'char-estimate':
+        case 'word-count':
+            throw new Error('Estimate schemes need no vocabulary.');
     }
 }

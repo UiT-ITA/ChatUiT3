@@ -82,7 +82,7 @@ export function getContextUsage(chatId: string | undefined): Signal<ContextUsage
         const scheme = parseScheme(model.capabilities.tokenCountingScheme);
         if (!scheme) return UNAVAILABLE;
 
-        const tokenizer = getTokenizer(scheme.encoding).value;
+        const tokenizer = getTokenizer(scheme).value;
         if (!tokenizer) return { ...UNAVAILABLE, scheme: scheme.id, isEstimate: scheme.isEstimate };
 
         const fixed = assistant.promptTokenCounts?.[scheme.id] ?? 0;

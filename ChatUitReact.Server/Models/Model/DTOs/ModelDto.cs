@@ -67,6 +67,14 @@ public class ModelDto
 
     [Required]
     public ModelCapabilitiesDto Capabilities { get; set; } = new ModelCapabilitiesDto();
+
+    /// <summary>
+    /// An <see cref="Models.ApiProtocol"/> name. A string, not the enum, because this API has
+    /// no string-enum converter; the endpoint controller converts its type the same way.
+    /// Empty on a stored row that predates the field.
+    /// </summary>
+    [Required(AllowEmptyStrings = true)]
+    public string ApiProtocol { get; set; } = string.Empty;
 }
 
 public class CreateModelDto
@@ -94,6 +102,14 @@ public class CreateModelDto
 
     [Required]
     public ModelCapabilitiesDto Capabilities { get; set; } = new ModelCapabilitiesDto();
+
+    /// <summary>
+    /// An <see cref="Models.ApiProtocol"/> name. A string, not the enum, because this API has
+    /// no string-enum converter; the endpoint controller converts its type the same way.
+    /// Empty on a stored row that predates the field.
+    /// </summary>
+    [Required(AllowEmptyStrings = true)]
+    public string ApiProtocol { get; set; } = string.Empty;
 }
 
 public class UpdateModelDto
@@ -124,4 +140,12 @@ public class UpdateModelDto
 
     [Required]
     public ModelCapabilitiesDto Capabilities { get; set; } = new ModelCapabilitiesDto();
+
+    /// <summary>
+    /// An <see cref="Models.ApiProtocol"/> name. A string, not the enum, because this API has
+    /// no string-enum converter; the endpoint controller converts its type the same way.
+    /// Empty on a stored row that predates the field.
+    /// </summary>
+    [Required(AllowEmptyStrings = true)]
+    public string ApiProtocol { get; set; } = string.Empty;
 }

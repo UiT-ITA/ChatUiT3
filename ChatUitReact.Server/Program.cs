@@ -2,6 +2,7 @@ using ChatUitReact.Server.Hubs;
 using ChatUitReact.Server.Models;
 using ChatUitReact.Server.Services;
 using ChatUitReact.Server.Services.AiProviders;
+using ChatUitReact.Server.Services.AiProviders.Protocols;
 using ChatUitReact.Server.Services.TokenCounting;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.Identity.Web;
@@ -92,9 +93,15 @@ builder.Services.AddSingleton<IModelService, ModelService>();
 builder.Services.AddSingleton<ISettingsService, SettingsService>();
 builder.Services.AddSingleton<IChatService, ChatService>();
 builder.Services.AddSingleton<IAssistantService, AssistantService>();
-// One IAiProvider per supported EndpointType; the registry resolves by type, so adding a
-// provider is a single registration and nothing else dispatches on EndpointType.
+// One IApiProtocol per wire protocol and one IAiProvider (host) per EndpointType. A host
+// composes the URL for the model's protocol and hands off to that protocol's adapter; the
+// two registries resolve by type, so adding either is a single registration here.
+builder.Services.AddSingleton<IApiProtocol, OpenAiResponsesProtocol>();
+builder.Services.AddSingleton<IApiProtocol, OpenAiChatCompletionsProtocol>();
+builder.Services.AddSingleton<IApiProtocol, AnthropicMessagesProtocol>();
+builder.Services.AddSingleton<IApiProtocolRegistry, ApiProtocolRegistry>();
 builder.Services.AddSingleton<IAiProvider, AzureOpenAiProvider>();
+builder.Services.AddSingleton<IAiProvider, MicrosoftFoundryProvider>();
 builder.Services.AddSingleton<IAiProvider, AnthropicProvider>();
 builder.Services.AddSingleton<IAiProviderRegistry, AiProviderRegistry>();
 builder.Services.AddSingleton<AiConversationRunner>();

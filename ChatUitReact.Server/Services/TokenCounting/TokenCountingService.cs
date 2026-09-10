@@ -29,8 +29,6 @@ public sealed class TokenCountingService : ITokenCountingService
     private const int FallbackImageWidth = 2048;
     private const int FallbackImageHeight = 1024;
 
-    private const double CharsPerTokenEstimate = 3.5;
-
     private readonly IModelService _modelService;
     private readonly ILogger<TokenCountingService> _logger;
     private readonly Lazy<TiktokenTokenizer> _o200k = new(() => TiktokenTokenizer.CreateForEncoding("o200k_base"));
@@ -54,7 +52,7 @@ public sealed class TokenCountingService : ITokenCountingService
             .ToList();
     }
 
-    public int CountText(string text, string schemeId) => CountText(text, Parse(schemeId).Encoding);
+    public int CountText(string text, string schemeId) => CountText(text, Parse(schemeId));
 
     public int CountImage(int width, int height, string schemeId) =>
         ImageTokenMath.Tokens(width, height, Parse(schemeId).ImageCost);
@@ -68,17 +66,17 @@ public sealed class TokenCountingService : ITokenCountingService
         var schemes = schemeIds.Select(Parse).ToList();
         var parts = MessageParts.Build(message, allowImages: true);
 
-        // Text is counted once per encoding and shared by every scheme using it; only the
+        // Text is counted once per text rule and shared by every scheme using it; only the
         // image term differs between, say, o200k-tile and o200k-patch-1.62.
         var textRuns = ConcatenateTextRuns(parts);
-        var textTokensByEncoding = new Dictionary<TextEncoding, int>();
-        var contentTokensByEncoding = new Dictionary<TextEncoding, int>();
-        foreach (var encoding in schemes.Select(s => s.Encoding).Distinct())
+        var textTokensByRule = new Dictionary<(TextEncoding, double?), int>();
+        var contentTokensByRule = new Dictionary<(TextEncoding, double?), int>();
+        foreach (var scheme in schemes.DistinctBy(s => s.TextRule))
         {
-            textTokensByEncoding[encoding] = textRuns.Sum(run => CountText(run, encoding));
+            textTokensByRule[scheme.TextRule] = textRuns.Sum(run => CountText(run, scheme));
             if (hasFiles)
             {
-                contentTokensByEncoding[encoding] = CountText(message.Content ?? string.Empty, encoding);
+                contentTokensByRule[scheme.TextRule] = CountText(message.Content ?? string.Empty, scheme);
             }
         }
 
@@ -89,7 +87,7 @@ public sealed class TokenCountingService : ITokenCountingService
         foreach (var scheme in schemes)
         {
             var imageTokens = imageDimensions.Sum(d => ImageTokenMath.Tokens(d.Width, d.Height, scheme.ImageCost));
-            var tokens = MessageFramingTokens + textTokensByEncoding[scheme.Encoding] + imageTokens;
+            var tokens = MessageFramingTokens + textTokensByRule[scheme.TextRule] + imageTokens;
             total[scheme.Id] = tokens;
 
             // The attachment share is derived by subtraction, leaving the total (and the wire
@@ -97,7 +95,7 @@ public sealed class TokenCountingService : ITokenCountingService
             // one text run, so the split can be off by a token at that boundary.
             if (hasFiles)
             {
-                files[scheme.Id] = Math.Max(0, tokens - MessageFramingTokens - contentTokensByEncoding[scheme.Encoding]);
+                files[scheme.Id] = Math.Max(0, tokens - MessageFramingTokens - contentTokensByRule[scheme.TextRule]);
             }
         }
 
@@ -111,7 +109,7 @@ public sealed class TokenCountingService : ITokenCountingService
 
         if (!string.IsNullOrEmpty(systemPrompt))
         {
-            total += CountText(systemPrompt, scheme.Encoding) + MessageFramingTokens;
+            total += CountText(systemPrompt, scheme) + MessageFramingTokens;
         }
 
         if (tools.Count > 0)
@@ -119,7 +117,7 @@ public sealed class TokenCountingService : ITokenCountingService
             foreach (var tool in tools)
             {
                 total += ToolFunctionInit;
-                total += CountText($"{tool.FunctionName}:{TrimPeriod(tool.Description)}", scheme.Encoding);
+                total += CountText($"{tool.FunctionName}:{TrimPeriod(tool.Description)}", scheme);
 
                 if (tool.Parameters.Count > 0)
                 {
@@ -127,14 +125,14 @@ public sealed class TokenCountingService : ITokenCountingService
                     foreach (var parameter in tool.Parameters)
                     {
                         total += ToolPropertyKey;
-                        total += CountText($"{parameter.Name}:{parameter.Type}:{TrimPeriod(parameter.Description)}", scheme.Encoding);
+                        total += CountText($"{parameter.Name}:{parameter.Type}:{TrimPeriod(parameter.Description)}", scheme);
 
                         if (parameter.Enum is { Length: > 0 })
                         {
                             total += ToolEnumInit;
                             foreach (var value in parameter.Enum)
                             {
-                                total += ToolEnumItem + CountText(value, scheme.Encoding);
+                                total += ToolEnumItem + CountText(value, scheme);
                             }
                         }
                     }
@@ -174,19 +172,22 @@ public sealed class TokenCountingService : ITokenCountingService
         return true;
     }
 
-    private int CountText(string text, TextEncoding encoding)
+    private int CountText(string text, TokenCountingScheme scheme)
     {
         if (string.IsNullOrEmpty(text))
         {
             return 0;
         }
 
-        return encoding switch
+        return scheme.Encoding switch
         {
             TextEncoding.O200kBase => _o200k.Value.CountTokens(text),
             TextEncoding.Cl100kBase => _cl100k.Value.CountTokens(text),
-            TextEncoding.CharEstimate35 => (int)Math.Ceiling(text.Length / CharsPerTokenEstimate),
-            _ => throw new ArgumentOutOfRangeException(nameof(encoding))
+            TextEncoding.CharEstimate => (int)Math.Ceiling(text.Length / (scheme.CharsPerToken
+                ?? throw new InvalidOperationException($"Scheme '{scheme.Id}' has no chars-per-token ratio."))),
+            // Whitespace-separated words; the client's /\s+/ split gives the same count.
+            TextEncoding.WordCount => text.Split((char[]?)null, StringSplitOptions.RemoveEmptyEntries).Length,
+            _ => throw new ArgumentOutOfRangeException(nameof(scheme), scheme.Encoding, "Unknown text encoding")
         };
     }
 
