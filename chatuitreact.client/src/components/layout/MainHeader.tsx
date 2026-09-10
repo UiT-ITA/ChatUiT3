@@ -7,6 +7,7 @@ import { getAssistants } from '../../services/assistantService';
 import { conversationPanelOpenSignal } from '../../services/uiService';
 import useMediaQuery from '../../hooks/useMediaQuery';
 import type { SettingsCategory } from '../../types/settingsModels';
+import { isHelpSection } from '../help/helpSections';
 
 const SETTINGS_TABS: SettingsCategory[] = ['appearance', 'personalization', 'dataControl'];
 
@@ -31,6 +32,7 @@ const MainHeader = ({ isMobile }: MainHeaderProps) => {
   const section = location.pathname.startsWith('/assistants') ? 'assistants'
     : location.pathname.startsWith('/admin') ? 'admin'
     : location.pathname.startsWith('/settings') ? 'settings'
+    : location.pathname.startsWith('/help') ? 'help'
     : 'chats';
 
   const sectionTitles: Record<string, string> = {
@@ -38,6 +40,7 @@ const MainHeader = ({ isMobile }: MainHeaderProps) => {
     assistants: t('contextColumn.assistants'),
     admin: t('contextColumn.admin'),
     settings: t('contextColumn.settings'),
+    help: t('contextColumn.help'),
   };
 
   const sectionRoots: Record<string, string> = {
@@ -45,6 +48,7 @@ const MainHeader = ({ isMobile }: MainHeaderProps) => {
     assistants: '/assistants',
     admin: '/admin',
     settings: '/settings',
+    help: '/help',
   };
 
   // Chat: the header carries the conversation title
@@ -70,6 +74,8 @@ const MainHeader = ({ isMobile }: MainHeaderProps) => {
       chip = all.find(a => a.id === pathParts[1])?.name ?? '';
     } else if (section === 'admin' && pathParts[1]) {
       chip = t(`admin.tabs.${pathParts[1]}`, { defaultValue: '' });
+    } else if (section === 'help' && isHelpSection(pathParts[1])) {
+      chip = t(`help.sections.${pathParts[1]}`);
     }
   }
 

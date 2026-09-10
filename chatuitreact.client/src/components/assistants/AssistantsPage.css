@@ -12,6 +12,8 @@
   max-width: 51.25rem;
   padding: 1.75rem 2rem 5rem;
   color: var(--text);
+  width: 100%;
+  margin: 0 auto;
 }
 
 .assistants-intro {

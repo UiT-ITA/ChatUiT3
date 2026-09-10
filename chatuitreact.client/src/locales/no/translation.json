@@ -388,7 +388,8 @@
     "admin": "Administrasjon",
     "settings": "Innstillinger",
     "searchChats": "Søk i samtaler",
-    "adminNote": "Administrasjon av endepunkter, modeller og systemassistenter."
+    "adminNote": "Administrasjon av endepunkter, modeller og systemassistenter.",
+    "help": "Hjelp"
   },
   "common": {
     "close": "Lukk",
@@ -554,5 +555,39 @@
     "title": "Noe gikk galt under oppstart av appen",
     "retry": "Prøv igjen",
     "signOut": "Logg ut"
+  },
+  "help": {
+    "sections": {
+      "getting-started": "Kom i gang",
+      "chatting": "Samtaler med assistenten",
+      "files": "Arbeide med filer",
+      "chats": "Håndtere samtaler",
+      "assistants": "Assistenter",
+      "models": "Modeller, resonnering og verktøy",
+      "settings": "Innstillinger",
+      "prompting": "Skriv bedre spørsmål",
+      "troubleshooting": "Feilsøking"
+    },
+    "loading": "Laster…",
+    "loadError": "Kunne ikke laste denne siden. Prøv igjen senere.",
+    "notImplemented": "Ikke implementert enda",
+    "partOf": "Del {{n}} av {{total}}",
+    "next": "Neste · Del {{n}}",
+    "callouts": {
+      "tip": "Tips",
+      "note": "Merk",
+      "warning": "Vær oppmerksom"
+    },
+    "descriptions": {
+      "getting-started": "Logg inn, finn fram i appen og få ditt første svar.",
+      "chatting": "Meldingsfeltet, stoppe et svar, lese formaterte svar og hva aktivitetslinjen forteller.",
+      "files": "Hvilke filer du kan legge ved, hva assistenten ser, og grensene.",
+      "chats": "Finn, favorittmerk, gi nytt navn til og slett samtaler, og les samtalepanelet.",
+      "assistants": "Velg, lag og del assistenter: modell, instruks, verktøy og kunnskapsfiler.",
+      "models": "Egenskaper, resonneringsinnsats, temperatur, kontekstvindu og verktøy forklart.",
+      "settings": "Tema, fargemodus, tekststørrelse, språk og hva appen vet om deg.",
+      "prompting": "Åtte vaner som gir bedre svar med mindre fram og tilbake.",
+      "troubleshooting": "Hva du gjør når noe er tregt, mangler eller er feil, og hvor du får hjelp."
+    }
   }
 }
