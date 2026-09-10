@@ -10,6 +10,8 @@ import { getAssistants } from '../../services/assistantService';
 import { adminEndpointsSignal, adminModelsSignal, adminAssistantsSignal, loadAdminData } from '../../services/adminDataService';
 import { useAuth } from '../../contexts/AuthContext';
 import type { SettingsCategory } from '../../types/settingsModels';
+import { HELP_SECTIONS, isHelpSection } from '../help/helpSections';
+import HelpSectionNav from '../help/HelpSectionNav';
 import './ContextColumn.css';
 
 interface ContextColumnProps {
@@ -31,6 +33,7 @@ const ContextColumn = ({ isMobile }: ContextColumnProps) => {
   const section = location.pathname.startsWith('/assistants') ? 'assistants'
     : location.pathname.startsWith('/admin') ? 'admin'
     : location.pathname.startsWith('/settings') ? 'settings'
+    : location.pathname.startsWith('/help') ? 'help'
     : 'chats';
 
   useEffect(() => {
@@ -58,12 +61,17 @@ const ContextColumn = ({ isMobile }: ContextColumnProps) => {
     assistants: t('contextColumn.assistants'),
     admin: t('contextColumn.admin'),
     settings: t('contextColumn.settings'),
+    help: t('contextColumn.help'),
   };
 
   const activeSettingsTab: SettingsCategory =
     section === 'settings' && SETTINGS_TABS.includes(pathParts[1] as SettingsCategory)
       ? pathParts[1] as SettingsCategory
       : 'appearance';
+
+  const activeHelpSection = section === 'help'
+    ? (isHelpSection(pathParts[1]) ? pathParts[1] : HELP_SECTIONS[0])
+    : undefined;
 
   const activeAdminTab = section === 'admin' ? pathParts[1] : undefined;
   const activeAdminId = section === 'admin' ? pathParts[2] : undefined;
@@ -136,6 +144,12 @@ const ContextColumn = ({ isMobile }: ContextColumnProps) => {
               {t(`settings.categories.${tabId}`)}
             </button>
           ))}
+        </div>
+      )}
+
+      {section === 'help' && activeHelpSection && (
+        <div className="context-column-scroll">
+          <HelpSectionNav activeSection={activeHelpSection} />
         </div>
       )}
 

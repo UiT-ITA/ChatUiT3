@@ -11,6 +11,7 @@ import './styles/typography.css';
 import AssistantsPage from './components/assistants/AssistantsPage';
 import AdminPage from './components/admin/AdminPage';
 import SettingsPage from './components/settings/SettingsPage';
+import HelpPage from './components/help/HelpPage';
 import ProtectedRoute from './components/common/ProtectedRoute';
 
 const App: React.FC = () => {
@@ -51,6 +52,8 @@ const App: React.FC = () => {
           <Route path="/assistants/:assistantId" element={<AssistantsPage />} />
           <Route path="/settings" element={<SettingsPage />} />
           <Route path="/settings/:tab" element={<SettingsPage />} />
+          <Route path="/help" element={<HelpPage />} />
+          <Route path="/help/:section" element={<HelpPage />} />
           <Route
             path="/admin"
             element={

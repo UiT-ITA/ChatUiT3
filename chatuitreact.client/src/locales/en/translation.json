@@ -388,7 +388,8 @@
     "admin": "Admin",
     "settings": "Settings",
     "searchChats": "Search chats",
-    "adminNote": "Administration of endpoints, models and system assistants."
+    "adminNote": "Administration of endpoints, models and system assistants.",
+    "help": "Help"
   },
   "common": {
     "close": "Close",
@@ -561,5 +562,39 @@
     "title": "Something went wrong while starting the app",
     "retry": "Retry",
     "signOut": "Sign out"
+  },
+  "help": {
+    "sections": {
+      "getting-started": "Getting started",
+      "chatting": "Chatting",
+      "files": "Working with files",
+      "chats": "Managing chats",
+      "assistants": "Assistants",
+      "models": "Models, reasoning and tools",
+      "settings": "Settings",
+      "prompting": "Writing better prompts",
+      "troubleshooting": "Troubleshooting"
+    },
+    "loading": "Loading…",
+    "loadError": "Could not load this page. Try again later.",
+    "notImplemented": "Not implemented yet",
+    "partOf": "Part {{n}} of {{total}}",
+    "next": "Next · Part {{n}}",
+    "callouts": {
+      "tip": "Tip",
+      "note": "Note",
+      "warning": "Careful"
+    },
+    "descriptions": {
+      "getting-started": "Sign in, find your way around, and get your first answer.",
+      "chatting": "The message box, stopping an answer, reading formatted replies and what the activity line tells you.",
+      "files": "Which files you can attach, what the assistant sees, and the limits.",
+      "chats": "Find, favorite, rename and delete chats, and read the conversation panel.",
+      "assistants": "Pick, create and share assistants: model, instructions, tools and knowledge files.",
+      "models": "Capabilities, reasoning effort, temperature, context windows and tools explained.",
+      "settings": "Theme, colour mode, text size, language and what the app knows about you.",
+      "prompting": "Eight habits that get you better answers with less back and forth.",
+      "troubleshooting": "What to do when something is slow, missing or wrong, and where to get help."
+    }
   }
 }

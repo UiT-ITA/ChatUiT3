@@ -33,6 +33,7 @@ const IconRail = ({ isMobile }: IconRailProps) => {
   const section = location.pathname.startsWith('/assistants') ? 'assistants'
     : location.pathname.startsWith('/admin') ? 'admin'
     : location.pathname.startsWith('/settings') ? 'settings'
+    : location.pathname.startsWith('/help') ? 'help'
     : 'chats';
 
   useEffect(() => {
@@ -101,7 +102,11 @@ const IconRail = ({ isMobile }: IconRailProps) => {
 
       <div className="rail-spacer" />
 
-      <button className="rail-button" onClick={() => go('/help')} title={t('sidebar.help')}>
+      <button
+        className={`rail-button ${section === 'help' ? 'active' : ''}`}
+        onClick={() => go('/help')}
+        title={t('sidebar.help')}
+      >
         <Icon name="help" size={1.25} />
       </button>
       <button className="rail-button" onClick={toggleMode} title={t('sidebar.toggleMode')}>
