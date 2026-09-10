@@ -1,6 +1,33 @@
 import type { FullAssistantDto, CreateAssistantDto, UpdateAssistantDto } from './assistantModels';
 
-export type EndpointType = 'AzureOpenAI' | 'OpenAI' | 'Anthropic' | 'LlamaCpp' | 'Other';
+/** Where an endpoint points (the host). The host decides which protocols it serves and on what path. */
+export type EndpointType = 'AzureOpenAI' | 'OpenAI' | 'Anthropic' | 'LlamaCpp' | 'Other' | 'MicrosoftFoundry';
+
+/** The wire protocol a model answers on. A property of the model: one Foundry endpoint serves all three. */
+export type ApiProtocol = 'OpenAiChatCompletions' | 'OpenAiResponses' | 'AnthropicMessages';
+
+export const API_PROTOCOLS: ApiProtocol[] = ['OpenAiResponses', 'OpenAiChatCompletions', 'AnthropicMessages'];
+
+/**
+ * The token counting schemes an admin can pick. Ids must match what the server parses
+ * (TokenCountingSchemes.TryParse); labelKey names the i18n entry with the label and fit hint.
+ * Ids contain dots, so they are not used as i18n keys themselves.
+ */
+export interface TokenCountingSchemeOption {
+  id: string;
+  labelKey: string;
+  isEstimate: boolean;
+}
+
+export const TOKEN_COUNTING_SCHEME_OPTIONS: TokenCountingSchemeOption[] = [
+  { id: 'o200k-tile', labelKey: 'o200k_tile', isEstimate: false },
+  { id: 'o200k-patch-1.62', labelKey: 'o200k_patch_1_62', isEstimate: false },
+  { id: 'cl100k-tile', labelKey: 'cl100k_tile', isEstimate: false },
+  { id: 'anthropic-estimate', labelKey: 'anthropic_estimate', isEstimate: true },
+  { id: 'char-est-4', labelKey: 'char_est_4', isEstimate: true },
+  { id: 'char-est-3.5', labelKey: 'char_est_3_5', isEstimate: true },
+  { id: 'word-count', labelKey: 'word_count', isEstimate: true },
+];
 
 export interface EndpointDto {
   id: string;
@@ -60,6 +87,8 @@ export interface ModelDto {
   /** Whether a user may pin an assistant on this model as their default. Policy, not capability. */
   allowedAsDefault: boolean;
   capabilities: ModelCapabilities;
+  /** Empty string on a stored row that predates per-model protocols; such a row cannot be used until set. */
+  apiProtocol: ApiProtocol | '';
 }
 
 export interface CreateModelDto {
@@ -71,6 +100,7 @@ export interface CreateModelDto {
   /** Whether a user may pin an assistant on this model as their default. Policy, not capability. */
   allowedAsDefault: boolean;
   capabilities: ModelCapabilities;
+  apiProtocol: ApiProtocol;
 }
 
 export interface UpdateModelDto {
@@ -83,6 +113,7 @@ export interface UpdateModelDto {
   /** Whether a user may pin an assistant on this model as their default. Policy, not capability. */
   allowedAsDefault: boolean;
   capabilities: ModelCapabilities;
+  apiProtocol: ApiProtocol;
 }
 
 /**
@@ -94,6 +125,7 @@ export interface CatalogModelDto {
   displayName: string;
   description: string;
   provider: EndpointType;
+  apiProtocol: ApiProtocol;
   capabilities: ModelCapabilities;
 }
 

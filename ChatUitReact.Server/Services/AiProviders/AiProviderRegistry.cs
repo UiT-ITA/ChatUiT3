@@ -7,7 +7,7 @@ namespace ChatUitReact.Server.Services.AiProviders;
 using ChatUitReact.Server.Models;
 
 /// <summary>
-/// Maps endpoint types to the registered provider. Built from whatever
+/// Maps endpoint types to the registered host provider. Built from whatever
 /// <see cref="IAiProvider"/> implementations DI supplies, so registering a provider is the
 /// only step needed to make its endpoint type usable.
 /// </summary>

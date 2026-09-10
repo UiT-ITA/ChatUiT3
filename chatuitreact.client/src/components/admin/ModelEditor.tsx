@@ -10,8 +10,9 @@ import type {
   TemperatureSupport,
   ReasoningEffortLevel,
   CatalogModelDto,
+  ApiProtocol,
 } from '../../types/admin';
-import { REASONING_EFFORT_ORDER } from '../../types/admin';
+import { API_PROTOCOLS, REASONING_EFFORT_ORDER, TOKEN_COUNTING_SCHEME_OPTIONS } from '../../types/admin';
 
 const ALL_ROLES: UserRole[] = ['User', 'Admin', 'Beta', 'Super', 'External'];
 
@@ -33,10 +34,6 @@ const defaultCapabilities: ModelCapabilities = {
   tokenCountingScheme: null,
 };
 
-// The ids the server parses; the field stays free text so a variant such as
-// "o200k-tile-70-140" or "o200k-patch-2.46" can be entered without a client change.
-const KNOWN_TOKEN_COUNTING_SCHEMES = ['o200k-tile', 'o200k-patch-1.62', 'cl100k-tile', 'anthropic-estimate'];
-
 interface ModelEditorProps {
   modelId?: string;
 }
@@ -55,6 +52,8 @@ const ModelEditor: React.FC<ModelEditorProps> = ({ modelId: editId }) => {
   const [endpointId, setEndpointId] = useState('');
   const [allowedRoles, setAllowedRoles] = useState<UserRole[]>([]);
   const [allowedAsDefault, setAllowedAsDefault] = useState(false);
+  // '' until the admin picks one; a stored row from before per-model protocols also arrives as ''.
+  const [apiProtocol, setApiProtocol] = useState<ApiProtocol | ''>('');
   const [capabilities, setCapabilities] = useState<ModelCapabilities>(defaultCapabilities);
   const [knowledgeCutoffMonth, setKnowledgeCutoffMonth] = useState<string>('');
   const [saving, setSaving] = useState(false);
@@ -76,6 +75,7 @@ const ModelEditor: React.FC<ModelEditorProps> = ({ modelId: editId }) => {
     setAllowedRoles(model ? (model.allowedRoles ?? []) : [...ALL_ROLES]);
     // A new model starts ticked; an admin unticks it for models too expensive to run unprompted.
     setAllowedAsDefault(model?.allowedAsDefault ?? true);
+    setApiProtocol(model?.apiProtocol ?? '');
     const caps = model?.capabilities ?? defaultCapabilities;
     setCapabilities(caps);
     const iso = caps.knowledgeCutoff;
@@ -122,6 +122,7 @@ const ModelEditor: React.FC<ModelEditorProps> = ({ modelId: editId }) => {
   // register a preview or self-hosted model the catalog has never heard of.
   const applyCatalogEntry = (entry: CatalogModelDto) => {
     setModelId(entry.modelId);
+    setApiProtocol(entry.apiProtocol);
     setCapabilities(entry.capabilities);
     const cutoff = entry.capabilities.knowledgeCutoff;
     setKnowledgeCutoffMonth(typeof cutoff === 'string' && cutoff.length >= 7 ? cutoff.slice(0, 7) : '');
@@ -134,6 +135,7 @@ const ModelEditor: React.FC<ModelEditorProps> = ({ modelId: editId }) => {
     !!modelName &&
     !!description &&
     !!endpointId &&
+    apiProtocol !== '' &&
     // AllowedRoles is enforced, so a model saved with no roles would be invisible to
     // everyone with nothing to explain why.
     allowedRoles.length > 0 &&
@@ -143,6 +145,7 @@ const ModelEditor: React.FC<ModelEditorProps> = ({ modelId: editId }) => {
     Number(capabilities.defaultMaxOutputTokens) <= Number(capabilities.maxOutputTokens);
 
   const handleSave = async () => {
+    // canSave already requires a protocol; TypeScript narrows apiProtocol through that alias.
     if (!canSave || saving) return;
     setSaving(true);
     try {
@@ -151,7 +154,7 @@ const ModelEditor: React.FC<ModelEditorProps> = ({ modelId: editId }) => {
         knowledgeCutoff: knowledgeCutoffMonth ? `${knowledgeCutoffMonth}-01T00:00:00Z` : null,
         tokenCountingScheme: capabilities.tokenCountingScheme?.trim() || null,
       };
-      const payload = { modelId, modelName, description, endpointId, allowedRoles, allowedAsDefault, capabilities: capsToSend };
+      const payload = { modelId, modelName, description, endpointId, allowedRoles, allowedAsDefault, apiProtocol, capabilities: capsToSend };
 
       if (model) {
         await updateModel(model.id, { id: model.id, ...payload });
@@ -209,7 +212,7 @@ const ModelEditor: React.FC<ModelEditorProps> = ({ modelId: editId }) => {
             className="admin-input t-body"
             value={modelId}
             onChange={(e) => setModelId(e.target.value)}
-            placeholder="gpt-5.4, claude-opus-5 …"
+            placeholder="gpt-5.4, claude-opus-5, DeepSeek-V4-Flash …"
           />
         </div>
         <div className="admin-field">
@@ -232,17 +235,37 @@ const ModelEditor: React.FC<ModelEditorProps> = ({ modelId: editId }) => {
         />
       </div>
 
-      <div className="admin-field">
-        <label className="admin-label t-label">{t('admin.models.fields.endpoint')}</label>
-        <select
-          className="admin-select t-body"
-          value={endpointId}
-          onChange={(e) => setEndpointId(e.target.value)}
-        >
-          {endpoints.map(ep => (
-            <option key={ep.id} value={ep.id}>{ep.url}</option>
-          ))}
-        </select>
+      <div className="admin-field-grid">
+        <div className="admin-field">
+          <label className="admin-label t-label">{t('admin.models.fields.endpoint')}</label>
+          <select
+            className="admin-select t-body"
+            value={endpointId}
+            onChange={(e) => setEndpointId(e.target.value)}
+          >
+            {endpoints.map(ep => (
+              <option key={ep.id} value={ep.id}>
+                {ep.url} ({t(`admin.endpointType.${ep.endpointType}`)})
+              </option>
+            ))}
+          </select>
+        </div>
+        <div className="admin-field">
+          <label className="admin-label t-label">{t('admin.models.fields.apiProtocol')}</label>
+          <select
+            className="admin-select t-body"
+            value={apiProtocol}
+            onChange={(e) => setApiProtocol(e.target.value as ApiProtocol | '')}
+          >
+            <option value="" disabled>{t('admin.models.fields.apiProtocolNone')}</option>
+            {API_PROTOCOLS.map(protocol => (
+              <option key={protocol} value={protocol}>{t(`admin.apiProtocol.${protocol}`)}</option>
+            ))}
+          </select>
+          <div className="af-note t-ui-plain">
+            {apiProtocol === '' ? t('admin.models.fields.apiProtocolRequired') : t('admin.models.fields.apiProtocolHint')}
+          </div>
+        </div>
       </div>
 
       <div className="admin-field">
@@ -375,20 +398,32 @@ const ModelEditor: React.FC<ModelEditorProps> = ({ modelId: editId }) => {
         </div>
         <div className="admin-field">
           <label className="admin-label t-label">{t('admin.models.fields.tokenCountingScheme')}</label>
-          <input
-            className="admin-input t-body"
-            type="text"
-            list="token-counting-schemes"
-            placeholder={t('admin.models.fields.tokenCountingSchemeNone')}
+          <select
+            className="admin-select t-body"
             value={capabilities.tokenCountingScheme ?? ''}
             onChange={(e) => updateCaps('tokenCountingScheme', e.target.value || null)}
-          />
-          <datalist id="token-counting-schemes">
-            {KNOWN_TOKEN_COUNTING_SCHEMES.map(scheme => (
-              <option key={scheme} value={scheme} />
+          >
+            <option value="">{t('admin.models.fields.tokenCountingSchemeNone')}</option>
+            {/* The fit is in the label because browsers show no tooltip for options in an open list. */}
+            {TOKEN_COUNTING_SCHEME_OPTIONS.map(option => (
+              <option key={option.id} value={option.id} title={t(`admin.tokenCountingSchemes.${option.labelKey}.hint`)}>
+                {t(`admin.tokenCountingSchemes.${option.labelKey}.label`)}
+              </option>
             ))}
-          </datalist>
-          <div className="af-note t-ui-plain">{t('admin.models.fields.tokenCountingSchemeHint')}</div>
+            {/* A hand-entered variant such as "o200k-tile-70-140" on an existing row stays selectable. */}
+            {capabilities.tokenCountingScheme && !TOKEN_COUNTING_SCHEME_OPTIONS.some(o => o.id === capabilities.tokenCountingScheme) && (
+              <option value={capabilities.tokenCountingScheme}>{capabilities.tokenCountingScheme}</option>
+            )}
+          </select>
+          <div className="af-note t-ui-plain">
+            {(() => {
+              const selected = TOKEN_COUNTING_SCHEME_OPTIONS.find(o => o.id === capabilities.tokenCountingScheme);
+              if (selected) return t(`admin.tokenCountingSchemes.${selected.labelKey}.hint`);
+              return capabilities.tokenCountingScheme
+                ? t('admin.models.fields.tokenCountingSchemeCustom')
+                : t('admin.models.fields.tokenCountingSchemeHint');
+            })()}
+          </div>
         </div>
       </div>
 

@@ -13,10 +13,14 @@ public enum TextEncoding
     Cl100kBase,
 
     /// <summary>
-    /// No tokenizer: characters divided by 3.5. Anthropic documents roughly 3.5 English
-    /// characters per token and publishes no offline tokenizer, so this is an estimate.
+    /// No tokenizer: characters divided by the scheme's <see cref="TokenCountingScheme.CharsPerToken"/>.
+    /// For models with no public tokenizer. Anthropic documents roughly 3.5 English
+    /// characters per token; 4 is the usual rule of thumb elsewhere.
     /// </summary>
-    CharEstimate35
+    CharEstimate,
+
+    /// <summary>No tokenizer: one token per whitespace-separated word. A rough fallback.</summary>
+    WordCount
 }
 
 public abstract record ImageCostRule;
@@ -32,9 +36,14 @@ public sealed record AreaImageCost(int PixelsPerToken) : ImageCostRule;
 
 /// <summary>
 /// A named way of counting tokens. The id is what gets stored on messages and models, so
-/// it must stay stable once in use.
+/// it must stay stable once in use. <paramref name="CharsPerToken"/> is set only for
+/// <see cref="TextEncoding.CharEstimate"/>.
 /// </summary>
-public sealed record TokenCountingScheme(string Id, TextEncoding Encoding, ImageCostRule ImageCost, bool IsEstimate);
+public sealed record TokenCountingScheme(string Id, TextEncoding Encoding, ImageCostRule ImageCost, bool IsEstimate, double? CharsPerToken = null)
+{
+    /// <summary>What decides a text count. Schemes sharing this share their text tokens.</summary>
+    public (TextEncoding Encoding, double? CharsPerToken) TextRule => (Encoding, CharsPerToken);
+}
 
 /// <summary>
 /// The scheme registry. Ids are parsed, not looked up, so a variant such as a different tile
@@ -45,17 +54,26 @@ public static class TokenCountingSchemes
     public const string O200kTile = "o200k-tile";
     public const string Cl100kTile = "cl100k-tile";
     public const string AnthropicEstimate = "anthropic-estimate";
+    public const string WordCount = "word-count";
 
     private const string O200kTilePrefix = "o200k-tile-";
     private const string Cl100kTilePrefix = "cl100k-tile-";
     private const string O200kPatchPrefix = "o200k-patch-";
+    private const string CharEstimatePrefix = "char-est-";
 
     private const int DefaultTileBase = 85;
     private const int DefaultTilePerTile = 170;
-    private const int AnthropicPixelsPerToken = 750;
+    private const double AnthropicCharsPerToken = 3.5;
+    private const double MaxCharsPerToken = 20;
+    // Anthropic's image rule, also used by the generic estimates since they have none of their own.
+    private const int EstimatePixelsPerToken = 750;
 
     public static string O200kPatch(double multiplier) =>
         O200kPatchPrefix + multiplier.ToString("0.##", CultureInfo.InvariantCulture);
+
+    /// <summary>"char-est-4": characters divided by four.</summary>
+    public static string CharEstimate(double charsPerToken) =>
+        CharEstimatePrefix + charsPerToken.ToString("0.##", CultureInfo.InvariantCulture);
 
     /// <summary>Trimmed and lower-cased; null for blank input.</summary>
     public static string? Normalize(string? id)
@@ -84,8 +102,19 @@ public static class TokenCountingSchemes
                 scheme = new TokenCountingScheme(normalized, TextEncoding.Cl100kBase, new TileImageCost(DefaultTileBase, DefaultTilePerTile), IsEstimate: false);
                 return true;
             case AnthropicEstimate:
-                scheme = new TokenCountingScheme(normalized, TextEncoding.CharEstimate35, new AreaImageCost(AnthropicPixelsPerToken), IsEstimate: true);
+                scheme = new TokenCountingScheme(normalized, TextEncoding.CharEstimate, new AreaImageCost(EstimatePixelsPerToken), IsEstimate: true, CharsPerToken: AnthropicCharsPerToken);
                 return true;
+            case WordCount:
+                scheme = new TokenCountingScheme(normalized, TextEncoding.WordCount, new AreaImageCost(EstimatePixelsPerToken), IsEstimate: true);
+                return true;
+        }
+
+        if (normalized.StartsWith(CharEstimatePrefix, StringComparison.Ordinal) &&
+            double.TryParse(normalized[CharEstimatePrefix.Length..], NumberStyles.Float, CultureInfo.InvariantCulture, out var charsPerToken) &&
+            charsPerToken > 0 && charsPerToken <= MaxCharsPerToken)
+        {
+            scheme = new TokenCountingScheme(normalized, TextEncoding.CharEstimate, new AreaImageCost(EstimatePixelsPerToken), IsEstimate: true, CharsPerToken: charsPerToken);
+            return true;
         }
 
         if (normalized.StartsWith(O200kTilePrefix, StringComparison.Ordinal) &&

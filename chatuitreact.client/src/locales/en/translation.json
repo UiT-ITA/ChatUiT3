@@ -463,7 +463,9 @@
         "url": "URL",
         "apiKey": "API Key",
         "provider": "Provider",
-        "urlHelpAnthropic": "Use the base URL only, without /v1 — for example https://<resource>.services.ai.azure.com/anthropic. The /v1/messages part is added automatically, so a trailing /v1 makes the request fail."
+        "urlHelpAnthropic": "Use the base URL only, without /v1 — for example https://<resource>.services.ai.azure.com/anthropic. The /v1/messages part is added automatically, so a trailing /v1 makes the request fail.",
+        "urlHelpFoundry": "The resource base URL only — for example https://<resource>.services.ai.azure.com. Do not add /openai/v1 or /anthropic; the path is chosen per model from its API protocol.",
+        "urlHelpAzureOpenAI": "The resource base URL only — for example https://<resource>.openai.azure.com. Serves OpenAI Responses and Chat Completions under /openai/v1; Anthropic models need a Microsoft Foundry or Anthropic endpoint."
       }
     },
     "endpointType": {
@@ -471,7 +473,43 @@
       "OpenAI": "OpenAI",
       "Anthropic": "Anthropic",
       "LlamaCpp": "Llama.cpp",
-      "Other": "Other"
+      "Other": "Other",
+      "MicrosoftFoundry": "Microsoft Foundry"
+    },
+    "apiProtocol": {
+      "OpenAiResponses": "OpenAI Responses",
+      "OpenAiChatCompletions": "OpenAI Chat Completions",
+      "AnthropicMessages": "Anthropic Messages"
+    },
+    "tokenCountingSchemes": {
+      "o200k_tile": {
+        "label": "o200k-tile — gpt-4o, gpt-4.1, gpt-5.x (exact)",
+        "hint": "OpenAI o200k_base tokenizer. Exact for gpt-4o, gpt-4.1 and gpt-5.x. Images priced per 512px tile."
+      },
+      "o200k_patch_1_62": {
+        "label": "o200k-patch-1.62 — gpt-4.1-mini / nano (exact)",
+        "hint": "OpenAI o200k_base tokenizer with patch-priced images. Exact text count for gpt-4.1-mini, gpt-4.1-nano and other patch-priced OpenAI models."
+      },
+      "cl100k_tile": {
+        "label": "cl100k-tile — gpt-4, gpt-3.5 (exact)",
+        "hint": "OpenAI cl100k_base tokenizer. Exact for gpt-4 and gpt-3.5."
+      },
+      "anthropic_estimate": {
+        "label": "anthropic-estimate — Claude (estimate, 3.5 chars/token)",
+        "hint": "Estimate for Claude models: 3.5 characters per token, 750 pixels per image token. Anthropic publishes no offline tokenizer."
+      },
+      "char_est_4": {
+        "label": "char-est-4 — DeepSeek, Llama, Grok, others without a public tokenizer (estimate, 4 chars/token)",
+        "hint": "Estimate for models without a public tokenizer: 4 characters per token. Shown as approximate in the meter."
+      },
+      "char_est_3_5": {
+        "label": "char-est-3.5 — models without a public tokenizer (estimate, 3.5 chars/token)",
+        "hint": "Estimate for models without a public tokenizer: 3.5 characters per token. Shown as approximate in the meter."
+      },
+      "word_count": {
+        "label": "word-count — any model (rough estimate, 1 token/word)",
+        "hint": "Rough estimate that counts whitespace-separated words. Shown as approximate in the meter."
+      }
     },
     "models": {
       "title": "Models",
@@ -513,7 +551,12 @@
         "defaultMaxOutputTokens": "Default output tokens",
         "tokenCountingScheme": "Token counting",
         "tokenCountingSchemeNone": "No counter",
-        "tokenCountingSchemeHint": "Drives the context-window meter. o200k-tile for gpt-4o and later, o200k-patch-1.62 for mini models, anthropic-estimate for Claude (character estimate). Leave empty to show no counter.",
+        "tokenCountingSchemeHint": "Drives the context-window meter. Pick the tokenizer that fits the model; the generic estimates cover models without a public tokenizer. \"No counter\" hides the meter.",
+        "tokenCountingSchemeCustom": "A hand-entered scheme variant kept from an earlier save.",
+        "apiProtocol": "API protocol",
+        "apiProtocolNone": "Select a protocol",
+        "apiProtocolRequired": "Required. Requests to this model fail until a protocol is set.",
+        "apiProtocolHint": "How the model is spoken to on the wire. The endpoint's host adds the matching path, e.g. /openai/v1 or /anthropic on Microsoft Foundry.",
         "knownModel": "Start from a known model",
         "knownModelCustom": "Custom / not listed",
         "knownModelHint": "Fills in the capabilities we have verified for this model. Everything stays editable.",

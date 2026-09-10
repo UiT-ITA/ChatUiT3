@@ -7,7 +7,7 @@ import type { ChatFile } from '../types/fileModels';
  * before send equals the number stored after send.
  */
 
-export type TextEncoding = 'o200k_base' | 'cl100k_base' | 'char-estimate-3.5';
+export type TextEncoding = 'o200k_base' | 'cl100k_base' | 'char-estimate' | 'word-count';
 
 export type ImageRule =
     | { kind: 'tile'; baseTokens: number; tokensPerTile: number }
@@ -19,6 +19,8 @@ export interface ParsedScheme {
     encoding: TextEncoding;
     image: ImageRule;
     isEstimate: boolean;
+    /** Set only for 'char-estimate'. */
+    charsPerToken?: number;
 }
 
 export interface Tokenizer {
@@ -28,9 +30,12 @@ export interface Tokenizer {
 /** Per-message framing. Must equal TokenCountingService.MessageFramingTokens on the server. */
 export const MESSAGE_FRAMING_TOKENS = 4;
 
-const CHARS_PER_TOKEN_ESTIMATE = 3.5;
+const ANTHROPIC_CHARS_PER_TOKEN = 3.5;
+const MAX_CHARS_PER_TOKEN = 20;
 
 const DEFAULT_TILE: ImageRule = { kind: 'tile', baseTokens: 85, tokensPerTile: 170 };
+// Anthropic's image rule, also used by the generic estimates since they have none of their own.
+const ESTIMATE_IMAGE: ImageRule = { kind: 'area', pixelsPerToken: 750 };
 
 // The client's normalization bound, and the server's fallback when a header cannot be read.
 const FALLBACK_IMAGE_WIDTH = 2048;
@@ -47,7 +52,17 @@ export function parseScheme(id: string | null | undefined): ParsedScheme | null 
         return { id: normalized, encoding: 'cl100k_base', image: DEFAULT_TILE, isEstimate: false };
     }
     if (normalized === 'anthropic-estimate') {
-        return { id: normalized, encoding: 'char-estimate-3.5', image: { kind: 'area', pixelsPerToken: 750 }, isEstimate: true };
+        return { id: normalized, encoding: 'char-estimate', image: ESTIMATE_IMAGE, isEstimate: true, charsPerToken: ANTHROPIC_CHARS_PER_TOKEN };
+    }
+    if (normalized === 'word-count') {
+        return { id: normalized, encoding: 'word-count', image: ESTIMATE_IMAGE, isEstimate: true };
+    }
+
+    const charEstimate = /^char-est-(\d+(?:\.\d+)?)$/.exec(normalized);
+    if (charEstimate) {
+        const charsPerToken = Number(charEstimate[1]);
+        if (!(charsPerToken > 0 && charsPerToken <= MAX_CHARS_PER_TOKEN)) return null;
+        return { id: normalized, encoding: 'char-estimate', image: ESTIMATE_IMAGE, isEstimate: true, charsPerToken };
     }
 
     const tile = /^(o200k|cl100k)-tile-(\d+)-(\d+)$/.exec(normalized);
@@ -72,10 +87,27 @@ export function parseScheme(id: string | null | undefined): ParsedScheme | null 
     return null;
 }
 
-/** The estimate encoding needs no vocabulary; the others are loaded by tokenizerService. */
-export const charEstimateTokenizer: Tokenizer = {
-    countTokens: (text) => (text.length === 0 ? 0 : Math.ceil(text.length / CHARS_PER_TOKEN_ESTIMATE)),
+/** The estimate encodings need no vocabulary; the tiktoken ones are loaded by tokenizerService. */
+export function charEstimateTokenizer(charsPerToken: number): Tokenizer {
+    return { countTokens: (text) => (text.length === 0 ? 0 : Math.ceil(text.length / charsPerToken)) };
+}
+
+/** Whitespace-separated words; matches the server's Split on whitespace. */
+export const wordCountTokenizer: Tokenizer = {
+    countTokens: (text) => text.split(/\s+/).filter((word) => word.length > 0).length,
 };
+
+/** The tokenizer for a scheme that needs no vocabulary, or undefined when it needs one. */
+export function builtInTokenizer(scheme: ParsedScheme): Tokenizer | undefined {
+    switch (scheme.encoding) {
+        case 'char-estimate':
+            return charEstimateTokenizer(scheme.charsPerToken ?? ANTHROPIC_CHARS_PER_TOKEN);
+        case 'word-count':
+            return wordCountTokenizer;
+        default:
+            return undefined;
+    }
+}
 
 export function countImageTokens(width: number, height: number, rule: ImageRule): number {
     let w = Math.max(1, width);

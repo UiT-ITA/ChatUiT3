@@ -6,7 +6,7 @@ import { createEndpoint, updateEndpoint, deleteEndpoint } from '../../services/a
 import { adminEndpointsSignal, loadAdminData } from '../../services/adminDataService';
 import type { EndpointType } from '../../types/admin';
 
-const PROVIDERS: EndpointType[] = ['AzureOpenAI', 'OpenAI', 'Anthropic', 'LlamaCpp', 'Other'];
+const PROVIDERS: EndpointType[] = ['AzureOpenAI', 'MicrosoftFoundry', 'Anthropic', 'OpenAI', 'LlamaCpp', 'Other'];
 
 interface EndpointEditorProps {
   endpointId?: string;
@@ -77,6 +77,12 @@ const EndpointEditor: React.FC<EndpointEditorProps> = ({ endpointId }) => {
         <label className="admin-label t-label">{t('admin.endpoints.fields.url')}</label>
         {endpointType === 'Anthropic' && (
           <div className="admin-field-help t-caption">{t('admin.endpoints.fields.urlHelpAnthropic')}</div>
+        )}
+        {endpointType === 'MicrosoftFoundry' && (
+          <div className="admin-field-help t-caption">{t('admin.endpoints.fields.urlHelpFoundry')}</div>
+        )}
+        {endpointType === 'AzureOpenAI' && (
+          <div className="admin-field-help t-caption">{t('admin.endpoints.fields.urlHelpAzureOpenAI')}</div>
         )}
         <input
           className="admin-input t-body"

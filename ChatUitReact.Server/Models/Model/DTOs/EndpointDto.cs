@@ -29,7 +29,8 @@ public class UpdateEndpointDto
     [Required]
     public string Url { get; set; } = string.Empty;
     
-    [Required]
+    /// <summary>Blank means "keep the stored key"; the key is never returned, so an edit that
+    /// does not touch it sends nothing here.</summary>
     public string ApiKey { get; set; } = string.Empty;
     
     [Required]

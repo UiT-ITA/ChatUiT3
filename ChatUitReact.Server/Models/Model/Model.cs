@@ -24,6 +24,13 @@ public class Model
     public bool AllowedAsDefault { get; set; } = false;
 
     public ModelCapabilities Capabilities { get; set; } = new ModelCapabilities();
+
+    /// <summary>
+    /// How this model is spoken to on the wire. Null for a row saved before the field
+    /// existed; such a row is not defaulted but rejected at request time, so a model is never
+    /// silently sent to the wrong API.
+    /// </summary>
+    public ApiProtocol? ApiProtocol { get; set; }
 }
 
 /// <summary>

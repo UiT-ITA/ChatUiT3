@@ -61,8 +61,14 @@ public class AdminModelsController : ControllerBase
                 return BadRequest($"Unknown token counting scheme '{createDto.Capabilities.TokenCountingScheme}'");
             }
 
+            if (!Enum.TryParse<ApiProtocol>(createDto.ApiProtocol, ignoreCase: true, out var protocol))
+            {
+                return BadRequest($"Unknown API protocol '{createDto.ApiProtocol}'");
+            }
+
             var model = new Model
             {
+                ApiProtocol = protocol,
                 ModelId = createDto.ModelId,
                 ModelName = createDto.ModelName,
                 Description = createDto.Description,
@@ -98,8 +104,14 @@ public class AdminModelsController : ControllerBase
                 return BadRequest($"Unknown token counting scheme '{updateDto.Capabilities.TokenCountingScheme}'");
             }
 
+            if (!Enum.TryParse<ApiProtocol>(updateDto.ApiProtocol, ignoreCase: true, out var protocol))
+            {
+                return BadRequest($"Unknown API protocol '{updateDto.ApiProtocol}'");
+            }
+
             var model = new Model
             {
+                ApiProtocol = protocol,
                 Id = updateDto.Id,
                 ModelId = updateDto.ModelId,
                 ModelName = updateDto.ModelName,
@@ -152,6 +164,7 @@ public class AdminModelsController : ControllerBase
         EndpointId = model.EndpointId,
         AllowedRoles = model.AllowedRoles,
         AllowedAsDefault = model.AllowedAsDefault,
+        ApiProtocol = model.ApiProtocol?.ToString() ?? string.Empty,
         Capabilities = new ModelCapabilitiesDto
         {
             SupportsVision = model.Capabilities.SupportsVision,

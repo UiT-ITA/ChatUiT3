@@ -23,6 +23,7 @@ public class AdminModelCatalogController : ControllerBase
             DisplayName = entry.DisplayName,
             Description = entry.Description,
             Provider = entry.Provider.ToString(),
+            ApiProtocol = entry.ApiProtocol.ToString(),
             Capabilities = new ModelCapabilitiesDto
             {
                 SupportsVision = entry.Capabilities.SupportsVision,
@@ -51,5 +52,7 @@ public class CatalogModelDto
     /// string-enum converter — the other admin controllers convert the same way.
     /// </summary>
     public string Provider { get; set; } = string.Empty;
+    /// <summary>The <see cref="Models.ApiProtocol"/> name, converted the same way as <see cref="Provider"/>.</summary>
+    public string ApiProtocol { get; set; } = string.Empty;
     public ModelCapabilitiesDto Capabilities { get; set; } = new();
 }

@@ -463,7 +463,52 @@
         "url": "URL",
         "apiKey": "API-nøkkel",
         "provider": "Tilbyder",
-        "urlHelpAnthropic": "Bruk kun grunn-URL-en, uten /v1 – for eksempel https://<ressurs>.services.ai.azure.com/anthropic. Delen /v1/messages legges til automatisk, så en avsluttende /v1 gjør at forespørselen feiler."
+        "urlHelpAnthropic": "Bruk kun grunn-URL-en, uten /v1 – for eksempel https://<ressurs>.services.ai.azure.com/anthropic. Delen /v1/messages legges til automatisk, så en avsluttende /v1 gjør at forespørselen feiler.",
+        "urlHelpFoundry": "Kun ressursens grunn-URL – for eksempel https://<ressurs>.services.ai.azure.com. Ikke legg til /openai/v1 eller /anthropic; stien velges per modell ut fra API-protokollen.",
+        "urlHelpAzureOpenAI": "Kun ressursens grunn-URL – for eksempel https://<ressurs>.openai.azure.com. Betjener OpenAI Responses og Chat Completions under /openai/v1; Anthropic-modeller trenger et Microsoft Foundry- eller Anthropic-endepunkt."
+      }
+    },
+    "endpointType": {
+      "AzureOpenAI": "Azure OpenAI",
+      "OpenAI": "OpenAI",
+      "Anthropic": "Anthropic",
+      "LlamaCpp": "Llama.cpp",
+      "Other": "Annet",
+      "MicrosoftFoundry": "Microsoft Foundry"
+    },
+    "apiProtocol": {
+      "OpenAiResponses": "OpenAI Responses",
+      "OpenAiChatCompletions": "OpenAI Chat Completions",
+      "AnthropicMessages": "Anthropic Messages"
+    },
+    "tokenCountingSchemes": {
+      "o200k_tile": {
+        "label": "o200k-tile – gpt-4o, gpt-4.1, gpt-5.x (eksakt)",
+        "hint": "OpenAI o200k_base-tokenizer. Eksakt for gpt-4o, gpt-4.1 og gpt-5.x. Bilder prises per 512px-flis."
+      },
+      "o200k_patch_1_62": {
+        "label": "o200k-patch-1.62 – gpt-4.1-mini / nano (eksakt)",
+        "hint": "OpenAI o200k_base-tokenizer med patch-prisede bilder. Eksakt teksttelling for gpt-4.1-mini, gpt-4.1-nano og andre patch-prisede OpenAI-modeller."
+      },
+      "cl100k_tile": {
+        "label": "cl100k-tile – gpt-4, gpt-3.5 (eksakt)",
+        "hint": "OpenAI cl100k_base-tokenizer. Eksakt for gpt-4 og gpt-3.5."
+      },
+      "anthropic_estimate": {
+        "label": "anthropic-estimate – Claude (anslag, 3,5 tegn/token)",
+        "hint": "Anslag for Claude-modeller: 3,5 tegn per token, 750 piksler per bilde-token. Anthropic publiserer ingen frakoblet tokenizer."
+      },
+      "char_est_4": {
+        "label": "char-est-4 – DeepSeek, Llama, Grok, andre uten offentlig tokenizer (anslag, 4 tegn/token)",
+        "hint": "Anslag for modeller uten offentlig tokenizer: 4 tegn per token. Vises som omtrentlig i måleren."
+      },
+      "char_est_3_5": {
+        "label": "char-est-3.5 – modeller uten offentlig tokenizer (anslag, 3,5 tegn/token)",
+        "hint": "Anslag for modeller uten offentlig tokenizer: 3,5 tegn per token. Vises som omtrentlig i måleren."
+      },
+      "word_count": {
+        "label": "word-count – alle modeller (grovt anslag, 1 token/ord)",
+        "hint": "Grovt anslag som teller ord skilt med mellomrom. Vises som omtrentlig i måleren."
       }
     },
     "models": {
@@ -506,7 +551,12 @@
         "defaultMaxOutputTokens": "Standard utdata-tokens",
         "tokenCountingScheme": "Tokentelling",
         "tokenCountingSchemeNone": "Ingen teller",
-        "tokenCountingSchemeHint": "Styrer kontekstvindu-måleren. o200k-tile for gpt-4o og nyere, o200k-patch-1.62 for mini-modeller, anthropic-estimate for Claude (tegn-anslag). La stå tom for å skjule telleren.",
+        "tokenCountingSchemeHint": "Styrer kontekstvindu-måleren. Velg tokenizeren som passer modellen; de generiske anslagene dekker modeller uten offentlig tokenizer. «Ingen teller» skjuler måleren.",
+        "tokenCountingSchemeCustom": "En håndskrevet skjemavariant beholdt fra en tidligere lagring.",
+        "apiProtocol": "API-protokoll",
+        "apiProtocolNone": "Velg en protokoll",
+        "apiProtocolRequired": "Påkrevd. Forespørsler til denne modellen feiler til en protokoll er satt.",
+        "apiProtocolHint": "Hvordan modellen snakkes til på linjen. Endepunktets vert legger til riktig sti, f.eks. /openai/v1 eller /anthropic på Microsoft Foundry.",
         "knownModel": "Start fra en kjent modell",
         "knownModelCustom": "Egendefinert / ikke i listen",
         "knownModelHint": "Fyller inn egenskapene vi har verifisert for denne modellen. Alt kan fortsatt redigeres.",

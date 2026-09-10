@@ -8,13 +8,15 @@ using ChatUitReact.Server.Models;
 using ChatUitReact.Server.Services.TokenCounting;
 
 /// <summary>
-/// A known model and the capabilities it ships with.
+/// A known model: the host it was verified on, the protocol it answers on, and the
+/// capabilities it ships with.
 /// </summary>
 public sealed record CatalogModel(
     string ModelId,
     string DisplayName,
     string Description,
     EndpointType Provider,
+    ApiProtocol ApiProtocol,
     ModelCapabilities Capabilities);
 
 /// <summary>
@@ -26,7 +28,7 @@ public sealed record CatalogModel(
 /// stop a mistyped capability checkbox from becoming a runtime 400 such as
 /// "'temperature' does not support 0.7 with this model".
 ///
-/// Adding a newly released model is one entry here.
+/// Adding a newly released model is one entry here: host, protocol, capabilities, tokenizer.
 /// </summary>
 public static class ModelCatalog
 {
@@ -37,11 +39,11 @@ public static class ModelCatalog
 
     private static List<CatalogModel> Build() =>
     [
-        // ---- OpenAI / Azure OpenAI -------------------------------------------------
+        // ---- OpenAI models on Microsoft Foundry (Responses API) ---------------------
         // The gpt-5.x family accepts a temperature only while reasoning.effort is "none".
         // The 5.6 family adds "max" above "xhigh"; all three variants share the same
         // context window, output ceiling and cutoff, and differ only in cost and depth.
-        new("gpt-5.6-sol", "GPT-5.6 Sol", "Most capable OpenAI model; deepest reasoning.", EndpointType.AzureOpenAI, new ModelCapabilities
+        new("gpt-5.6-sol", "GPT-5.6 Sol", "Most capable OpenAI model; deepest reasoning.", EndpointType.MicrosoftFoundry, ApiProtocol.OpenAiResponses, new ModelCapabilities
         {
             SupportsVision = true,
             SupportsFunctionCalling = true,
@@ -54,7 +56,7 @@ public static class ModelCatalog
             TokenCountingScheme = TokenCountingSchemes.O200kTile
         }),
 
-        new("gpt-5.6-terra", "GPT-5.6 Terra", "Strong performance at lower cost than Sol.", EndpointType.AzureOpenAI, new ModelCapabilities
+        new("gpt-5.6-terra", "GPT-5.6 Terra", "Strong performance at lower cost than Sol.", EndpointType.MicrosoftFoundry, ApiProtocol.OpenAiResponses, new ModelCapabilities
         {
             SupportsVision = true,
             SupportsFunctionCalling = true,
@@ -67,7 +69,7 @@ public static class ModelCatalog
             TokenCountingScheme = TokenCountingSchemes.O200kTile
         }),
 
-        new("gpt-5.6-luna", "GPT-5.6 Luna", "Efficient model for high-volume workloads.", EndpointType.AzureOpenAI, new ModelCapabilities
+        new("gpt-5.6-luna", "GPT-5.6 Luna", "Efficient model for high-volume workloads.", EndpointType.MicrosoftFoundry, ApiProtocol.OpenAiResponses, new ModelCapabilities
         {
             SupportsVision = true,
             SupportsFunctionCalling = true,
@@ -80,7 +82,7 @@ public static class ModelCatalog
             TokenCountingScheme = TokenCountingSchemes.O200kTile
         }),
 
-        new("gpt-5.5", "GPT-5.5", "Previous-generation OpenAI reasoning model.", EndpointType.AzureOpenAI, new ModelCapabilities
+        new("gpt-5.5", "GPT-5.5", "Previous-generation OpenAI reasoning model.", EndpointType.MicrosoftFoundry, ApiProtocol.OpenAiResponses, new ModelCapabilities
         {
             SupportsVision = true,
             SupportsFunctionCalling = true,
@@ -93,7 +95,7 @@ public static class ModelCatalog
             TokenCountingScheme = TokenCountingSchemes.O200kTile
         }),
 
-        new("gpt-5.4", "GPT-5.4", "Reasoning-heavy work that needs deliberate control.", EndpointType.AzureOpenAI, new ModelCapabilities
+        new("gpt-5.4", "GPT-5.4", "Reasoning-heavy work that needs deliberate control.", EndpointType.MicrosoftFoundry, ApiProtocol.OpenAiResponses, new ModelCapabilities
         {
             SupportsVision = true,
             SupportsFunctionCalling = true,
@@ -106,7 +108,7 @@ public static class ModelCatalog
             TokenCountingScheme = TokenCountingSchemes.O200kTile
         }),
 
-        new("gpt-5.4-mini", "GPT-5.4 Mini", "Faster, cheaper reasoning model.", EndpointType.AzureOpenAI, new ModelCapabilities
+        new("gpt-5.4-mini", "GPT-5.4 Mini", "Faster, cheaper reasoning model.", EndpointType.MicrosoftFoundry, ApiProtocol.OpenAiResponses, new ModelCapabilities
         {
             SupportsVision = true,
             SupportsFunctionCalling = true,
@@ -119,7 +121,7 @@ public static class ModelCatalog
             TokenCountingScheme = TokenCountingSchemes.O200kPatch(1.62)
         }),
 
-        new("gpt-4.1", "GPT-4.1", "Fast non-reasoning model with a very large context window.", EndpointType.AzureOpenAI, new ModelCapabilities
+        new("gpt-4.1", "GPT-4.1", "Fast non-reasoning model with a very large context window.", EndpointType.MicrosoftFoundry, ApiProtocol.OpenAiResponses, new ModelCapabilities
         {
             SupportsVision = true,
             SupportsFunctionCalling = true,
@@ -132,7 +134,7 @@ public static class ModelCatalog
             TokenCountingScheme = TokenCountingSchemes.O200kTile
         }),
 
-        new("gpt-4o", "GPT-4o", "General-purpose non-reasoning model.", EndpointType.AzureOpenAI, new ModelCapabilities
+        new("gpt-4o", "GPT-4o", "General-purpose non-reasoning model.", EndpointType.MicrosoftFoundry, ApiProtocol.OpenAiResponses, new ModelCapabilities
         {
             SupportsVision = true,
             SupportsFunctionCalling = true,
@@ -149,7 +151,7 @@ public static class ModelCatalog
         // Models after Claude Opus 4.6 reject any non-default temperature with a 400.
         // Fable 5 and Opus 5 always reason, so their effort ladders deliberately omit
         // "None" — asking Fable 5 not to think is a 400, not a slower answer.
-        new("claude-fable-5", "Claude Fable 5", "Anthropic's most capable model; hardest reasoning and long-horizon agentic work.", EndpointType.Anthropic, new ModelCapabilities
+        new("claude-fable-5", "Claude Fable 5", "Anthropic's most capable model; hardest reasoning and long-horizon agentic work.", EndpointType.Anthropic, ApiProtocol.AnthropicMessages, new ModelCapabilities
         {
             SupportsVision = true,
             SupportsFunctionCalling = true,
@@ -157,10 +159,11 @@ public static class ModelCatalog
             SupportedEfforts = Efforts(ReasoningEffort.Low, ReasoningEffort.Medium, ReasoningEffort.High, ReasoningEffort.XHigh, ReasoningEffort.Max),
             MaxContextTokens = 1_000_000,
             MaxOutputTokens = 128_000,
-            DefaultMaxOutputTokens = 32_000
+            DefaultMaxOutputTokens = 32_000,
+            TokenCountingScheme = TokenCountingSchemes.AnthropicEstimate
         }),
 
-        new("claude-opus-5", "Claude Opus 5", "Most capable Claude model for agentic and long-horizon work.", EndpointType.Anthropic, new ModelCapabilities
+        new("claude-opus-5", "Claude Opus 5", "Most capable Claude model for agentic and long-horizon work.", EndpointType.Anthropic, ApiProtocol.AnthropicMessages, new ModelCapabilities
         {
             SupportsVision = true,
             SupportsFunctionCalling = true,
@@ -168,10 +171,11 @@ public static class ModelCatalog
             SupportedEfforts = Efforts(ReasoningEffort.Low, ReasoningEffort.Medium, ReasoningEffort.High, ReasoningEffort.XHigh, ReasoningEffort.Max),
             MaxContextTokens = 1_000_000,
             MaxOutputTokens = 128_000,
-            DefaultMaxOutputTokens = 32_000
+            DefaultMaxOutputTokens = 32_000,
+            TokenCountingScheme = TokenCountingSchemes.AnthropicEstimate
         }),
 
-        new("claude-sonnet-5", "Claude Sonnet 5", "Near-Opus quality on coding and agentic work, at Sonnet cost.", EndpointType.Anthropic, new ModelCapabilities
+        new("claude-sonnet-5", "Claude Sonnet 5", "Near-Opus quality on coding and agentic work, at Sonnet cost.", EndpointType.Anthropic, ApiProtocol.AnthropicMessages, new ModelCapabilities
         {
             SupportsVision = true,
             SupportsFunctionCalling = true,
@@ -179,10 +183,11 @@ public static class ModelCatalog
             SupportedEfforts = Efforts(ReasoningEffort.None, ReasoningEffort.Low, ReasoningEffort.Medium, ReasoningEffort.High, ReasoningEffort.XHigh, ReasoningEffort.Max),
             MaxContextTokens = 1_000_000,
             MaxOutputTokens = 128_000,
-            DefaultMaxOutputTokens = 32_000
+            DefaultMaxOutputTokens = 32_000,
+            TokenCountingScheme = TokenCountingSchemes.AnthropicEstimate
         }),
 
-        new("claude-opus-4-8", "Claude Opus 4.8", "Previous-generation Opus.", EndpointType.Anthropic, new ModelCapabilities
+        new("claude-opus-4-8", "Claude Opus 4.8", "Previous-generation Opus.", EndpointType.Anthropic, ApiProtocol.AnthropicMessages, new ModelCapabilities
         {
             SupportsVision = true,
             SupportsFunctionCalling = true,
@@ -190,11 +195,12 @@ public static class ModelCatalog
             SupportedEfforts = Efforts(ReasoningEffort.None, ReasoningEffort.Low, ReasoningEffort.Medium, ReasoningEffort.High, ReasoningEffort.XHigh, ReasoningEffort.Max),
             MaxContextTokens = 1_000_000,
             MaxOutputTokens = 128_000,
-            DefaultMaxOutputTokens = 32_000
+            DefaultMaxOutputTokens = 32_000,
+            TokenCountingScheme = TokenCountingSchemes.AnthropicEstimate
         }),
 
         // Pre-4.6, so this one still accepts a temperature.
-        new("claude-haiku-4-5", "Claude Haiku 4.5", "Fastest and cheapest Claude model.", EndpointType.Anthropic, new ModelCapabilities
+        new("claude-haiku-4-5", "Claude Haiku 4.5", "Fastest and cheapest Claude model.", EndpointType.Anthropic, ApiProtocol.AnthropicMessages, new ModelCapabilities
         {
             SupportsVision = true,
             SupportsFunctionCalling = true,
@@ -203,6 +209,26 @@ public static class ModelCatalog
             MaxContextTokens = 200_000,
             MaxOutputTokens = 64_000,
             DefaultMaxOutputTokens = 16_000,
+            TokenCountingScheme = TokenCountingSchemes.AnthropicEstimate
+        }),
+
+        // ---- DeepSeek on Microsoft Foundry (Chat Completions) -----------------------
+        // Foundry serves DeepSeek deployments on /openai/v1/chat/completions with reasoning
+        // content, text only, and documents no thinking toggle or effort control — hence the
+        // single always-on level. The model id is the Foundry deployment name. Microsoft's
+        // docs disagree on the output ceiling (128k on the model card, 384k in the table);
+        // the smaller figure is used. No public tokenizer, so a character estimate.
+        new("DeepSeek-V4-Flash", "DeepSeek V4 Flash", "DeepSeek's fast reasoning model, hosted by Azure.", EndpointType.MicrosoftFoundry, ApiProtocol.OpenAiChatCompletions, new ModelCapabilities
+        {
+            SupportsVision = false,
+            SupportsFunctionCalling = true,
+            Temperature = TemperatureSupport.Unsupported,
+            SupportedEfforts = Efforts(ReasoningEffort.High),
+            MaxContextTokens = 1_000_000,
+            MaxOutputTokens = 128_000,
+            DefaultMaxOutputTokens = 32_000,
+            KnowledgeCutoff = null,
+            TokenCountingScheme = TokenCountingSchemes.CharEstimate(4)
         })
     ];
 
