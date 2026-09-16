@@ -15,20 +15,22 @@ const SettingsEditor: React.FC = () => {
   const assistants = adminAssistantsSignal.value;
   const settings = adminSettingsSignal.value;
 
-  const [defaultModelId, setDefaultModelId] = useState('');
-  const [chatNamingModelId, setChatNamingModelId] = useState('');
-  const [defaultAssistantId, setDefaultAssistantId] = useState('');
+  const [defaultModelId, setDefaultModelId] = useState(settings?.defaultModelId ?? '');
+  const [chatNamingModelId, setChatNamingModelId] = useState(settings?.chatNamingModelId ?? '');
+  const [defaultAssistantId, setDefaultAssistantId] = useState(settings?.defaultAssistantId ?? '');
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
     loadAdminData();
   }, []);
 
-  useEffect(() => {
+  const [syncedSettings, setSyncedSettings] = useState(settings);
+  if (settings !== syncedSettings) {
+    setSyncedSettings(settings);
     setDefaultModelId(settings?.defaultModelId ?? '');
     setChatNamingModelId(settings?.chatNamingModelId ?? '');
     setDefaultAssistantId(settings?.defaultAssistantId ?? '');
-  }, [settings]);
+  }
 
   if (settings === undefined || models === undefined || assistants === undefined) {
     return <div className="admin-empty t-ui-plain">{t('common.loading')}</div>;

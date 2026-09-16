@@ -19,20 +19,22 @@ const EndpointEditor: React.FC<EndpointEditorProps> = ({ endpointId }) => {
   const endpoints = adminEndpointsSignal.value;
   const endpoint = endpointId ? endpoints?.find(e => e.id === endpointId) : undefined;
 
-  const [url, setUrl] = useState('');
+  const [url, setUrl] = useState(endpoint?.url ?? '');
   const [apiKey, setApiKey] = useState('');
-  const [endpointType, setEndpointType] = useState<EndpointType>('AzureOpenAI');
+  const [endpointType, setEndpointType] = useState<EndpointType>(endpoint?.endpointType ?? 'AzureOpenAI');
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
     loadAdminData();
   }, []);
 
-  useEffect(() => {
+  const [syncedEndpoint, setSyncedEndpoint] = useState(endpoint);
+  if (endpoint !== syncedEndpoint) {
+    setSyncedEndpoint(endpoint);
     setUrl(endpoint?.url ?? '');
     setApiKey('');
     setEndpointType(endpoint?.endpointType ?? 'AzureOpenAI');
-  }, [endpoint]);
+  }
 
   if (endpointId && endpoints === undefined) {
     return <div className="admin-empty t-ui-plain">{t('common.loading')}</div>;

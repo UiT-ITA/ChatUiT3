@@ -12,7 +12,7 @@ import { atomDark, oneLight } from 'react-syntax-highlighter/dist/esm/styles/pri
 import 'katex/dist/katex.min.css';
 import { Icon } from '../common/Icon';
 import type { IconName } from '../common/Icon';
-import { useSettings } from '../../contexts/SettingsContext';
+import { useSettings } from '../../hooks/useSettings';
 import { getCodeblockTheme } from '../../utils/themeUtils';
 import { helpActiveHeadingSignal } from '../../services/uiService';
 import { DEFAULT_HELP_SECTION, HELP_SECTIONS, isHelpSection } from './helpSections';

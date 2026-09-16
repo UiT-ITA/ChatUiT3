@@ -1,6 +1,6 @@
 import { signal, Signal, computed } from "@preact/signals-react";
 import type { ChatDto, ChatFileDto, ChatHeaderDto, ChatStreamChunk, CreateChatDto, MessageActivityDto, ActivityEntryDto, UpdateChatDto } from "../types/chatModels";
-import apiService from "./apiService";
+import apiService, { ApiError } from "./apiService";
 import type { SendMessageDto } from "../types/chatModels";
 import { getAssistants, getAssistant } from "./assistantService";
 import { getAppDefaults } from "./appSettingsService";
@@ -299,9 +299,9 @@ export async function invalidateChat(chatId: string): Promise<void> {
     // clear any prior not-found flag
     const nf = chatNotFoundCache.get(chatId);
     if (nf) nf.value = false;
-  } catch (error: any) {
-    const msg = typeof error?.message === "string" ? error.message : "";
-    const status = (error as any)?.status;
+  } catch (error: unknown) {
+    const msg = error instanceof Error ? error.message : "";
+    const status = error instanceof ApiError ? error.status : undefined;
     const is404 = status === 404 || msg.startsWith("API call failed: 404");
     if (!is404) {
       console.error(`Error invalidating chat ${chatId}:`, error);

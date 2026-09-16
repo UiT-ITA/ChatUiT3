@@ -11,6 +11,8 @@ import type {
   ReasoningEffortLevel,
   CatalogModelDto,
   ApiProtocol,
+  ModelDto,
+  EndpointDto,
 } from '../../types/admin';
 import { API_PROTOCOLS, REASONING_EFFORT_ORDER, TOKEN_COUNTING_SCHEME_OPTIONS } from '../../types/admin';
 
@@ -38,6 +40,26 @@ interface ModelEditorProps {
   modelId?: string;
 }
 
+/** The form's field values for a model, or the defaults for a new one. */
+function formStateFor(model: ModelDto | undefined, endpoints: EndpointDto[]) {
+  const caps = model?.capabilities ?? defaultCapabilities;
+  const iso = caps.knowledgeCutoff;
+  return {
+    modelId: model?.modelId ?? '',
+    modelName: model?.modelName ?? '',
+    description: model?.description ?? '',
+    endpointId: model?.endpointId ?? (endpoints[0]?.id ?? ''),
+    // A new model is available to everyone; an existing one keeps exactly the roles
+    // it was saved with, so opening the form can never widen access on its own.
+    allowedRoles: model ? (model.allowedRoles ?? []) : [...ALL_ROLES],
+    // A new model starts ticked; an admin unticks it for models too expensive to run unprompted.
+    allowedAsDefault: model?.allowedAsDefault ?? true,
+    apiProtocol: (model?.apiProtocol ?? '') as ApiProtocol | '',
+    capabilities: caps,
+    knowledgeCutoffMonth: typeof iso === 'string' && iso.length >= 7 ? iso.slice(0, 7) : '',
+  };
+}
+
 const ModelEditor: React.FC<ModelEditorProps> = ({ modelId: editId }) => {
   useSignals();
   const { t } = useTranslation();
@@ -46,16 +68,17 @@ const ModelEditor: React.FC<ModelEditorProps> = ({ modelId: editId }) => {
   const endpoints = adminEndpointsSignal.value ?? [];
   const model = editId ? models?.find(m => m.id === editId) : undefined;
 
-  const [modelId, setModelId] = useState('');
-  const [modelName, setModelName] = useState('');
-  const [description, setDescription] = useState('');
-  const [endpointId, setEndpointId] = useState('');
-  const [allowedRoles, setAllowedRoles] = useState<UserRole[]>([]);
-  const [allowedAsDefault, setAllowedAsDefault] = useState(false);
+  const initial = formStateFor(model, endpoints);
+  const [modelId, setModelId] = useState(initial.modelId);
+  const [modelName, setModelName] = useState(initial.modelName);
+  const [description, setDescription] = useState(initial.description);
+  const [endpointId, setEndpointId] = useState(initial.endpointId);
+  const [allowedRoles, setAllowedRoles] = useState<UserRole[]>(initial.allowedRoles);
+  const [allowedAsDefault, setAllowedAsDefault] = useState(initial.allowedAsDefault);
   // '' until the admin picks one; a stored row from before per-model protocols also arrives as ''.
-  const [apiProtocol, setApiProtocol] = useState<ApiProtocol | ''>('');
-  const [capabilities, setCapabilities] = useState<ModelCapabilities>(defaultCapabilities);
-  const [knowledgeCutoffMonth, setKnowledgeCutoffMonth] = useState<string>('');
+  const [apiProtocol, setApiProtocol] = useState<ApiProtocol | ''>(initial.apiProtocol);
+  const [capabilities, setCapabilities] = useState<ModelCapabilities>(initial.capabilities);
+  const [knowledgeCutoffMonth, setKnowledgeCutoffMonth] = useState<string>(initial.knowledgeCutoffMonth);
   const [saving, setSaving] = useState(false);
   const [catalog, setCatalog] = useState<CatalogModelDto[]>([]);
 
@@ -65,23 +88,20 @@ const ModelEditor: React.FC<ModelEditorProps> = ({ modelId: editId }) => {
     getModelCatalog().then(setCatalog).catch(() => setCatalog([]));
   }, []);
 
-  useEffect(() => {
-    setModelId(model?.modelId ?? '');
-    setModelName(model?.modelName ?? '');
-    setDescription(model?.description ?? '');
-    setEndpointId(model?.endpointId ?? (endpoints[0]?.id ?? ''));
-    // A new model is available to everyone; an existing one keeps exactly the roles
-    // it was saved with, so opening the form can never widen access on its own.
-    setAllowedRoles(model ? (model.allowedRoles ?? []) : [...ALL_ROLES]);
-    // A new model starts ticked; an admin unticks it for models too expensive to run unprompted.
-    setAllowedAsDefault(model?.allowedAsDefault ?? true);
-    setApiProtocol(model?.apiProtocol ?? '');
-    const caps = model?.capabilities ?? defaultCapabilities;
-    setCapabilities(caps);
-    const iso = caps.knowledgeCutoff;
-    setKnowledgeCutoffMonth(typeof iso === 'string' && iso.length >= 7 ? iso.slice(0, 7) : '');
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [model, endpoints.length]);
+  const [synced, setSynced] = useState({ model, endpointCount: endpoints.length });
+  if (model !== synced.model || endpoints.length !== synced.endpointCount) {
+    setSynced({ model, endpointCount: endpoints.length });
+    const next = formStateFor(model, endpoints);
+    setModelId(next.modelId);
+    setModelName(next.modelName);
+    setDescription(next.description);
+    setEndpointId(next.endpointId);
+    setAllowedRoles(next.allowedRoles);
+    setAllowedAsDefault(next.allowedAsDefault);
+    setApiProtocol(next.apiProtocol);
+    setCapabilities(next.capabilities);
+    setKnowledgeCutoffMonth(next.knowledgeCutoffMonth);
+  }
 
   if (editId && models === undefined) {
     return <div className="admin-empty t-ui-plain">{t('common.loading')}</div>;

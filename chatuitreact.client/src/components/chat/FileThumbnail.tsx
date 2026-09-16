@@ -86,11 +86,20 @@ const FileThumbnail = ({ file, chatId, onRemove, showRemoveButton = false }: Fil
     : '';
 
   useEffect(() => {
-    if (isImage && !imageBase64 && needsFetch) {
-      void ensureContent();
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isImage, imageBase64, needsFetch, chatId]);
+    if (!isImage || imageBase64 || !needsFetch || !chatId || !storedFileId) return;
+
+    let cancelled = false;
+    fetchChatFile(chatId, storedFileId)
+      .then((fetched) => {
+        if (!cancelled) setLoadedFile(fetched);
+      })
+      .catch((error) => {
+        console.error(`Failed to load file ${storedFileId}:`, error);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [isImage, imageBase64, needsFetch, chatId, storedFileId]);
 
   return (
     <>

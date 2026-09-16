@@ -1,22 +1,6 @@
-import React, { useState, useEffect, createContext, useContext } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Icon, IconName } from '../Icon';
 import './Dialog.css';
-
-// Context for managing dialog state
-interface DialogContextType {
-  activePageId: string | null;
-  setActivePageId: (id: string) => void;
-}
-
-const DialogContext = createContext<DialogContextType | null>(null);
-
-export const useDialogContext = () => {
-  const context = useContext(DialogContext);
-  if (!context) {
-    throw new Error('Dialog components must be used within a Dialog');
-  }
-  return context;
-};
 
 // Main Dialog component
 interface DialogProps {
@@ -51,7 +35,7 @@ export const Dialog: React.FC<DialogProps> = ({
     child => React.isValidElement(child) && child.type === DialogButton
   ) as React.ReactElement<DialogButtonProps>[];
   const otherChildren = childrenArray.filter(
-    child => !React.isValidElement(child) || 
+    child => !React.isValidElement(child) ||
     (child.type !== DialogPage && child.type !== DialogButton)
   );
 
@@ -59,14 +43,9 @@ export const Dialog: React.FC<DialogProps> = ({
   const hasFooter = dialogButtons.length > 0;
 
   // Set initial active page
-  useEffect(() => {
-    if (isOpen && dialogPages.length > 0 && !activePageId) {
-      const firstPage = dialogPages[0];
-      if (firstPage) {
-        setActivePageId(firstPage.props.id);
-      }
-    }
-  }, [isOpen, dialogPages.length, activePageId]);
+  if (isOpen && dialogPages.length > 0 && !activePageId) {
+    setActivePageId(dialogPages[0].props.id);
+  }
 
   // Handle body scroll
   useEffect(() => {
@@ -118,51 +97,49 @@ export const Dialog: React.FC<DialogProps> = ({
   };
 
   return (
-    <DialogContext.Provider value={{ activePageId, setActivePageId }}>
-      <div className="dialog-overlay" onClick={handleOverlayClick}>
-        <div className={`dialog-container dialog-size-${size}`} onClick={(e) => e.stopPropagation()}>
-          {/* Header */}
-          <div className="dialog-header">
-            <h2 className="dialog-title t-title">{title}</h2>
-            <button className="dialog-close-button" onClick={onClose}>
-              <Icon name="close" size={1.5} />
-            </button>
-          </div>
+    <div className="dialog-overlay" onClick={handleOverlayClick}>
+      <div className={`dialog-container dialog-size-${size}`} onClick={(e) => e.stopPropagation()}>
+        {/* Header */}
+        <div className="dialog-header">
+          <h2 className="dialog-title t-title">{title}</h2>
+          <button className="dialog-close-button" onClick={onClose}>
+            <Icon name="close" size={1.5} />
+          </button>
+        </div>
 
-          {/* Content */}
-          <div className={`dialog-content ${hasSidebar ? 'with-sidebar' : ''}`}>
-            {hasSidebar && (
-              <div className="dialog-sidebar">
-                {dialogPages.map((page) => {
-                  const { id, label, icon } = page.props;
-                  return (
-                    <button
-                      key={id}
-                      className={`dialog-sidebar-button t-ui ${activePageId === id ? 'active' : ''}`}
-                      onClick={() => setActivePageId(id)}
-                    >
-                      {icon && <Icon name={icon} size={1.2} />}
-                      <span>{label}</span>
-                    </button>
-                  );
-                })}
-              </div>
-            )}
-
-            <div className="dialog-main">
-              {renderContent()}
-            </div>
-          </div>
-
-          {/* Footer */}
-          {hasFooter && (
-            <div className="dialog-footer">
-              {dialogButtons}
+        {/* Content */}
+        <div className={`dialog-content ${hasSidebar ? 'with-sidebar' : ''}`}>
+          {hasSidebar && (
+            <div className="dialog-sidebar">
+              {dialogPages.map((page) => {
+                const { id, label, icon } = page.props;
+                return (
+                  <button
+                    key={id}
+                    className={`dialog-sidebar-button t-ui ${activePageId === id ? 'active' : ''}`}
+                    onClick={() => setActivePageId(id)}
+                  >
+                    {icon && <Icon name={icon} size={1.2} />}
+                    <span>{label}</span>
+                  </button>
+                );
+              })}
             </div>
           )}
+
+          <div className="dialog-main">
+            {renderContent()}
+          </div>
         </div>
+
+        {/* Footer */}
+        {hasFooter && (
+          <div className="dialog-footer">
+            {dialogButtons}
+          </div>
+        )}
       </div>
-    </DialogContext.Provider>
+    </div>
   );
 };
 

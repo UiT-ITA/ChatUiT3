@@ -1,25 +1,8 @@
-import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
-import { AccountInfo } from '@azure/msal-browser';
+import React, { useState, useEffect, ReactNode } from 'react';
 import { useMsal, useIsAuthenticated } from '@azure/msal-react';
 import authService from '../services/authService';
 import signalrService from '../services/signalrService';
-
-interface AuthContextType {
-  isAuthenticated: boolean;
-  isInitializing: boolean;
-  isSignalRConnected: boolean;
-  isAppReady: boolean;
-  initError: string | null;
-  account: AccountInfo | null;
-  roles: string[];
-  isAdmin: boolean;
-  login: () => Promise<void>;
-  logout: () => void;
-  retryInit: () => void;
-  getAccessToken: () => Promise<string | null>;
-}
-
-const AuthContext = createContext<AuthContextType | undefined>(undefined);
+import { AuthContext, type AuthContextType } from '../hooks/useAuth';
 
 interface AuthProviderProps {
   children: ReactNode;
@@ -116,12 +99,4 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       {children}
     </AuthContext.Provider>
   );
-};
-
-export const useAuth = (): AuthContextType => {
-  const context = useContext(AuthContext);
-  if (context === undefined) {
-    throw new Error('useAuth must be used within an AuthProvider');
-  }
-  return context;
 };

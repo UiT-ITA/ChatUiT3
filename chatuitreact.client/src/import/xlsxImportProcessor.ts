@@ -18,15 +18,15 @@ export async function processXlsxImport(file: File): Promise<ChatFile> {
     await workbook.xlsx.load(await file.arrayBuffer());
 
     const chunks: ChatFileChunk[] = [];
-    const workbookImages = Array.isArray((workbook as any).model?.media) ? (workbook as any).model.media : [];
+    const workbookImages = workbook.model?.media ?? [];
 
     for (const worksheet of workbook.worksheets) {
-        const worksheetImages = getWorksheetImages(worksheet as any);
-        if (worksheetImages.length > 0 && typeof (workbook as any).getImage !== 'function') {
+        const worksheetImages = getWorksheetImages(worksheet);
+        if (worksheetImages.length > 0 && typeof workbook.getImage !== 'function') {
             throw new Error('XLSX image extraction is unsupported for this workbook');
         }
 
-        if (worksheetImages.length === 0 && workbookImages.length > 0 && typeof (worksheet as any).getImages !== 'function') {
+        if (worksheetImages.length === 0 && workbookImages.length > 0 && typeof worksheet.getImages !== 'function') {
             throw new Error('XLSX image extraction is unsupported for this workbook');
         }
 
@@ -47,7 +47,7 @@ export async function processXlsxImport(file: File): Promise<ChatFile> {
                 chunks.push(createTextChunk(`${markdown}\n\n`, 'markdown'));
             }
 
-            const workbookImage = (workbook as any).getImage(image.imageId);
+            const workbookImage: ExcelJS.Image | undefined = workbook.getImage(image.imageId);
             const bytes = toUint8Array(workbookImage?.buffer);
             const extension = workbookImage?.extension;
             if (!bytes || !extension) {
@@ -117,13 +117,13 @@ function rowsToMarkdown(rows: string[][]): string {
     ].join('\n');
 }
 
-function getWorksheetImages(worksheet: any): WorksheetImage[] {
+function getWorksheetImages(worksheet: ExcelJS.Worksheet): WorksheetImage[] {
     if (typeof worksheet.getImages !== 'function') {
         return [];
     }
 
-    return worksheet.getImages().map((image: any) => ({
-        imageId: image.imageId,
+    return worksheet.getImages().map((image) => ({
+        imageId: Number(image.imageId),
         row: Number(image.range?.tl?.nativeRow ?? 0) + 1,
         col: Number(image.range?.tl?.nativeCol ?? 0) + 1
     }));

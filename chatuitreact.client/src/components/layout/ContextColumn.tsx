@@ -8,7 +8,7 @@ import { AssistantList } from '../assistants/AssistantList';
 import { getChats } from '../../services/chatService';
 import { getAssistants } from '../../services/assistantService';
 import { adminEndpointsSignal, adminModelsSignal, adminAssistantsSignal, loadAdminData } from '../../services/adminDataService';
-import { useAuth } from '../../contexts/AuthContext';
+import { useAuth } from '../../hooks/useAuth';
 import type { SettingsCategory } from '../../types/settingsModels';
 import { HELP_SECTIONS, isHelpSection } from '../help/helpSections';
 import HelpSectionNav from '../help/HelpSectionNav';

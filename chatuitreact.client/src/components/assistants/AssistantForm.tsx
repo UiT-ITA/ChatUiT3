@@ -46,6 +46,50 @@ const showsTemperature = (model: UserModelDto | undefined, effort: ReasoningEffo
     && (effort ?? 'None') === 'None';
 };
 
+const emptyFormData = (): CreateAssistantDto => ({
+  name: '',
+  description: '',
+  tags: [],
+  modelId: '',
+  systemPrompt: '',
+  temperature: 0.7,
+  reasoningEffort: 'None',
+  availableToolIds: []
+});
+
+/** The form's values for the assistant being edited, or the defaults for a new one. */
+const formStateFor = (editingAssistant: FullAssistantDto | null) => {
+  if (!editingAssistant) {
+    return { formData: emptyFormData(), knowledgeFiles: createEmptyKnowledgeFiles(), selectedToolIds: [] as string[] };
+  }
+
+  const knowledgeFiles = createEmptyKnowledgeFiles();
+  (editingAssistant.files ?? []).forEach((file) => {
+    const category: KnowledgeFileCategory = file.category in knowledgeFiles ? file.category : 'alwaysLoaded';
+    knowledgeFiles[category].push({
+      id: crypto.randomUUID(),
+      name: file.sourceFilename,
+      description: file.description,
+      fileId: file.id
+    });
+  });
+
+  return {
+    formData: {
+      name: editingAssistant.name,
+      description: editingAssistant.description || '',
+      tags: editingAssistant.tags || [],
+      modelId: editingAssistant.modelId,
+      systemPrompt: editingAssistant.systemPrompt || '',
+      temperature: editingAssistant.temperature,
+      reasoningEffort: editingAssistant.reasoningEffort,
+      availableToolIds: editingAssistant.availableToolIds || []
+    } satisfies CreateAssistantDto,
+    knowledgeFiles,
+    selectedToolIds: editingAssistant.availableToolIds || []
+  };
+};
+
 interface AssistantFormProps {
   editingAssistant: FullAssistantDto | null;
   onCreate?: (assistant: CreateAssistantDto) => Promise<unknown>;
@@ -72,8 +116,9 @@ const AssistantForm: React.FC<AssistantFormProps> = ({
   const toolsSignal = getTools();
   const [isModelDropdownOpen, setIsModelDropdownOpen] = useState(false);
   const [loading, setLoading] = useState(false);
-  const [selectedToolIds, setSelectedToolIds] = useState<string[]>([]);
-  const [knowledgeFiles, setKnowledgeFiles] = useState<Record<KnowledgeFileCategory, KnowledgeFileItemData[]>>(createEmptyKnowledgeFiles);
+  const [initialState] = useState(() => formStateFor(editingAssistant));
+  const [selectedToolIds, setSelectedToolIds] = useState<string[]>(initialState.selectedToolIds);
+  const [knowledgeFiles, setKnowledgeFiles] = useState<Record<KnowledgeFileCategory, KnowledgeFileItemData[]>>(initialState.knowledgeFiles);
   const [systemPromptSnippets, setSystemPromptSnippets] = useState({
     renderMarkdown: false,
     includeBasicInfo: false,
@@ -81,15 +126,16 @@ const AssistantForm: React.FC<AssistantFormProps> = ({
   });
   const modelDropdownRef = useRef<HTMLDivElement>(null);
 
-  const [formData, setFormData] = useState<CreateAssistantDto>({
-    name: '',
-    description: '',
-    tags: [],
-    modelId: '',
-    systemPrompt: '',
-    temperature: 0.7,
-    reasoningEffort: 'None'
-  });
+  const [formData, setFormData] = useState<CreateAssistantDto>(initialState.formData);
+
+  const [syncedAssistant, setSyncedAssistant] = useState(editingAssistant);
+  if (editingAssistant !== syncedAssistant) {
+    setSyncedAssistant(editingAssistant);
+    const next = formStateFor(editingAssistant);
+    setKnowledgeFiles(next.knowledgeFiles);
+    setFormData(next.formData);
+    setSelectedToolIds(next.selectedToolIds);
+  }
 
   const models: UserModelDto[] = modelsSignal.value ?? [];
   const selectedModel = models.find(m => m.id === formData.modelId);
@@ -140,53 +186,10 @@ const AssistantForm: React.FC<AssistantFormProps> = ({
     }
   ];
 
-  // Initialize form data when editing
-  useEffect(() => {
-    if (editingAssistant) {
-      const groupedFiles = createEmptyKnowledgeFiles();
-      (editingAssistant.files ?? []).forEach((file) => {
-        const category: KnowledgeFileCategory = file.category in groupedFiles ? file.category : 'alwaysLoaded';
-        groupedFiles[category].push({
-          id: crypto.randomUUID(),
-          name: file.sourceFilename,
-          description: file.description,
-          fileId: file.id
-        });
-      });
-      setKnowledgeFiles(groupedFiles);
-      setFormData({
-        name: editingAssistant.name,
-        description: editingAssistant.description || '',
-        tags: editingAssistant.tags || [],
-        modelId: editingAssistant.modelId,
-        systemPrompt: editingAssistant.systemPrompt || '',
-        temperature: editingAssistant.temperature,
-        reasoningEffort: editingAssistant.reasoningEffort,
-        availableToolIds: editingAssistant.availableToolIds || []
-      });
-      setSelectedToolIds(editingAssistant.availableToolIds || []);
-    } else {
-      setKnowledgeFiles(createEmptyKnowledgeFiles());
-      setFormData({
-        name: '',
-        description: '',
-        tags: [],
-        modelId: '',
-        systemPrompt: '',
-        temperature: 0.7,
-        reasoningEffort: 'None',
-        availableToolIds: []
-      });
-      setSelectedToolIds([]);
-    }
-  }, [editingAssistant]);
-
   // Preselect the admin-configured default model when creating a new assistant.
-  // Runs separately because models and app defaults load asynchronously.
-  useEffect(() => {
-    if (editingAssistant || !selectableDefaultModelId) return;
-    setFormData(prev => (prev.modelId ? prev : { ...prev, modelId: selectableDefaultModelId }));
-  }, [editingAssistant, selectableDefaultModelId]);
+  if (!editingAssistant && selectableDefaultModelId && !formData.modelId) {
+    setFormData({ ...formData, modelId: selectableDefaultModelId });
+  }
 
   // Close dropdown when clicking outside
   useEffect(() => {

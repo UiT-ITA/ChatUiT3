@@ -1,4 +1,4 @@
-import React, { useEffect, useRef } from 'react'
+import React, { useEffect } from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
 import ChatHistory from './ChatHistory'
 import ChatInput from './ChatInput'
@@ -38,27 +38,8 @@ const ChatSurface: React.FC<ChatSurfaceProps> = ({ hidden = false }) => {
     : undefined
 
   const notFound = chatId ? getChatNotFound(chatId) : undefined
-  const mountedChatsRef = useRef<Map<string, React.ReactElement>>(new Map())
   const cachedIds = useChatCache(chatId)
   const isWide = useMediaQuery('(min-width: 1100px)')
-
-  const currentIds = new Set(cachedIds)
-  const mountedIds = new Set(mountedChatsRef.current.keys())
-
-  // The only legitimate unmount: the LRU dropped this chat to make room.
-  for (const id of mountedIds) {
-    if (!currentIds.has(id)) {
-      mountedChatsRef.current.delete(id)
-    }
-  }
-
-  // Elements are stored, not re-created, so React sees an identical element
-  // reference on every unrelated re-render and skips these subtrees entirely.
-  for (const id of currentIds) {
-    if (!mountedChatsRef.current.has(id)) {
-      mountedChatsRef.current.set(id, <ChatHistory key={id} chatId={id} />)
-    }
-  }
 
   useEffect(() => {
     setCurrentChatId(chatId)
@@ -78,13 +59,13 @@ const ChatSurface: React.FC<ChatSurfaceProps> = ({ hidden = false }) => {
     <div className="chat-surface" style={hidden ? { display: 'none' } : undefined}>
       <div className="chat-surface-body">
         <div className="chat-surface-main">
-          {Array.from(mountedChatsRef.current.entries()).map(([id, component]) => (
+          {cachedIds.map((id) => (
             <div
               key={id}
               className="chat-surface-pane"
               style={{ display: id === chatId ? 'flex' : 'none' }}
             >
-              {component}
+              <ChatHistory chatId={id} />
             </div>
           ))}
           <div

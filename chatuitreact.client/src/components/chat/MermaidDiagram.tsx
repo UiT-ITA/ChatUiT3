@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import mermaid from 'mermaid';
-import { useSettings } from '../../contexts/SettingsContext';
+import { useSettings } from '../../hooks/useSettings';
 import { getMermaidTheme } from '../../utils/themeUtils';
 import './MermaidDiagram.css';
 
@@ -58,7 +58,11 @@ function MermaidDiagram({ chart, className = '' }: MermaidDiagramProps) {
       } finally {
         setLoading(false);
         if (container && container.parentElement === document.body) {
-          try { container.remove(); } catch {}
+          try {
+            container.remove();
+          } catch {
+            // Mermaid may already have detached it; nothing left to clean up.
+          }
         }
       }
     };

@@ -10,12 +10,14 @@ interface ChatHistoryProps {
   chatId: string
 }
 
+const NO_MESSAGES: never[] = []
+
 function ChatHistory({ chatId }: ChatHistoryProps) {
   useSignals()
   const { t } = useTranslation()
 
   const chat = getChat(chatId)
-  const messages = chat.value?.messages || []
+  const messages = chat.value?.messages ?? NO_MESSAGES
   const assistants = getSelectableAssistants().value || []
   // Only a fallback: messages carry their own assistant. Used for any message whose
   // assistant snapshot is empty.

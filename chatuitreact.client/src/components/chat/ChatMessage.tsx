@@ -1,11 +1,11 @@
 import './ChatMessage.css';
 import './ChatMessageMarkdown.css';
 import { useSignals } from '@preact/signals-react/runtime';
-import { useMemo, useState, useRef, useEffect, memo } from 'react';
+import { useMemo, useState, useRef, useEffect, memo, type ComponentProps } from 'react';
 import { useTranslation } from 'react-i18next';
 import { getActivitySignal, getStreamSignal } from '../../services/chatService';
 import type { ChatMessageDto } from '../../types/chatModels';
-import ReactMarkdown from 'react-markdown';
+import ReactMarkdown, { type ExtraProps } from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import remarkMath from 'remark-math';
 import rehypeKatex from 'rehype-katex';
@@ -17,7 +17,7 @@ import FileThumbnail from './FileThumbnail';
 import MessageActivity from './MessageActivity';
 import { markdownToHtml } from '../../utils/markdownUtils';
 import MermaidDiagram from './MermaidDiagram';
-import { useSettings } from '../../contexts/SettingsContext';
+import { useSettings } from '../../hooks/useSettings';
 import { getCodeblockTheme } from '../../utils/themeUtils';
 
 interface ChatMessageProps {
@@ -29,17 +29,20 @@ interface ChatMessageProps {
   onStreamingChunk?: () => void;
 }
 
+const styleMap = {
+  oneLight: oneLight,
+  atomDark: atomDark,
+  dracula: dracula
+};
+
+type CodeProps = ComponentProps<'code'> & ExtraProps;
+type AnchorProps = ComponentProps<'a'> & ExtraProps;
+
 function ChatMessage({ chatId, message, fallbackAssistantName, onStreamingChunk }: ChatMessageProps) {
   useSignals();
   const { t } = useTranslation();
   const { settings } = useSettings();
   const [isCopied, setIsCopied] = useState(false);
-
-  const styleMap = {
-    oneLight: oneLight,
-    atomDark: atomDark,
-    dracula: dracula
-  };
 
   const currentCodeblockStyle = useMemo(() => {
     const themeName = getCodeblockTheme(settings.mode);
@@ -125,11 +128,11 @@ function ChatMessage({ chatId, message, fallbackAssistantName, onStreamingChunk 
   // console.log('Rendering ChatMessage:', message.id, 'isStreaming:', isStreaming);
 
   const markdownComponents = {
-    code({ node, inline, className, children, ...props }: any) {
+    code({ node, className, children, style, ...props }: CodeProps) {
       const match = /language-(\w+)/.exec(className || '');
       const codeText = String(children).replace(/\n$/, '');
-      
-      if (!inline && match) {
+
+      if (match) {
         const language = match[1];
         
         if (language === 'mermaid') {
@@ -166,7 +169,6 @@ function ChatMessage({ chatId, message, fallbackAssistantName, onStreamingChunk 
             <SyntaxHighlighter
               style={currentCodeblockStyle}
               language={language}
-              {...props}
             >
               {codeText}
             </SyntaxHighlighter>
@@ -175,15 +177,15 @@ function ChatMessage({ chatId, message, fallbackAssistantName, onStreamingChunk 
       }
       
       return (
-        <code className={className} {...props}>
+        <code className={className} style={style} {...props}>
           {children}
         </code>
       );
     },
-    a({ href, children, ...props }: any) {
+    a({ node, href, children, ...props }: AnchorProps) {
       return (
         <a
-          href={href as string}
+          href={href}
           target="_blank"
           rel="noopener noreferrer"
           {...props}

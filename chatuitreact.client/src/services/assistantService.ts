@@ -66,7 +66,7 @@ export function getAssistant(assistantId: string): Signal<AssistantDto | undefin
             const type: AssistantDto["type"] = list.system.some(a => a.id === assistantId)
                 ? 'system'
                 : (list.shared.some(a => a.id === assistantId) ? 'shared' : 'owned');
-            return { ...(foundAssistant as any), type } as AssistantDto;
+            return { ...foundAssistant, type };
         }
         return undefined;
     });

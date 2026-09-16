@@ -5,6 +5,18 @@ import type { NotifyLevel } from "../types/notification";
 // const API_BASE_URL = "https://localhost:7254";
 const API_BASE_URL = "";
 
+/** A non-2xx response. The toast has already been shown by the time this is thrown. */
+export class ApiError extends Error {
+  constructor(
+    message: string,
+    readonly status: number,
+    readonly endpoint: string
+  ) {
+    super(message);
+    this.name = "ApiError";
+  }
+}
+
 async function apiService<T>(
   endpoint: string,
   options: RequestInit = {}
@@ -44,7 +56,9 @@ async function apiService<T>(
         const text = await response.text();
         serverMessage = text || undefined;
       }
-    } catch {}
+    } catch {
+      // An unreadable body just means no server message; the status-based fallback is used.
+    }
 
     const status = response.status;
     const level: NotifyLevel =
@@ -67,10 +81,7 @@ async function apiService<T>(
     if (!isChatGet404) {
       addNotification({ level, message: serverMessage?.toString() || fallback });
     }
-    const err: any = new Error(`API call failed: ${response.status} ${response.statusText}`);
-    err.status = response.status;
-    err.endpoint = endpoint;
-    throw err;
+    throw new ApiError(`API call failed: ${response.status} ${response.statusText}`, response.status, endpoint);
   }
 
   if (response.status === 204) {
@@ -87,14 +98,14 @@ async function apiService<T>(
   return response.json() as Promise<T>;
 }
 
-apiService.post = async <T>(endpoint: string, data: any): Promise<T> => {
+apiService.post = async <T>(endpoint: string, data: unknown): Promise<T> => {
   return apiService<T>(endpoint, {
     method: 'POST',
     body: JSON.stringify(data),
   });
 };
 
-apiService.put = async <T>(endpoint: string, data: any): Promise<T> => {
+apiService.put = async <T>(endpoint: string, data: unknown): Promise<T> => {
   return apiService<T>(endpoint, {
     method: 'PUT',
     body: JSON.stringify(data),
@@ -108,7 +119,7 @@ apiService.delete = async <T>(endpoint: string): Promise<T> => {
 };
 
 export default apiService as typeof apiService & {
-  post: <T>(endpoint: string, data: any) => Promise<T>;
-  put: <T>(endpoint: string, data: any) => Promise<T>;
+  post: <T>(endpoint: string, data: unknown) => Promise<T>;
+  put: <T>(endpoint: string, data: unknown) => Promise<T>;
   delete: <T>(endpoint: string) => Promise<T>;
 };

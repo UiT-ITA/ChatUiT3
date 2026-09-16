@@ -20,10 +20,9 @@ interface MenuState {
 }
 
 interface ContextMenuOption {
-  key: string;
+  key: 'favorite' | 'rename' | 'delete';
   label: string;
   icon: IconName;
-  action: () => void;
 }
 
 export function ChatItem({ chat, onNavigate }: ChatItemProps) {
@@ -89,10 +88,9 @@ export function ChatItem({ chat, onNavigate }: ChatItemProps) {
       key: 'favorite',
       label: chat.isFavorite ? t('sidebar.unfavorite') : t('sidebar.favorite'),
       icon: 'star',
-      action: toggleFavorite,
     },
-    { key: 'rename', label: t('sidebar.rename'), icon: 'edit', action: startRename },
-    { key: 'delete', label: t('sidebar.delete'), icon: 'trash', action: () => setConfirmDelete(true) },
+    { key: 'rename', label: t('sidebar.rename'), icon: 'edit' },
+    { key: 'delete', label: t('sidebar.delete'), icon: 'trash' },
   ];
 
   useEffect(() => {
@@ -113,7 +111,17 @@ export function ChatItem({ chat, onNavigate }: ChatItemProps) {
 
   const handleMenuClick = (option: ContextMenuOption) => {
     setMenu(null);
-    option.action();
+    switch (option.key) {
+      case 'favorite':
+        toggleFavorite();
+        break;
+      case 'rename':
+        startRename();
+        break;
+      case 'delete':
+        setConfirmDelete(true);
+        break;
+    }
   };
 
   const handleChatClick = () => {
