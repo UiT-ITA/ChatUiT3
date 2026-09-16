@@ -148,7 +148,13 @@ function ChatMessage({ chatId, message, fallbackAssistantName, onStreamingChunk 
                   <Icon name="copy" size={1} /> {t('chat.actions.copyCode')}
                 </button>
               </div>
-              <MermaidDiagram chart={codeText} className="mermaid-in-chat" />
+              {isStreaming ? (
+                <SyntaxHighlighter style={currentCodeblockStyle} language="text">
+                  {codeText}
+                </SyntaxHighlighter>
+              ) : (
+                <MermaidDiagram chart={codeText} className="mermaid-in-chat" />
+              )}
             </div>
           );
         }
