@@ -118,7 +118,7 @@ public sealed class AnthropicMessagesProtocol : IApiProtocol
             // has to be explicit: models from Opus 4.7 on default to "omitted", which returns
             // thinking blocks with empty text. The raw chain of thought is never returned.
             Thinking = request.Parameters.ReasoningActive
-                ? new ThinkingConfigAdaptive { Display = Display.Summarized }
+                ? (ThinkingConfigParam)new ThinkingConfigAdaptive { Display = Display.Summarized }
                 : null,
             Tools = includeTools && request.Tools.Count > 0
                 ? request.Tools.Select(tool => new ToolUnion(ToAnthropicTool(tool))).ToList()

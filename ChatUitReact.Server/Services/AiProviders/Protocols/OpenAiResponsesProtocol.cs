@@ -98,7 +98,7 @@ public sealed class OpenAiResponsesProtocol : IApiProtocol
 
         return new ResponsesClient(
             credential: new ApiKeyCredential(target.ApiKey),
-            options: new OpenAIClientOptions { Endpoint = new Uri(target.BaseUrl) });
+            options: new ResponsesClientOptions { Endpoint = new Uri(target.BaseUrl) });
     }
 
     /// <summary>
