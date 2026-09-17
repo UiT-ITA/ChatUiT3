@@ -268,7 +268,7 @@ public class ChatService : IChatService
         await SendStreamingMessageAsync(userId, chatId, userMessage, null);
     }
 
-    public async Task SendStreamingMessageAsync(string userId, string chatId, Models.ChatMessage userMessage, string assistantId)
+    public async Task SendStreamingMessageAsync(string userId, string chatId, Models.ChatMessage userMessage, string? assistantId)
     {
         if (userMessage.Timestamp == default)
         {
