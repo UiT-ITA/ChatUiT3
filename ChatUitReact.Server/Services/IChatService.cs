@@ -1,4 +1,5 @@
 using ChatUitReact.Server.Models;
+using ChatUitReact.Server.Services.AiProviders;
 
 namespace ChatUitReact.Server.Services;
 
@@ -8,16 +9,16 @@ public interface IChatService
     Task<List<ChatHeader>> GetChatListAsync(string userId);
     Task<Chat?> GetChatByIdAsync(string userId, string chatId, bool includeFileContent = true);
     Task<ChatFile?> GetChatFileAsync(string userId, string chatId, string fileId);
-    Task<Chat> CreateChatAsync(string userId, string assistantId, List<ChatMessage> messages);
+    Task<Chat> CreateChatAsync(string userId, string assistantId, List<ChatMessage> messages, PromptUserContext promptUser);
     Task UpdateChatAsync(string userId, string chatId, string? newTitle, string? newAssistantId = null);
     Task SetChatFavoriteAsync(string userId, string chatId, bool isFavorite);
     Task DeleteChatAsync(string userId, string chatId);
     
     // Message Operations
-    Task SendMessageAsync(string userId, string chatId, ChatMessage message);
-    Task SendMessageAsync(string userId, string chatId, ChatMessage message, string? assistantId);
-    Task SendStreamingMessageAsync(string userId, string chatId, ChatMessage message);
-    Task SendStreamingMessageAsync(string userId, string chatId, ChatMessage message, string assistantId);
+    Task SendMessageAsync(string userId, string chatId, ChatMessage message, PromptUserContext promptUser);
+    Task SendMessageAsync(string userId, string chatId, ChatMessage message, string? assistantId, PromptUserContext promptUser);
+    Task SendStreamingMessageAsync(string userId, string chatId, ChatMessage message, PromptUserContext promptUser);
+    Task SendStreamingMessageAsync(string userId, string chatId, ChatMessage message, string assistantId, PromptUserContext promptUser);
     Task AddMessageAsync(string userId, string chatId, ChatMessage message);
     Task DeleteMessageAsync(string userId, string chatId, string messageId);
 

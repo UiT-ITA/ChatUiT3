@@ -13,6 +13,7 @@ public class UserPreferences
 {
     public NotificationSettings Notifications { get; set; } = new NotificationSettings();
     public DisplaySettings Display { get; set; } = new DisplaySettings();
+    public UserProfile Profile { get; set; } = new UserProfile();
     public List<string> SharedAssistantIds { get; set; } = new List<string>();
     public List<string> FavoritedAssistantIds { get; set; } = new List<string>();
     public List<string> HiddenAssistantIds { get; set; } = new List<string>();
@@ -32,6 +33,17 @@ public class NotificationSettings
 {
     // Will be used later for push notifications
     public Dictionary<string, bool> DismissedNotifications { get; set; } = new Dictionary<string, bool>();
+}
+
+/// <summary>
+/// What the user has told us about themselves. Read only by prompt snippets an assistant
+/// owner has enabled; nothing here comes from the directory.
+/// </summary>
+public class UserProfile
+{
+    public string DisplayName { get; set; } = string.Empty;
+    public string JobRole { get; set; } = string.Empty;
+    public string AnswerPreferences { get; set; } = string.Empty;
 }
 
 public class DisplaySettings

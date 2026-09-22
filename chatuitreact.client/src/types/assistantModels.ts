@@ -2,6 +2,11 @@ import type { ChatFileChunkDto } from './chatModels';
 
 export type AssistantFileCategory = 'alwaysLoaded' | 'selectiveLoaded' | 'ragLoaded';
 
+/** Fixed text blocks the server appends after the owner's instructions. Ids match the server registry. */
+export type PromptSnippetId = 'formatMarkdown' | 'equations' | 'basicUserInfo' | 'answerPreferences';
+
+export const PROMPT_SNIPPET_IDS: readonly PromptSnippetId[] = ['formatMarkdown', 'equations', 'basicUserInfo', 'answerPreferences'];
+
 export interface AssistantFileDto {
     // Absent for files that are new in a create/update request.
     id?: string;
@@ -24,6 +29,7 @@ export interface FullAssistantDto {
     temperature: number;
     reasoningEffort: ReasoningEffort;
     availableToolIds: string[];
+    promptSnippets: PromptSnippetId[];
     isVisible: boolean;
     isFavorite: boolean;
     /**
@@ -105,6 +111,7 @@ export interface CreateAssistantDto {
     temperature?: number;
     reasoningEffort?: ReasoningEffort;
     availableToolIds?: string[];
+    promptSnippets?: PromptSnippetId[];
     files?: AssistantFileDto[];
 }
 
@@ -118,6 +125,7 @@ export interface UpdateAssistantDto {
     temperature?: number;
     reasoningEffort?: ReasoningEffort;
     availableToolIds?: string[];
+    promptSnippets?: PromptSnippetId[];
     files?: AssistantFileDto[];
 }
 

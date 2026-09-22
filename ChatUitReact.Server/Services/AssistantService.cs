@@ -19,7 +19,7 @@ namespace ChatUitReact.Server.Services
         // active schemes, so both an edit and a newly registered model recount.
         private readonly ConcurrentDictionary<string, PromptTokenCacheEntry> _promptTokenCache = new();
 
-        private sealed record PromptTokenCacheEntry(DateTime UpdatedAt, string SchemeKey, PromptTokenCounts Counts);
+        private sealed record PromptTokenCacheEntry(DateTime UpdatedAt, string SchemeKey, string UserKey, PromptTokenCounts Counts);
 
         // Per scheme: the whole fixed cost, and the part of it the knowledge-files section adds.
         private sealed record PromptTokenCounts(Dictionary<string, int> Prompt, Dictionary<string, int> Knowledge);
@@ -39,15 +39,19 @@ namespace ChatUitReact.Server.Services
         }
 
         // The fixed cost of every request through this assistant, per scheme. Counted from the
-        // same assembled prompt the provider receives.
-        private async Task<PromptTokenCounts> GetPromptTokenCountsAsync(Assistant assistant)
+        // same assembled prompt the provider receives. `user` is null on the admin paths, which
+        // have no requesting user to render user snippets for.
+        private async Task<PromptTokenCounts> GetPromptTokenCountsAsync(Assistant assistant, PromptUserContext? user)
         {
             var schemes = await _tokenCounting.GetActiveSchemeIdsAsync();
             var schemeKey = string.Join(",", schemes);
+            var snippets = assistant.ChatSettings.PromptSnippets;
+            var userKey = UserCacheKey(snippets, user);
 
             if (_promptTokenCache.TryGetValue(assistant.Id, out var cached) &&
                 cached.UpdatedAt == assistant.UpdatedAt &&
-                cached.SchemeKey == schemeKey)
+                cached.SchemeKey == schemeKey &&
+                cached.UserKey == userKey)
             {
                 return cached.Counts;
             }
@@ -62,14 +66,16 @@ namespace ChatUitReact.Server.Services
                 files = loaded?.Files ?? files;
             }
 
-            var prompt = SystemPromptAssembler.AppendKnowledgeFiles(assistant.ChatSettings.SystemPrompt, files);
+            var prompt = SystemPromptAssembler.Build(assistant.ChatSettings.SystemPrompt, snippets, user, files);
             // Resolved against the model row rather than the stored tool ids, so a model that
             // lost function calling after the assistant was saved counts no tools.
             var parameters = ChatParameterResolver.Resolve(assistant.ChatSettings.Model.Capabilities, assistant.ChatSettings);
             var tools = _toolService.GetToolDefinitions(parameters.ToolIds).ToList();
 
-            var systemPrompt = assistant.ChatSettings.SystemPrompt ?? string.Empty;
-            var hasKnowledge = prompt != systemPrompt;
+            // The knowledge share is the difference against the same prompt without files, so
+            // snippet text is never attributed to knowledge.
+            var promptWithoutFiles = SystemPromptAssembler.Build(assistant.ChatSettings.SystemPrompt, snippets, user, new List<AssistantFile>());
+            var hasKnowledge = prompt != promptWithoutFiles;
 
             var promptCounts = new Dictionary<string, int>();
             var knowledgeCounts = new Dictionary<string, int>();
@@ -77,23 +83,52 @@ namespace ChatUitReact.Server.Services
             {
                 promptCounts[scheme] = _tokenCounting.CountSystemPrompt(prompt, tools, scheme);
                 knowledgeCounts[scheme] = hasKnowledge
-                    ? Math.Max(0, _tokenCounting.CountText(prompt, scheme) - _tokenCounting.CountText(systemPrompt, scheme))
+                    ? Math.Max(0, _tokenCounting.CountText(prompt, scheme) - _tokenCounting.CountText(promptWithoutFiles, scheme))
                     : 0;
             }
 
             var counts = new PromptTokenCounts(promptCounts, knowledgeCounts);
-            _promptTokenCache[assistant.Id] = new PromptTokenCacheEntry(assistant.UpdatedAt, schemeKey, counts);
+            _promptTokenCache[assistant.Id] = new PromptTokenCacheEntry(assistant.UpdatedAt, schemeKey, userKey, counts);
             return counts;
         }
 
-        private async Task<Dictionary<string, PromptTokenCounts>> GetPromptTokenCountsAsync(IEnumerable<Assistant> assistants)
+        // Only the user fields the enabled snippets actually render take part, so assistants
+        // without user snippets keep one cache entry for everyone.
+        private static string UserCacheKey(IReadOnlyList<string> snippets, PromptUserContext? user)
+        {
+            if (user == null)
+            {
+                return string.Empty;
+            }
+
+            var parts = new List<string>();
+            if (snippets.Contains(PromptSnippets.BasicUserInfo))
+            {
+                parts.Add($"{user.Name}|{user.JobRole}|{user.Email}");
+            }
+            if (snippets.Contains(PromptSnippets.AnswerPreferences))
+            {
+                parts.Add(user.AnswerPreferences);
+            }
+            return string.Join("\n", parts);
+        }
+
+        private async Task<Dictionary<string, PromptTokenCounts>> GetPromptTokenCountsAsync(IEnumerable<Assistant> assistants, PromptUserContext? user)
         {
             var result = new Dictionary<string, PromptTokenCounts>();
             foreach (var assistant in assistants)
             {
-                result[assistant.Id] = await GetPromptTokenCountsAsync(assistant);
+                result[assistant.Id] = await GetPromptTokenCountsAsync(assistant, user);
             }
             return result;
+        }
+
+        public async Task<PromptUserContext> GetPromptUserContextAsync(UserIdentity identity)
+        {
+            var user = await _databaseService.GetUserAsync(identity.UserId);
+            var profile = user?.Preferences.Profile ?? new UserProfile();
+            var name = string.IsNullOrWhiteSpace(profile.DisplayName) ? identity.DisplayName : profile.DisplayName;
+            return new PromptUserContext(name, profile.JobRole, identity.Email, profile.AnswerPreferences);
         }
 
         public async Task<UserAssistantsResult> GetUserAssistantsAsync(string userId)
@@ -344,14 +379,14 @@ namespace ChatUitReact.Server.Services
 
         // Roles come from the caller's claims, not from the stored user document: nothing ever
         // writes claim roles into a user document, so UserInfo.Roles is empty in production.
-        public async Task<AssistantListDto> GetUserAssistantsDtoAsync(string userId, List<UserRole> roles)
+        public async Task<AssistantListDto> GetUserAssistantsDtoAsync(string userId, List<UserRole> roles, PromptUserContext promptUser)
         {
             var result = await GetUserAssistantsAsync(userId);
             var user = await _databaseService.GetUserAsync(userId);
 
             var allAssistants = result.Owned.Concat(result.System).Concat(result.Shared).ToList();
             var eligibleModelIds = await GetDefaultEligibleModelIdsAsync(allAssistants, roles);
-            var promptTokens = await GetPromptTokenCountsAsync(allAssistants);
+            var promptTokens = await GetPromptTokenCountsAsync(allAssistants, promptUser);
 
             return new AssistantListDto
             {
@@ -389,7 +424,7 @@ namespace ChatUitReact.Server.Services
         public async Task<List<FullAssistantDto>> GetSystemAssistantsForAdminAsync()
         {
             var assistants = await _databaseService.GetSystemAssistantsAsync();
-            var promptTokens = await GetPromptTokenCountsAsync(assistants);
+            var promptTokens = await GetPromptTokenCountsAsync(assistants, null);
             return assistants.Select(assistant => MapToFullAssistantDto(assistant, promptTokens[assistant.Id])).ToList();
         }
 
@@ -401,7 +436,7 @@ namespace ChatUitReact.Server.Services
                 return null;
             }
 
-            return MapToFullAssistantDto(assistant, await GetPromptTokenCountsAsync(assistant));
+            return MapToFullAssistantDto(assistant, await GetPromptTokenCountsAsync(assistant, null));
         }
 
         public async Task<FullAssistantDto> CreateSystemAssistantAsync(CreateAssistantDto createDto)
@@ -411,7 +446,7 @@ namespace ChatUitReact.Server.Services
 
             await NotifyAllUsersAssistantsUpdated();
 
-            return MapToFullAssistantDto(createdAssistant, await GetPromptTokenCountsAsync(createdAssistant));
+            return MapToFullAssistantDto(createdAssistant, await GetPromptTokenCountsAsync(createdAssistant, null));
         }
 
         public async Task<FullAssistantDto?> UpdateSystemAssistantAsync(string assistantId, UpdateAssistantDto updateDto)
@@ -437,7 +472,7 @@ namespace ChatUitReact.Server.Services
             _promptTokenCache.TryRemove(assistantId, out _);
             await NotifyAllUsersAssistantsUpdated();
 
-            return MapToFullAssistantDto(savedAssistant, await GetPromptTokenCountsAsync(savedAssistant));
+            return MapToFullAssistantDto(savedAssistant, await GetPromptTokenCountsAsync(savedAssistant, null));
         }
 
         public async Task<bool> DeleteSystemAssistantAsync(string assistantId)
@@ -488,7 +523,8 @@ namespace ChatUitReact.Server.Services
                     createDto.SystemPrompt,
                     createDto.Temperature,
                     createDto.ReasoningEffort,
-                    createDto.AvailableToolIds),
+                    createDto.AvailableToolIds,
+                    createDto.PromptSnippets),
                 Files = MapAssistantFiles(createDto.Files),
                 OwnerId = ownerId
             };
@@ -501,7 +537,8 @@ namespace ChatUitReact.Server.Services
             string systemPrompt,
             float temperature,
             ReasoningEffort requestedEffort,
-            List<string>? requestedToolIds)
+            List<string>? requestedToolIds,
+            List<string>? requestedSnippets)
         {
             var capabilities = model.Capabilities;
 
@@ -517,7 +554,8 @@ namespace ChatUitReact.Server.Services
                 Model = model,
                 AvailableToolIds = capabilities.SupportsFunctionCalling
                     ? requestedToolIds ?? new List<string>()
-                    : new List<string>()
+                    : new List<string>(),
+                PromptSnippets = PromptSnippets.Normalize(requestedSnippets)
             };
         }
 
@@ -537,7 +575,8 @@ namespace ChatUitReact.Server.Services
                 updateDto.SystemPrompt,
                 updateDto.Temperature,
                 updateDto.ReasoningEffort,
-                updateDto.AvailableToolIds);
+                updateDto.AvailableToolIds,
+                updateDto.PromptSnippets);
             assistant.Files = MapAssistantFiles(updateDto.Files);
 
             return true;
@@ -563,6 +602,7 @@ namespace ChatUitReact.Server.Services
                 Temperature = assistant.ChatSettings.Temperature,
                 ReasoningEffort = assistant.ChatSettings.ReasoningEffort,
                 AvailableToolIds = assistant.ChatSettings.AvailableToolIds,
+                PromptSnippets = assistant.ChatSettings.PromptSnippets,
                 IsVisible = !(user?.Preferences.HiddenAssistantIds.Contains(assistant.Id) ?? false),
                 IsFavorite = user?.Preferences.FavoritedAssistantIds.Contains(assistant.Id) ?? false,
                 CanBeDefault = eligibleModelIds?.Contains(assistant.ChatSettings.Model.Id) ?? false,

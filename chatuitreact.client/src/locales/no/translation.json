@@ -187,9 +187,10 @@
       "noTools": "Ingen verktøy tilgjengelig",
       "modelNoTools": "Denne modellen støtter ikke verktøy",
       "snippets": {
-        "renderMarkdown": "Svar i markdown",
-        "includeBasicInfo": "Ta med grunnleggende info om deg",
-        "renderEquations": "Vis likninger"
+        "formatMarkdown": "Formater tekst",
+        "equations": "Vis likninger",
+        "basicUserInfo": "Ta med grunnleggende info om deg",
+        "answerPreferences": "Ta med dine svarpreferanser"
       },
       "temperature": "Temperatur",
       "reasoning": "Resonnering",
@@ -328,21 +329,9 @@
         "title": "Yrkesrolle",
         "placeholder": "f.eks. programvareingeniør, lærer, student"
       },
-      "responseStyle": {
-        "title": "Svarstil",
-        "creative": "Kreativ",
-        "balanced": "Balansert",
-        "precise": "Presis"
-      },
-      "responseLength": {
-        "title": "Svarlengde",
-        "short": "Kort",
-        "medium": "Middels",
-        "long": "Lang"
-      },
       "customInstructions": {
-        "title": "Egendefinerte instruksjoner",
-        "placeholder": "Gi tilleggsinformasjon eller preferanser for hvordan assistenten skal svare..."
+        "title": "Svarpreferanser",
+        "placeholder": "f.eks. kort og konsist, still spørsmål tilbake, vær kritisk..."
       }
     },
     "dataControl": {

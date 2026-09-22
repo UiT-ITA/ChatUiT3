@@ -238,7 +238,8 @@ public partial class DatabaseService
                 Model = model,
                 Temperature = document.ChatSettings.Temperature,
                 ReasoningEffort = document.ChatSettings.ReasoningEffort,
-                AvailableToolIds = document.ChatSettings.AvailableToolIds
+                AvailableToolIds = document.ChatSettings.AvailableToolIds,
+                PromptSnippets = document.ChatSettings.PromptSnippets
             },
             Files = ReadAssistantFiles(document.Files, contentBlocksById, includeFileContent),
             OwnerId = document.OwnerId,
@@ -261,7 +262,8 @@ public partial class DatabaseService
                 ModelId = assistant.ChatSettings.Model?.Id ?? string.Empty,
                 Temperature = assistant.ChatSettings.Temperature,
                 ReasoningEffort = assistant.ChatSettings.ReasoningEffort,
-                AvailableToolIds = assistant.ChatSettings.AvailableToolIds
+                AvailableToolIds = assistant.ChatSettings.AvailableToolIds,
+                PromptSnippets = assistant.ChatSettings.PromptSnippets
             },
             OwnerId = assistant.OwnerId,
             UpdatedAt = DateTime.UtcNow

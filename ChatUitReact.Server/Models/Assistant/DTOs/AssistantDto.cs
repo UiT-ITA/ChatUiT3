@@ -28,6 +28,7 @@ public class FullAssistantDto
     public float Temperature { get; set; } = 0.7f;
     public ReasoningEffort ReasoningEffort { get; set; } = ReasoningEffort.None;
     public List<string> AvailableToolIds { get; set; } = new List<string>();
+    public List<string> PromptSnippets { get; set; } = new List<string>();
     public bool IsVisible { get; set; }
     public bool IsFavorite { get; set; }
 
@@ -99,6 +100,7 @@ public class CreateAssistantDto
     public float Temperature { get; set; } = 0.7f;
     public ReasoningEffort ReasoningEffort { get; set; } = ReasoningEffort.None;
     public List<string> AvailableToolIds { get; set; } = new List<string>();
+    public List<string> PromptSnippets { get; set; } = new List<string>();
     public List<AssistantFileDto> Files { get; set; } = new List<AssistantFileDto>();
 }
 
@@ -116,5 +118,6 @@ public class UpdateAssistantDto
     public float Temperature { get; set; } = 0.7f;
     public ReasoningEffort ReasoningEffort { get; set; } = ReasoningEffort.None;
     public List<string> AvailableToolIds { get; set; } = new List<string>();
+    public List<string> PromptSnippets { get; set; } = new List<string>();
     public List<AssistantFileDto> Files { get; set; } = new List<AssistantFileDto>();
 }

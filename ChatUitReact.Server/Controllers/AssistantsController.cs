@@ -46,7 +46,8 @@ public class AssistantsController : ControllerBase
         try
         {
             var userId = GetCurrentUserId();
-            var assistants = await _assistantService.GetUserAssistantsDtoAsync(userId, _userService.GetUserRoles(User));
+            var promptUser = await _assistantService.GetPromptUserContextAsync(_userService.GetUserIdentity(User));
+            var assistants = await _assistantService.GetUserAssistantsDtoAsync(userId, _userService.GetUserRoles(User), promptUser);
             return Ok(assistants);
         }
         catch (Exception ex)

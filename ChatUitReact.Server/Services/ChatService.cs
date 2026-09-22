@@ -182,13 +182,13 @@ public class ChatService : IChatService
         return await _databaseService.GetChatFileAsync(userId, chatId, fileId);
     }
 
-    public async Task<Chat> CreateChatAsync(string userId, string assistantId, List<Models.ChatMessage> messages)
+    public async Task<Chat> CreateChatAsync(string userId, string assistantId, List<Models.ChatMessage> messages, PromptUserContext promptUser)
     {
-        return await CreateChatAsync(userId, messages, assistantId);
+        return await CreateChatAsync(userId, messages, assistantId, promptUser);
     }
 
 
-    private async Task<Chat> CreateChatAsync(string userId, List<Models.ChatMessage> messages, string assistantId)
+    private async Task<Chat> CreateChatAsync(string userId, List<Models.ChatMessage> messages, string assistantId, PromptUserContext promptUser)
     {
         var lastMessage = messages.Last();
         var initialMessages = messages.Take(messages.Count - 1).ToList();
@@ -217,7 +217,7 @@ public class ChatService : IChatService
             }
         });
 
-        await SendStreamingMessageAsync(userId, newChat.Id, lastMessage, assistantId);
+        await SendStreamingMessageAsync(userId, newChat.Id, lastMessage, assistantId, promptUser);
 
         return newChat;
     }
@@ -253,22 +253,22 @@ public class ChatService : IChatService
 
     #region Message operations
 
-    public async Task SendMessageAsync(string userId, string chatId, Models.ChatMessage message)
+    public async Task SendMessageAsync(string userId, string chatId, Models.ChatMessage message, PromptUserContext promptUser)
     {
-        await SendStreamingMessageAsync(userId, chatId, message);
+        await SendStreamingMessageAsync(userId, chatId, message, promptUser);
     }
 
-    public async Task SendMessageAsync(string userId, string chatId, Models.ChatMessage message, string? assistantId)
+    public async Task SendMessageAsync(string userId, string chatId, Models.ChatMessage message, string? assistantId, PromptUserContext promptUser)
     {
-        await SendStreamingMessageAsync(userId, chatId, message, assistantId);
+        await SendStreamingMessageAsync(userId, chatId, message, assistantId, promptUser);
     }
 
-    public async Task SendStreamingMessageAsync(string userId, string chatId, Models.ChatMessage userMessage)
+    public async Task SendStreamingMessageAsync(string userId, string chatId, Models.ChatMessage userMessage, PromptUserContext promptUser)
     {
-        await SendStreamingMessageAsync(userId, chatId, userMessage, null);
+        await SendStreamingMessageAsync(userId, chatId, userMessage, null, promptUser);
     }
 
-    public async Task SendStreamingMessageAsync(string userId, string chatId, Models.ChatMessage userMessage, string? assistantId)
+    public async Task SendStreamingMessageAsync(string userId, string chatId, Models.ChatMessage userMessage, string? assistantId, PromptUserContext promptUser)
     {
         if (userMessage.Timestamp == default)
         {
@@ -320,7 +320,7 @@ public class ChatService : IChatService
             await _hubContext.Clients.Group(userId).Notify(NotifyLevel.Error, "Assistant is required.");
             throw new InvalidOperationException("AssistantId is required for chat operations");
         }
-        var settings = await GetChatSettingsFromAssistant(userId, effectiveAssistantId);
+        var settings = await GetChatSettingsFromAssistant(userId, effectiveAssistantId, promptUser);
         
         var modelWithEndpoint = await _modelService.GetModelWithEndpointAsync(settings.Model.Id);
         if (modelWithEndpoint == null)
@@ -495,7 +495,7 @@ public class ChatService : IChatService
 
     #region Private helper methods
 
-    private async Task<ChatSettings> GetChatSettingsFromAssistant(string userId, string assistantId)
+    private async Task<ChatSettings> GetChatSettingsFromAssistant(string userId, string assistantId, PromptUserContext promptUser)
     {
         if (string.IsNullOrWhiteSpace(assistantId))
         {
@@ -519,7 +519,11 @@ public class ChatService : IChatService
         return new ChatSettings
         {
             Model = assistant.ChatSettings.Model,
-            SystemPrompt = SystemPromptAssembler.AppendKnowledgeFiles(assistant.ChatSettings.SystemPrompt, assistant.Files),
+            SystemPrompt = SystemPromptAssembler.Build(
+                assistant.ChatSettings.SystemPrompt,
+                assistant.ChatSettings.PromptSnippets,
+                promptUser,
+                assistant.Files),
             Temperature = assistant.ChatSettings.Temperature,
             ReasoningEffort = assistant.ChatSettings.ReasoningEffort,
             AvailableToolIds = assistant.ChatSettings.AvailableToolIds

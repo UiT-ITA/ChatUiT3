@@ -1,14 +1,67 @@
-import React from 'react';
+import React, { useState } from 'react';
+import { useSignals } from '@preact/signals-react/runtime';
 import { useParams } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { useSettings } from '../../hooks/useSettings';
 import type { SettingsCategory } from '../../types/settingsModels';
+import { getUserProfile, updateUserProfile, type UserProfile } from '../../services/userProfileService';
 import './SettingsPage.css';
+
+interface ProfileFieldProps {
+  field: keyof UserProfile;
+  profile: UserProfile;
+  label: string;
+  placeholder: string;
+  multiline?: boolean;
+}
+
+// Edits locally and saves to the server on blur, so a keystroke is not a request.
+const ProfileField: React.FC<ProfileFieldProps> = ({ field, profile, label, placeholder, multiline }) => {
+  const [draft, setDraft] = useState(profile[field]);
+  const [synced, setSynced] = useState(profile[field]);
+  if (profile[field] !== synced) {
+    setSynced(profile[field]);
+    setDraft(profile[field]);
+  }
+
+  const save = () => {
+    if (draft !== profile[field]) {
+      updateUserProfile({ [field]: draft }).catch((error) => console.error('Failed to save profile:', error));
+    }
+  };
+
+  return (
+    <div className="settings-field">
+      <label className="settings-label t-label">{label}</label>
+      {multiline ? (
+        <textarea
+          value={draft}
+          onChange={(e) => setDraft(e.target.value)}
+          onBlur={save}
+          placeholder={placeholder}
+          className="settings-textarea t-body"
+          rows={4}
+        />
+      ) : (
+        <input
+          type="text"
+          value={draft}
+          onChange={(e) => setDraft(e.target.value)}
+          onBlur={save}
+          placeholder={placeholder}
+          className="settings-input t-body"
+        />
+      )}
+    </div>
+  );
+};
 
 const SettingsPage: React.FC = () => {
   const { t } = useTranslation();
   const { tab } = useParams<{ tab?: string }>();
   const { settings, updateSetting, exportData, deleteAllData } = useSettings();
+  useSignals();
+  const profile = getUserProfile().value;
 
   const activeTab: SettingsCategory =
     tab === 'personalization' || tab === 'dataControl' ? tab : 'appearance';
@@ -101,66 +154,29 @@ const SettingsPage: React.FC = () => {
           </>
         )}
 
-        {activeTab === 'personalization' && (
+        {activeTab === 'personalization' && profile && (
           <>
-            <div className="settings-field">
-              <label className="settings-label t-label">{t('settings.personalization.name.title')}</label>
-              <input
-                type="text"
-                value={settings.userName}
-                onChange={(e) => updateSetting('userName', e.target.value)}
-                placeholder={t('settings.personalization.name.placeholder')}
-                className="settings-input t-body"
-              />
-            </div>
+            <ProfileField
+              field="displayName"
+              profile={profile}
+              label={t('settings.personalization.name.title')}
+              placeholder={t('settings.personalization.name.placeholder')}
+            />
 
-            <div className="settings-field">
-              <label className="settings-label t-label">{t('settings.personalization.jobRole.title')}</label>
-              <input
-                type="text"
-                value={settings.jobRole}
-                onChange={(e) => updateSetting('jobRole', e.target.value)}
-                placeholder={t('settings.personalization.jobRole.placeholder')}
-                className="settings-input t-body"
-              />
-            </div>
+            <ProfileField
+              field="jobRole"
+              profile={profile}
+              label={t('settings.personalization.jobRole.title')}
+              placeholder={t('settings.personalization.jobRole.placeholder')}
+            />
 
-            <div className="settings-field">
-              <label className="settings-label t-label">{t('settings.personalization.responseStyle.title')}</label>
-              <select
-                value={settings.responseStyle}
-                onChange={(e) => updateSetting('responseStyle', e.target.value as typeof settings.responseStyle)}
-                className="settings-select t-body"
-              >
-                <option value="creative">{t('settings.personalization.responseStyle.creative')}</option>
-                <option value="balanced">{t('settings.personalization.responseStyle.balanced')}</option>
-                <option value="precise">{t('settings.personalization.responseStyle.precise')}</option>
-              </select>
-            </div>
-
-            <div className="settings-field">
-              <label className="settings-label t-label">{t('settings.personalization.responseLength.title')}</label>
-              <select
-                value={settings.responseLength}
-                onChange={(e) => updateSetting('responseLength', e.target.value as typeof settings.responseLength)}
-                className="settings-select t-body"
-              >
-                <option value="short">{t('settings.personalization.responseLength.short')}</option>
-                <option value="medium">{t('settings.personalization.responseLength.medium')}</option>
-                <option value="long">{t('settings.personalization.responseLength.long')}</option>
-              </select>
-            </div>
-
-            <div className="settings-field">
-              <label className="settings-label t-label">{t('settings.personalization.customInstructions.title')}</label>
-              <textarea
-                value={settings.customInstructions}
-                onChange={(e) => updateSetting('customInstructions', e.target.value)}
-                placeholder={t('settings.personalization.customInstructions.placeholder')}
-                className="settings-textarea t-body"
-                rows={4}
-              />
-            </div>
+            <ProfileField
+              field="answerPreferences"
+              profile={profile}
+              label={t('settings.personalization.customInstructions.title')}
+              placeholder={t('settings.personalization.customInstructions.placeholder')}
+              multiline
+            />
           </>
         )}
 

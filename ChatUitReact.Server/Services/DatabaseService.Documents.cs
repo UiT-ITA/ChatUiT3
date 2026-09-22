@@ -372,6 +372,9 @@ public partial class DatabaseService
 
         [JsonProperty("availableToolIds")]
         public List<string> AvailableToolIds { get; set; } = new();
+
+        [JsonProperty("promptSnippets")]
+        public List<string> PromptSnippets { get; set; } = new();
     }
 
     private sealed class UserDocument

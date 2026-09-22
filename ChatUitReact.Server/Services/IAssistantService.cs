@@ -1,4 +1,5 @@
 using ChatUitReact.Server.Models;
+using ChatUitReact.Server.Services.AiProviders;
 
 namespace ChatUitReact.Server.Services;
 public interface IAssistantService
@@ -16,7 +17,9 @@ public interface IAssistantService
     Task<bool> ClearDefaultAssistantAsync(string userId);
     Task<bool> ToggleAssistantFavoriteAsync(string assistantId, string userId);
     Task<string> GenerateShareLinkAsync(string assistantId, string userId);
-    Task<AssistantListDto> GetUserAssistantsDtoAsync(string userId, List<UserRole> roles);
+    Task<AssistantListDto> GetUserAssistantsDtoAsync(string userId, List<UserRole> roles, PromptUserContext promptUser);
+    /// <summary>The user facts prompt snippets may read, from the stored profile with claims as fallback.</summary>
+    Task<PromptUserContext> GetPromptUserContextAsync(UserIdentity identity);
     Task<List<FullAssistantDto>> GetSystemAssistantsForAdminAsync();
     Task<FullAssistantDto?> GetSystemAssistantForAdminAsync(string assistantId);
     Task<FullAssistantDto> CreateSystemAssistantAsync(CreateAssistantDto createDto);

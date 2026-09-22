@@ -187,9 +187,10 @@
       "noTools": "No tools available",
       "modelNoTools": "This model does not support tools",
       "snippets": {
-        "renderMarkdown": "Render in markdown",
-        "includeBasicInfo": "Include basic info about you",
-        "renderEquations": "Render equations"
+        "formatMarkdown": "Format text",
+        "equations": "Render equations",
+        "basicUserInfo": "Include basic info about you",
+        "answerPreferences": "Include your answer preferences"
       },
       "temperature": "Temperature",
       "reasoning": "Reasoning",
@@ -328,21 +329,9 @@
         "title": "Job Role",
         "placeholder": "e.g., Software Engineer, Teacher, Student"
       },
-      "responseStyle": {
-        "title": "Response Style",
-        "creative": "Creative",
-        "balanced": "Balanced",
-        "precise": "Precise"
-      },
-      "responseLength": {
-        "title": "Response Length",
-        "short": "Short",
-        "medium": "Medium",
-        "long": "Long"
-      },
       "customInstructions": {
-        "title": "Custom Instructions",
-        "placeholder": "Provide additional context or preferences for how the assistant should respond..."
+        "title": "Answer preferences",
+        "placeholder": "e.g. short and concise, push back on weak arguments, ask follow-up questions..."
       }
     },
     "dataControl": {

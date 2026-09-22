@@ -151,7 +151,8 @@ public class ChatsController : ControllerBase
                 initialMessages.Add(message);
             }
             
-            var chat = await _chatService.CreateChatAsync(userId, request.AssistantId, initialMessages);
+            var promptUser = await _assistantService.GetPromptUserContextAsync(_userService.GetUserIdentity(User));
+            var chat = await _chatService.CreateChatAsync(userId, request.AssistantId, initialMessages, promptUser);
             
             await _hubContext.Clients.Group(userId).ChatListUpdated();
             
@@ -184,10 +185,12 @@ public class ChatsController : ControllerBase
                 Files = request.Files != null ? MapDtoToFiles(request.Files) : new List<ChatFile>()
             };
 
+            var promptUser = await _assistantService.GetPromptUserContextAsync(_userService.GetUserIdentity(User));
+
             if (chatId == "new")
             {
                 var messages = new List<ChatMessage> { message };
-                var chat = await _chatService.CreateChatAsync(userId, request.AssistantId, messages);
+                var chat = await _chatService.CreateChatAsync(userId, request.AssistantId, messages, promptUser);
                 
                 await _hubContext.Clients.Group(userId).ChatListUpdated();
                 
@@ -196,7 +199,7 @@ public class ChatsController : ControllerBase
             else
             {
                 // Uses the same streaming path as the SignalR hub, so both entry points behave alike.
-                await _chatService.SendStreamingMessageAsync(userId, chatId, message, request.AssistantId);
+                await _chatService.SendStreamingMessageAsync(userId, chatId, message, request.AssistantId, promptUser);
                 
                 await _hubContext.Clients.Group(userId).ChatUpdated(chatId);
                 

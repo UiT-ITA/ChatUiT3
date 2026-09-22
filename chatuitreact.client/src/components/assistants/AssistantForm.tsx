@@ -2,7 +2,7 @@ import React, { useState, useRef, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import { MdImage, MdPublic, MdPsychology, MdExpandMore, MdExpandLess } from 'react-icons/md';
 import { useSignals } from '@preact/signals-react/runtime';
-import type { AssistantFileDto, CreateAssistantDto, FullAssistantDto, ReasoningEffort, ChatToolDto, UpdateAssistantDto } from '../../types/assistantModels';
+import { PROMPT_SNIPPET_IDS, type AssistantFileDto, type CreateAssistantDto, type FullAssistantDto, type PromptSnippetId, type ReasoningEffort, type ChatToolDto, type UpdateAssistantDto } from '../../types/assistantModels';
 import { getModels } from '../../services/modelService';
 import { getAppDefaults } from '../../services/appSettingsService';
 import { getTools } from '../../services/toolService';
@@ -54,7 +54,8 @@ const emptyFormData = (): CreateAssistantDto => ({
   systemPrompt: '',
   temperature: 0.7,
   reasoningEffort: 'None',
-  availableToolIds: []
+  availableToolIds: [],
+  promptSnippets: []
 });
 
 /** The form's values for the assistant being edited, or the defaults for a new one. */
@@ -83,7 +84,8 @@ const formStateFor = (editingAssistant: FullAssistantDto | null) => {
       systemPrompt: editingAssistant.systemPrompt || '',
       temperature: editingAssistant.temperature,
       reasoningEffort: editingAssistant.reasoningEffort,
-      availableToolIds: editingAssistant.availableToolIds || []
+      availableToolIds: editingAssistant.availableToolIds || [],
+      promptSnippets: editingAssistant.promptSnippets ?? []
     } satisfies CreateAssistantDto,
     knowledgeFiles,
     selectedToolIds: editingAssistant.availableToolIds || []
@@ -119,11 +121,6 @@ const AssistantForm: React.FC<AssistantFormProps> = ({
   const [initialState] = useState(() => formStateFor(editingAssistant));
   const [selectedToolIds, setSelectedToolIds] = useState<string[]>(initialState.selectedToolIds);
   const [knowledgeFiles, setKnowledgeFiles] = useState<Record<KnowledgeFileCategory, KnowledgeFileItemData[]>>(initialState.knowledgeFiles);
-  const [systemPromptSnippets, setSystemPromptSnippets] = useState({
-    renderMarkdown: false,
-    includeBasicInfo: false,
-    renderEquations: false
-  });
   const modelDropdownRef = useRef<HTMLDivElement>(null);
 
   const [formData, setFormData] = useState<CreateAssistantDto>(initialState.formData);
@@ -233,6 +230,14 @@ const AssistantForm: React.FC<AssistantFormProps> = ({
 
     setSelectedToolIds(newSelectedIds);
     handleChange('availableToolIds', newSelectedIds);
+  };
+
+  const selectedSnippets: PromptSnippetId[] = formData.promptSnippets ?? [];
+  const toggleSnippet = (id: PromptSnippetId, enabled: boolean) => {
+    const next = enabled
+      ? [...selectedSnippets.filter((s) => s !== id), id]
+      : selectedSnippets.filter((s) => s !== id);
+    handleChange('promptSnippets', next);
   };
 
   const handleKnowledgeFilesSelected = (category: KnowledgeFileCategory, files: ChatFile[]) => {
@@ -464,33 +469,17 @@ const AssistantForm: React.FC<AssistantFormProps> = ({
           disabled={loading}
         />
         <div className="af-snippets">
-          <label className="af-checkbox-label t-table">
-            <input
-              type="checkbox"
-              checked={systemPromptSnippets.renderMarkdown}
-              onChange={(e) => setSystemPromptSnippets(prev => ({ ...prev, renderMarkdown: e.target.checked }))}
-              disabled={loading}
-            />
-            <span>{t('assistants.form.snippets.renderMarkdown')}</span>
-          </label>
-          <label className="af-checkbox-label t-table">
-            <input
-              type="checkbox"
-              checked={systemPromptSnippets.includeBasicInfo}
-              onChange={(e) => setSystemPromptSnippets(prev => ({ ...prev, includeBasicInfo: e.target.checked }))}
-              disabled={loading}
-            />
-            <span>{t('assistants.form.snippets.includeBasicInfo')}</span>
-          </label>
-          <label className="af-checkbox-label t-table">
-            <input
-              type="checkbox"
-              checked={systemPromptSnippets.renderEquations}
-              onChange={(e) => setSystemPromptSnippets(prev => ({ ...prev, renderEquations: e.target.checked }))}
-              disabled={loading}
-            />
-            <span>{t('assistants.form.snippets.renderEquations')}</span>
-          </label>
+          {PROMPT_SNIPPET_IDS.map((id) => (
+            <label key={id} className="af-checkbox-label t-table">
+              <input
+                type="checkbox"
+                checked={selectedSnippets.includes(id)}
+                onChange={(e) => toggleSnippet(id, e.target.checked)}
+                disabled={loading}
+              />
+              <span>{t(`assistants.form.snippets.${id}`)}</span>
+            </label>
+          ))}
         </div>
       </div>
 

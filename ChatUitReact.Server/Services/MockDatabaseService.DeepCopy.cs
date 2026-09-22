@@ -23,6 +23,12 @@ public partial class MockDatabaseService
                     CompactMode = userInfo.Preferences.Display.CompactMode,
                     FontSize = userInfo.Preferences.Display.FontSize
                 },
+                Profile = new UserProfile
+                {
+                    DisplayName = userInfo.Preferences.Profile.DisplayName,
+                    JobRole = userInfo.Preferences.Profile.JobRole,
+                    AnswerPreferences = userInfo.Preferences.Profile.AnswerPreferences
+                },
                 SharedAssistantIds = new List<string>(userInfo.Preferences.SharedAssistantIds),
                 FavoritedAssistantIds = new List<string>(userInfo.Preferences.FavoritedAssistantIds),
                 HiddenAssistantIds = new List<string>(userInfo.Preferences.HiddenAssistantIds),
@@ -45,7 +51,8 @@ public partial class MockDatabaseService
                 Temperature = assistant.ChatSettings.Temperature,
                 ReasoningEffort = assistant.ChatSettings.ReasoningEffort,
                 Model = DeepCopyModel(assistant.ChatSettings.Model),
-                AvailableToolIds = new List<string>(assistant.ChatSettings.AvailableToolIds)
+                AvailableToolIds = new List<string>(assistant.ChatSettings.AvailableToolIds),
+                PromptSnippets = new List<string>(assistant.ChatSettings.PromptSnippets)
             },
             Files = assistant.Files.Select(DeepCopyAssistantFile).ToList(),
             OwnerId = assistant.OwnerId,

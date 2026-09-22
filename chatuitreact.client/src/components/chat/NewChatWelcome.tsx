@@ -1,18 +1,20 @@
 import { useTranslation } from 'react-i18next';
 import { useAuth } from '../../hooks/useAuth';
-import { useSettings } from '../../hooks/useSettings';
+import { useSignals } from '@preact/signals-react/runtime';
+import { getUserProfile } from '../../services/userProfileService';
 import './NewChatWelcome.css';
 
 export default function NewChatWelcome() {
   const { t } = useTranslation();
   const { account } = useAuth();
-  const { settings } = useSettings();
+  useSignals();
+  const profileName = getUserProfile().value?.displayName ?? '';
 
-  const nameParts = (settings.userName || account?.name || '')
+  const nameParts = (profileName || account?.name || '')
     .split(/[\s,]+/)
     .filter(Boolean);
   // MSAL names may come as "Lastname, Firstname" — pick the part after the comma
-  const useLastPart = !settings.userName && !!account?.name?.includes(',');
+  const useLastPart = !profileName && !!account?.name?.includes(',');
   const firstName = nameParts[useLastPart ? nameParts.length - 1 : 0];
 
   return (
