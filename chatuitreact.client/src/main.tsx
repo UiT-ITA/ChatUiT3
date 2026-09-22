@@ -7,6 +7,9 @@ import authService from './services/authService.ts'
 import App from './App.tsx'
 import { AuthProvider } from './contexts/AuthContext.tsx'
 import { SettingsProvider } from './contexts/SettingsContext.tsx'
+import { registerBuiltinClientTools } from './services/clientTools/builtin'
+
+registerBuiltinClientTools()
 
 msalInstance.initialize().then(() => {
   if (!msalInstance.getActiveAccount() && msalInstance.getAllAccounts().length > 0) {

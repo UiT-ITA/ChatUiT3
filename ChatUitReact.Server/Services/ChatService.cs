@@ -4,7 +4,10 @@ using ChatUitReact.Server.Models;
 using ChatUitReact.Server.Services.AiProviders;
 using System.Diagnostics;
 using ChatUitReact.Server.Services.TokenCounting;
+using ChatUitReact.Server.Services.Tools;
 using System.Text;
+using System.Text.Json;
+using System.Security.Claims;
 
 namespace ChatUitReact.Server.Services;
 
@@ -27,7 +30,9 @@ public class ChatService : IChatService
     private readonly StreamingService _streamingService;
     private readonly IAssistantService _assistantService;
     private readonly IModelService _modelService;
-    private readonly IToolService _toolService;
+    private readonly IToolRegistry _toolRegistry;
+    private readonly IToolAccessService _toolAccess;
+    private readonly PendingInteractionRegistry _pendingInteractions;
     private readonly ISettingsService _settingsService;
     private readonly ITokenCountingService _tokenCounting;
 
@@ -40,7 +45,9 @@ public class ChatService : IChatService
         StreamingService streamingService,
         IAssistantService assistantService,
         IModelService modelService,
-        IToolService toolService,
+        IToolRegistry toolRegistry,
+        IToolAccessService toolAccess,
+        PendingInteractionRegistry pendingInteractions,
         ISettingsService settingsService,
         ITokenCountingService tokenCounting)
     {
@@ -52,7 +59,9 @@ public class ChatService : IChatService
         _streamingService = streamingService;
         _assistantService = assistantService;
         _modelService = modelService;
-        _toolService = toolService;
+        _toolRegistry = toolRegistry;
+        _toolAccess = toolAccess;
+        _pendingInteractions = pendingInteractions;
         _settingsService = settingsService;
         _tokenCounting = tokenCounting;
     }
@@ -77,8 +86,10 @@ public class ChatService : IChatService
         foreach (var message in chat.Messages)
         {
             if (message.Status != AiChatStatus.Generating ||
-                DateTime.UtcNow - message.Timestamp < StaleGenerationThreshold)
+                DateTime.UtcNow - message.Timestamp < StaleGenerationThreshold ||
+                _streamingService.IsGenerationActive(userId, message.Id))
             {
+                // A run paused on a tool confirmation is still alive; only orphaned runs are failed.
                 continue;
             }
 
@@ -182,13 +193,16 @@ public class ChatService : IChatService
         return await _databaseService.GetChatFileAsync(userId, chatId, fileId);
     }
 
-    public async Task<Chat> CreateChatAsync(string userId, string assistantId, List<Models.ChatMessage> messages)
+    public Task<Chat> CreateChatAsync(string userId, string assistantId, List<Models.ChatMessage> messages)
+        => CreateChatAsync(userId, assistantId, messages, ToolSessionInput.Anonymous);
+
+    public async Task<Chat> CreateChatAsync(string userId, string assistantId, List<Models.ChatMessage> messages, ToolSessionInput tools)
     {
-        return await CreateChatAsync(userId, messages, assistantId);
+        return await CreateChatAsync(userId, messages, assistantId, tools);
     }
 
 
-    private async Task<Chat> CreateChatAsync(string userId, List<Models.ChatMessage> messages, string assistantId)
+    private async Task<Chat> CreateChatAsync(string userId, List<Models.ChatMessage> messages, string assistantId, ToolSessionInput tools)
     {
         var lastMessage = messages.Last();
         var initialMessages = messages.Take(messages.Count - 1).ToList();
@@ -217,7 +231,7 @@ public class ChatService : IChatService
             }
         });
 
-        await SendStreamingMessageAsync(userId, newChat.Id, lastMessage, assistantId);
+        await SendStreamingMessageAsync(userId, newChat.Id, lastMessage, assistantId, tools);
 
         return newChat;
     }
@@ -268,7 +282,10 @@ public class ChatService : IChatService
         await SendStreamingMessageAsync(userId, chatId, userMessage, null);
     }
 
-    public async Task SendStreamingMessageAsync(string userId, string chatId, Models.ChatMessage userMessage, string? assistantId)
+    public Task SendStreamingMessageAsync(string userId, string chatId, Models.ChatMessage userMessage, string? assistantId)
+        => SendStreamingMessageAsync(userId, chatId, userMessage, assistantId, ToolSessionInput.Anonymous);
+
+    public async Task SendStreamingMessageAsync(string userId, string chatId, Models.ChatMessage userMessage, string? assistantId, ToolSessionInput tools)
     {
         if (userMessage.Timestamp == default)
         {
@@ -337,7 +354,15 @@ public class ChatService : IChatService
             throw new NotSupportedException($"No AI provider is registered for endpoint type {endpoint.EndpointType}.");
         }
 
-        var request = BuildAiRequest(model, endpoint, settings, messages);
+        var request = await BuildAiRequestAsync(model, endpoint, settings, messages, tools);
+        var toolContext = new ToolExecutionContext
+        {
+            UserId = userId,
+            ChatId = chatId,
+            MessageId = assistantMessage.Id,
+            Access = tools.Access,
+            Tokens = tools.Tokens
+        };
 
         _ = Task.Run(async () =>
         {
@@ -349,12 +374,13 @@ public class ChatService : IChatService
 
             // Without a token a run that hangs — or keeps calling tools — outlives the
             // client that started it, with no way to stop it.
-            using var cancellation = new CancellationTokenSource(GenerationTimeout);
-            _streamingService.RegisterGeneration(userId, assistantMessage.Id, cancellation);
+            // The deadline is owned by the streaming service so a tool waiting on the user can pause it.
+            using var cancellation = new CancellationTokenSource();
+            _streamingService.RegisterGeneration(userId, assistantMessage.Id, cancellation, GenerationTimeout);
 
             try
             {
-                await foreach (var chunk in _conversationRunner.StreamAsync(request, userId, chatId, activity, cancellation.Token))
+                await foreach (var chunk in _conversationRunner.StreamAsync(request, toolContext, activity, cancellation.Token))
                 {
                     _streamingService.AddChunk(userId, assistantMessage.Id, chunk);
 
@@ -527,14 +553,23 @@ public class ChatService : IChatService
     }
 
     // The one place assistant settings become a provider request: capabilities are reconciled
-    // once here, so no provider has to re-derive what the model will accept.
-    private AiRequest BuildAiRequest(
+    // once here, so no provider has to re-derive what the model will accept. Tools are the
+    // assistant's list cut down to what this user may use, plus the client's own tools.
+    private async Task<AiRequest> BuildAiRequestAsync(
         Model model,
         ModelEndpoint endpoint,
         ChatSettings settings,
-        List<Models.ChatMessage> messages)
+        List<Models.ChatMessage> messages,
+        ToolSessionInput tools)
     {
         var parameters = ChatParameterResolver.Resolve(model.Capabilities, settings);
+
+        var resolvedTools = new List<ITool>(await _toolAccess.FilterAllowedAsync(parameters.ToolIds, tools.Access));
+
+        if (model.Capabilities.SupportsFunctionCalling && tools.ClientTools.Count > 0 && await _toolAccess.MayUseClientToolsAsync(tools.Access))
+        {
+            resolvedTools.AddRange(_toolRegistry.CreateClientTools(tools.ClientTools));
+        }
 
         return new AiRequest
         {
@@ -543,8 +578,72 @@ public class ChatService : IChatService
             SystemPrompt = settings.SystemPrompt,
             Messages = messages,
             Parameters = parameters,
-            Tools = _toolService.GetToolDefinitions(parameters.ToolIds).ToList()
+            Tools = resolvedTools
         };
+    }
+
+    public Task<ToolCallResponseResultDto> RespondToToolCallAsync(
+        string userId,
+        string chatId,
+        string messageId,
+        string toolCallId,
+        ToolCallResponseDto response,
+        ClaimsPrincipal user,
+        string? incomingToken)
+    {
+        var awaiting = _pendingInteractions.GetPendingStatus(userId, messageId, toolCallId);
+        if (awaiting == null)
+        {
+            return Task.FromResult(new ToolCallResponseResultDto { Accepted = false, Status = null });
+        }
+
+        var expectedKind = awaiting switch
+        {
+            ToolCallStatus.AwaitingConfirmation => ToolCallResponseKind.Confirmation,
+            ToolCallStatus.AwaitingConsent => ToolCallResponseKind.Consent,
+            _ => ToolCallResponseKind.ClientResult
+        };
+        if (response.Kind != expectedKind)
+        {
+            throw new ArgumentException($"Tool call is awaiting {awaiting}; a {response.Kind} response does not apply.");
+        }
+
+        JsonElement? payload = null;
+        if (response.Kind == ToolCallResponseKind.Confirmation && !string.IsNullOrWhiteSpace(response.EditedArgumentsJson))
+        {
+            try
+            {
+                using var document = JsonDocument.Parse(response.EditedArgumentsJson);
+                if (document.RootElement.ValueKind != JsonValueKind.Object)
+                {
+                    throw new ArgumentException("editedArgumentsJson must be a JSON object.");
+                }
+
+                payload = document.RootElement.Clone();
+            }
+            catch (JsonException ex)
+            {
+                throw new ArgumentException($"editedArgumentsJson is not valid JSON: {ex.Message}", ex);
+            }
+        }
+        else if (response.Kind == ToolCallResponseKind.ClientResult)
+        {
+            payload = JsonSerializer.SerializeToElement(response.Result ?? string.Empty);
+        }
+
+        var accepted = _pendingInteractions.TryComplete(userId, messageId, toolCallId,
+            new InteractionResponse(response.Kind, response.Decision, payload, response.IsError, user, incomingToken));
+
+        var status = accepted
+            ? response.Kind switch
+            {
+                ToolCallResponseKind.Confirmation => response.Decision == ToolCallDecision.Approve ? ToolCallStatus.Approved : ToolCallStatus.Rejected,
+                ToolCallResponseKind.Consent => response.Decision == ToolCallDecision.Retry ? ToolCallStatus.Running : ToolCallStatus.Rejected,
+                _ => response.IsError ? ToolCallStatus.Error : ToolCallStatus.Completed
+            }
+            : (ToolCallStatus?)null;
+
+        return Task.FromResult(new ToolCallResponseResultDto { Accepted = accepted, Status = status });
     }
 
     #endregion Private helper methods

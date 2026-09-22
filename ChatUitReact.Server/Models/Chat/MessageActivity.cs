@@ -60,4 +60,16 @@ public class ActivityEntry
     public string? Result { get; set; }
 
     public bool IsError { get; set; }
+
+    /// <summary>Tool only: where the tool ran.</summary>
+    public ToolExecution Execution { get; set; } = ToolExecution.Server;
+
+    /// <summary>Tool only. Persisted entries hold a terminal status.</summary>
+    public ToolCallStatus Status { get; set; } = ToolCallStatus.Running;
+
+    /// <summary>Tool only: the preview the user was shown, when the tool asked for confirmation.</summary>
+    public ToolPreviewDto? Preview { get; set; }
+
+    /// <summary>Tool only: scopes the user was asked to grant, when consent was missing.</summary>
+    public List<string> RequiredScopes { get; set; } = new();
 }

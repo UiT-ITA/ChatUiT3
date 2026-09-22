@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using System.Text.Json.Serialization;
 
 namespace ChatUitReact.Server.Models;
@@ -14,7 +15,15 @@ public enum ChatStreamChunkKind
     /// <summary>A tool call finished.</summary>
     ToolEnd,
     /// <summary>Generation finished; carries the final <see cref="MessageActivity"/>.</summary>
-    Done
+    Done,
+    /// <summary>The run is paused until the user approves or rejects the tool call.</summary>
+    ToolConfirmationRequested,
+    /// <summary>The run is paused until the user grants the app the listed scopes, or declines.</summary>
+    ToolConsentRequired,
+    /// <summary>The run is paused until the client runs the tool and posts the result.</summary>
+    ToolClientCallRequested,
+    /// <summary>A tool call changed status without finishing (approved, running again).</summary>
+    ToolStatus
 }
 
 /// <summary>
@@ -42,4 +51,39 @@ public class ChatStreamChunk
     public bool IsError { get; set; }
 
     public MessageActivity? Activity { get; set; }
+
+    /// <summary>ToolStart: where the tool runs.</summary>
+    public ToolExecution? Execution { get; set; }
+
+    /// <summary>ToolStatus and ToolEnd.</summary>
+    public ToolCallStatus? Status { get; set; }
+
+    /// <summary>ToolConfirmationRequested.</summary>
+    public ToolPreviewDto? Preview { get; set; }
+
+    /// <summary>ToolConsentRequired.</summary>
+    public List<string>? RequiredScopes { get; set; }
+
+    /// <summary>On the pause kinds: how long the server waits, counted from this chunk's <see cref="ElapsedMs"/>.</summary>
+    public long? TimeoutMs { get; set; }
+}
+
+/// <summary>What the user sees before approving a confirmable tool call. Also stored on the activity entry.</summary>
+public class ToolPreviewDto
+{
+    public string Title { get; set; } = string.Empty;
+
+    /// <summary>Markdown, optional.</summary>
+    public string? Summary { get; set; }
+
+    public List<ToolPreviewFieldDto> Fields { get; set; } = new();
+
+    public bool AllowEdit { get; set; } = true;
+}
+
+public class ToolPreviewFieldDto
+{
+    public string Label { get; set; } = string.Empty;
+    public string Value { get; set; } = string.Empty;
+    public bool Multiline { get; set; }
 }

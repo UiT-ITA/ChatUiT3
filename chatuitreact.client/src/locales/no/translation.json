@@ -103,7 +103,13 @@
       "generating": "Genererer",
       "done": "Ferdig",
       "running": "Kjører…",
-      "failed": "Feilet"
+      "failed": "Feilet",
+      "awaitingConfirmation": "Trenger din godkjenning",
+      "awaitingConsent": "Trenger tilgang",
+      "awaitingClient": "Kjører i nettleseren din…",
+      "approved": "Godkjent, kjører…",
+      "rejected": "Avslått",
+      "timeout": "Tidsavbrudd"
     },
     "roles": {
       "user": "Bruker",
@@ -124,8 +130,12 @@
       "effort": "Innsats",
       "rounds_one": "{{count}} verktøyrunde",
       "rounds_other": "{{count}} verktøyrunder",
-      "nothingRecorded": "Ingen tenking eller verktøykall ble registrert."
-    }
+      "nothingRecorded": "Ingen tenking eller verktøykall ble registrert.",
+      "awaitingUser": "Venter på deg: {{name}}",
+      "awaitingClient": "Kjører {{name}} i nettleseren din…",
+      "timeLeft": "{{duration}} igjen"
+    },
+    "awaitingInputHint": "Et verktøy venter på svar fra deg ovenfor."
   },
   "welcome": {
     "header": "Velkommen til ChatUiT",
@@ -203,7 +213,13 @@
         "max": "Maks"
       },
       "temperatureUnavailableWithReasoning": "Denne modellen godtar kun temperatur når resonnering er av.",
-      "modelNotDefaultEligible": "Dette er standardassistenten din. Denne modellen kan ikke være standard, så nye samtaler slutter å starte her hvis du lagrer."
+      "modelNotDefaultEligible": "Dette er standardassistenten din. Denne modellen kan ikke være standard, så nye samtaler slutter å starte her hvis du lagrer.",
+      "toolHints": {
+        "requiresConfirmation": "Spør før kjøring",
+        "requiresAccess": "Trenger tilgang: {{scopes}}"
+      },
+      "toolsSharingNote": "Andre som bruker denne assistenten får bare verktøyene de selv har tilgang til.",
+      "toolUnavailable": "Ikke lenger tilgjengelig for deg. Fjern haken for å lagre."
     },
     "capabilities": {
       "vision": "Visjon",
@@ -388,7 +404,7 @@
     "admin": "Administrasjon",
     "settings": "Innstillinger",
     "searchChats": "Søk i samtaler",
-    "adminNote": "Administrasjon av endepunkter, modeller og systemassistenter.",
+    "adminNote": "Administrasjon av endepunkter, modeller, systemassistenter og verktøy.",
     "help": "Hjelp"
   },
   "common": {
@@ -420,7 +436,27 @@
   },
   "toolCall": {
     "arguments": "Argumenter",
-    "result": "Resultat"
+    "result": "Resultat",
+    "execution": {
+      "client": "I nettleseren din",
+      "server": "På serveren"
+    },
+    "editArguments": "Rediger argumenter",
+    "hideArguments": "Skjul redigering",
+    "invalidJson": "Argumentene må være et gyldig JSON-objekt.",
+    "approve": "Godkjenn",
+    "reject": "Avslå",
+    "working": "Arbeider…",
+    "confirm": {
+      "title": "Bekreft før kjøring"
+    },
+    "consent": {
+      "title": "Tilgang kreves",
+      "body": "{{name}} trenger tillatelse til å handle på dine vegne. Gi den én gang, så fortsetter verktøyet.",
+      "grant": "Gi tilgang",
+      "decline": "Ikke nå",
+      "failed": "Kunne ikke fullføre tillatelsesdialogen: {{message}}"
+    }
   },
   "roles": {
     "User": "Bruker",
@@ -430,12 +466,13 @@
     "External": "Ekstern"
   },
   "admin": {
-    "intro": "Administrer endepunktene, modellene og systemassistentene som er tilgjengelige i ChatUiT. Velg et element i listen, eller legg til et nytt.",
+    "intro": "Administrer endepunktene, modellene, systemassistentene og verktøyene som er tilgjengelige i ChatUiT. Velg et element i listen, eller legg til et nytt.",
     "tabs": {
       "endpoints": "Endepunkter",
       "models": "Modeller",
       "assistants": "Systemassistenter",
-      "settings": "Innstillinger"
+      "settings": "Innstillinger",
+      "tools": "Verktøy"
     },
     "endpoints": {
       "title": "Endepunkter",
@@ -598,6 +635,45 @@
         "chatNamingModelHelp": "Brukes til å lage et navn på en ny chat ut fra den første meldingen. Nye chatter beholder plassholdernavnet sitt når denne ikke er valgt.",
         "defaultAssistant": "Standardassistent",
         "defaultAssistantHelp": "Systemassistenten en ny samtale starter på når brukeren ikke har valgt en egen."
+      }
+    },
+    "tools": {
+      "title": "Verktøy",
+      "list": {
+        "empty": "Ingen verktøy registrert."
+      },
+      "meta": {
+        "disabled": "Avslått",
+        "overridden": "Tilpasset tilgang",
+        "default": "Standardtilgang"
+      },
+      "edit": {
+        "title": "Verktøytilgang"
+      },
+      "fields": {
+        "id": "Verktøy-id",
+        "description": "Beskrivelse modellen ser",
+        "execution": "Kjører",
+        "requiresConfirmation": "Spør brukeren før kjøring",
+        "requiredScopes": "Delegerte tillatelser",
+        "schema": "Argumentskjema",
+        "enabled": "Aktivert",
+        "enabledHelp": "Av slår verktøyet av for alle, uavhengig av roller og grupper.",
+        "allowedRoles": "Tillatte roller",
+        "allowedGroups": "Tillatte Entra-grupper",
+        "allowedGroupsHelp": "Objekt-id for Entra ID-grupper. En bruker i en av gruppene kan bruke verktøyet, i tillegg til rollene over.",
+        "groupIdPlaceholder": "00000000-0000-0000-0000-000000000000",
+        "addGroup": "Legg til gruppe",
+        "removeGroup": "Fjern",
+        "invalidGroupId": "Skriv inn en gruppe-objekt-id (GUID).",
+        "nobodyWarning": "Ingen roller og ingen grupper: ingen kan bruke dette verktøyet.",
+        "defaultPolicy": "Standard fra kode",
+        "overridden": "Dette verktøyet bruker en tilpasset policy lagret {{date}}.",
+        "usingDefault": "Dette verktøyet bruker standarden fra koden."
+      },
+      "actions": {
+        "reset": "Tilbakestill til standard",
+        "resetConfirm": "Slette den tilpassede policyen og gå tilbake til standarden fra koden?"
       }
     }
   },

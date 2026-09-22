@@ -5,6 +5,7 @@ using Microsoft.AspNetCore.SignalR;
 using ChatUitReact.Server.Hubs;
 using ChatUitReact.Server.Models;
 using ChatUitReact.Server.Extentions;
+using ChatUitReact.Server.Services.Tools;
 
 namespace ChatUitReact.Server.Controllers;
 
@@ -21,6 +22,7 @@ public class ChatsController : ControllerBase
     private readonly IHubContext<ChatHub, IChatHubClient> _hubContext;
     private readonly IAssistantService _assistantService;
     private readonly IModelService _modelService;
+    private readonly IUserTokenProviderFactory _tokenProviders;
 
     public ChatsController(
         IChatService chatService,
@@ -28,8 +30,10 @@ public class ChatsController : ControllerBase
         ILogger<ChatsController> logger,
         IHubContext<ChatHub, IChatHubClient> hubContext,
         IAssistantService assistantService,
-        IModelService modelService)
+        IModelService modelService,
+        IUserTokenProviderFactory tokenProviders)
     {
+        _tokenProviders = tokenProviders;
         _chatService = chatService;
         _userService = userService;
         _logger = logger;
@@ -63,6 +67,25 @@ public class ChatsController : ControllerBase
     private string GetCurrentUserId()
     {
         return _userService.GetCurrentUserId(User);
+    }
+
+    /// <summary>
+    /// What the background generation needs from this request for tools: the caller's roles and
+    /// groups, a token provider bound to their assertion, and the client tools they declared.
+    /// </summary>
+    private ToolSessionInput BuildToolSession(List<ClientToolDeclarationDto>? clientTools) => new()
+    {
+        Access = _userService.GetUserAccess(User),
+        Tokens = _tokenProviders.Create(User, IncomingBearerToken()),
+        ClientTools = clientTools ?? []
+    };
+
+    /// <summary>The raw token this request was authenticated with; it is the On-Behalf-Of assertion.</summary>
+    private string? IncomingBearerToken()
+    {
+        var header = Request.Headers.Authorization.ToString();
+        const string prefix = "Bearer ";
+        return header.StartsWith(prefix, StringComparison.OrdinalIgnoreCase) ? header[prefix.Length..].Trim() : null;
     }
 
     [HttpGet]
@@ -151,11 +174,16 @@ public class ChatsController : ControllerBase
                 initialMessages.Add(message);
             }
             
-            var chat = await _chatService.CreateChatAsync(userId, request.AssistantId, initialMessages);
+            var clientTools = request.Messages.LastOrDefault()?.ClientTools;
+            var chat = await _chatService.CreateChatAsync(userId, request.AssistantId, initialMessages, BuildToolSession(clientTools));
             
             await _hubContext.Clients.Group(userId).ChatListUpdated();
             
             return CreatedAtAction(nameof(GetChat), new { chatId = chat.Id }, MapToDto(chat));
+        }
+        catch (ToolArgumentException ex)
+        {
+            return BadRequest(new { error = "invalid_client_tools", message = ex.Message });
         }
         catch (Exception ex)
         {
@@ -187,7 +215,7 @@ public class ChatsController : ControllerBase
             if (chatId == "new")
             {
                 var messages = new List<ChatMessage> { message };
-                var chat = await _chatService.CreateChatAsync(userId, request.AssistantId, messages);
+                var chat = await _chatService.CreateChatAsync(userId, request.AssistantId, messages, BuildToolSession(request.ClientTools));
                 
                 await _hubContext.Clients.Group(userId).ChatListUpdated();
                 
@@ -196,12 +224,16 @@ public class ChatsController : ControllerBase
             else
             {
                 // Uses the same streaming path as the SignalR hub, so both entry points behave alike.
-                await _chatService.SendStreamingMessageAsync(userId, chatId, message, request.AssistantId);
+                await _chatService.SendStreamingMessageAsync(userId, chatId, message, request.AssistantId, BuildToolSession(request.ClientTools));
                 
                 await _hubContext.Clients.Group(userId).ChatUpdated(chatId);
                 
                 return Ok(new { success = true });
             }
+        }
+        catch (ToolArgumentException ex)
+        {
+            return BadRequest(new { error = "invalid_client_tools", message = ex.Message });
         }
         catch (Exception ex)
         {
@@ -226,6 +258,33 @@ public class ChatsController : ControllerBase
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error cancelling message {MessageId} in chat {ChatId}", messageId, chatId);
+            return StatusCode(500, "Internal server error");
+        }
+    }
+
+    /// <summary>
+    /// Answers a tool call that paused the run: approve or reject a confirmation, retry or
+    /// decline after granting consent, or deliver a client tool's result. 409 when nothing is
+    /// waiting under that id any more (another tab answered, or it timed out).
+    /// </summary>
+    [HttpPost("{chatId}/messages/{messageId}/tool-calls/{toolCallId}/respond")]
+    public async Task<ActionResult<ToolCallResponseResultDto>> RespondToToolCall(
+        string chatId, string messageId, string toolCallId, [FromBody] ToolCallResponseDto response)
+    {
+        try
+        {
+            var userId = GetCurrentUserId();
+            var result = await _chatService.RespondToToolCallAsync(userId, chatId, messageId, toolCallId, response, User, IncomingBearerToken());
+
+            return result.Accepted ? Ok(result) : Conflict(result);
+        }
+        catch (ArgumentException ex)
+        {
+            return BadRequest(new { error = "invalid_response", message = ex.Message });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error responding to tool call {ToolCallId} on message {MessageId}", toolCallId, messageId);
             return StatusCode(500, "Internal server error");
         }
     }

@@ -31,6 +31,45 @@ export interface ChatFileDto {
 
 export type ActivityEntryType = "Thinking" | "Tool";
 
+/** Where a tool's code runs. camelCase on the wire. */
+export type ToolExecution = "server" | "client";
+
+/**
+ * The lifecycle of one tool call. Persisted history only holds the terminal states
+ * (completed, rejected, timeout, error); the awaiting states exist on the live stream.
+ */
+export type ToolCallStatus =
+  | "running"
+  | "awaitingConfirmation"
+  | "awaitingConsent"
+  | "awaitingClient"
+  | "approved"
+  | "completed"
+  | "rejected"
+  | "timeout"
+  | "error";
+
+export const TERMINAL_TOOL_STATUSES: ReadonlySet<ToolCallStatus> = new Set(["completed", "rejected", "timeout", "error"]);
+
+export function isAwaitingStatus(status: ToolCallStatus): boolean {
+  return status === "awaitingConfirmation" || status === "awaitingConsent" || status === "awaitingClient";
+}
+
+export interface ToolPreviewFieldDto {
+  label: string;
+  value: string;
+  multiline: boolean;
+}
+
+/** What the user sees before approving a confirmable tool call. */
+export interface ToolPreviewDto {
+  title: string;
+  /** Markdown, optional. */
+  summary: string | null;
+  fields: ToolPreviewFieldDto[];
+  allowEdit: boolean;
+}
+
 /**
  * One step of a generation. The server sends every field for both kinds, so this is the
  * wire shape rather than a union; `type` says which fields are meaningful.
@@ -48,6 +87,14 @@ export interface ActivityEntryDto {
   argumentsJson: string | null;
   result: string | null;
   isError: boolean;
+  /** Tool: where the tool ran. */
+  execution: ToolExecution;
+  /** Tool: terminal in persisted history. */
+  status: ToolCallStatus;
+  /** Tool: the preview shown for a confirmation, when there was one. */
+  preview: ToolPreviewDto | null;
+  /** Tool: scopes the user was asked to grant, when consent was missing. */
+  requiredScopes: string[];
 }
 
 /** What happened while an assistant message was generated. Shown to the user, never sent to the model. */
@@ -61,9 +108,26 @@ export interface MessageActivityDto {
   entries: ActivityEntryDto[];
 }
 
-export type ChatStreamChunkKind = "Text" | "Thinking" | "ToolStart" | "ToolEnd" | "Done";
+export type ChatStreamChunkKind =
+  | "Text"
+  | "Thinking"
+  | "ToolStart"
+  | "ToolEnd"
+  | "Done"
+  /** Run paused: the user must approve or reject the call. */
+  | "ToolConfirmationRequested"
+  /** Run paused: the user must grant the listed scopes, then retry. */
+  | "ToolConsentRequired"
+  /** Run paused: this client must run the tool and post the result. */
+  | "ToolClientCallRequested"
+  /** Status-only update (approved, running again). */
+  | "ToolStatus";
 
-/** One event on a message's live stream. `elapsedMs` is measured on the server. */
+/**
+ * One event on a message's live stream. `elapsedMs` is measured on the server.
+ * Per kind: ToolStart carries execution; the three pause kinds carry timeoutMs (counted from
+ * elapsedMs) plus preview / requiredScopes / argumentsJson; ToolStatus and ToolEnd carry status.
+ */
 export interface ChatStreamChunk {
   kind: ChatStreamChunkKind;
   elapsedMs: number;
@@ -74,6 +138,29 @@ export interface ChatStreamChunk {
   result: string | null;
   isError: boolean;
   activity: MessageActivityDto | null;
+  execution: ToolExecution | null;
+  status: ToolCallStatus | null;
+  preview: ToolPreviewDto | null;
+  requiredScopes: string[] | null;
+  timeoutMs: number | null;
+}
+
+/** A tool the client offers to run itself for one message. Names must match /^client_[a-z0-9_]{1,50}$/. */
+export interface ClientToolDeclarationDto {
+  name: string;
+  description: string;
+  /** A JSON Schema object. */
+  parametersSchema: Record<string, unknown>;
+}
+
+export type ToolCallResponseDto =
+  | { kind: "confirmation"; decision: "approve" | "reject"; editedArgumentsJson: string | null }
+  | { kind: "consent"; decision: "retry" | "reject" }
+  | { kind: "clientResult"; result: string; isError: boolean };
+
+export interface ToolCallResponseResultDto {
+  accepted: boolean;
+  status: ToolCallStatus | null;
 }
 
 export interface ChatMessageDto {
@@ -123,6 +210,8 @@ export interface SendMessageDto {
   content: string;
   files?: CreateChatFileDto[] | null;
   assistantId: string;
+  /** Client tools available for this message. Not stored. */
+  clientTools?: ClientToolDeclarationDto[] | null;
 }
 
 

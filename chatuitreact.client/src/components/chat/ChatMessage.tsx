@@ -50,16 +50,16 @@ function ChatMessage({ chatId, message, fallbackAssistantName, onStreamingChunk 
   }, [settings.mode]);
 
   const streamSignal = useMemo(() => {
-    return message.status === "Generating" ? getStreamSignal(message.id) : null;
-  }, [message.id, message.status]);
+    return message.status === "Generating" ? getStreamSignal(message.id, chatId) : null;
+  }, [message.id, message.status, chatId]);
 
   const displayContent = message.status === "Generating"
     ? (streamSignal?.value || "")
     : message.content;
 
   const activitySignal = useMemo(() => {
-    return message.status === "Generating" && message.role === 'Assistant' ? getActivitySignal(message.id) : null;
-  }, [message.id, message.status, message.role]);
+    return message.status === "Generating" && message.role === 'Assistant' ? getActivitySignal(message.id, chatId) : null;
+  }, [message.id, message.status, message.role, chatId]);
   const liveActivity = activitySignal?.value ?? null;
 
   const isUser = message.role === 'User';
@@ -205,7 +205,7 @@ function ChatMessage({ chatId, message, fallbackAssistantName, onStreamingChunk 
   return (
     <div className={`chat-message ${isUser ? 'user-message' : isAssistant ? 'assistant-message' : 'system-message'} ${isStreaming ? 'streaming' : ''}`}>
       {isAssistant && (
-        <MessageActivity activity={message.activity ?? null} live={liveActivity}>
+        <MessageActivity activity={message.activity ?? null} live={liveActivity} chatId={chatId} messageId={message.id}>
           <span className="message-meta-name t-overline">{message.assistantName || fallbackAssistantName || t('chat.assistantLabel')}</span>
           <span className="message-time t-meta">
             {new Date(message.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}

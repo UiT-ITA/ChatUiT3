@@ -78,7 +78,10 @@ async function apiService<T>(
     // Avoid duplicate toasts: let ChatSurface handle 404 for GET /api/Chats/:id
     const method = (options.method || 'GET').toUpperCase();
     const isChatGet404 = status === 404 && method === 'GET' && /^\/api\/Chats\/[^/]+$/.test(endpoint);
-    if (!isChatGet404) {
+    // A 409 from a tool-call respond means another tab or the timeout got there first; the
+    // caller adopts the returned status quietly.
+    const isToolRespond409 = status === 409 && /\/tool-calls\/[^/]+\/respond$/.test(endpoint);
+    if (!isChatGet404 && !isToolRespond409) {
       addNotification({ level, message: serverMessage?.toString() || fallback });
     }
     throw new ApiError(`API call failed: ${response.status} ${response.statusText}`, response.status, endpoint);

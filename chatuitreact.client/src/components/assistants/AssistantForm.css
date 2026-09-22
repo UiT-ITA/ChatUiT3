@@ -256,3 +256,22 @@
   opacity: 0.5;
   cursor: not-allowed;
 }
+
+.af-tool-hints {
+  display: block;
+  margin-top: 0.125rem;
+}
+
+.af-tool-hint {
+  display: inline-block;
+  margin-right: 0.5rem;
+  padding: 0 0.35rem;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+  color: var(--text-3);
+}
+
+.af-tool-unavailable .af-tool-name {
+  color: var(--text-3);
+  text-decoration: line-through;
+}

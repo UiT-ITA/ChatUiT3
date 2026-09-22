@@ -3,6 +3,7 @@ import * as signalR from "@microsoft/signalr";
 import authService from "./authService";
 import { invalidateChat, invalidateChats, receiveMessageChunk, setStreamMessageCallback } from "./chatService";
 import { invalidateAssistants } from "./assistantService";
+import { refreshTools } from "./toolService";
 import { addNotification } from "./notificationService";
 import type { NotifyLevel } from "../types/notification";
 
@@ -95,6 +96,8 @@ class SignalrService {
 
     this.connection.on("AssistantsUpdated", () => {
       invalidateAssistants();
+      // Also fired when an admin changes a tool policy, so the picker reflects it.
+      void refreshTools();
     });
 
     this.connection.on("Notify", (level: NotifyLevel, message: string) => {

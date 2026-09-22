@@ -74,11 +74,8 @@ public class SendMessageDto
     public string Content { get; set; } = string.Empty;
     public List<CreateChatFileDto>? Files { get; set; }
     public string AssistantId { get; set; } = string.Empty;
+
+    /// <summary>Tools the client offers to run itself for this message. Not stored.</summary>
+    public List<ClientToolDeclarationDto>? ClientTools { get; set; }
 }
 
-public class ChatToolDto
-{
-    public string Id { get; set; } = string.Empty;
-    public string Name { get; set; } = string.Empty;
-    public string Description { get; set; } = string.Empty;
-}

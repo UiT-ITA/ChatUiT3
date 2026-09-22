@@ -14,6 +14,8 @@ type Props = {
   activity: MessageActivityDto | null;
   /** The in-progress state while the message is generating. */
   live: LiveActivity | null;
+  chatId: string;
+  messageId: string;
   /** The assistant name and timestamp; the activity headline is placed after them on the same line. */
   children: ReactNode;
 };
@@ -23,10 +25,18 @@ type Props = {
  * happened while the message was generated. While the model thinks, the headline shows the
  * latest thinking heading. The history is collapsed until the user opens it.
  */
-export default function MessageActivity({ activity, live, children }: Props) {
+export default function MessageActivity({ activity, live, chatId, messageId, children }: Props) {
   const { t } = useTranslation();
   const isLive = live !== null && live.phase !== "done";
-  const [open, setOpen] = useState(false);
+  const needsInput = isLive && live.phase === "awaitingUser";
+  const [open, setOpen] = useState(needsInput);
+
+  // Opens once when a tool asks for the user; never closes on its own.
+  const [sawNeedsInput, setSawNeedsInput] = useState(needsInput);
+  if (needsInput !== sawNeedsInput) {
+    setSawNeedsInput(needsInput);
+    if (needsInput) setOpen(true);
+  }
 
   const entries = isLive ? live.entries : (live?.final ?? activity)?.entries ?? [];
   const summary = isLive ? null : (live?.final ?? activity);
@@ -37,7 +47,7 @@ export default function MessageActivity({ activity, live, children }: Props) {
   const toolCount = entries.filter(entry => entry.type === "Tool").length;
 
   return (
-    <div className={`activity ${isLive ? "live" : ""}`}>
+    <div className={`activity ${isLive ? "live" : ""} ${needsInput ? "needs-input" : ""}`}>
       <div className="message-meta">
         {children}
         {hasActivity && (
@@ -47,7 +57,7 @@ export default function MessageActivity({ activity, live, children }: Props) {
             aria-expanded={open}
             onClick={() => setOpen(current => !current)}
           >
-            <Icon name={isLive ? "refresh" : "branch"} size={0.9} />
+            <Icon name={needsInput ? "info" : isLive ? "refresh" : "branch"} size={0.9} />
             <span className="activity-headline">
               {isLive ? liveHeadline(live, liveElapsedMs, t) : doneHeadline(summary!, thinkingCount, toolCount, t)}
             </span>
@@ -69,7 +79,15 @@ export default function MessageActivity({ activity, live, children }: Props) {
           <div className="activity-empty t-caption">{t('chat.activity.nothingRecorded')}</div>
         )}
         {entries.map((entry, index) => (
-          <ActivityRow key={index} entry={entry} nowMs={isLive ? liveElapsedMs : null} />
+          <ActivityRow
+            key={entry.toolCallId ?? index}
+            entry={entry}
+            nowMs={isLive ? liveElapsedMs : null}
+            isLive={isLive}
+            chatId={live?.chatId ?? chatId}
+            messageId={messageId}
+            deadlineMs={isLive && live.pendingToolCallId === entry.toolCallId ? live.pendingDeadlineMs : null}
+          />
         ))}
       </div>
       )}
@@ -77,7 +95,16 @@ export default function MessageActivity({ activity, live, children }: Props) {
   );
 }
 
-function ActivityRow({ entry, nowMs }: { entry: ActivityEntryDto; nowMs: number | null }) {
+type RowProps = {
+  entry: ActivityEntryDto;
+  nowMs: number | null;
+  isLive: boolean;
+  chatId: string;
+  messageId: string;
+  deadlineMs: number | null;
+};
+
+function ActivityRow({ entry, nowMs, isLive, chatId, messageId, deadlineMs }: RowProps) {
   const { t } = useTranslation();
   const durationMs = entry.endedMs !== null
     ? entry.endedMs - entry.startedMs
@@ -88,12 +115,13 @@ function ActivityRow({ entry, nowMs }: { entry: ActivityEntryDto; nowMs: number 
   if (entry.type === "Tool") {
     return (
       <ToolCallBlock
-        toolName={entry.toolName ?? ""}
-        argumentsJson={entry.argumentsJson}
-        result={entry.result}
-        isError={entry.isError}
-        isComplete={entry.endedMs !== null}
+        entry={entry}
         durationMs={durationMs}
+        isLive={isLive}
+        chatId={chatId}
+        messageId={messageId}
+        deadlineMs={deadlineMs}
+        nowMs={nowMs}
       />
     );
   }
@@ -123,7 +151,16 @@ function liveHeadline(live: LiveActivity, elapsedMs: number, t: Translate): stri
     }
     case "tool": {
       const running = [...live.entries].reverse().find(entry => entry.type === "Tool" && entry.endedMs === null);
-      return `${t('chat.activity.runningTool', { name: running?.toolName ?? "" })} ${formatDuration(phaseMs)}`;
+      const key = running?.status === "awaitingClient" ? 'chat.activity.awaitingClient' : 'chat.activity.runningTool';
+      return `${t(key, { name: running?.toolName ?? "" })} ${formatDuration(phaseMs)}`;
+    }
+    case "awaitingUser": {
+      const pending = live.entries.find(entry => entry.type === "Tool" && entry.toolCallId === live.pendingToolCallId)
+        ?? [...live.entries].reverse().find(entry => entry.type === "Tool" && entry.endedMs === null);
+      const left = live.pendingDeadlineMs !== null
+        ? ` · ${t('chat.activity.timeLeft', { duration: formatDuration(Math.max(0, live.pendingDeadlineMs - elapsedMs)) })}`
+        : '';
+      return `${t('chat.activity.awaitingUser', { name: pending?.toolName ?? "" })}${left}`;
     }
     case "writing":
       return t('chat.activity.writing');

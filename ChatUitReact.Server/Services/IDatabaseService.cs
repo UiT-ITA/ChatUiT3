@@ -29,6 +29,11 @@ public interface IDatabaseService
     Task<AppSettings> GetAppSettingsAsync();
     Task UpdateAppSettingsAsync(AppSettings settings);
 
+    // Tool policies (admin overrides of a tool's code default)
+    Task<List<ToolPolicy>> GetToolPoliciesAsync();
+    Task UpsertToolPolicyAsync(ToolPolicy policy);
+    Task<bool> DeleteToolPolicyAsync(string toolId);
+
     // Endpoint management
     Task<List<ModelEndpoint>> GetEndpointsAsync();
     Task<ModelEndpoint?> GetEndpointByIdAsync(string endpointId);

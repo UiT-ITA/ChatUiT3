@@ -3,6 +3,7 @@ using ChatUitReact.Server.Models;
 using ChatUitReact.Server.Hubs;
 using ChatUitReact.Server.Services.AiProviders;
 using ChatUitReact.Server.Services.TokenCounting;
+using ChatUitReact.Server.Services.Tools;
 using Microsoft.AspNetCore.SignalR;
 
 namespace ChatUitReact.Server.Services
@@ -12,7 +13,7 @@ namespace ChatUitReact.Server.Services
         private readonly IDatabaseService _databaseService;
         private readonly IModelService _modelService;
         private readonly IHubContext<ChatHub, IChatHubClient> _hubContext;
-        private readonly IToolService _toolService;
+        private readonly IToolRegistry _toolRegistry;
         private readonly ITokenCountingService _tokenCounting;
 
         // Keyed by assistant id. Invalidated by the assistant's UpdatedAt and by the set of
@@ -28,13 +29,13 @@ namespace ChatUitReact.Server.Services
             IDatabaseService databaseService,
             IModelService modelService,
             IHubContext<ChatHub, IChatHubClient> hubContext,
-            IToolService toolService,
+            IToolRegistry toolRegistry,
             ITokenCountingService tokenCounting)
         {
             _databaseService = databaseService;
             _modelService = modelService;
             _hubContext = hubContext;
-            _toolService = toolService;
+            _toolRegistry = toolRegistry;
             _tokenCounting = tokenCounting;
         }
 
@@ -66,7 +67,7 @@ namespace ChatUitReact.Server.Services
             // Resolved against the model row rather than the stored tool ids, so a model that
             // lost function calling after the assistant was saved counts no tools.
             var parameters = ChatParameterResolver.Resolve(assistant.ChatSettings.Model.Capabilities, assistant.ChatSettings);
-            var tools = _toolService.GetToolDefinitions(parameters.ToolIds).ToList();
+            var tools = _toolRegistry.Resolve(parameters.ToolIds);
 
             var systemPrompt = assistant.ChatSettings.SystemPrompt ?? string.Empty;
             var hasKnowledge = prompt != systemPrompt;
@@ -496,7 +497,7 @@ namespace ChatUitReact.Server.Services
 
         // Stores only settings the model can actually honour, so an assistant configured
         // against one model cannot carry an impossible combination onto another.
-        private static ChatSettings BuildChatSettings(
+        private ChatSettings BuildChatSettings(
             Model model,
             string systemPrompt,
             float temperature,
@@ -515,8 +516,9 @@ namespace ChatUitReact.Server.Services
                 Temperature = capabilities.Temperature == TemperatureSupport.Unsupported ? 1f : temperature,
                 ReasoningEffort = effort,
                 Model = model,
+                // Stored under current ids: an assistant saved with a legacy id is rewritten on save.
                 AvailableToolIds = capabilities.SupportsFunctionCalling
-                    ? requestedToolIds ?? new List<string>()
+                    ? (requestedToolIds ?? new List<string>()).Select(_toolRegistry.Normalise).Distinct().ToList()
                     : new List<string>()
             };
         }

@@ -535,9 +535,34 @@ const AssistantForm: React.FC<AssistantFormProps> = ({
                     <span>
                       <span className="af-tool-name t-table-strong">{tool.name}</span>
                       <span className="af-tool-description"> — {tool.description}</span>
+                      {(tool.requiresConfirmation || tool.requiredScopes.length > 0) && (
+                        <span className="af-tool-hints">
+                          {tool.requiresConfirmation && (
+                            <span className="af-tool-hint t-meta">{t('assistants.form.toolHints.requiresConfirmation')}</span>
+                          )}
+                          {tool.requiredScopes.length > 0 && (
+                            <span className="af-tool-hint t-meta">{t('assistants.form.toolHints.requiresAccess', { scopes: tool.requiredScopes.join(', ') })}</span>
+                          )}
+                        </span>
+                      )}
                     </span>
                   </label>
                 ))}
+                {selectedToolIds.filter(id => !availableTools.some(tool => tool.id === id)).map(id => (
+                  <label key={id} className="af-checkbox-label af-tool af-tool-unavailable t-table">
+                    <input
+                      type="checkbox"
+                      checked
+                      onChange={() => handleToolSelection(id, false)}
+                      disabled={loading}
+                    />
+                    <span>
+                      <span className="af-tool-name t-table-strong">{id}</span>
+                      <span className="af-tool-description"> — {t('assistants.form.toolUnavailable')}</span>
+                    </span>
+                  </label>
+                ))}
+                <div className="af-note t-ui-plain">{t('assistants.form.toolsSharingNote')}</div>
               </div>
             ) : (
               <div className="af-note t-ui-plain">{t('assistants.form.noTools')}</div>

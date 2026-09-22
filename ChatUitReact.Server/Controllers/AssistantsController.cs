@@ -2,6 +2,7 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Authorization;
 using ChatUitReact.Server.Services;
 using ChatUitReact.Server.Models;
+using ChatUitReact.Server.Services.Tools;
 using Microsoft.AspNetCore.SignalR;
 using ChatUitReact.Server.Hubs;
 
@@ -16,7 +17,8 @@ public class AssistantsController : ControllerBase
     private readonly UserService _userService;
     private readonly ILogger<AssistantsController> _logger;
     private readonly IModelService _modelService;
-    private readonly IToolService _toolService;
+    private readonly IToolRegistry _toolRegistry;
+    private readonly IToolAccessService _toolAccess;
     private readonly IHubContext<ChatHub, IChatHubClient> _hubContext;
 
     public AssistantsController(
@@ -24,15 +26,44 @@ public class AssistantsController : ControllerBase
         UserService userService,
         ILogger<AssistantsController> logger,
         IModelService modelService,
-        IToolService toolService,
+        IToolRegistry toolRegistry,
+        IToolAccessService toolAccess,
         IHubContext<ChatHub, IChatHubClient> hubContext)
     {
         _assistantService = assistantService;
         _userService = userService;
         _logger = logger;
         _modelService = modelService;
-        _toolService = toolService;
+        _toolRegistry = toolRegistry;
+        _toolAccess = toolAccess;
         _hubContext = hubContext;
+    }
+
+    /// <summary>
+    /// The picker only offers allowed tools, so a disallowed or unknown id means a stale client
+    /// or a hand-made request. Rejecting beats silently saving something the user did not see.
+    /// Users of a shared assistant are filtered again at generation time, so this check is
+    /// about the owner, not about who may later chat with it.
+    /// </summary>
+    private async Task<ActionResult?> RejectDisallowedToolsAsync(List<string>? toolIds)
+    {
+        if (toolIds == null || toolIds.Count == 0)
+        {
+            return null;
+        }
+
+        var check = await _toolAccess.CheckToolIdsAsync(toolIds, _userService.GetUserAccess(User));
+        if (check.Ok)
+        {
+            return null;
+        }
+
+        return BadRequest(new
+        {
+            error = "tools_not_allowed",
+            unknownToolIds = check.Unknown,
+            disallowedToolIds = check.Disallowed
+        });
     }
 
     private string GetCurrentUserId()
@@ -83,6 +114,11 @@ public class AssistantsController : ControllerBase
         try
         {
             var userId = GetCurrentUserId();
+            if (await RejectDisallowedToolsAsync(createDto.AvailableToolIds) is { } rejected)
+            {
+                return rejected;
+            }
+
             await _assistantService.CreateAssistantAsync(createDto, userId);
 
             // Notify all clients that assistant data has changed
@@ -103,6 +139,11 @@ public class AssistantsController : ControllerBase
         try
         {
             var userId = GetCurrentUserId();
+            if (await RejectDisallowedToolsAsync(updateDto.AvailableToolIds) is { } rejected)
+            {
+                return rejected;
+            }
+
             await _assistantService.UpdateAssistantAsync(updateDto, userId);
 
             // Notify all clients that assistant data has changed
@@ -319,8 +360,8 @@ public class AssistantsController : ControllerBase
     {
         try
         {
-            var tools = await _toolService.GetAvailableToolDtos();
-            return Ok(tools.ToArray());
+            var tools = await _toolAccess.GetToolsForUserAsync(_userService.GetUserAccess(User));
+            return Ok(tools.Select(ToolMapping.ToDto).ToArray());
         }
         catch (Exception ex)
         {

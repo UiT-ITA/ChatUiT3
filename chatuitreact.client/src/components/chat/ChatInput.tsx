@@ -2,7 +2,7 @@ import './ChatInput.css';
 import { useState, useRef, useEffect } from 'react';
 import { useSignals } from '@preact/signals-react/runtime';
 import { useTranslation } from 'react-i18next';
-import { sendMessage, getCurrentChatId, getCurrentAssistantId, createChat, getChat, cancelGeneration, forgetChat } from '../../services/chatService';
+import { sendMessage, getCurrentChatId, getCurrentAssistantId, createChat, getChat, cancelGeneration, forgetChat, getActivitySignal } from '../../services/chatService';
 import { FileProcessingService } from '../../services/fileProcessingService';
 import { Icon } from '../common/Icon';
 import AssistantSelector from '../common/AssistantSelector';
@@ -44,6 +44,7 @@ export default function ChatInput() {
     m => m.role === 'Assistant' && m.status === 'Generating'
   );
   const isGenerating = generatingMessage !== undefined;
+  const awaitingUser = generatingMessage !== undefined && getActivitySignal(generatingMessage.id).value.phase === 'awaitingUser';
 
   const usage = getContextUsage(chatId).value;
 
@@ -311,7 +312,9 @@ export default function ChatInput() {
 
         <div className="composer-hints t-hint">
           <span className="composer-hint-keys">{t('chat.enterHint')}</span>
-          <span>{t('chat.disclaimer')}</span>
+          {awaitingUser
+            ? <span className="composer-awaiting-hint">{t('chat.awaitingInputHint')}</span>
+            : <span>{t('chat.disclaimer')}</span>}
         </div>
       </div>
     </div>

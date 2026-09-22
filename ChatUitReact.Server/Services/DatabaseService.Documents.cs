@@ -35,6 +35,29 @@ public partial class DatabaseService
         public CosmosContainerOptions Assistants { get; set; } = new CosmosContainerOptions { Name = "Assistants", PartitionKeyPath = "/partitionKey" };
         public CosmosContainerOptions AssistantContent { get; set; } = new CosmosContainerOptions { Name = "AssistantContent", PartitionKeyPath = "/assistantId" };
         public CosmosContainerOptions AppSettings { get; set; } = new CosmosContainerOptions { Name = "AppSettings", PartitionKeyPath = "/partitionKey" };
+        public CosmosContainerOptions ToolPolicies { get; set; } = new CosmosContainerOptions { Name = "ToolPolicies", PartitionKeyPath = "/partitionKey" };
+    }
+
+    /// <summary>An admin override of a tool's access policy. Id is the tool id.</summary>
+    private sealed class ToolPolicyDocument
+    {
+        [JsonProperty("id")]
+        public string Id { get; set; } = string.Empty;
+
+        [JsonProperty("partitionKey")]
+        public string PartitionKey { get; set; } = ConfigurationPartitionKeyValue;
+
+        [JsonProperty("enabled")]
+        public bool Enabled { get; set; } = true;
+
+        [JsonProperty("allowedRoles", ItemConverterType = typeof(StringEnumConverter))]
+        public List<UserRole> AllowedRoles { get; set; } = new();
+
+        [JsonProperty("allowedGroupIds")]
+        public List<string> AllowedGroupIds { get; set; } = new();
+
+        [JsonProperty("updatedAt")]
+        public DateTime UpdatedAt { get; set; } = DateTime.UtcNow;
     }
 
     private sealed class CosmosContainerOptions

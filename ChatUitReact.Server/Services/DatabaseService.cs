@@ -27,6 +27,7 @@ public partial class DatabaseService : IDatabaseService
     private readonly Container? _assistantContainer;
     private readonly Container? _assistantContentContainer;
     private readonly Container? _appSettingsContainer;
+    private readonly Container? _toolPolicyContainer;
     private readonly Task _initializationTask;
 
     public DatabaseService(IConfiguration configuration)
@@ -53,6 +54,7 @@ public partial class DatabaseService : IDatabaseService
         _assistantContainer = _configurationDatabase.GetContainer(_options.Assistants.Name);
         _assistantContentContainer = _configurationDatabase.GetContainer(_options.AssistantContent.Name);
         _appSettingsContainer = _configurationDatabase.GetContainer(_options.AppSettings.Name);
+        _toolPolicyContainer = _configurationDatabase.GetContainer(_options.ToolPolicies.Name);
         _initializationTask = InitializeAsync();
     }
 
@@ -61,7 +63,7 @@ public partial class DatabaseService : IDatabaseService
         if (_userDataDatabase == null || _configurationDatabase == null ||
             _userContainer == null || _chatContainer == null || _chatMessageContainer == null || _contentContainer == null ||
             _modelContainer == null || _modelEndpointContainer == null || _assistantContainer == null || _assistantContentContainer == null ||
-            _appSettingsContainer == null)
+            _appSettingsContainer == null || _toolPolicyContainer == null)
         {
             throw new InvalidOperationException("DatabaseService is not configured. Add a valid Cosmos NoSQL connection string under ConnectionStrings:CosmosDBConnection or CosmosNoSql:ConnectionString.");
         }
@@ -88,6 +90,7 @@ public partial class DatabaseService : IDatabaseService
         await EnsureContainerExistsAsync(_configurationDatabase, CreateContainerProperties(_options.Assistants));
         await EnsureContainerExistsAsync(_configurationDatabase, CreateContentContainerProperties(_options.AssistantContent));
         await EnsureContainerExistsAsync(_configurationDatabase, CreateContainerProperties(_options.AppSettings));
+        await EnsureContainerExistsAsync(_configurationDatabase, CreateContainerProperties(_options.ToolPolicies));
     }
 
     private static string ConfigurationPartitionKey => ConfigurationPartitionKeyValue;

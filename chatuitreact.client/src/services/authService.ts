@@ -111,6 +111,41 @@ class AuthService {
     }
   }
 
+  /**
+   * Asks the user to consent to extra delegated scopes (Microsoft Graph, for tools). The
+   * token itself is discarded: the server acquires its own through On-Behalf-Of, which works
+   * once consent is recorded. Tries silently, then a popup, then a redirect if popups are
+   * blocked; after a redirect the page reloads and the pending tool call replays.
+   */
+  public async requestScopes(scopes: string[]): Promise<void> {
+    const account = this.getAccount();
+    if (!account) {
+      await this.login();
+      return;
+    }
+
+    try {
+      await msalInstance.acquireTokenSilent({ scopes, account, redirectUri: silentRedirectUri });
+      return;
+    } catch (error) {
+      if (!needsInteraction(error)) {
+        throw error;
+      }
+    }
+
+    try {
+      await msalInstance.acquireTokenPopup({ scopes, account });
+      this.clearRedirectGuard();
+    } catch (error) {
+      const popupBlocked = error instanceof BrowserAuthError &&
+        (error.errorCode === BrowserAuthErrorCodes.popupWindowError || error.errorCode === BrowserAuthErrorCodes.emptyWindowError);
+      if (!popupBlocked) {
+        throw error;
+      }
+      await this.startInteractiveRedirect(() => msalInstance.acquireTokenRedirect({ scopes, account }));
+    }
+  }
+
   public isAuthenticated(): boolean {
     return this.getAccount() !== null;
   }

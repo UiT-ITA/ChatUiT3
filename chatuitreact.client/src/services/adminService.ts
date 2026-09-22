@@ -11,7 +11,9 @@ import type {
   UpdateAdminAssistantDto,
   AppSettingsDto,
   UpdateAppSettingsDto,
-  CatalogModelDto
+  CatalogModelDto,
+  AdminToolDto,
+  ToolAccessPolicyDto
 } from '../types/admin';
 
 export async function getEndpoints(): Promise<EndpointDto[]> {
@@ -76,4 +78,21 @@ export async function updateAppSettings(data: UpdateAppSettingsDto): Promise<App
 
 export async function getModelCatalog(): Promise<CatalogModelDto[]> {
   return apiService<CatalogModelDto[]>('/api/admin/model-catalog');
+}
+
+export async function getAdminTools(): Promise<AdminToolDto[]> {
+  return apiService<AdminToolDto[]>('/api/admin/tools');
+}
+
+export async function getAdminTool(id: string): Promise<AdminToolDto> {
+  return apiService<AdminToolDto>(`/api/admin/tools/${id}`);
+}
+
+export async function updateAdminToolPolicy(id: string, policy: ToolAccessPolicyDto): Promise<AdminToolDto> {
+  return apiService.put<AdminToolDto>(`/api/admin/tools/${id}/policy`, policy);
+}
+
+/** Drops the stored override so the tool's code default applies again. */
+export async function resetAdminToolPolicy(id: string): Promise<AdminToolDto> {
+  return apiService.delete<AdminToolDto>(`/api/admin/tools/${id}/policy`);
 }

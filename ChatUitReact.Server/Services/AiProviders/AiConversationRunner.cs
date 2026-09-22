@@ -10,6 +10,7 @@ using Microsoft.Extensions.Logging;
 namespace ChatUitReact.Server.Services.AiProviders;
 
 using ChatUitReact.Server.Models;
+using ChatUitReact.Server.Services.Tools;
 
 /// <summary>
 /// Drives the assistant turn / tool-call loop for every provider.
@@ -33,26 +34,26 @@ public sealed class AiConversationRunner
     private const int MaxToolRounds = 8;
 
     private readonly IAiProviderRegistry _providers;
-    private readonly IToolService _toolService;
+    private readonly IToolExecutor _toolExecutor;
     private readonly ILogger<AiConversationRunner> _logger;
 
     public AiConversationRunner(
         IAiProviderRegistry providers,
-        IToolService toolService,
+        IToolExecutor toolExecutor,
         ILogger<AiConversationRunner> logger)
     {
         _providers = providers;
-        _toolService = toolService;
+        _toolExecutor = toolExecutor;
         _logger = logger;
     }
 
     public async IAsyncEnumerable<ChatStreamChunk> StreamAsync(
         AiRequest request,
-        string userId,
-        string chatId,
+        ToolExecutionContext context,
         MessageActivity activity,
         [EnumeratorCancellation] CancellationToken cancellationToken = default)
     {
+        var chatId = context.ChatId;
         var stopwatch = Stopwatch.StartNew();
         activity.Model = request.Model.ModelId;
         activity.Effort = request.Parameters.Effort;
@@ -124,13 +125,17 @@ public sealed class AiConversationRunner
             {
                 cancellationToken.ThrowIfCancellationRequested();
 
+                var tool = request.Tools.FirstOrDefault(t => t.Id == call.FunctionName);
+
                 var entry = new ActivityEntry
                 {
                     Type = ActivityEntryType.Tool,
                     StartedMs = stopwatch.ElapsedMilliseconds,
                     ToolCallId = call.Id,
                     ToolName = call.FunctionName,
-                    ArgumentsJson = call.ArgumentsJson
+                    ArgumentsJson = call.ArgumentsJson,
+                    Execution = tool?.Execution ?? ToolExecution.Server,
+                    Status = ToolCallStatus.Running
                 };
                 activity.Entries.Add(entry);
 
@@ -141,25 +146,91 @@ public sealed class AiConversationRunner
                     ElapsedMs = entry.StartedMs,
                     ToolCallId = call.Id,
                     ToolName = call.FunctionName,
-                    ArgumentsJson = call.ArgumentsJson
+                    ArgumentsJson = call.ArgumentsJson,
+                    Execution = entry.Execution
                 };
 
-                var outcome = await ExecuteToolAsync(call, userId, chatId, cancellationToken);
-
-                entry.EndedMs = stopwatch.ElapsedMilliseconds;
-                entry.Result = outcome.Display;
-                entry.IsError = outcome.IsError;
-
-                results.Add(new AiToolResult(call.Id, outcome.Content, outcome.IsError));
-                yield return new ChatStreamChunk
+                if (tool == null)
                 {
-                    Kind = ChatStreamChunkKind.ToolEnd,
-                    ElapsedMs = entry.EndedMs.Value,
-                    ToolCallId = call.Id,
-                    ToolName = call.FunctionName,
-                    Result = outcome.Display,
-                    IsError = outcome.IsError
-                };
+                    _logger.LogWarning("Model called unknown tool {ToolName} in chat {ChatId}", call.FunctionName, chatId);
+                    var unknown = ToolResult.Error($"Unknown tool: {call.FunctionName}");
+                    yield return CompleteEntry(entry, unknown, ToolCallStatus.Error, results, call.Id, stopwatch.ElapsedMilliseconds);
+                    continue;
+                }
+
+                await foreach (var evt in _toolExecutor.ExecuteAsync(tool, call, context, cancellationToken))
+                {
+                    var elapsed = stopwatch.ElapsedMilliseconds;
+                    switch (evt)
+                    {
+                        case ToolExecutionEvent.ConfirmationRequested confirmation:
+                            entry.Status = ToolCallStatus.AwaitingConfirmation;
+                            entry.Preview = ToPreviewDto(confirmation.Preview);
+                            yield return new ChatStreamChunk
+                            {
+                                Kind = ChatStreamChunkKind.ToolConfirmationRequested,
+                                ElapsedMs = elapsed,
+                                ToolCallId = call.Id,
+                                ToolName = call.FunctionName,
+                                ArgumentsJson = entry.ArgumentsJson,
+                                Preview = entry.Preview,
+                                Status = entry.Status,
+                                TimeoutMs = (long)confirmation.Timeout.TotalMilliseconds
+                            };
+                            break;
+
+                        case ToolExecutionEvent.ConsentRequired consent:
+                            entry.Status = ToolCallStatus.AwaitingConsent;
+                            entry.RequiredScopes = consent.Scopes.ToList();
+                            yield return new ChatStreamChunk
+                            {
+                                Kind = ChatStreamChunkKind.ToolConsentRequired,
+                                ElapsedMs = elapsed,
+                                ToolCallId = call.Id,
+                                ToolName = call.FunctionName,
+                                RequiredScopes = entry.RequiredScopes,
+                                Status = entry.Status,
+                                TimeoutMs = (long)consent.Timeout.TotalMilliseconds
+                            };
+                            break;
+
+                        case ToolExecutionEvent.ClientCallRequested clientCall:
+                            entry.Status = ToolCallStatus.AwaitingClient;
+                            yield return new ChatStreamChunk
+                            {
+                                Kind = ChatStreamChunkKind.ToolClientCallRequested,
+                                ElapsedMs = elapsed,
+                                ToolCallId = call.Id,
+                                ToolName = call.FunctionName,
+                                ArgumentsJson = clientCall.ArgumentsJson,
+                                Status = entry.Status,
+                                TimeoutMs = (long)clientCall.Timeout.TotalMilliseconds
+                            };
+                            break;
+
+                        case ToolExecutionEvent.StatusChanged status:
+                            entry.Status = status.Status;
+                            if (status.ArgumentsJson != null)
+                            {
+                                entry.ArgumentsJson = status.ArgumentsJson;
+                            }
+
+                            yield return new ChatStreamChunk
+                            {
+                                Kind = ChatStreamChunkKind.ToolStatus,
+                                ElapsedMs = elapsed,
+                                ToolCallId = call.Id,
+                                ToolName = call.FunctionName,
+                                ArgumentsJson = status.ArgumentsJson,
+                                Status = entry.Status
+                            };
+                            break;
+
+                        case ToolExecutionEvent.Completed completed:
+                            yield return CompleteEntry(entry, completed.Result, completed.Status, results, call.Id, elapsed);
+                            break;
+                    }
+                }
             }
 
             conversation.AppendToolResults(results);
@@ -190,6 +261,14 @@ public sealed class AiConversationRunner
         foreach (var entry in activity.Entries.Where(entry => entry.EndedMs == null))
         {
             entry.EndedMs = totalMs;
+            if (entry.Type == ActivityEntryType.Tool && !entry.Status.IsTerminal())
+            {
+                // Nothing pending survives the run; history only holds terminal states.
+                entry.Status = entry.Status is ToolCallStatus.AwaitingConfirmation or ToolCallStatus.AwaitingConsent or ToolCallStatus.AwaitingClient
+                    ? ToolCallStatus.Timeout
+                    : ToolCallStatus.Error;
+                entry.IsError = true;
+            }
         }
 
         activity.TotalMs = totalMs;
@@ -201,41 +280,41 @@ public sealed class AiConversationRunner
             .Sum(entry => entry.EndedMs!.Value - entry.StartedMs);
     }
 
-    // Separate from the streaming loop because C# forbids `yield` inside a try/catch.
-    private async Task<ToolOutcome> ExecuteToolAsync(
-        AiStreamEvent.ToolCall call,
-        string userId,
-        string chatId,
-        CancellationToken cancellationToken)
+    private static ChatStreamChunk CompleteEntry(
+        ActivityEntry entry,
+        ToolResult result,
+        ToolCallStatus status,
+        List<AiToolResult> results,
+        string toolCallId,
+        long elapsedMs)
     {
-        try
-        {
-            var context = _toolService.CreateToolContext(userId, chatId, call.Id);
-            using var document = JsonDocument.Parse(call.ArgumentsJson);
+        entry.EndedMs = elapsedMs;
+        entry.Result = result.DisplayText;
+        entry.IsError = result.IsError;
+        entry.Status = status;
 
-            var result = await _toolService.ExecuteToolCallAsync(
-                call.FunctionName, document.RootElement, context, cancellationToken);
+        results.Add(new AiToolResult(toolCallId, result.Content, result.IsError));
 
-            return new ToolOutcome(result, result, false);
-        }
-        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+        return new ChatStreamChunk
         {
-            // A cancelled run must stop here, not report a tool failure to a model that will
-            // never be asked again.
-            throw;
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Error executing tool {ToolName}", call.FunctionName);
-
-            var message = $"Error: {ex.Message}";
-            // The model is told the call failed so it can adapt rather than assume success.
-            return new ToolOutcome(message, message, true);
-        }
+            Kind = ChatStreamChunkKind.ToolEnd,
+            ElapsedMs = elapsedMs,
+            ToolCallId = toolCallId,
+            ToolName = entry.ToolName,
+            Result = entry.Result,
+            IsError = entry.IsError,
+            Status = status
+        };
     }
+
+    private static ToolPreviewDto ToPreviewDto(ToolPreview preview) => new()
+    {
+        Title = preview.Title,
+        Summary = preview.Summary,
+        AllowEdit = preview.AllowEdit,
+        Fields = preview.Fields.Select(f => new ToolPreviewFieldDto { Label = f.Label, Value = f.Value, Multiline = f.Multiline }).ToList()
+    };
 
     private const string ToolRoundLimitText =
         "Stopped after too many tool calls in a row.";
-
-    private readonly record struct ToolOutcome(string Content, string Display, bool IsError);
 }

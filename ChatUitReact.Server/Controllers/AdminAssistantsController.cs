@@ -2,6 +2,7 @@ using ChatUitReact.Server.Models;
 using ChatUitReact.Server.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using ChatUitReact.Server.Services.Tools;
 
 namespace ChatUitReact.Server.Controllers;
 
@@ -12,11 +13,14 @@ public class AdminAssistantsController : ControllerBase
 {
     private readonly IAssistantService _assistantService;
     private readonly ILogger<AdminAssistantsController> _logger;
+    private readonly IToolRegistry _toolRegistry;
 
     public AdminAssistantsController(
         IAssistantService assistantService,
+        IToolRegistry toolRegistry,
         ILogger<AdminAssistantsController> logger)
     {
+        _toolRegistry = toolRegistry;
         _assistantService = assistantService;
         _logger = logger;
     }
@@ -61,6 +65,11 @@ public class AdminAssistantsController : ControllerBase
     {
         try
         {
+            if (UnknownToolIds(createDto.AvailableToolIds) is { Count: > 0 } unknown)
+            {
+                return BadRequest(new { error = "unknown_tools", unknownToolIds = unknown });
+            }
+
             var assistant = await _assistantService.CreateSystemAssistantAsync(createDto);
             return CreatedAtAction(nameof(GetAssistant), new { id = assistant.Id }, assistant);
         }
@@ -83,6 +92,11 @@ public class AdminAssistantsController : ControllerBase
             if (id != updateDto.Id)
             {
                 return BadRequest("Route id does not match request body id");
+            }
+
+            if (UnknownToolIds(updateDto.AvailableToolIds) is { Count: > 0 } unknown)
+            {
+                return BadRequest(new { error = "unknown_tools", unknownToolIds = unknown });
             }
 
             var assistant = await _assistantService.UpdateSystemAssistantAsync(id, updateDto);
@@ -119,4 +133,8 @@ public class AdminAssistantsController : ControllerBase
             return StatusCode(500, "Internal server error");
         }
     }
+
+    /// <summary>System assistants serve everyone, so admins are not access-checked; unknown ids are still refused.</summary>
+    private List<string> UnknownToolIds(List<string>? toolIds)
+        => (toolIds ?? []).Where(id => _toolRegistry.Find(id) == null).Distinct().ToList();
 }

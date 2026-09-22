@@ -130,8 +130,14 @@ export type ReasoningEffort =
     | "XHigh"
     | "Max";
 
+/** A server tool the current user may give to an assistant. */
 export interface ChatToolDto {
     id: string;
     name: string;
     description: string;
+    /** The user must approve each call before it runs. */
+    requiresConfirmation: boolean;
+    /** Delegated Microsoft Graph scopes the tool needs; consent is asked for on first use. */
+    requiredScopes: string[];
+    execution: 'server' | 'client';
 }

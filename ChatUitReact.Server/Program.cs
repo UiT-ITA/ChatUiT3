@@ -4,6 +4,7 @@ using ChatUitReact.Server.Services;
 using ChatUitReact.Server.Services.AiProviders;
 using ChatUitReact.Server.Services.AiProviders.Protocols;
 using ChatUitReact.Server.Services.TokenCounting;
+using ChatUitReact.Server.Services.Tools;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.Identity.Web;
 using Microsoft.IdentityModel.Logging;
@@ -47,11 +48,21 @@ builder.Services.AddCors(options =>
 
 // Authentication and Authorization
 builder.Services.AddAuthorization();
+// EnableTokenAcquisitionToCallDownstreamApi turns on On-Behalf-Of: tools that need Microsoft
+// Graph exchange the caller's token for a downstream one. It needs EntraId:ClientSecret (or
+// ClientCertificates) in user secrets, and the Graph delegated permissions on the app
+// registration. See docs/tools.md.
 builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
-    .AddMicrosoftIdentityWebApi(builder.Configuration.GetSection("AzureAd"));
+    .AddMicrosoftIdentityWebApi(builder.Configuration.GetSection("EntraId"))
+    .EnableTokenAcquisitionToCallDownstreamApi()
+    .AddInMemoryTokenCaches();
 
 builder.Services.Configure<JwtBearerOptions>(JwtBearerDefaults.AuthenticationScheme, options =>
 {
+    // Keep the validated token on the principal so On-Behalf-Of can use it as the user assertion
+    // from a background task, where there is no HttpContext.
+    options.TokenValidationParameters.SaveSigninToken = true;
+
     // Store the token for WebSockets to use after the initial HTTP handshake
     options.Events = new JwtBearerEvents
     {
@@ -105,7 +116,7 @@ builder.Services.AddSingleton<IAiProvider, MicrosoftFoundryProvider>();
 builder.Services.AddSingleton<IAiProvider, AnthropicProvider>();
 builder.Services.AddSingleton<IAiProviderRegistry, AiProviderRegistry>();
 builder.Services.AddSingleton<AiConversationRunner>();
-builder.Services.AddSingleton<IToolService, ToolService>();
+builder.Services.AddTools(builder.Configuration);
 builder.Services.AddSingleton<ITokenCountingService, TokenCountingService>();
 
 var app = builder.Build();
