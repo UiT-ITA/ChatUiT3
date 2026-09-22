@@ -78,7 +78,7 @@ public class AssistantsController : ControllerBase
         {
             var userId = GetCurrentUserId();
             var promptUser = await _assistantService.GetPromptUserContextAsync(_userService.GetUserIdentity(User));
-            var assistants = await _assistantService.GetUserAssistantsDtoAsync(userId, _userService.GetUserRoles(User), promptUser);
+            var assistants = await _assistantService.GetUserAssistantsDtoAsync(userId, _userService.GetUserAccess(User), promptUser);
             return Ok(assistants);
         }
         catch (Exception ex)
@@ -272,12 +272,16 @@ public class AssistantsController : ControllerBase
         try
         {
             var userId = GetCurrentUserId();
-            await _assistantService.AddSharedAssistantAsync(assistantId, userId);
+            await _assistantService.AddSharedAssistantAsync(assistantId, userId, _userService.GetUserAccess(User));
 
             // Notify all clients that assistant data has changed
             await _hubContext.Clients.Group(userId).AssistantsUpdated();
 
             return Ok();
+        }
+        catch (SharedAssistantRefusedException ex)
+        {
+            return BadRequest(new { error = "tools_not_allowed", message = ex.Message, disallowedTools = ex.DisallowedToolNames });
         }
         catch (Exception ex)
         {

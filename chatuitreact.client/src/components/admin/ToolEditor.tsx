@@ -136,21 +136,38 @@ const ToolEditor: React.FC<ToolEditorProps> = ({ toolId }) => {
         <div className="t-body">{tool.description}</div>
       </div>
 
-      <div className="admin-field-grid">
-        <div className="admin-field">
-          <div className="admin-label t-label">{t('admin.tools.fields.execution')}</div>
-          <div className="t-body">{t(`toolCall.execution.${tool.execution}`)}</div>
-        </div>
-        <div className="admin-field">
-          <div className="admin-label t-label">{t('admin.tools.fields.requiresConfirmation')}</div>
-          <div className="t-body">{tool.requiresConfirmation ? t('common.yes', { defaultValue: 'Yes' }) : t('common.no', { defaultValue: 'No' })}</div>
-        </div>
+      <div className="admin-field">
+        <div className="admin-label t-label">{t('admin.tools.fields.requiresConfirmation')}</div>
+        <div className="t-body">{tool.requiresConfirmation ? t('common.yes', { defaultValue: 'Yes' }) : t('common.no', { defaultValue: 'No' })}</div>
       </div>
 
       {tool.requiredScopes.length > 0 && (
         <div className="admin-field">
           <div className="admin-label t-label">{t('admin.tools.fields.requiredScopes')}</div>
           <div className="t-code">{tool.requiredScopes.join(', ')}</div>
+        </div>
+      )}
+
+      {tool.functions && tool.functions.length > 0 && (
+        <div className="admin-field">
+          <div className="admin-label t-label">{t('admin.tools.fields.functions')}</div>
+          <div className="admin-field-help t-caption">{t('admin.tools.fields.functionsHelp')}</div>
+          {tool.functions.map(fn => (
+            <div key={fn.id} className="admin-list-row" style={{ cursor: 'default' }}>
+              <div className="admin-row-main">
+                <div className="admin-row-title t-code">{fn.id}</div>
+                <div className="admin-row-subtitle t-caption">{fn.description}</div>
+                {(fn.requiresConfirmation || fn.requiredScopes.length > 0) && (
+                  <div className="t-caption">
+                    {[
+                      fn.requiresConfirmation ? t('admin.tools.fields.requiresConfirmation') : null,
+                      fn.requiredScopes.length > 0 ? fn.requiredScopes.join(', ') : null,
+                    ].filter(Boolean).join(' · ')}
+                  </div>
+                )}
+              </div>
+            </div>
+          ))}
         </div>
       )}
 

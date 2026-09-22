@@ -70,6 +70,11 @@ public class AdminAssistantsController : ControllerBase
                 return BadRequest(new { error = "unknown_tools", unknownToolIds = unknown });
             }
 
+            if (InvalidGroupIds(createDto.Access) is { Count: > 0 } invalidGroups)
+            {
+                return BadRequest(new { error = "invalid_group_ids", groupIds = invalidGroups });
+            }
+
             var assistant = await _assistantService.CreateSystemAssistantAsync(createDto);
             return CreatedAtAction(nameof(GetAssistant), new { id = assistant.Id }, assistant);
         }
@@ -97,6 +102,11 @@ public class AdminAssistantsController : ControllerBase
             if (UnknownToolIds(updateDto.AvailableToolIds) is { Count: > 0 } unknown)
             {
                 return BadRequest(new { error = "unknown_tools", unknownToolIds = unknown });
+            }
+
+            if (InvalidGroupIds(updateDto.Access) is { Count: > 0 } invalidGroups)
+            {
+                return BadRequest(new { error = "invalid_group_ids", groupIds = invalidGroups });
             }
 
             var assistant = await _assistantService.UpdateSystemAssistantAsync(id, updateDto);
@@ -135,6 +145,9 @@ public class AdminAssistantsController : ControllerBase
     }
 
     /// <summary>System assistants serve everyone, so admins are not access-checked; unknown ids are still refused.</summary>
+    private static List<string> InvalidGroupIds(AssistantAccessPolicyDto? access)
+        => (access?.AllowedGroupIds ?? []).Where(g => !Guid.TryParse(g?.Trim(), out _)).ToList();
+
     private List<string> UnknownToolIds(List<string>? toolIds)
         => (toolIds ?? []).Where(id => _toolRegistry.Find(id) == null).Distinct().ToList();
 }

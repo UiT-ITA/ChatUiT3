@@ -217,10 +217,22 @@
       "modelNotDefaultEligible": "Dette er standardassistenten din. Denne modellen kan ikke være standard, så nye samtaler slutter å starte her hvis du lagrer.",
       "toolHints": {
         "requiresConfirmation": "Spør før kjøring",
-        "requiresAccess": "Trenger tilgang: {{scopes}}"
+        "widerAccess": "Noen brukere som har tilgang til denne assistenten kan ikke bruke dette verktøyet på egen hånd"
       },
-      "toolsSharingNote": "Andre som bruker denne assistenten får bare verktøyene de selv har tilgang til.",
-      "toolUnavailable": "Ikke lenger tilgjengelig for deg. Fjern haken for å lagre."
+      "toolsSharingNote": "Andre kan bare legge til denne assistenten hvis de har lov til å bruke alle verktøyene den har.",
+      "toolUnavailable": "Ikke lenger tilgjengelig for deg. Fjern haken for å lagre.",
+      "access": {
+        "title": "Hvem kan bruke denne assistenten",
+        "help": "Verktøypolicyer håndheves ikke på systemassistenter. Alle som slippes inn her får alle verktøyene den har.",
+        "everyone": "Alle",
+        "roles": "Roller",
+        "groups": "Entra-grupper",
+        "groupIdPlaceholder": "00000000-0000-0000-0000-000000000000",
+        "addGroup": "Legg til gruppe",
+        "removeGroup": "Fjern",
+        "invalidGroupId": "Skriv inn en gruppe-objekt-id (GUID).",
+        "nobodyWarning": "Ingen roller og ingen grupper: ingen kan bruke denne assistenten."
+      }
     },
     "capabilities": {
       "vision": "Visjon",
@@ -427,8 +439,7 @@
     "arguments": "Argumenter",
     "result": "Resultat",
     "execution": {
-      "client": "I nettleseren din",
-      "server": "På serveren"
+      "client": "I nettleseren din"
     },
     "editArguments": "Rediger argumenter",
     "hideArguments": "Skjul redigering",
@@ -642,7 +653,6 @@
       "fields": {
         "id": "Verktøy-id",
         "description": "Beskrivelse modellen ser",
-        "execution": "Kjører",
         "requiresConfirmation": "Spør brukeren før kjøring",
         "requiredScopes": "Delegerte tillatelser",
         "schema": "Argumentskjema",
@@ -658,7 +668,9 @@
         "nobodyWarning": "Ingen roller og ingen grupper: ingen kan bruke dette verktøyet.",
         "defaultPolicy": "Standard fra kode",
         "overridden": "Dette verktøyet bruker en tilpasset policy lagret {{date}}.",
-        "usingDefault": "Dette verktøyet bruker standarden fra koden."
+        "usingDefault": "Dette verktøyet bruker standarden fra koden.",
+        "functions": "Funksjoner",
+        "functionsHelp": "Dette verktøyet er en intern agent. Dette er funksjonene den kan kalle på vegne av brukeren; de har ingen egne tilgangspolicyer."
       },
       "actions": {
         "reset": "Tilbakestill til standard",

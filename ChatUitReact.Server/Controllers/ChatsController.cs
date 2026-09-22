@@ -73,12 +73,18 @@ public class ChatsController : ControllerBase
     /// What the background generation needs from this request for tools: the caller's roles and
     /// groups, a token provider bound to their assertion, and the client tools they declared.
     /// </summary>
-    private ToolSessionInput BuildToolSession(List<ClientToolDeclarationDto>? clientTools) => new()
+    private ToolSessionInput BuildToolSession(List<ClientToolDeclarationDto>? clientTools)
     {
-        Access = _userService.GetUserAccess(User),
-        Tokens = _tokenProviders.Create(User, IncomingBearerToken()),
-        ClientTools = clientTools ?? []
-    };
+        var identity = _userService.GetUserIdentity(User);
+        return new ToolSessionInput
+        {
+            Access = _userService.GetUserAccess(User),
+            Tokens = _tokenProviders.Create(User, IncomingBearerToken()),
+            ClientTools = clientTools ?? [],
+            UserDisplayName = identity.DisplayName,
+            UserPrincipalName = identity.Username
+        };
+    }
 
     /// <summary>The raw token this request was authenticated with; it is the On-Behalf-Of assertion.</summary>
     private string? IncomingBearerToken()

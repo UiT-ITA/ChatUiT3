@@ -88,9 +88,17 @@ public sealed class ToolAccessService : IToolAccessService
             return await MayUseClientToolsAsync(access);
         }
 
-        var policy = await GetEffectivePolicyAsync(tool.Id);
+        var policy = await GetEffectivePolicyForAsync(tool);
         return policy.Allows(access);
     }
+
+    /// <summary>
+    /// Like <see cref="GetEffectivePolicyAsync"/>, but for a tool instance that may not be in the
+    /// registry (an internal agent's private function). Such tools have no stored override and
+    /// answer with their code default.
+    /// </summary>
+    private async Task<ToolAccessPolicy> GetEffectivePolicyForAsync(ITool tool)
+        => _registry.Find(tool.Id) != null ? await GetEffectivePolicyAsync(tool.Id) : tool.DefaultPolicy;
 
     public async Task<ToolIdCheck> CheckToolIdsAsync(IEnumerable<string> toolIds, UserAccess access)
     {

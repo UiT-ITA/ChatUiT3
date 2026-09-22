@@ -2,10 +2,12 @@ import React, { useState, useRef, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import { MdImage, MdPublic, MdPsychology, MdExpandMore, MdExpandLess } from 'react-icons/md';
 import { useSignals } from '@preact/signals-react/runtime';
-import { PROMPT_SNIPPET_IDS, type AssistantFileDto, type CreateAssistantDto, type FullAssistantDto, type PromptSnippetId, type ReasoningEffort, type ChatToolDto, type UpdateAssistantDto } from '../../types/assistantModels';
+import { PROMPT_SNIPPET_IDS, type AssistantAccessPolicyDto, type AssistantFileDto, type CreateAssistantDto, type FullAssistantDto, type PromptSnippetId, type ReasoningEffort, type ChatToolDto, type UpdateAssistantDto, type UserRole } from '../../types/assistantModels';
 import { getModels } from '../../services/modelService';
 import { getAppDefaults } from '../../services/appSettingsService';
 import { getTools } from '../../services/toolService';
+import { adminToolsSignal } from '../../services/adminDataService';
+import type { AdminToolDto, ToolAccessPolicyDto } from '../../types/admin';
 import type { UserModelDto } from '../../types/modelModels';
 import { createAssistant, updateAssistant, fetchAssistantFile, getAssistants } from '../../services/assistantService';
 import TagField from '../common/TagField';
@@ -46,6 +48,20 @@ const showsTemperature = (model: UserModelDto | undefined, effort: ReasoningEffo
     && (effort ?? 'None') === 'None';
 };
 
+const ALL_ROLES: UserRole[] = ['User', 'Admin', 'Beta', 'Super', 'External'];
+const GUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+/**
+ * Whether everyone the assistant admits may also use the tool on their own. System assistants
+ * ignore tool policies, so a false here is only a heads-up for the admin, never a block.
+ */
+const toolCoversAccess = (policy: ToolAccessPolicyDto, access: AssistantAccessPolicyDto | null) => {
+  if (!policy.enabled) return false;
+  if (access === null) return policy.allowedRoles.includes('User');
+  return access.allowedRoles.every(role => policy.allowedRoles.includes(role))
+    && access.allowedGroupIds.every(group => policy.allowedGroupIds.some(candidate => candidate.toLowerCase() === group.toLowerCase()));
+};
+
 const emptyFormData = (): CreateAssistantDto => ({
   name: '',
   description: '',
@@ -61,7 +77,7 @@ const emptyFormData = (): CreateAssistantDto => ({
 /** The form's values for the assistant being edited, or the defaults for a new one. */
 const formStateFor = (editingAssistant: FullAssistantDto | null) => {
   if (!editingAssistant) {
-    return { formData: emptyFormData(), knowledgeFiles: createEmptyKnowledgeFiles(), selectedToolIds: [] as string[] };
+    return { formData: emptyFormData(), knowledgeFiles: createEmptyKnowledgeFiles(), selectedToolIds: [] as string[], access: null as AssistantAccessPolicyDto | null };
   }
 
   const knowledgeFiles = createEmptyKnowledgeFiles();
@@ -88,7 +104,10 @@ const formStateFor = (editingAssistant: FullAssistantDto | null) => {
       promptSnippets: editingAssistant.promptSnippets ?? []
     } satisfies CreateAssistantDto,
     knowledgeFiles,
-    selectedToolIds: editingAssistant.availableToolIds || []
+    selectedToolIds: editingAssistant.availableToolIds || [],
+    access: editingAssistant.access
+      ? { allowedRoles: [...editingAssistant.access.allowedRoles], allowedGroupIds: [...editingAssistant.access.allowedGroupIds] }
+      : null
   };
 };
 
@@ -101,6 +120,8 @@ interface AssistantFormProps {
   /** Extra buttons rendered next to Save in the footer */
   footerExtra?: React.ReactNode;
   saveLabel?: string;
+  /** Editing a system assistant as admin: every tool is offered, tool policies are not enforced, and access is editable. */
+  systemAssistant?: boolean;
 }
 
 const AssistantForm: React.FC<AssistantFormProps> = ({
@@ -109,7 +130,8 @@ const AssistantForm: React.FC<AssistantFormProps> = ({
   onUpdate,
   onSaved,
   footerExtra,
-  saveLabel
+  saveLabel,
+  systemAssistant = false
 }) => {
   useSignals();
   const { t } = useTranslation();
@@ -120,6 +142,9 @@ const AssistantForm: React.FC<AssistantFormProps> = ({
   const [loading, setLoading] = useState(false);
   const [initialState] = useState(() => formStateFor(editingAssistant));
   const [selectedToolIds, setSelectedToolIds] = useState<string[]>(initialState.selectedToolIds);
+  const [access, setAccess] = useState<AssistantAccessPolicyDto | null>(initialState.access);
+  const [groupInput, setGroupInput] = useState('');
+  const [groupError, setGroupError] = useState<string | null>(null);
   const [knowledgeFiles, setKnowledgeFiles] = useState<Record<KnowledgeFileCategory, KnowledgeFileItemData[]>>(initialState.knowledgeFiles);
   const modelDropdownRef = useRef<HTMLDivElement>(null);
 
@@ -132,6 +157,7 @@ const AssistantForm: React.FC<AssistantFormProps> = ({
     setKnowledgeFiles(next.knowledgeFiles);
     setFormData(next.formData);
     setSelectedToolIds(next.selectedToolIds);
+    setAccess(next.access);
   }
 
   const models: UserModelDto[] = modelsSignal.value ?? [];
@@ -153,7 +179,40 @@ const AssistantForm: React.FC<AssistantFormProps> = ({
     !selectedModel.allowedAsDefault &&
     formData.modelId !== editingAssistant?.modelId;
 
-  const availableTools: ChatToolDto[] = toolsSignal.value || [];
+  // System assistants ignore tool policies, so the admin picks from every tool; users pick from what they may use.
+  const adminTools: AdminToolDto[] = systemAssistant ? (adminToolsSignal.value ?? []) : [];
+  const availableTools: ChatToolDto[] = systemAssistant
+    ? adminTools.map(tool => ({ id: tool.id, name: tool.name, description: tool.description, requiresConfirmation: tool.requiresConfirmation, requiredScopes: tool.requiredScopes, execution: tool.execution }))
+    : (toolsSignal.value || []);
+  const toolPolicyById = new Map(adminTools.map(tool => [tool.id, tool.policy]));
+  const toolIsWiderThanPolicy = (toolId: string) => {
+    const policy = toolPolicyById.get(toolId);
+    return systemAssistant && policy !== undefined && !toolCoversAccess(policy, access);
+  };
+
+  const toggleAccessRole = (role: UserRole, checked: boolean) => {
+    setAccess(prev => {
+      const current = prev ?? { allowedRoles: [], allowedGroupIds: [] };
+      const set = new Set(current.allowedRoles);
+      if (checked) set.add(role);
+      else set.delete(role);
+      return { ...current, allowedRoles: ALL_ROLES.filter(candidate => set.has(candidate)) };
+    });
+  };
+
+  const addAccessGroup = () => {
+    const id = groupInput.trim().toLowerCase();
+    if (!GUID.test(id)) {
+      setGroupError(t('assistants.form.access.invalidGroupId'));
+      return;
+    }
+    setGroupError(null);
+    setGroupInput('');
+    setAccess(prev => {
+      const current = prev ?? { allowedRoles: [], allowedGroupIds: [] };
+      return current.allowedGroupIds.includes(id) ? current : { ...current, allowedGroupIds: [...current.allowedGroupIds, id] };
+    });
+  };
   const knowledgeSections: Array<{
     category: KnowledgeFileCategory;
     title: string;
@@ -339,6 +398,9 @@ const AssistantForm: React.FC<AssistantFormProps> = ({
         normalized.availableToolIds = [];
       }
     }
+    if (systemAssistant) {
+      normalized.access = access;
+    }
 
     setLoading(true);
     try {
@@ -507,6 +569,71 @@ const AssistantForm: React.FC<AssistantFormProps> = ({
         </div>
       </div>
 
+      {systemAssistant && (
+        <div className="af-field">
+          <label className="af-label t-label">{t('assistants.form.access.title')}</label>
+          <div className="af-note t-ui-plain">{t('assistants.form.access.help')}</div>
+          <label className="af-checkbox-label t-table">
+            <input
+              type="checkbox"
+              checked={access === null}
+              onChange={(e) => setAccess(e.target.checked ? null : { allowedRoles: [], allowedGroupIds: [] })}
+              disabled={loading}
+            />
+            <span>{t('assistants.form.access.everyone')}</span>
+          </label>
+          {access !== null && (
+            <div className="af-access">
+              <div className="af-access-label t-meta">{t('assistants.form.access.roles')}</div>
+              <div className="af-tools">
+                {ALL_ROLES.map(role => (
+                  <label key={role} className="af-checkbox-label t-table">
+                    <input
+                      type="checkbox"
+                      checked={access.allowedRoles.includes(role)}
+                      onChange={(e) => toggleAccessRole(role, e.target.checked)}
+                      disabled={loading}
+                    />
+                    <span>{t(`roles.${role}`)}</span>
+                  </label>
+                ))}
+              </div>
+              <div className="af-access-label t-meta">{t('assistants.form.access.groups')}</div>
+              {access.allowedGroupIds.map(id => (
+                <div key={id} className="af-access-group">
+                  <span className="t-code">{id}</span>
+                  <button
+                    type="button"
+                    className="af-access-group-remove t-ui"
+                    onClick={() => setAccess(prev => prev && { ...prev, allowedGroupIds: prev.allowedGroupIds.filter(candidate => candidate !== id) })}
+                    disabled={loading}
+                  >
+                    {t('assistants.form.access.removeGroup')}
+                  </button>
+                </div>
+              ))}
+              <div className="af-access-add">
+                <input
+                  className="af-input t-body"
+                  value={groupInput}
+                  placeholder={t('assistants.form.access.groupIdPlaceholder')}
+                  onChange={(e) => { setGroupInput(e.target.value); setGroupError(null); }}
+                  onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); addAccessGroup(); } }}
+                  disabled={loading}
+                />
+                <button type="button" className="af-access-group-remove t-ui" onClick={addAccessGroup} disabled={loading || groupInput.trim().length === 0}>
+                  {t('assistants.form.access.addGroup')}
+                </button>
+              </div>
+              {groupError && <div className="af-note af-note-warn t-ui-plain">{groupError}</div>}
+              {access.allowedRoles.length === 0 && access.allowedGroupIds.length === 0 && (
+                <div className="af-note af-note-warn t-ui-plain">{t('assistants.form.access.nobodyWarning')}</div>
+              )}
+            </div>
+          )}
+        </div>
+      )}
+
       <div className="af-grid">
         <div className="af-field">
           <label className="af-label t-label">{t('assistants.form.tools')}</label>
@@ -514,7 +641,7 @@ const AssistantForm: React.FC<AssistantFormProps> = ({
             availableTools.length > 0 ? (
               <div className="af-tools">
                 {availableTools.map(tool => (
-                  <label key={tool.id} className="af-checkbox-label af-tool t-table">
+                  <label key={tool.id} className={`af-checkbox-label af-tool t-table${selectedToolIds.includes(tool.id) && toolIsWiderThanPolicy(tool.id) ? ' af-tool-wider' : ''}`}>
                     <input
                       type="checkbox"
                       checked={selectedToolIds.includes(tool.id)}
@@ -524,13 +651,13 @@ const AssistantForm: React.FC<AssistantFormProps> = ({
                     <span>
                       <span className="af-tool-name t-table-strong">{tool.name}</span>
                       <span className="af-tool-description"> — {tool.description}</span>
-                      {(tool.requiresConfirmation || tool.requiredScopes.length > 0) && (
+                      {(tool.requiresConfirmation || (selectedToolIds.includes(tool.id) && toolIsWiderThanPolicy(tool.id))) && (
                         <span className="af-tool-hints">
                           {tool.requiresConfirmation && (
                             <span className="af-tool-hint t-meta">{t('assistants.form.toolHints.requiresConfirmation')}</span>
                           )}
-                          {tool.requiredScopes.length > 0 && (
-                            <span className="af-tool-hint t-meta">{t('assistants.form.toolHints.requiresAccess', { scopes: tool.requiredScopes.join(', ') })}</span>
+                          {selectedToolIds.includes(tool.id) && toolIsWiderThanPolicy(tool.id) && (
+                            <span className="af-tool-hint af-tool-hint-warn t-meta">{t('assistants.form.toolHints.widerAccess')}</span>
                           )}
                         </span>
                       )}
@@ -551,7 +678,7 @@ const AssistantForm: React.FC<AssistantFormProps> = ({
                     </span>
                   </label>
                 ))}
-                <div className="af-note t-ui-plain">{t('assistants.form.toolsSharingNote')}</div>
+                {!systemAssistant && <div className="af-note t-ui-plain">{t('assistants.form.toolsSharingNote')}</div>}
               </div>
             ) : (
               <div className="af-note t-ui-plain">{t('assistants.form.noTools')}</div>

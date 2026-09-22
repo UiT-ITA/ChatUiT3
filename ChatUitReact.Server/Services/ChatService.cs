@@ -334,7 +334,7 @@ public class ChatService : IChatService
             await _hubContext.Clients.Group(userId).Notify(NotifyLevel.Error, "Assistant is required.");
             throw new InvalidOperationException("AssistantId is required for chat operations");
         }
-        var settings = await GetChatSettingsFromAssistant(userId, effectiveAssistantId, promptUser);
+        var (settings, enforceToolAccess) = await GetChatSettingsFromAssistant(userId, effectiveAssistantId, promptUser, tools.Access);
         
         var modelWithEndpoint = await _modelService.GetModelWithEndpointAsync(settings.Model.Id);
         if (modelWithEndpoint == null)
@@ -351,14 +351,18 @@ public class ChatService : IChatService
             throw new NotSupportedException($"No AI provider is registered for endpoint type {endpoint.EndpointType}.");
         }
 
-        var request = await BuildAiRequestAsync(model, endpoint, settings, messages, tools);
+        var request = await BuildAiRequestAsync(model, endpoint, settings, messages, tools, enforceToolAccess);
         var toolContext = new ToolExecutionContext
         {
             UserId = userId,
             ChatId = chatId,
             MessageId = assistantMessage.Id,
             Access = tools.Access,
-            Tokens = tools.Tokens
+            Tokens = tools.Tokens,
+            UserDisplayName = tools.UserDisplayName,
+            UserPrincipalName = tools.UserPrincipalName,
+            Model = model,
+            Endpoint = endpoint
         };
 
         _ = Task.Run(async () =>
@@ -518,7 +522,11 @@ public class ChatService : IChatService
 
     #region Private helper methods
 
-    private async Task<ChatSettings> GetChatSettingsFromAssistant(string userId, string assistantId, PromptUserContext promptUser)
+    /// <summary>
+    /// Also decides whether tool policies apply at generation: never for system assistants (their
+    /// own access decides who reaches them), always for private and shared ones.
+    /// </summary>
+    private async Task<(ChatSettings settings, bool enforceToolAccess)> GetChatSettingsFromAssistant(string userId, string assistantId, PromptUserContext promptUser, UserAccess access)
     {
         if (string.IsNullOrWhiteSpace(assistantId))
         {
@@ -539,7 +547,26 @@ public class ChatService : IChatService
             throw new InvalidOperationException($"Assistant {assistantId} has no model configured");
         }
 
-        return new ChatSettings
+        if (assistant.IsSystem)
+        {
+            if (assistant.Access != null && !assistant.Access.Allows(access))
+            {
+                await _hubContext.Clients.Group(userId).Notify(NotifyLevel.Error, $"You do not have access to the assistant \"{assistant.Name}\".");
+                throw new InvalidOperationException($"User {userId} may not use system assistant {assistantId}");
+            }
+        }
+        else if (assistant.OwnerId != userId)
+        {
+            var disallowed = await _assistantService.DisallowedToolNamesAsync(assistant, access);
+            if (disallowed.Count > 0)
+            {
+                await _assistantService.RemoveSharedAssistantAsync(assistantId, userId);
+                await _hubContext.Clients.Group(userId).Notify(NotifyLevel.Warning, AssistantService.SharedAssistantRemovedMessage(assistant, disallowed));
+                throw new InvalidOperationException($"User {userId} may not use the tools on shared assistant {assistantId}");
+            }
+        }
+
+        var settings = new ChatSettings
         {
             Model = assistant.ChatSettings.Model,
             SystemPrompt = SystemPromptAssembler.Build(
@@ -551,6 +578,8 @@ public class ChatService : IChatService
             ReasoningEffort = assistant.ChatSettings.ReasoningEffort,
             AvailableToolIds = assistant.ChatSettings.AvailableToolIds
         };
+
+        return (settings, enforceToolAccess: !assistant.IsSystem);
     }
 
     // The one place assistant settings become a provider request: capabilities are reconciled
@@ -561,11 +590,14 @@ public class ChatService : IChatService
         ModelEndpoint endpoint,
         ChatSettings settings,
         List<Models.ChatMessage> messages,
-        ToolSessionInput tools)
+        ToolSessionInput tools,
+        bool enforceToolAccess)
     {
         var parameters = ChatParameterResolver.Resolve(model.Capabilities, settings);
 
-        var resolvedTools = new List<ITool>(await _toolAccess.FilterAllowedAsync(parameters.ToolIds, tools.Access));
+        var resolvedTools = new List<ITool>(enforceToolAccess
+            ? await _toolAccess.FilterAllowedAsync(parameters.ToolIds, tools.Access)
+            : _toolRegistry.Resolve(parameters.ToolIds));
 
         if (model.Capabilities.SupportsFunctionCalling && tools.ClientTools.Count > 0 && await _toolAccess.MayUseClientToolsAsync(tools.Access))
         {

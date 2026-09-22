@@ -14,6 +14,7 @@ namespace ChatUitReact.Server.Services
         private readonly IModelService _modelService;
         private readonly IHubContext<ChatHub, IChatHubClient> _hubContext;
         private readonly IToolRegistry _toolRegistry;
+        private readonly IToolAccessService _toolAccess;
         private readonly ITokenCountingService _tokenCounting;
 
         // Keyed by assistant id. Invalidated by the assistant's UpdatedAt and by the set of
@@ -30,12 +31,14 @@ namespace ChatUitReact.Server.Services
             IModelService modelService,
             IHubContext<ChatHub, IChatHubClient> hubContext,
             IToolRegistry toolRegistry,
+            IToolAccessService toolAccess,
             ITokenCountingService tokenCounting)
         {
             _databaseService = databaseService;
             _modelService = modelService;
             _hubContext = hubContext;
             _toolRegistry = toolRegistry;
+            _toolAccess = toolAccess;
             _tokenCounting = tokenCounting;
         }
 
@@ -132,22 +135,50 @@ namespace ChatUitReact.Server.Services
             return new PromptUserContext(name, profile.JobRole, identity.Email, profile.AnswerPreferences);
         }
 
-        public async Task<UserAssistantsResult> GetUserAssistantsAsync(string userId)
+        public async Task<UserAssistantsResult> GetUserAssistantsAsync(string userId, UserAccess access)
         {
             var user = await _databaseService.GetUserAsync(userId);
             if (user == null) return new UserAssistantsResult();
 
             var ownedAssistants = await _databaseService.GetAssistantsByOwnerAsync(userId);
-            var systemAssistants = await _databaseService.GetSystemAssistantsAsync();
+            var systemAssistants = (await _databaseService.GetSystemAssistantsAsync())
+                .Where(a => a.Access == null || a.Access.Allows(access))
+                .ToList();
             var sharedAssistants = await _databaseService.GetAssistantsByIdsAsync(user.Preferences.SharedAssistantIds);
+
+            // A shared assistant is only usable while the user may use every tool on it. Policies
+            // and the owner's tool list change over time, so the check is repeated on every load.
+            var kept = new List<Assistant>();
+            foreach (var shared in sharedAssistants)
+            {
+                var disallowed = await DisallowedToolNamesAsync(shared, access);
+                if (disallowed.Count == 0)
+                {
+                    kept.Add(shared);
+                    continue;
+                }
+
+                await RemoveSharedAssistantAsync(shared.Id, userId);
+                await _hubContext.Clients.Group(userId).Notify(NotifyLevel.Warning, SharedAssistantRemovedMessage(shared, disallowed));
+            }
 
             return new UserAssistantsResult
             {
                 Owned = ownedAssistants,
                 System = systemAssistants,
-                Shared = sharedAssistants
+                Shared = kept
             };
         }
+
+        /// <summary>Display names of the tools on the assistant that this user may not use.</summary>
+        public async Task<IReadOnlyList<string>> DisallowedToolNamesAsync(Assistant assistant, UserAccess access)
+        {
+            var check = await _toolAccess.CheckToolIdsAsync(assistant.ChatSettings.AvailableToolIds, access);
+            return check.Disallowed.Select(id => _toolRegistry.Find(id)?.DisplayName ?? id).ToList();
+        }
+
+        public static string SharedAssistantRemovedMessage(Assistant assistant, IReadOnlyList<string> disallowedToolNames)
+            => $"The shared assistant \"{assistant.Name}\" was removed from your list: it uses tools you are not allowed to use ({string.Join(", ", disallowedToolNames)}).";
 
         public async Task<Assistant?> GetAssistantByIdAsync(string assistantId, bool includeFileContent = false)
         {
@@ -221,7 +252,7 @@ namespace ChatUitReact.Server.Services
             return success;
         }
 
-        public async Task<bool> AddSharedAssistantAsync(string assistantId, string userId)
+        public async Task<bool> AddSharedAssistantAsync(string assistantId, string userId, UserAccess access)
         {
             var assistant = await _databaseService.GetAssistantByIdAsync(assistantId);
             if (assistant == null) return false;
@@ -229,6 +260,12 @@ namespace ChatUitReact.Server.Services
             if (assistant.OwnerId == userId)
             {
                 return false;
+            }
+
+            var disallowed = await DisallowedToolNamesAsync(assistant, access);
+            if (disallowed.Count > 0)
+            {
+                throw new SharedAssistantRefusedException(assistant, disallowed);
             }
 
             var user = await _databaseService.GetUserAsync(userId);
@@ -268,7 +305,7 @@ namespace ChatUitReact.Server.Services
 
             // Membership, not existence: GetAssistantByIdAsync has no access check, so any
             // assistant GUID would otherwise be pinnable.
-            var assistants = await GetUserAssistantsAsync(userId);
+            var assistants = await GetUserAssistantsAsync(userId, new UserAccess(roles, []));
             var assistant = assistants.Owned
                 .Concat(assistants.System)
                 .Concat(assistants.Shared)
@@ -380,9 +417,10 @@ namespace ChatUitReact.Server.Services
 
         // Roles come from the caller's claims, not from the stored user document: nothing ever
         // writes claim roles into a user document, so UserInfo.Roles is empty in production.
-        public async Task<AssistantListDto> GetUserAssistantsDtoAsync(string userId, List<UserRole> roles, PromptUserContext promptUser)
+        public async Task<AssistantListDto> GetUserAssistantsDtoAsync(string userId, UserAccess access, PromptUserContext promptUser)
         {
-            var result = await GetUserAssistantsAsync(userId);
+            var roles = access.Roles.ToList();
+            var result = await GetUserAssistantsAsync(userId, access);
             var user = await _databaseService.GetUserAsync(userId);
 
             var allAssistants = result.Owned.Concat(result.System).Concat(result.Shared).ToList();
@@ -527,7 +565,8 @@ namespace ChatUitReact.Server.Services
                     createDto.AvailableToolIds,
                     createDto.PromptSnippets),
                 Files = MapAssistantFiles(createDto.Files),
-                OwnerId = ownerId
+                OwnerId = ownerId,
+                Access = ownerId == Assistant.SystemOwnerId ? MapAccess(createDto.Access) : null
             };
         }
 
@@ -580,9 +619,25 @@ namespace ChatUitReact.Server.Services
                 updateDto.AvailableToolIds,
                 updateDto.PromptSnippets);
             assistant.Files = MapAssistantFiles(updateDto.Files);
+            if (assistant.IsSystem)
+            {
+                assistant.Access = MapAccess(updateDto.Access);
+            }
 
             return true;
         }
+
+        private static AssistantAccessPolicy? MapAccess(AssistantAccessPolicyDto? dto)
+            => dto == null
+                ? null
+                : new AssistantAccessPolicy
+                {
+                    AllowedRoles = dto.AllowedRoles?.Distinct().ToList() ?? new List<UserRole>(),
+                    AllowedGroupIds = dto.AllowedGroupIds?.Select(id => id.Trim()).Where(id => id.Length > 0).Distinct().ToList() ?? new List<string>()
+                };
+
+        private static AssistantAccessPolicyDto? MapAccess(AssistantAccessPolicy? access)
+            => access == null ? null : new AssistantAccessPolicyDto { AllowedRoles = access.AllowedRoles.ToList(), AllowedGroupIds = access.AllowedGroupIds.ToList() };
 
         // eligibleModelIds is null on the admin paths, which have no user to pin anything for.
         private static FullAssistantDto MapToFullAssistantDto(
@@ -608,6 +663,7 @@ namespace ChatUitReact.Server.Services
                 IsVisible = !(user?.Preferences.HiddenAssistantIds.Contains(assistant.Id) ?? false),
                 IsFavorite = user?.Preferences.FavoritedAssistantIds.Contains(assistant.Id) ?? false,
                 CanBeDefault = eligibleModelIds?.Contains(assistant.ChatSettings.Model.Id) ?? false,
+                Access = MapAccess(assistant.Access),
                 Files = assistant.Files.Select(MapAssistantFileDto).ToList()
             };
         }
@@ -675,4 +731,16 @@ namespace ChatUitReact.Server.Services
             };
         }
     }
+}
+
+/// <summary>Thrown when a user tries to add a shared assistant whose tools they may not use.</summary>
+public sealed class SharedAssistantRefusedException : Exception
+{
+    public SharedAssistantRefusedException(Assistant assistant, IReadOnlyList<string> disallowedToolNames)
+        : base($"The assistant \"{assistant.Name}\" uses tools you are not allowed to use ({string.Join(", ", disallowedToolNames)}).")
+    {
+        DisallowedToolNames = disallowedToolNames;
+    }
+
+    public IReadOnlyList<string> DisallowedToolNames { get; }
 }

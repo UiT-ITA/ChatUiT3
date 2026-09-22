@@ -243,7 +243,10 @@ public partial class DatabaseService
             },
             Files = ReadAssistantFiles(document.Files, contentBlocksById, includeFileContent),
             OwnerId = document.OwnerId,
-            UpdatedAt = document.UpdatedAt
+            UpdatedAt = document.UpdatedAt,
+            Access = document.Access == null
+                ? null
+                : new AssistantAccessPolicy { AllowedRoles = document.Access.AllowedRoles, AllowedGroupIds = document.Access.AllowedGroupIds }
         };
     }
 
@@ -266,7 +269,10 @@ public partial class DatabaseService
                 PromptSnippets = assistant.ChatSettings.PromptSnippets
             },
             OwnerId = assistant.OwnerId,
-            UpdatedAt = DateTime.UtcNow
+            UpdatedAt = DateTime.UtcNow,
+            Access = assistant.Access == null
+                ? null
+                : new AssistantAccessDocument { AllowedRoles = assistant.Access.AllowedRoles, AllowedGroupIds = assistant.Access.AllowedGroupIds }
         };
     }
 

@@ -60,6 +60,7 @@ const AdminAssistantEditor: React.FC<AdminAssistantEditorProps> = ({ assistantId
       <AssistantForm
         key={assistant?.id ?? 'new'}
         editingAssistant={assistant ?? null}
+        systemAssistant
         onCreate={handleCreate}
         onUpdate={handleUpdate}
         saveLabel={t('assistants.saveAssistant')}

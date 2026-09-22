@@ -19,6 +19,15 @@ export interface AssistantFileDto {
     chunks: ChatFileChunkDto[];
 }
 
+export type UserRole = 'User' | 'Admin' | 'Beta' | 'Super' | 'External';
+
+/** Who may use a system assistant. Null means everyone. Ignored on private assistants. */
+export interface AssistantAccessPolicyDto {
+    allowedRoles: UserRole[];
+    /** Entra ID group object ids. */
+    allowedGroupIds: string[];
+}
+
 export interface FullAssistantDto {
     id: string;
     name: string;
@@ -37,6 +46,8 @@ export interface FullAssistantDto {
      * assistant's model is gone, is not available to this user, or is not default-eligible.
      */
     canBeDefault: boolean;
+    /** System assistants only. Null means everyone. */
+    access?: AssistantAccessPolicyDto | null;
     files: AssistantFileDto[];
     /**
      * Per token counting scheme: the fixed cost every request through this assistant pays
@@ -113,6 +124,8 @@ export interface CreateAssistantDto {
     availableToolIds?: string[];
     promptSnippets?: PromptSnippetId[];
     files?: AssistantFileDto[];
+    /** System assistants only; ignored on user endpoints. Null means everyone. */
+    access?: AssistantAccessPolicyDto | null;
 }
 
 export interface UpdateAssistantDto {
@@ -127,6 +140,8 @@ export interface UpdateAssistantDto {
     availableToolIds?: string[];
     promptSnippets?: PromptSnippetId[];
     files?: AssistantFileDto[];
+    /** System assistants only; ignored on user endpoints. Null means everyone. */
+    access?: AssistantAccessPolicyDto | null;
 }
 
 /** Which levels a given model actually accepts varies — see UserModelCapabilitiesDto.supportedEfforts. */

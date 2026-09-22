@@ -1,0 +1,65 @@
+using System;
+using System.Collections.Generic;
+using System.ComponentModel;
+using System.IO;
+using System.Linq;
+using System.Threading;
+using System.Threading.Tasks;
+using ChatUitReact.Server.Services.Tools;
+
+namespace ChatUitReact.Server.Services.Agents.M365.Functions;
+
+public sealed record ReadFileArgs(
+    [property: Description("driveId from search_files.")]
+    string DriveId,
+    [property: Description("itemId from search_files.")]
+    string ItemId);
+
+public sealed class ReadFileFunction : Tool<ReadFileArgs>
+{
+    private const long MaxBytes = 512 * 1024;
+    private static readonly string[] Scopes = [M365Scopes.FilesReadWriteAll];
+    private static readonly HashSet<string> TextExtensions = new(StringComparer.OrdinalIgnoreCase)
+        { ".txt", ".md", ".markdown", ".csv", ".tsv", ".json", ".xml", ".html", ".htm", ".yaml", ".yml", ".log", ".ini", ".cs", ".ts", ".js", ".py", ".sql" };
+
+    private readonly GraphClient _graph;
+
+    public ReadFileFunction(GraphClient graph) => _graph = graph;
+
+    public override string Id => "read_file";
+    public override string DisplayName => "Read file";
+    public override string Description => "Read the content of a text-based file (txt, md, csv, json, xml, html, code) from OneDrive or SharePoint. Office documents and PDFs return metadata only.";
+    public override IReadOnlyList<string> RequiredScopes => Scopes;
+
+    protected override async Task<ToolResult> ExecuteAsync(ReadFileArgs args, ToolInvocation invocation, CancellationToken ct)
+    {
+        if (string.IsNullOrWhiteSpace(args.DriveId) || string.IsNullOrWhiteSpace(args.ItemId))
+        {
+            return ToolResult.Error("driveId and itemId are required.");
+        }
+
+        var itemPath = $"drives/{Uri.EscapeDataString(args.DriveId.Trim())}/items/{Uri.EscapeDataString(args.ItemId.Trim())}";
+        var item = await _graph.GetAsync(invocation.Context, $"{itemPath}?$select=id,name,size,webUrl,file,folder,lastModifiedDateTime", Scopes, ct);
+
+        var name = item.Str("name") ?? string.Empty;
+        var size = long.TryParse(item.Str("size"), out var s) ? s : 0;
+        var mimeType = item.Str("file", "mimeType");
+        var metadata = new { name, size, mimeType, lastModified = item.Str("lastModifiedDateTime"), webUrl = item.Str("webUrl") };
+
+        if (item.TryGetProperty("folder", out _))
+        {
+            return ToolResult.Ok(new { metadata, content = (string?)null, note = "This item is a folder." });
+        }
+
+        var isText = TextExtensions.Contains(Path.GetExtension(name)) || (mimeType?.StartsWith("text/", StringComparison.OrdinalIgnoreCase) ?? false);
+        if (!isText)
+        {
+            return ToolResult.Ok(new { metadata, content = (string?)null, note = "Content is not readable as text; share the web link instead." });
+        }
+
+        var content = await _graph.GetTextAsync(invocation.Context, $"{itemPath}/content", Scopes, MaxBytes, ct);
+        var truncated = size > MaxBytes;
+
+        return ToolResult.Ok(new { metadata, content, truncated });
+    }
+}

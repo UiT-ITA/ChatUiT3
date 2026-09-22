@@ -1,4 +1,4 @@
-import type { FullAssistantDto, CreateAssistantDto, UpdateAssistantDto } from './assistantModels';
+import type { FullAssistantDto, CreateAssistantDto, UpdateAssistantDto, UserRole } from './assistantModels';
 
 /** Where an endpoint points (the host). The host decides which protocols it serves and on what path. */
 export type EndpointType = 'AzureOpenAI' | 'OpenAI' | 'Anthropic' | 'LlamaCpp' | 'Other' | 'MicrosoftFoundry';
@@ -48,7 +48,7 @@ export interface UpdateEndpointDto {
   endpointType: EndpointType;
 }
 
-export type UserRole = 'User' | 'Admin' | 'Beta' | 'Super' | 'External';
+export type { UserRole } from './assistantModels';
 
 /** Who may use a tool: enabled, and any listed role or any listed Entra group. Both empty means nobody. */
 export interface ToolAccessPolicyDto {
@@ -56,6 +56,14 @@ export interface ToolAccessPolicyDto {
   allowedRoles: UserRole[];
   /** Entra ID group object ids. */
   allowedGroupIds: string[];
+}
+
+/** One private function of an internal agent, read-only in the admin panel. */
+export interface AdminToolFunctionDto {
+  id: string;
+  description: string;
+  requiresConfirmation: boolean;
+  requiredScopes: string[];
 }
 
 /** A tool as the admin panel sees it. Tools are code; only the policy is editable. */
@@ -73,6 +81,8 @@ export interface AdminToolDto {
   policy: ToolAccessPolicyDto;
   isOverridden: boolean;
   updatedAt: string | null;
+  /** Internal agents only: the functions the agent can call. */
+  functions: AdminToolFunctionDto[] | null;
 }
 
 /** The pseudo tool whose policy gates client-declared tools as a group. */

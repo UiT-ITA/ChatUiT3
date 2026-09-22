@@ -31,6 +31,17 @@ public class ToolAdminDto : ToolDto
     public ToolAccessPolicyDto Policy { get; set; } = new();
     public bool IsOverridden { get; set; }
     public DateTime? UpdatedAt { get; set; }
+    /// <summary>Internal agents only: the private functions the agent can call.</summary>
+    public List<ToolFunctionDto>? Functions { get; set; }
+}
+
+/// <summary>One private function of an internal agent, for display in the admin panel.</summary>
+public class ToolFunctionDto
+{
+    public string Id { get; set; } = string.Empty;
+    public string Description { get; set; } = string.Empty;
+    public bool RequiresConfirmation { get; set; }
+    public List<string> RequiredScopes { get; set; } = new();
 }
 
 /// <summary>A tool the client offers to run itself for this message.</summary>

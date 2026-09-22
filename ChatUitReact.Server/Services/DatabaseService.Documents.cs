@@ -331,9 +331,21 @@ public partial class DatabaseService
         [JsonProperty("ownerId")]
         public string OwnerId { get; set; } = string.Empty;
 
+        [JsonProperty("access", NullValueHandling = NullValueHandling.Ignore)]
+        public AssistantAccessDocument? Access { get; set; }
+
         // May be absent in stored rows; the default value still works as a cache key.
         [JsonProperty("updatedAt")]
         public DateTime UpdatedAt { get; set; }
+    }
+
+    private sealed class AssistantAccessDocument
+    {
+        [JsonProperty("allowedRoles", ItemConverterType = typeof(StringEnumConverter))]
+        public List<UserRole> AllowedRoles { get; set; } = new();
+
+        [JsonProperty("allowedGroupIds")]
+        public List<string> AllowedGroupIds { get; set; } = new();
     }
 
     private sealed class StoredAssistantFileDocument

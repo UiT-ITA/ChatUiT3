@@ -89,7 +89,11 @@ public sealed class ToolExecutor : IToolExecutor
             {
                 var invocation = new ToolInvocation(call.Id, arguments.RootElement, context);
 
-                if (tool is IConfirmableTool confirmable)
+                if (tool is IStreamingTool streaming)
+                {
+                    await RunStreamingAsync(streaming, invocation, writer, cancellationToken);
+                }
+                else if (tool is IConfirmableTool confirmable)
                 {
                     await RunConfirmableAsync(confirmable, invocation, writer, cancellationToken);
                 }
@@ -122,6 +126,28 @@ public sealed class ToolExecutor : IToolExecutor
         if (result != null)
         {
             Complete(writer, result, result.IsError ? ToolCallStatus.Error : ToolCallStatus.Completed);
+        }
+    }
+
+    private async Task RunStreamingAsync(IStreamingTool tool, ToolInvocation invocation, ChannelWriter<ToolExecutionEvent> writer, CancellationToken cancellationToken)
+    {
+        // The tool owns its pauses; this only forwards them and applies the usual truncation to the end result.
+        var completed = false;
+        await foreach (var evt in tool.StreamAsync(invocation, cancellationToken).WithCancellation(cancellationToken))
+        {
+            if (evt is ToolExecutionEvent.Completed done)
+            {
+                Complete(writer, done.Result, done.Status);
+                completed = true;
+                break;
+            }
+
+            Emit(writer, evt);
+        }
+
+        if (!completed)
+        {
+            Complete(writer, ToolResult.Error("The tool ended without a result."), ToolCallStatus.Error);
         }
     }
 

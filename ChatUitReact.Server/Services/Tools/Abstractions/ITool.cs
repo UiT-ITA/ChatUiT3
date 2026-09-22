@@ -56,6 +56,18 @@ public interface IConfirmableTool : ITool
     Task<ToolResult> CommitAsync(ToolInvocation invocation, JsonElement approvedArguments, CancellationToken cancellationToken);
 }
 
+/// <summary>
+/// A tool that drives its own run and reports through executor events: it may pause for
+/// confirmation or consent any number of times and must end with exactly one
+/// <see cref="ToolExecutionEvent.Completed"/>. Internal agents use this to surface the
+/// pauses of their inner functions under the outer tool call. <see cref="ITool.ExecuteAsync"/>
+/// is never called.
+/// </summary>
+public interface IStreamingTool : ITool
+{
+    IAsyncEnumerable<ToolExecutionEvent> StreamAsync(ToolInvocation invocation, CancellationToken cancellationToken);
+}
+
 /// <summary>What the user sees before approving a confirmable tool.</summary>
 public sealed record ToolPreview(
     string Title,
@@ -79,6 +91,16 @@ public sealed class ToolExecutionContext
     public required UserAccess Access { get; init; }
 
     public required IUserTokenProvider Tokens { get; init; }
+
+    /// <summary>The signed-in user's display name, when the request boundary knew it.</summary>
+    public string? UserDisplayName { get; init; }
+
+    public string? UserPrincipalName { get; init; }
+
+    /// <summary>The model the outer chat runs on. Internal agents fall back to it when no model is configured for them.</summary>
+    public Model? Model { get; init; }
+
+    public ModelEndpoint? Endpoint { get; init; }
 }
 
 /// <summary>

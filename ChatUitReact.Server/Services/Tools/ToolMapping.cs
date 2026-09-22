@@ -1,6 +1,7 @@
 using System.Linq;
 using System.Text.Json;
 using ChatUitReact.Server.Models;
+using ChatUitReact.Server.Services.Agents;
 
 namespace ChatUitReact.Server.Services.Tools;
 
@@ -42,6 +43,15 @@ public static class ToolMapping
         DefaultPolicy = ToDto(tool.DefaultPolicy),
         Policy = ToDto(effective),
         IsOverridden = stored != null,
-        UpdatedAt = stored?.UpdatedAt
+        UpdatedAt = stored?.UpdatedAt,
+        Functions = tool is InternalAgentTool agentTool
+            ? agentTool.Agent.Functions.Select(f => new ToolFunctionDto
+            {
+                Id = f.Id,
+                Description = f.Description,
+                RequiresConfirmation = f is IConfirmableTool,
+                RequiredScopes = f.RequiredScopes.ToList()
+            }).ToList()
+            : null
     };
 }

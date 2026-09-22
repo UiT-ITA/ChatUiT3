@@ -217,10 +217,22 @@
       "modelNotDefaultEligible": "This is your default assistant. This model cannot be used as a default, so saving will stop new chats from starting here.",
       "toolHints": {
         "requiresConfirmation": "Asks before running",
-        "requiresAccess": "Needs access: {{scopes}}"
+        "widerAccess": "Some users admitted to this assistant may not use this tool on their own"
       },
-      "toolsSharingNote": "Anyone else using this assistant only gets the tools they are allowed to use.",
-      "toolUnavailable": "No longer available to you. Untick it to save."
+      "toolsSharingNote": "Others can only add this assistant if they are allowed to use all of its tools.",
+      "toolUnavailable": "No longer available to you. Untick it to save.",
+      "access": {
+        "title": "Who may use this assistant",
+        "help": "Tool policies are not enforced on system assistants. Whoever is admitted here gets every tool on it.",
+        "everyone": "Everyone",
+        "roles": "Roles",
+        "groups": "Entra groups",
+        "groupIdPlaceholder": "00000000-0000-0000-0000-000000000000",
+        "addGroup": "Add group",
+        "removeGroup": "Remove",
+        "invalidGroupId": "Enter a group object id (GUID).",
+        "nobodyWarning": "No roles and no groups: nobody can use this assistant."
+      }
     },
     "capabilities": {
       "vision": "Vision",
@@ -427,8 +439,7 @@
     "arguments": "Arguments",
     "result": "Result",
     "execution": {
-      "client": "In your browser",
-      "server": "On the server"
+      "client": "In your browser"
     },
     "editArguments": "Edit arguments",
     "hideArguments": "Hide editor",
@@ -642,7 +653,6 @@
       "fields": {
         "id": "Tool id",
         "description": "Description shown to the model",
-        "execution": "Runs",
         "requiresConfirmation": "Asks the user before running",
         "requiredScopes": "Delegated permissions",
         "schema": "Argument schema",
@@ -658,7 +668,9 @@
         "nobodyWarning": "No roles and no groups: nobody can use this tool.",
         "defaultPolicy": "Code default",
         "overridden": "This tool uses a custom policy saved {{date}}.",
-        "usingDefault": "This tool uses its code default."
+        "usingDefault": "This tool uses its code default.",
+        "functions": "Functions",
+        "functionsHelp": "This tool is an internal agent. These are the functions it may call on the user's behalf; they have no separate access policies."
       },
       "actions": {
         "reset": "Reset to default",

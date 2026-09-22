@@ -17,6 +17,13 @@ public class AssistantListDto
     public string? DefaultAssistantId { get; set; }
 }
 
+/// <summary>Who may use a system assistant. Null means everyone. Ignored on private assistants.</summary>
+public class AssistantAccessPolicyDto
+{
+    public List<UserRole> AllowedRoles { get; set; } = new();
+    public List<string> AllowedGroupIds { get; set; } = new();
+}
+
 public class FullAssistantDto
 {
     public string Id { get; set; } = string.Empty;
@@ -39,6 +46,9 @@ public class FullAssistantDto
     /// re-derive the rule from its role-filtered model list.
     /// </summary>
     public bool CanBeDefault { get; set; }
+
+    /// <summary>System assistants only. Null means everyone.</summary>
+    public AssistantAccessPolicyDto? Access { get; set; }
 
     public List<AssistantFileDto> Files { get; set; } = new List<AssistantFileDto>();
 
@@ -90,6 +100,8 @@ public class AssistantSummaryDto
 
 public class CreateAssistantDto
 {
+    /// <summary>System assistants only; ignored on user endpoints. Null means everyone.</summary>
+    public AssistantAccessPolicyDto? Access { get; set; }
     [Required]
     public string Name { get; set; } = string.Empty;
     public string Description { get; set; } = string.Empty;
@@ -106,6 +118,8 @@ public class CreateAssistantDto
 
 public class UpdateAssistantDto
 {
+    /// <summary>System assistants only; ignored on user endpoints. Null means everyone.</summary>
+    public AssistantAccessPolicyDto? Access { get; set; }
     [Required]
     public string Id { get; set; } = string.Empty;
     [Required]

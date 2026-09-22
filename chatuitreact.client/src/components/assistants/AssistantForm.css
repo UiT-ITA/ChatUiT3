@@ -275,3 +275,53 @@
   color: var(--text-3);
   text-decoration: line-through;
 }
+
+.af-tool-wider .af-tool-name {
+  color: var(--warn);
+}
+
+.af-tool-hint-warn {
+  border-color: var(--warn);
+  color: var(--warn);
+}
+
+.af-note-warn {
+  color: var(--warn);
+}
+
+.af-access {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  margin-top: 0.5rem;
+  padding-left: 1.75rem;
+}
+
+.af-access-label {
+  color: var(--text-3);
+}
+
+.af-access-group,
+.af-access-add {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.af-access-add .af-input {
+  flex: 1;
+}
+
+.af-access-group-remove {
+  padding: 0.25rem 0.625rem;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--text);
+  cursor: pointer;
+}
+
+.af-access-group-remove:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}

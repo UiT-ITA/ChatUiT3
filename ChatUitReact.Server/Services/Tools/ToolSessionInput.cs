@@ -16,6 +16,11 @@ public sealed class ToolSessionInput
 
     public IReadOnlyList<ClientToolDeclarationDto> ClientTools { get; init; } = [];
 
+    /// <summary>Who the caller is, for tools that act on their behalf and must recognise them by name.</summary>
+    public string? UserDisplayName { get; init; }
+
+    public string? UserPrincipalName { get; init; }
+
     /// <summary>For callers without a principal: baseline role, no groups, no delegated tokens.</summary>
     public static readonly ToolSessionInput Anonymous = new()
     {
