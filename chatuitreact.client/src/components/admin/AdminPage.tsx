@@ -3,11 +3,12 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { useSignals } from '@preact/signals-react/runtime';
 import './AdminPage.css';
-import { adminEndpointsSignal, adminModelsSignal, adminAssistantsSignal, adminSettingsSignal, loadAdminData } from '../../services/adminDataService';
+import { adminEndpointsSignal, adminModelsSignal, adminAssistantsSignal, adminSettingsSignal, adminToolsSignal, loadAdminData } from '../../services/adminDataService';
 import EndpointEditor from './EndpointEditor';
 import ModelEditor from './ModelEditor';
 import AdminAssistantEditor from './AdminAssistantEditor';
 import SettingsEditor from './SettingsEditor';
+import ToolEditor from './ToolEditor';
 
 const AdminPage: React.FC = () => {
   useSignals();
@@ -19,6 +20,7 @@ const AdminPage: React.FC = () => {
   const models = adminModelsSignal.value;
   const assistants = adminAssistantsSignal.value;
   const settings = adminSettingsSignal.value;
+  const tools = adminToolsSignal.value;
 
   const modelNameById = (id: string) =>
     models?.find(m => m.id === id)?.modelName ?? t('admin.settings.fields.none');
@@ -39,6 +41,9 @@ const AdminPage: React.FC = () => {
     }
     if (tab === 'assistants' && id) {
       return <AdminAssistantEditor assistantId={id === 'new' ? undefined : id} />;
+    }
+    if (tab === 'tools' && id) {
+      return <ToolEditor toolId={id} />;
     }
 
     // Overview — each group is a bordered row list; clicking a row opens it in the main area
@@ -133,6 +138,36 @@ const AdminPage: React.FC = () => {
               <button className="admin-list-add t-ui" onClick={() => navigate('/admin/assistants/new')}>
                 + {t('admin.assistants.add.title')}
               </button>
+            </div>
+          )}
+        </div>
+
+        <div className="admin-overview-group">
+          <div className="t-overline">{t('admin.tabs.tools')}</div>
+          {tools === undefined ? (
+            <div className="admin-empty t-ui-plain">{t('common.loading')}</div>
+          ) : (
+            <div className="admin-list">
+              {tools.length === 0 && (
+                <div className="admin-list-empty t-ui-plain">{t('admin.tools.list.empty')}</div>
+              )}
+              {tools.map((tool) => (
+                <button
+                  key={tool.id}
+                  className="admin-list-row"
+                  onClick={() => navigate(`/admin/tools/${tool.id}`)}
+                >
+                  <div className="admin-row-main">
+                    <div className="admin-row-title t-table-strong">{tool.name}</div>
+                    <div className="admin-row-sub t-caption">{tool.description}</div>
+                  </div>
+                  <div className="admin-row-meta t-meta">
+                    {!tool.policy.enabled
+                      ? t('admin.tools.meta.disabled')
+                      : tool.isOverridden ? t('admin.tools.meta.overridden') : t('admin.tools.meta.default')}
+                  </div>
+                </button>
+              ))}
             </div>
           )}
         </div>

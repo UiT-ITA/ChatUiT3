@@ -152,8 +152,8 @@ public sealed class OpenAiResponsesProtocol : IApiProtocol
         foreach (var tool in request.Tools)
         {
             options.Tools.Add(ResponseTool.CreateFunctionTool(
-                functionName: tool.FunctionName,
-                functionParameters: BinaryData.FromString(ToolSchemaJson.Build(tool)),
+                functionName: tool.Id,
+                functionParameters: BinaryData.FromString(tool.ParametersSchema.ToJsonString()),
                 strictModeEnabled: false,
                 functionDescription: tool.Description));
         }

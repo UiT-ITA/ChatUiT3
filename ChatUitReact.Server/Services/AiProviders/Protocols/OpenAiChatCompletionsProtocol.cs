@@ -125,9 +125,9 @@ public sealed class OpenAiChatCompletionsProtocol : IApiProtocol
             foreach (var tool in request.Tools)
             {
                 options.Tools.Add(OpenAiChatTool.CreateFunctionTool(
-                    tool.FunctionName,
+                    tool.Id,
                     tool.Description,
-                    BinaryData.FromString(ToolSchemaJson.Build(tool))));
+                    BinaryData.FromString(tool.ParametersSchema.ToJsonString())));
             }
         }
 

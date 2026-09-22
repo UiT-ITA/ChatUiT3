@@ -1,3 +1,4 @@
+using ChatUitReact.Server.Services.Tools;
 using ChatUitReact.Server.Models;
 
 namespace ChatUitReact.Server.Services.TokenCounting;
@@ -32,7 +33,7 @@ public interface ITokenCountingService
     /// The fixed cost of every request made through an assistant: system prompt (knowledge
     /// files already appended), tool definitions, and reply priming.
     /// </summary>
-    int CountSystemPrompt(string systemPrompt, IReadOnlyList<ChatTool> tools, string schemeId);
+    int CountSystemPrompt(string systemPrompt, IReadOnlyList<ITool> tools, string schemeId);
 
     /// <summary>
     /// Adds counts for schemes the message lacks in either map (the attachment map only

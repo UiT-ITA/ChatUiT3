@@ -103,7 +103,13 @@
       "generating": "Generating",
       "done": "Done",
       "running": "Running…",
-      "failed": "Failed"
+      "failed": "Failed",
+      "awaitingConfirmation": "Needs your approval",
+      "awaitingConsent": "Needs access",
+      "awaitingClient": "Running in your browser…",
+      "approved": "Approved, running…",
+      "rejected": "Declined",
+      "timeout": "Timed out"
     },
     "roles": {
       "user": "User",
@@ -124,8 +130,12 @@
       "effort": "Effort",
       "rounds_one": "{{count}} tool round",
       "rounds_other": "{{count}} tool rounds",
-      "nothingRecorded": "No thinking or tool calls were recorded."
-    }
+      "nothingRecorded": "No thinking or tool calls were recorded.",
+      "awaitingUser": "Waiting for you: {{name}}",
+      "awaitingClient": "Running {{name}} in your browser…",
+      "timeLeft": "{{duration}} left"
+    },
+    "awaitingInputHint": "A tool is waiting for your answer above."
   },
   "welcome": {
     "header": "Welcome to ChatUiT",
@@ -204,7 +214,13 @@
         "max": "Max"
       },
       "temperatureUnavailableWithReasoning": "This model only accepts a temperature while reasoning is off.",
-      "modelNotDefaultEligible": "This is your default assistant. This model cannot be used as a default, so saving will stop new chats from starting here."
+      "modelNotDefaultEligible": "This is your default assistant. This model cannot be used as a default, so saving will stop new chats from starting here.",
+      "toolHints": {
+        "requiresConfirmation": "Asks before running",
+        "requiresAccess": "Needs access: {{scopes}}"
+      },
+      "toolsSharingNote": "Anyone else using this assistant only gets the tools they are allowed to use.",
+      "toolUnavailable": "No longer available to you. Untick it to save."
     },
     "capabilities": {
       "vision": "Vision",
@@ -377,7 +393,7 @@
     "admin": "Admin",
     "settings": "Settings",
     "searchChats": "Search chats",
-    "adminNote": "Administration of endpoints, models and system assistants.",
+    "adminNote": "Administration of endpoints, models, system assistants and tools.",
     "help": "Help"
   },
   "common": {
@@ -409,7 +425,27 @@
   },
   "toolCall": {
     "arguments": "Arguments",
-    "result": "Result"
+    "result": "Result",
+    "execution": {
+      "client": "In your browser",
+      "server": "On the server"
+    },
+    "editArguments": "Edit arguments",
+    "hideArguments": "Hide editor",
+    "invalidJson": "The arguments must be a valid JSON object.",
+    "approve": "Approve",
+    "reject": "Reject",
+    "working": "Working…",
+    "confirm": {
+      "title": "Confirm before running"
+    },
+    "consent": {
+      "title": "Access needed",
+      "body": "{{name}} needs permission to act on your behalf. Grant it once and the tool continues.",
+      "grant": "Grant access",
+      "decline": "Not now",
+      "failed": "Could not complete the permission prompt: {{message}}"
+    }
   },
   "roles": {
     "User": "User",
@@ -419,12 +455,13 @@
     "External": "External"
   },
   "admin": {
-    "intro": "Manage the endpoints, models and system assistants available in ChatUiT. Pick an item in the list, or add a new one.",
+    "intro": "Manage the endpoints, models, system assistants and tools available in ChatUiT. Pick an item in the list, or add a new one.",
     "tabs": {
       "endpoints": "Endpoints",
       "models": "Models",
       "assistants": "Assistants",
-      "settings": "Settings"
+      "settings": "Settings",
+      "tools": "Tools"
     },
     "endpoints": {
       "title": "Endpoints",
@@ -587,6 +624,45 @@
         "chatNamingModelHelp": "Used to generate a name for a new chat from the first message. New chats keep their placeholder name when this is not selected.",
         "defaultAssistant": "Default assistant",
         "defaultAssistantHelp": "The system assistant a new chat starts on when the user has not pinned one of their own."
+      }
+    },
+    "tools": {
+      "title": "Tools",
+      "list": {
+        "empty": "No tools registered."
+      },
+      "meta": {
+        "disabled": "Disabled",
+        "overridden": "Custom access",
+        "default": "Default access"
+      },
+      "edit": {
+        "title": "Tool access"
+      },
+      "fields": {
+        "id": "Tool id",
+        "description": "Description shown to the model",
+        "execution": "Runs",
+        "requiresConfirmation": "Asks the user before running",
+        "requiredScopes": "Delegated permissions",
+        "schema": "Argument schema",
+        "enabled": "Enabled",
+        "enabledHelp": "Off switches the tool off for everyone, whatever the roles and groups say.",
+        "allowedRoles": "Allowed roles",
+        "allowedGroups": "Allowed Entra groups",
+        "allowedGroupsHelp": "Entra ID group object ids. A user in any listed group may use the tool, in addition to the roles above.",
+        "groupIdPlaceholder": "00000000-0000-0000-0000-000000000000",
+        "addGroup": "Add group",
+        "removeGroup": "Remove",
+        "invalidGroupId": "Enter a group object id (GUID).",
+        "nobodyWarning": "No roles and no groups: nobody can use this tool.",
+        "defaultPolicy": "Code default",
+        "overridden": "This tool uses a custom policy saved {{date}}.",
+        "usingDefault": "This tool uses its code default."
+      },
+      "actions": {
+        "reset": "Reset to default",
+        "resetConfirm": "Drop the custom policy and go back to the code default?"
       }
     }
   },

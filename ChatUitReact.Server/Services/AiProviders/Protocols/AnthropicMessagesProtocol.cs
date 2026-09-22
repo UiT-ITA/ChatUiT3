@@ -143,36 +143,17 @@ public sealed class AnthropicMessagesProtocol : IApiProtocol
         _ => null
     };
 
-    private static Tool ToAnthropicTool(ChatTool tool)
+    private static Tool ToAnthropicTool(ITool tool)
     {
-        var properties = new Dictionary<string, JsonElement>();
-
-        foreach (var parameter in tool.Parameters)
-        {
-            var schema = new Dictionary<string, object>
-            {
-                ["type"] = parameter.Type,
-                ["description"] = parameter.Description
-            };
-
-            if (parameter.Enum != null && parameter.Enum.Length > 0)
-            {
-                schema["enum"] = parameter.Enum;
-            }
-
-            properties[parameter.Name] = JsonSerializer.SerializeToElement(schema);
-        }
+        // The schema is shared with the OpenAI adapters; only the container type differs.
+        var schema = JsonSerializer.SerializeToElement(tool.ParametersSchema);
+        var raw = schema.EnumerateObject().ToDictionary(p => p.Name, p => p.Value.Clone());
 
         return new Tool
         {
-            Name = tool.FunctionName,
+            Name = tool.Id,
             Description = tool.Description,
-            // Type is auto-set by the SDK — setting it here is an error.
-            InputSchema = new()
-            {
-                Properties = properties,
-                Required = tool.RequiredParameters.ToList()
-            }
+            InputSchema = InputSchema.FromRawUnchecked(raw)
         };
     }
 

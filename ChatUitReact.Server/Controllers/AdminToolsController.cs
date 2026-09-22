@@ -1,0 +1,152 @@
+using ChatUitReact.Server.Models;
+using ChatUitReact.Server.Services.Tools;
+using ChatUitReact.Server.Hubs;
+using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.SignalR;
+
+namespace ChatUitReact.Server.Controllers;
+
+/// <summary>
+/// Tools are code, so this controller only edits who may use them. A stored policy overrides
+/// the tool's code default; deleting it goes back to the default.
+/// </summary>
+[ApiController]
+[Route("api/admin/tools")]
+[Authorize(Roles = "Admin")]
+public class AdminToolsController : ControllerBase
+{
+    private readonly IToolRegistry _registry;
+    private readonly IToolAccessService _access;
+    private readonly IHubContext<ChatHub, IChatHubClient> _hubContext;
+    private readonly ILogger<AdminToolsController> _logger;
+
+    public AdminToolsController(
+        IToolRegistry registry,
+        IToolAccessService access,
+        IHubContext<ChatHub, IChatHubClient> hubContext,
+        ILogger<AdminToolsController> logger)
+    {
+        _registry = registry;
+        _access = access;
+        _hubContext = hubContext;
+        _logger = logger;
+    }
+
+    [HttpGet]
+    public async Task<ActionResult<List<ToolAdminDto>>> GetTools()
+    {
+        try
+        {
+            var result = new List<ToolAdminDto>();
+            foreach (var tool in _registry.ServerTools)
+            {
+                result.Add(await ToAdminDtoAsync(tool));
+            }
+
+            result.Add(await ClientToolsEntryAsync());
+            return Ok(result);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error listing tools");
+            return StatusCode(500, "Internal server error");
+        }
+    }
+
+    [HttpGet("{id}")]
+    public async Task<ActionResult<ToolAdminDto>> GetTool(string id)
+    {
+        try
+        {
+            if (id == ToolRegistry.ClientToolsPolicyId)
+            {
+                return Ok(await ClientToolsEntryAsync());
+            }
+
+            var tool = _registry.Find(id);
+            return tool == null ? NotFound($"Tool {id} not found") : Ok(await ToAdminDtoAsync(tool));
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error getting tool {ToolId}", id);
+            return StatusCode(500, "Internal server error");
+        }
+    }
+
+    [HttpPut("{id}/policy")]
+    public async Task<ActionResult<ToolAdminDto>> SetPolicy(string id, [FromBody] ToolAccessPolicyDto policyDto)
+    {
+        try
+        {
+            if (!IsKnown(id))
+            {
+                return NotFound($"Tool {id} not found");
+            }
+
+            var invalidGroups = (policyDto.AllowedGroupIds ?? []).Where(g => !Guid.TryParse(g?.Trim(), out _)).ToList();
+            if (invalidGroups.Count > 0)
+            {
+                return BadRequest(new { error = "invalid_group_ids", groupIds = invalidGroups });
+            }
+
+            await _access.SetOverrideAsync(id, ToolMapping.ToPolicy(policyDto));
+            await _hubContext.Clients.All.AssistantsUpdated();
+
+            return Ok(await GetDtoAsync(id));
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error setting policy for tool {ToolId}", id);
+            return StatusCode(500, "Internal server error");
+        }
+    }
+
+    [HttpDelete("{id}/policy")]
+    public async Task<ActionResult<ToolAdminDto>> ResetPolicy(string id)
+    {
+        try
+        {
+            if (!IsKnown(id))
+            {
+                return NotFound($"Tool {id} not found");
+            }
+
+            await _access.ClearOverrideAsync(id);
+            await _hubContext.Clients.All.AssistantsUpdated();
+
+            return Ok(await GetDtoAsync(id));
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error resetting policy for tool {ToolId}", id);
+            return StatusCode(500, "Internal server error");
+        }
+    }
+
+    private bool IsKnown(string id) => id == ToolRegistry.ClientToolsPolicyId || _registry.Find(id) != null;
+
+    private async Task<ToolAdminDto> GetDtoAsync(string id)
+        => id == ToolRegistry.ClientToolsPolicyId ? await ClientToolsEntryAsync() : await ToAdminDtoAsync(_registry.Find(id)!);
+
+    private async Task<ToolAdminDto> ToAdminDtoAsync(ITool tool)
+        => ToolMapping.ToAdminDto(tool, await _access.GetEffectivePolicyAsync(tool.Id), await _access.GetStoredPolicyAsync(tool.Id));
+
+    /// <summary>The gate for client-declared tools, shown as one row because there is one policy for all of them.</summary>
+    private async Task<ToolAdminDto> ClientToolsEntryAsync()
+    {
+        var id = ToolRegistry.ClientToolsPolicyId;
+        var stored = await _access.GetStoredPolicyAsync(id);
+        return new ToolAdminDto
+        {
+            Id = id,
+            Name = "Client tools",
+            Description = "Tools declared and executed by the client application (browser, Office add-ins). This policy decides who may use any of them.",
+            Execution = ToolExecution.Client,
+            DefaultPolicy = ToolMapping.ToDto(ToolAccessPolicy.Everyone),
+            Policy = ToolMapping.ToDto(await _access.GetEffectivePolicyAsync(id)),
+            IsOverridden = stored != null,
+            UpdatedAt = stored?.UpdatedAt
+        };
+    }
+}

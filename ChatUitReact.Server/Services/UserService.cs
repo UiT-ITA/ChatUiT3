@@ -17,6 +17,7 @@ public class UserIdentity
     public string LastName { get; set; } = string.Empty;
     public List<string> Roles { get; set; } = new List<string>();
     public string ObjectId { get; set; } = string.Empty;
+    public List<string> GroupIds { get; set; } = new List<string>();
     public string TenantId { get; set; } = string.Empty;
     public bool IsAuthenticated { get; set; }
 
@@ -76,7 +77,8 @@ public class UserService
             
             TenantId = user.FindFirst("http://schemas.microsoft.com/identity/claims/tenantid")?.Value ?? string.Empty,
             
-            Roles = user.FindAll(ClaimTypes.Role).Select(c => c.Value).ToList()
+            Roles = user.FindAll(ClaimTypes.Role).Select(c => c.Value).ToList(),
+            GroupIds = GetUserGroupIds(user)
         };
 
         identity.UserId = identity.Username;
@@ -117,6 +119,38 @@ public class UserService
 
         return roles.ToList();
     }
+
+    /// <summary>
+    /// Entra group object ids from the token's <c>groups</c> claim. Empty when the tenant does
+    /// not emit the claim, or when the user is in too many groups for it to fit (Entra then
+    /// sends an overage marker instead). Tool policies that list groups deny such users, so
+    /// the app registration should emit only groups assigned to the application.
+    /// </summary>
+    public List<string> GetUserGroupIds(ClaimsPrincipal user)
+    {
+        if (user?.Identity?.IsAuthenticated != true)
+        {
+            return new List<string>();
+        }
+
+        var overage = user.HasClaim(c => c.Type == "hasgroups")
+            || user.FindAll("_claim_names").Any(c => c.Value.Contains("groups", StringComparison.OrdinalIgnoreCase));
+        if (overage)
+        {
+            _logger.LogWarning("Groups claim overage for {User}; group-gated tools are unavailable to this user", user.Identity.Name);
+            return new List<string>();
+        }
+
+        return user.FindAll("groups")
+            .Concat(user.FindAll("http://schemas.microsoft.com/ws/2008/06/identity/claims/groups"))
+            .Select(c => c.Value)
+            .Where(v => !string.IsNullOrWhiteSpace(v))
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .ToList();
+    }
+
+    /// <summary>Roles and groups together, as tool policies are evaluated against them.</summary>
+    public UserAccess GetUserAccess(ClaimsPrincipal user) => new(GetUserRoles(user), GetUserGroupIds(user));
 
     public bool UserHasRole(ClaimsPrincipal user, string role)
     {

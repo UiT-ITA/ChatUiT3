@@ -7,7 +7,7 @@ import { ChatList } from '../chat/ChatList';
 import { AssistantList } from '../assistants/AssistantList';
 import { getChats } from '../../services/chatService';
 import { getAssistants } from '../../services/assistantService';
-import { adminEndpointsSignal, adminModelsSignal, adminAssistantsSignal, loadAdminData } from '../../services/adminDataService';
+import { adminEndpointsSignal, adminModelsSignal, adminAssistantsSignal, adminToolsSignal, loadAdminData } from '../../services/adminDataService';
 import { useAuth } from '../../hooks/useAuth';
 import type { SettingsCategory } from '../../types/settingsModels';
 import { HELP_SECTIONS, isHelpSection } from '../help/helpSections';
@@ -47,13 +47,14 @@ const ContextColumn = ({ isMobile }: ContextColumnProps) => {
   const adminEndpoints = adminEndpointsSignal.value;
   const adminModels = adminModelsSignal.value;
   const adminAssistants = adminAssistantsSignal.value;
+  const adminTools = adminToolsSignal.value;
 
   const count = section === 'chats' && chats.value !== undefined
     ? chats.value.length
     : section === 'assistants' && assistants.value !== undefined
       ? assistants.value.owned.length + assistants.value.system.length + assistants.value.shared.length
       : section === 'admin' && adminEndpoints !== undefined
-        ? adminEndpoints.length + (adminModels?.length ?? 0) + (adminAssistants?.length ?? 0)
+        ? adminEndpoints.length + (adminModels?.length ?? 0) + (adminAssistants?.length ?? 0) + (adminTools?.length ?? 0)
         : undefined;
 
   const titles: Record<string, string> = {
@@ -229,6 +230,22 @@ const ContextColumn = ({ isMobile }: ContextColumnProps) => {
           >
             + {t('admin.assistants.add.title')}
           </button>
+
+          <div className="context-group-label t-group-label">{t('admin.tabs.tools')}</div>
+          {adminTools === undefined ? (
+            <div className="context-column-note t-ui-plain">{t('common.loading')}</div>
+          ) : (
+            adminTools.map((tool) => (
+              <button
+                key={tool.id}
+                className={`context-nav-row context-list-row t-ui ${activeAdminTab === 'tools' && activeAdminId === tool.id ? 'active' : ''}`}
+                onClick={() => adminNav(`/admin/tools/${tool.id}`)}
+              >
+                <span className="context-list-row-title">{tool.name}</span>
+                <span className="context-list-row-meta t-meta">{tool.policy.enabled ? tool.id : t('admin.tools.meta.disabled')}</span>
+              </button>
+            ))
+          )}
 
           <div className="context-group-label t-group-label">{t('admin.tabs.settings')}</div>
           <button

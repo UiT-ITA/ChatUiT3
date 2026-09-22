@@ -1,3 +1,5 @@
+using System.Text.Json.Nodes;
+using ChatUitReact.Server.Services.Tools;
 using ChatUitReact.Server.Models;
 using Microsoft.ML.Tokenizers;
 
@@ -102,7 +104,7 @@ public sealed class TokenCountingService : ITokenCountingService
         return new MessageTokenCounts(total, files);
     }
 
-    public int CountSystemPrompt(string systemPrompt, IReadOnlyList<ChatTool> tools, string schemeId)
+    public int CountSystemPrompt(string systemPrompt, IReadOnlyList<ITool> tools, string schemeId)
     {
         var scheme = Parse(schemeId);
         var total = ReplyPrimingTokens;
@@ -117,22 +119,24 @@ public sealed class TokenCountingService : ITokenCountingService
             foreach (var tool in tools)
             {
                 total += ToolFunctionInit;
-                total += CountText($"{tool.FunctionName}:{TrimPeriod(tool.Description)}", scheme);
+                total += CountText($"{tool.Id}:{TrimPeriod(tool.Description)}", scheme);
 
-                if (tool.Parameters.Count > 0)
+                if (tool.ParametersSchema["properties"] is JsonObject properties && properties.Count > 0)
                 {
                     total += ToolPropertyInit;
-                    foreach (var parameter in tool.Parameters)
+                    foreach (var (name, property) in properties)
                     {
                         total += ToolPropertyKey;
-                        total += CountText($"{parameter.Name}:{parameter.Type}:{TrimPeriod(parameter.Description)}", scheme);
+                        var type = property?["type"]?.ToString() ?? "object";
+                        var description = property?["description"]?.ToString() ?? string.Empty;
+                        total += CountText($"{name}:{type}:{TrimPeriod(description)}", scheme);
 
-                        if (parameter.Enum is { Length: > 0 })
+                        if (property?["enum"] is JsonArray values && values.Count > 0)
                         {
                             total += ToolEnumInit;
-                            foreach (var value in parameter.Enum)
+                            foreach (var value in values)
                             {
-                                total += ToolEnumItem + CountText(value, scheme);
+                                total += ToolEnumItem + CountText(value?.ToString() ?? string.Empty, scheme);
                             }
                         }
                     }

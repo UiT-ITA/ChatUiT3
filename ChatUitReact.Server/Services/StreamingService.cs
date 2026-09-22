@@ -24,9 +24,11 @@ public class StreamingService
     /// Registers the token source driving a generation so it can be cancelled from another request.
     /// Ownership (disposal) stays with the caller.
     /// </summary>
-    public void RegisterGeneration(string userId, string messageId, CancellationTokenSource cancellationTokenSource)
+    public void RegisterGeneration(string userId, string messageId, CancellationTokenSource cancellationTokenSource, TimeSpan timeout)
     {
-        _activeGenerations[GetStreamKey(userId, messageId)] = new GenerationHandle { Cts = cancellationTokenSource };
+        var handle = new GenerationHandle { Cts = cancellationTokenSource, Timeout = timeout };
+        handle.Resume();
+        _activeGenerations[GetStreamKey(userId, messageId)] = handle;
     }
 
     /// <summary>
@@ -66,6 +68,29 @@ public class StreamingService
     public void UnregisterGeneration(string userId, string messageId)
     {
         _activeGenerations.TryRemove(GetStreamKey(userId, messageId), out _);
+    }
+
+    public bool IsGenerationActive(string userId, string messageId)
+        => _activeGenerations.ContainsKey(GetStreamKey(userId, messageId));
+
+    /// <summary>
+    /// Stops the generation deadline while a tool waits for the user. Time spent reading a
+    /// preview or granting consent must not count against the run; the wait has its own timeout.
+    /// </summary>
+    public void SuspendGenerationTimeout(string userId, string messageId)
+    {
+        if (_activeGenerations.TryGetValue(GetStreamKey(userId, messageId), out var handle))
+        {
+            handle.Suspend();
+        }
+    }
+
+    public void ResumeGenerationTimeout(string userId, string messageId)
+    {
+        if (_activeGenerations.TryGetValue(GetStreamKey(userId, messageId), out var handle))
+        {
+            handle.Resume();
+        }
     }
 
     public void StartMessage(string userId, string messageId)
@@ -160,7 +185,31 @@ public class StreamingService
     private sealed class GenerationHandle
     {
         public required CancellationTokenSource Cts { get; init; }
+        public required TimeSpan Timeout { get; init; }
         public volatile bool UserCancelled;
+
+        public void Suspend()
+        {
+            try
+            {
+                Cts.CancelAfter(System.Threading.Timeout.InfiniteTimeSpan);
+            }
+            catch (ObjectDisposedException)
+            {
+            }
+        }
+
+        /// <summary>Restarts the full deadline: the run gets its whole budget again after a pause.</summary>
+        public void Resume()
+        {
+            try
+            {
+                Cts.CancelAfter(Timeout);
+            }
+            catch (ObjectDisposedException)
+            {
+            }
+        }
     }
 }
 

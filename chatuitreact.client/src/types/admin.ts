@@ -50,6 +50,34 @@ export interface UpdateEndpointDto {
 
 export type UserRole = 'User' | 'Admin' | 'Beta' | 'Super' | 'External';
 
+/** Who may use a tool: enabled, and any listed role or any listed Entra group. Both empty means nobody. */
+export interface ToolAccessPolicyDto {
+  enabled: boolean;
+  allowedRoles: UserRole[];
+  /** Entra ID group object ids. */
+  allowedGroupIds: string[];
+}
+
+/** A tool as the admin panel sees it. Tools are code; only the policy is editable. */
+export interface AdminToolDto {
+  id: string;
+  name: string;
+  description: string;
+  requiresConfirmation: boolean;
+  requiredScopes: string[];
+  execution: 'server' | 'client';
+  parametersSchema: Record<string, unknown> | null;
+  /** The policy from code. */
+  defaultPolicy: ToolAccessPolicyDto;
+  /** The policy in force: the stored override, or the default. */
+  policy: ToolAccessPolicyDto;
+  isOverridden: boolean;
+  updatedAt: string | null;
+}
+
+/** The pseudo tool whose policy gates client-declared tools as a group. */
+export const CLIENT_TOOLS_POLICY_ID = 'client_tools';
+
 /**
  * How a model handles the `temperature` parameter. A boolean cannot express the gpt-5.x
  * rule, where temperature is only accepted while reasoning is switched off.
