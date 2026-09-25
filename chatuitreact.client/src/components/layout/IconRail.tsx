@@ -34,6 +34,7 @@ const IconRail = ({ isMobile }: IconRailProps) => {
     : location.pathname.startsWith('/admin') ? 'admin'
     : location.pathname.startsWith('/settings') ? 'settings'
     : location.pathname.startsWith('/help') ? 'help'
+    : location.pathname.startsWith('/status') ? 'status'
     : 'chats';
 
   useEffect(() => {
@@ -102,6 +103,15 @@ const IconRail = ({ isMobile }: IconRailProps) => {
 
       <div className="rail-spacer" />
 
+      {import.meta.env.DEV && (
+        <button
+          className={`rail-button ${section === 'status' ? 'active' : ''}`}
+          onClick={() => go('/status')}
+          title={t('sidebar.status')}
+        >
+          <Icon name="info" size={1.25} />
+        </button>
+      )}
       <button
         className={`rail-button ${section === 'help' ? 'active' : ''}`}
         onClick={() => go('/help')}

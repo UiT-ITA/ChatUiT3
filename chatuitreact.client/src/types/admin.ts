@@ -85,6 +85,14 @@ export interface AdminToolDto {
   functions: AdminToolFunctionDto[] | null;
 }
 
+/** An Entra group from the admin group search. displayName is null when a stored id no longer resolves. */
+export interface DirectoryGroupDto {
+  id: string;
+  displayName: string | null;
+  description: string | null;
+  mail: string | null;
+}
+
 /** The pseudo tool whose policy gates client-declared tools as a group. */
 export const CLIENT_TOOLS_POLICY_ID = 'client_tools';
 

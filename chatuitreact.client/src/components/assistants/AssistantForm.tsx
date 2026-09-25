@@ -8,6 +8,7 @@ import { getAppDefaults } from '../../services/appSettingsService';
 import { getTools } from '../../services/toolService';
 import { adminToolsSignal } from '../../services/adminDataService';
 import type { AdminToolDto, ToolAccessPolicyDto } from '../../types/admin';
+import GroupPicker from '../common/GroupPicker';
 import type { UserModelDto } from '../../types/modelModels';
 import { createAssistant, updateAssistant, fetchAssistantFile, getAssistants } from '../../services/assistantService';
 import TagField from '../common/TagField';
@@ -49,7 +50,6 @@ const showsTemperature = (model: UserModelDto | undefined, effort: ReasoningEffo
 };
 
 const ALL_ROLES: UserRole[] = ['User', 'Admin', 'Beta', 'Super', 'External'];
-const GUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 /**
  * Whether everyone the assistant admits may also use the tool on their own. System assistants
@@ -143,8 +143,7 @@ const AssistantForm: React.FC<AssistantFormProps> = ({
   const [initialState] = useState(() => formStateFor(editingAssistant));
   const [selectedToolIds, setSelectedToolIds] = useState<string[]>(initialState.selectedToolIds);
   const [access, setAccess] = useState<AssistantAccessPolicyDto | null>(initialState.access);
-  const [groupInput, setGroupInput] = useState('');
-  const [groupError, setGroupError] = useState<string | null>(null);
+
   const [knowledgeFiles, setKnowledgeFiles] = useState<Record<KnowledgeFileCategory, KnowledgeFileItemData[]>>(initialState.knowledgeFiles);
   const modelDropdownRef = useRef<HTMLDivElement>(null);
 
@@ -200,19 +199,6 @@ const AssistantForm: React.FC<AssistantFormProps> = ({
     });
   };
 
-  const addAccessGroup = () => {
-    const id = groupInput.trim().toLowerCase();
-    if (!GUID.test(id)) {
-      setGroupError(t('assistants.form.access.invalidGroupId'));
-      return;
-    }
-    setGroupError(null);
-    setGroupInput('');
-    setAccess(prev => {
-      const current = prev ?? { allowedRoles: [], allowedGroupIds: [] };
-      return current.allowedGroupIds.includes(id) ? current : { ...current, allowedGroupIds: [...current.allowedGroupIds, id] };
-    });
-  };
   const knowledgeSections: Array<{
     category: KnowledgeFileCategory;
     title: string;
@@ -599,33 +585,11 @@ const AssistantForm: React.FC<AssistantFormProps> = ({
                 ))}
               </div>
               <div className="af-access-label t-meta">{t('assistants.form.access.groups')}</div>
-              {access.allowedGroupIds.map(id => (
-                <div key={id} className="af-access-group">
-                  <span className="t-code">{id}</span>
-                  <button
-                    type="button"
-                    className="af-access-group-remove t-ui"
-                    onClick={() => setAccess(prev => prev && { ...prev, allowedGroupIds: prev.allowedGroupIds.filter(candidate => candidate !== id) })}
-                    disabled={loading}
-                  >
-                    {t('assistants.form.access.removeGroup')}
-                  </button>
-                </div>
-              ))}
-              <div className="af-access-add">
-                <input
-                  className="af-input t-body"
-                  value={groupInput}
-                  placeholder={t('assistants.form.access.groupIdPlaceholder')}
-                  onChange={(e) => { setGroupInput(e.target.value); setGroupError(null); }}
-                  onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); addAccessGroup(); } }}
-                  disabled={loading}
-                />
-                <button type="button" className="af-access-group-remove t-ui" onClick={addAccessGroup} disabled={loading || groupInput.trim().length === 0}>
-                  {t('assistants.form.access.addGroup')}
-                </button>
-              </div>
-              {groupError && <div className="af-note af-note-warn t-ui-plain">{groupError}</div>}
+              <GroupPicker
+                value={access.allowedGroupIds}
+                onChange={(ids) => setAccess(prev => ({ ...(prev ?? { allowedRoles: [], allowedGroupIds: [] }), allowedGroupIds: ids }))}
+                disabled={loading}
+              />
               {access.allowedRoles.length === 0 && access.allowedGroupIds.length === 0 && (
                 <div className="af-note af-note-warn t-ui-plain">{t('assistants.form.access.nobodyWarning')}</div>
               )}

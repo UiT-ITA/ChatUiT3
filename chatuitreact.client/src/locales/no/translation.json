@@ -34,7 +34,8 @@
     "favorite": "Favoritt",
     "unfavorite": "Fjern favoritt",
     "rename": "Gi nytt navn",
-    "delete": "Slett"
+    "delete": "Slett",
+    "status": "Status (dev)"
   },
   "chat": {
     "sendMessage": "Send melding",
@@ -227,10 +228,6 @@
         "everyone": "Alle",
         "roles": "Roller",
         "groups": "Entra-grupper",
-        "groupIdPlaceholder": "00000000-0000-0000-0000-000000000000",
-        "addGroup": "Legg til gruppe",
-        "removeGroup": "Fjern",
-        "invalidGroupId": "Skriv inn en gruppe-objekt-id (GUID).",
         "nobodyWarning": "Ingen roller og ingen grupper: ingen kan bruke denne assistenten."
       }
     },
@@ -406,7 +403,8 @@
     "settings": "Innstillinger",
     "searchChats": "Søk i samtaler",
     "adminNote": "Administrasjon av endepunkter, modeller, systemassistenter og verktøy.",
-    "help": "Hjelp"
+    "help": "Hjelp",
+    "status": "Status"
   },
   "common": {
     "close": "Lukk",
@@ -660,11 +658,7 @@
         "enabledHelp": "Av slår verktøyet av for alle, uavhengig av roller og grupper.",
         "allowedRoles": "Tillatte roller",
         "allowedGroups": "Tillatte Entra-grupper",
-        "allowedGroupsHelp": "Objekt-id for Entra ID-grupper. En bruker i en av gruppene kan bruke verktøyet, i tillegg til rollene over.",
-        "groupIdPlaceholder": "00000000-0000-0000-0000-000000000000",
-        "addGroup": "Legg til gruppe",
-        "removeGroup": "Fjern",
-        "invalidGroupId": "Skriv inn en gruppe-objekt-id (GUID).",
+        "allowedGroupsHelp": "En bruker i en av de valgte Entra-gruppene kan bruke verktøyet, i tillegg til rollene over.",
         "nobodyWarning": "Ingen roller og ingen grupper: ingen kan bruke dette verktøyet.",
         "defaultPolicy": "Standard fra kode",
         "overridden": "Dette verktøyet bruker en tilpasset policy lagret {{date}}.",
@@ -716,5 +710,26 @@
       "prompting": "Åtte vaner som gir bedre svar med mindre fram og tilbake.",
       "troubleshooting": "Hva du gjør når noe er tregt, mangler eller er feil, og hvor du får hjelp."
     }
+  },
+  "groupPicker": {
+    "placeholder": "Søk etter grupper på navn eller objekt-id",
+    "searching": "Søker…",
+    "noResults": "Fant ingen grupper",
+    "remove": "Fjern gruppe",
+    "unknownGroup": "finnes ikke i Entra",
+    "error": "Gruppesøket feilet"
+  },
+  "status": {
+    "title": "Status",
+    "resolved": "Det tjeneren utledet fra tokenet ditt",
+    "environment": "Miljø",
+    "userId": "Bruker-id",
+    "roles": "Roller",
+    "groupIds": "Gruppe-id-er",
+    "noGroupsClaim": "Tokenet har ingen groups-claim. Gruppebasert tilgang kan ikke virke før appregistreringen legger den i access-tokenet.",
+    "claims": "Claims ({{count}})",
+    "claimType": "Type",
+    "claimValue": "Verdi",
+    "groupsOverage": "Tokenet har en overage-markør for grupper (for mange grupper til å listes). Tjeneren behandler dette som ingen grupper. Bruk «Groups assigned to the application» i Entra."
   }
 }

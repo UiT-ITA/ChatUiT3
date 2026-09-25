@@ -13,6 +13,7 @@ import AdminPage from './components/admin/AdminPage';
 import SettingsPage from './components/settings/SettingsPage';
 import HelpPage from './components/help/HelpPage';
 import ProtectedRoute from './components/common/ProtectedRoute';
+import StatusPage from './components/status/StatusPage';
 
 const App: React.FC = () => {
   const { isAuthenticated, isInitializing, isAppReady, initError, login, logout, retryInit } = useAuth();
@@ -78,6 +79,7 @@ const App: React.FC = () => {
               </ProtectedRoute>
             }
           />
+          {import.meta.env.DEV && <Route path="/status" element={<StatusPage />} />}
           <Route path="*" element={<Navigate to="/" replace />} />
         </Route>
       </Routes>

@@ -34,6 +34,7 @@ const ContextColumn = ({ isMobile }: ContextColumnProps) => {
     : location.pathname.startsWith('/admin') ? 'admin'
     : location.pathname.startsWith('/settings') ? 'settings'
     : location.pathname.startsWith('/help') ? 'help'
+    : location.pathname.startsWith('/status') ? 'status'
     : 'chats';
 
   useEffect(() => {
@@ -63,6 +64,7 @@ const ContextColumn = ({ isMobile }: ContextColumnProps) => {
     admin: t('contextColumn.admin'),
     settings: t('contextColumn.settings'),
     help: t('contextColumn.help'),
+    status: t('contextColumn.status'),
   };
 
   const activeSettingsTab: SettingsCategory =

@@ -33,6 +33,7 @@ const MainHeader = ({ isMobile }: MainHeaderProps) => {
     : location.pathname.startsWith('/admin') ? 'admin'
     : location.pathname.startsWith('/settings') ? 'settings'
     : location.pathname.startsWith('/help') ? 'help'
+    : location.pathname.startsWith('/status') ? 'status'
     : 'chats';
 
   const sectionTitles: Record<string, string> = {
@@ -41,6 +42,7 @@ const MainHeader = ({ isMobile }: MainHeaderProps) => {
     admin: t('contextColumn.admin'),
     settings: t('contextColumn.settings'),
     help: t('contextColumn.help'),
+    status: t('contextColumn.status'),
   };
 
   const sectionRoots: Record<string, string> = {
@@ -49,6 +51,7 @@ const MainHeader = ({ isMobile }: MainHeaderProps) => {
     admin: '/admin',
     settings: '/settings',
     help: '/help',
+    status: '/status',
   };
 
   // Chat: the header carries the conversation title

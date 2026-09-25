@@ -6,9 +6,9 @@ import { updateAdminToolPolicy, resetAdminToolPolicy } from '../../services/admi
 import { adminToolsSignal, loadAdminData } from '../../services/adminDataService';
 import { refreshTools } from '../../services/toolService';
 import type { UserRole, AdminToolDto, ToolAccessPolicyDto } from '../../types/admin';
+import GroupPicker from '../common/GroupPicker';
 
 const ALL_ROLES: UserRole[] = ['User', 'Admin', 'Beta', 'Super', 'External'];
-const GUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 interface ToolEditorProps {
   toolId: string;
@@ -37,8 +37,6 @@ const ToolEditor: React.FC<ToolEditorProps> = ({ toolId }) => {
   const [enabled, setEnabled] = useState(initial.enabled);
   const [allowedRoles, setAllowedRoles] = useState<UserRole[]>(initial.allowedRoles);
   const [allowedGroupIds, setAllowedGroupIds] = useState<string[]>(initial.allowedGroupIds);
-  const [groupInput, setGroupInput] = useState('');
-  const [groupError, setGroupError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
@@ -69,17 +67,6 @@ const ToolEditor: React.FC<ToolEditorProps> = ({ toolId }) => {
       else set.delete(role);
       return ALL_ROLES.filter(candidate => set.has(candidate));
     });
-  };
-
-  const addGroup = () => {
-    const id = groupInput.trim().toLowerCase();
-    if (!GUID.test(id)) {
-      setGroupError(t('admin.tools.fields.invalidGroupId'));
-      return;
-    }
-    setGroupError(null);
-    setGroupInput('');
-    setAllowedGroupIds(prev => (prev.includes(id) ? prev : [...prev, id]));
   };
 
   const nobody = enabled && allowedRoles.length === 0 && allowedGroupIds.length === 0;
@@ -217,33 +204,7 @@ const ToolEditor: React.FC<ToolEditorProps> = ({ toolId }) => {
       <div className="admin-field">
         <label className="admin-label t-label">{t('admin.tools.fields.allowedGroups')}</label>
         <div className="admin-field-help t-caption">{t('admin.tools.fields.allowedGroupsHelp')}</div>
-        {allowedGroupIds.map(id => (
-          <div key={id} className="admin-list-row" style={{ cursor: 'default' }}>
-            <div className="admin-row-main">
-              <div className="admin-row-title t-code">{id}</div>
-            </div>
-            <button
-              type="button"
-              className="admin-cancel-button t-ui"
-              onClick={() => setAllowedGroupIds(prev => prev.filter(candidate => candidate !== id))}
-            >
-              {t('admin.tools.fields.removeGroup')}
-            </button>
-          </div>
-        ))}
-        <div style={{ display: 'flex', gap: '0.5rem', marginTop: '0.5rem' }}>
-          <input
-            className="admin-input t-body"
-            value={groupInput}
-            placeholder={t('admin.tools.fields.groupIdPlaceholder')}
-            onChange={e => { setGroupInput(e.target.value); setGroupError(null); }}
-            onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); addGroup(); } }}
-          />
-          <button type="button" className="admin-cancel-button t-ui" onClick={addGroup} disabled={groupInput.trim().length === 0}>
-            {t('admin.tools.fields.addGroup')}
-          </button>
-        </div>
-        {groupError && <div className="admin-field-help t-caption" style={{ color: 'var(--danger)' }}>{groupError}</div>}
+        <GroupPicker value={allowedGroupIds} onChange={setAllowedGroupIds} disabled={saving} />
       </div>
 
       {nobody && (

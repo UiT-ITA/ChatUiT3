@@ -5,6 +5,7 @@ using ChatUitReact.Server.Services.AiProviders;
 using ChatUitReact.Server.Services.AiProviders.Protocols;
 using ChatUitReact.Server.Services.TokenCounting;
 using ChatUitReact.Server.Services.Agents;
+using ChatUitReact.Server.Services.Directory;
 using ChatUitReact.Server.Services.Tools;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.Identity.Web;
@@ -118,6 +119,7 @@ builder.Services.AddSingleton<IAiProviderRegistry, AiProviderRegistry>();
 builder.Services.AddSingleton<AiConversationRunner>();
 builder.Services.AddTools(builder.Configuration);
 builder.Services.AddInternalAgents(builder.Configuration);
+builder.Services.AddScoped<IGroupDirectoryService, GroupDirectoryService>();
 builder.Services.AddSingleton<ITokenCountingService, TokenCountingService>();
 
 var app = builder.Build();

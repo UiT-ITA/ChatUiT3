@@ -141,12 +141,20 @@ public class UserService
             return new List<string>();
         }
 
-        return user.FindAll("groups")
+        var groupIds = user.FindAll("groups")
             .Concat(user.FindAll("http://schemas.microsoft.com/ws/2008/06/identity/claims/groups"))
             .Select(c => c.Value)
             .Where(v => !string.IsNullOrWhiteSpace(v))
             .Distinct(StringComparer.OrdinalIgnoreCase)
             .ToList();
+
+        if (groupIds.Count == 0)
+        {
+            // A token without a groups claim means the app registration does not emit one; group-gated access cannot work until it does.
+            _logger.LogDebug("Token for {User} carries no groups claim", user.Identity.Name);
+        }
+
+        return groupIds;
     }
 
     /// <summary>Roles and groups together, as tool policies are evaluated against them.</summary>

@@ -1,5 +1,5 @@
 import apiService from './apiService';
-import type {
+import type { DirectoryGroupDto,
   EndpointDto,
   CreateEndpointDto,
   UpdateEndpointDto,
@@ -95,4 +95,12 @@ export async function updateAdminToolPolicy(id: string, policy: ToolAccessPolicy
 /** Drops the stored override so the tool's code default applies again. */
 export async function resetAdminToolPolicy(id: string): Promise<AdminToolDto> {
   return apiService.delete<AdminToolDto>(`/api/admin/tools/${id}/policy`);
+}
+
+export async function searchAdminGroups(query: string): Promise<DirectoryGroupDto[]> {
+  return apiService<DirectoryGroupDto[]>(`/api/admin/groups?query=${encodeURIComponent(query)}`);
+}
+
+export async function resolveAdminGroups(ids: string[]): Promise<DirectoryGroupDto[]> {
+  return apiService<DirectoryGroupDto[]>('/api/admin/groups/resolve', { method: 'POST', body: JSON.stringify(ids) });
 }

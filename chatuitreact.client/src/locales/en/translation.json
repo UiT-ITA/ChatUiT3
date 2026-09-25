@@ -34,7 +34,8 @@
     "favorite": "Favorite",
     "unfavorite": "Remove from favorites",
     "rename": "Rename",
-    "delete": "Delete"
+    "delete": "Delete",
+    "status": "Status (dev)"
   },
   "chat": {
     "sendMessage": "Send message",
@@ -227,10 +228,6 @@
         "everyone": "Everyone",
         "roles": "Roles",
         "groups": "Entra groups",
-        "groupIdPlaceholder": "00000000-0000-0000-0000-000000000000",
-        "addGroup": "Add group",
-        "removeGroup": "Remove",
-        "invalidGroupId": "Enter a group object id (GUID).",
         "nobodyWarning": "No roles and no groups: nobody can use this assistant."
       }
     },
@@ -406,7 +403,8 @@
     "settings": "Settings",
     "searchChats": "Search chats",
     "adminNote": "Administration of endpoints, models, system assistants and tools.",
-    "help": "Help"
+    "help": "Help",
+    "status": "Status"
   },
   "common": {
     "close": "Close",
@@ -660,11 +658,7 @@
         "enabledHelp": "Off switches the tool off for everyone, whatever the roles and groups say.",
         "allowedRoles": "Allowed roles",
         "allowedGroups": "Allowed Entra groups",
-        "allowedGroupsHelp": "Entra ID group object ids. A user in any listed group may use the tool, in addition to the roles above.",
-        "groupIdPlaceholder": "00000000-0000-0000-0000-000000000000",
-        "addGroup": "Add group",
-        "removeGroup": "Remove",
-        "invalidGroupId": "Enter a group object id (GUID).",
+        "allowedGroupsHelp": "A user in any listed Entra group may use the tool, in addition to the roles above.",
         "nobodyWarning": "No roles and no groups: nobody can use this tool.",
         "defaultPolicy": "Code default",
         "overridden": "This tool uses a custom policy saved {{date}}.",
@@ -716,5 +710,26 @@
       "prompting": "Eight habits that get you better answers with less back and forth.",
       "troubleshooting": "What to do when something is slow, missing or wrong, and where to get help."
     }
+  },
+  "groupPicker": {
+    "placeholder": "Search groups by name or object id",
+    "searching": "Searching…",
+    "noResults": "No groups found",
+    "remove": "Remove group",
+    "unknownGroup": "not found in Entra",
+    "error": "Group search failed"
+  },
+  "status": {
+    "title": "Status",
+    "resolved": "What the server resolved from your token",
+    "environment": "Environment",
+    "userId": "User id",
+    "roles": "Roles",
+    "groupIds": "Group ids",
+    "noGroupsClaim": "The token has no groups claim. Group-based access cannot work until the app registration emits one in the access token.",
+    "claims": "Claims ({{count}})",
+    "claimType": "Type",
+    "claimValue": "Value",
+    "groupsOverage": "The token carries a groups overage marker (too many groups to list). The server treats this as no groups. Use \"Groups assigned to the application\" in Entra."
   }
 }
