@@ -366,3 +366,6 @@ FodyWeavers.xsd
 .vscode/
 
 sample/
+
+# macOS Finder metadata
+.DS_Store
