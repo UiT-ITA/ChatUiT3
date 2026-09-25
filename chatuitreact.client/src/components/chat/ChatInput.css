@@ -20,6 +20,10 @@
   box-shadow: var(--shadow-card);
 }
 
+.composer-card[data-drop-active] {
+  border-color: var(--brand);
+}
+
 .composer-file-previews {
   display: flex;
   flex-wrap: wrap;

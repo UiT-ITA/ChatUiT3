@@ -4,8 +4,6 @@ Click the paperclip in the message box and pick one or more files. They appear a
 
 ![Replace with screenshot featuring the composer with a PDF and an image attached](placeholder)
 
-> [!NOT_IMPLEMENTED]
-
 You can also drag files from your computer onto the chat, or paste an image or a file with `Ctrl + V` (`Cmd + V` on Mac).
 
 ## Supported file types

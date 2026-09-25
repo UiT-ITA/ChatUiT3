@@ -25,6 +25,7 @@ export default function ChatInput() {
   const [selectedFiles, setSelectedFiles] = useState<ChatFile[]>([]);
   const [charCount, setCharCount] = useState(0);
   const [isCancelling, setIsCancelling] = useState(false);
+  const [isDragOver, setIsDragOver] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const draftDebounceRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
@@ -179,43 +180,89 @@ export default function ChatInput() {
     fileInputRef.current?.click();
   };
 
-  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const files = e.target.files;
-    if (files) {
-      const fileArray = Array.from(files).filter(file =>
-        isValidFileType(file)
-      );
+  const addFiles = async (files: File[]) => {
+    const fileArray = files.filter(file => isValidFileType(file));
 
-      const conversionResults = await Promise.allSettled(
-        fileArray.map(file => FileProcessingService.processFile(file))
-      );
+    files
+      .filter(file => !isValidFileType(file))
+      .forEach(file => addNotification({
+        level: 'Warning',
+        message: `${file.name}: ${t('files.typeNotSupported')}`
+      }));
 
-      const convertedFiles = conversionResults.flatMap((result) => {
-        return result.status === 'fulfilled' ? [result.value] : [];
-      });
-
-      conversionResults.forEach((result, index) => {
-        if (result.status !== 'rejected') {
-          return;
-        }
-
-        const file = fileArray[index];
-        if (!file) {
-          return;
-        }
-
-          const reason = result.reason instanceof Error ? result.reason.message : 'File processing failed';
-          console.error(`Failed to process file ${file.name}:`, result.reason);
-          addNotification({
-            level: 'Error',
-            message: `${file.name}: ${reason}`
-          });
-      });
-
-      setSelectedFiles(prev => [...prev, ...convertedFiles].slice(0, 10));
+    if (fileArray.length === 0) {
+      return;
     }
 
+    const conversionResults = await Promise.allSettled(
+      fileArray.map(file => FileProcessingService.processFile(file))
+    );
+
+    const convertedFiles = conversionResults.flatMap((result) => {
+      return result.status === 'fulfilled' ? [result.value] : [];
+    });
+
+    conversionResults.forEach((result, index) => {
+      if (result.status !== 'rejected') {
+        return;
+      }
+
+      const file = fileArray[index];
+      if (!file) {
+        return;
+      }
+
+      const reason = result.reason instanceof Error ? result.reason.message : 'File processing failed';
+      console.error(`Failed to process file ${file.name}:`, result.reason);
+      addNotification({
+        level: 'Error',
+        message: `${file.name}: ${reason}`
+      });
+    });
+
+    setSelectedFiles(prev => [...prev, ...convertedFiles].slice(0, 10));
+  };
+
+  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    await addFiles(Array.from(e.target.files ?? []));
     e.target.value = '';
+  };
+
+  const handlePaste = (e: React.ClipboardEvent) => {
+    const files = Array.from(e.clipboardData.files);
+    if (files.length === 0) {
+      return;
+    }
+    e.preventDefault();
+    void addFiles(files);
+  };
+
+  const hasDraggedFiles = (e: React.DragEvent) => e.dataTransfer.types.includes('Files');
+
+  const handleDragOver = (e: React.DragEvent) => {
+    if (!hasDraggedFiles(e)) {
+      return;
+    }
+    e.preventDefault();
+    e.dataTransfer.dropEffect = 'copy';
+    setIsDragOver(true);
+  };
+
+  const handleDragLeave = (e: React.DragEvent) => {
+    if (e.currentTarget.contains(e.relatedTarget as Node | null)) {
+      return;
+    }
+    setIsDragOver(false);
+  };
+
+  const handleDrop = (e: React.DragEvent) => {
+    setIsDragOver(false);
+    if (!hasDraggedFiles(e)) {
+      return;
+    }
+    e.preventDefault();
+    void addFiles(Array.from(e.dataTransfer.files));
+    textareaRef.current?.focus();
   };
 
   const removeFile = (index: number) => {
@@ -225,7 +272,15 @@ export default function ChatInput() {
   return (
     <div className="chat-input">
       <div className="composer">
-        <form className="composer-card" onSubmit={handleSendMessage}>
+        <form
+          className="composer-card"
+          onSubmit={handleSendMessage}
+          onDragEnter={handleDragOver}
+          onDragOver={handleDragOver}
+          onDragLeave={handleDragLeave}
+          onDrop={handleDrop}
+          data-drop-active={isDragOver || undefined}
+        >
           {selectedFiles.length > 0 && (
             <div className="composer-file-previews">
               {selectedFiles.map((file, index) => (
@@ -245,6 +300,7 @@ export default function ChatInput() {
             rows={2}
             placeholder={t('chat.messagePlaceholder')}
             onKeyDown={handleKeyDown}
+            onPaste={handlePaste}
             onChange={(e) => {
               setCharCount(e.target.value.length);
               scheduleDraftCount(e.target.value);
