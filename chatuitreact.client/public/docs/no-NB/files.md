@@ -4,8 +4,6 @@ Klikk bindersen i meldingsfeltet og velg én eller flere filer. De vises som min
 
 ![Replace with screenshot featuring the composer with a PDF and an image attached](placeholder)
 
-> [!NOT_IMPLEMENTED]
-
 Du kan også dra filer fra datamaskinen inn i samtalen, eller lime inn et bilde eller en fil med `Ctrl + V` (`Cmd + V` på Mac).
 
 ## Filtyper som støttes
