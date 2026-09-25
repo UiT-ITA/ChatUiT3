@@ -8,6 +8,7 @@ using ChatUitReact.Server.Services.Tools;
 using System.Text;
 using System.Text.Json;
 using System.Security.Claims;
+using Microsoft.Extensions.Options;
 
 namespace ChatUitReact.Server.Services;
 
@@ -35,6 +36,7 @@ public class ChatService : IChatService
     private readonly PendingInteractionRegistry _pendingInteractions;
     private readonly ISettingsService _settingsService;
     private readonly ITokenCountingService _tokenCounting;
+    private readonly ToolOptions _toolOptions;
 
     public ChatService(
         AiConversationRunner conversationRunner,
@@ -49,7 +51,8 @@ public class ChatService : IChatService
         IToolAccessService toolAccess,
         PendingInteractionRegistry pendingInteractions,
         ISettingsService settingsService,
-        ITokenCountingService tokenCounting)
+        ITokenCountingService tokenCounting,
+        IOptions<ToolOptions> toolOptions)
     {
         _conversationRunner = conversationRunner;
         _providers = providers;
@@ -64,6 +67,7 @@ public class ChatService : IChatService
         _pendingInteractions = pendingInteractions;
         _settingsService = settingsService;
         _tokenCounting = tokenCounting;
+        _toolOptions = toolOptions.Value;
     }
 
     #region Chat management
@@ -334,13 +338,17 @@ public class ChatService : IChatService
             await _hubContext.Clients.Group(userId).Notify(NotifyLevel.Error, "Assistant is required.");
             throw new InvalidOperationException("AssistantId is required for chat operations");
         }
-        var (settings, enforceToolAccess) = await GetChatSettingsFromAssistant(userId, effectiveAssistantId, promptUser, tools.Access);
-        
-        var modelWithEndpoint = await _modelService.GetModelWithEndpointAsync(settings.Model.Id);
+        // Pin order is kept: pinned files are placed in the request in the order they were loaded.
+        var pinnedFileIds = (chat?.LoadedFiles ?? new List<ChatLoadedFile>()).Select(f => f.FileId).Distinct().ToList();
+        _logger.LogInformation("Chat {ChatId} read with {PinnedCount} pinned files", chatId, pinnedFileIds.Count);
+        var resolved = await ResolveAssistantForChatAsync(userId, effectiveAssistantId, promptUser, tools.Access, pinnedFileIds);
+
+        var modelId = resolved.Assistant.ChatSettings.Model.Id;
+        var modelWithEndpoint = await _modelService.GetModelWithEndpointAsync(modelId);
         if (modelWithEndpoint == null)
         {
             await _hubContext.Clients.Group(userId).Notify(NotifyLevel.Error, "Selected model is unavailable or misconfigured.");
-            throw new InvalidOperationException($"Model {settings.Model.Id} not found or has no endpoint configured");
+            throw new InvalidOperationException($"Model {modelId} not found or has no endpoint configured");
         }
 
         var (endpoint, model) = modelWithEndpoint.Value;
@@ -351,7 +359,7 @@ public class ChatService : IChatService
             throw new NotSupportedException($"No AI provider is registered for endpoint type {endpoint.EndpointType}.");
         }
 
-        var request = await BuildAiRequestAsync(model, endpoint, settings, messages, tools, enforceToolAccess);
+        var request = await BuildAiRequestAsync(model, endpoint, resolved, messages, tools);
         var toolContext = new ToolExecutionContext
         {
             UserId = userId,
@@ -523,10 +531,26 @@ public class ChatService : IChatService
     #region Private helper methods
 
     /// <summary>
-    /// Also decides whether tool policies apply at generation: never for system assistants (their
-    /// own access decides who reaches them), always for private and shared ones.
+    /// The assistant a chat runs on, checked for this user, plus what the request needs from the
+    /// chat: the on-demand files pinned to it, in pin order.
     /// </summary>
-    private async Task<(ChatSettings settings, bool enforceToolAccess)> GetChatSettingsFromAssistant(string userId, string assistantId, PromptUserContext promptUser, UserAccess access)
+    private sealed record ResolvedAssistant(
+        Assistant Assistant,
+        bool EnforceToolAccess,
+        PromptUserContext PromptUser,
+        IReadOnlyList<string> PinnedFileIds);
+
+    /// <summary>
+    /// Loads the assistant with file content and refuses it when this user may not use it. Also
+    /// decides whether tool policies apply at generation: never for system assistants (their own
+    /// access decides who reaches them), always for private and shared ones.
+    /// </summary>
+    private async Task<ResolvedAssistant> ResolveAssistantForChatAsync(
+        string userId,
+        string assistantId,
+        PromptUserContext promptUser,
+        UserAccess access,
+        IReadOnlyList<string> pinnedFileIds)
     {
         if (string.IsNullOrWhiteSpace(assistantId))
         {
@@ -566,50 +590,72 @@ public class ChatService : IChatService
             }
         }
 
+        return new ResolvedAssistant(assistant, EnforceToolAccess: !assistant.IsSystem, promptUser, pinnedFileIds);
+    }
+
+    // The one place assistant settings become a provider request: capabilities are reconciled
+    // once here against the live model row, so no provider has to re-derive what the model
+    // will accept and the prompt never names a tool the model was not given. Tools are the
+    // assistant's list cut down to what this user may use, the loader for the on-demand files
+    // still loadable, plus the client's own tools. Knowledge files (always-loaded and pinned)
+    // lead the history as synthetic user messages.
+    private async Task<AiRequest> BuildAiRequestAsync(
+        Model model,
+        ModelEndpoint endpoint,
+        ResolvedAssistant resolved,
+        List<Models.ChatMessage> messages,
+        ToolSessionInput tools)
+    {
+        var assistant = resolved.Assistant;
+        var canLoadOnDemand = model.Capabilities.SupportsFunctionCalling;
+        var pinnedFileIds = resolved.PinnedFileIds.ToHashSet(StringComparer.Ordinal);
+        var onDemandFiles = KnowledgeFileMessages.Loadable(assistant.Files, pinnedFileIds);
+
         var settings = new ChatSettings
         {
             Model = assistant.ChatSettings.Model,
             SystemPrompt = SystemPromptAssembler.Build(
                 assistant.ChatSettings.SystemPrompt,
                 assistant.ChatSettings.PromptSnippets,
-                promptUser,
-                assistant.Files),
+                resolved.PromptUser,
+                assistant.Files,
+                pinnedFileIds,
+                canLoadOnDemand),
             Temperature = assistant.ChatSettings.Temperature,
             ReasoningEffort = assistant.ChatSettings.ReasoningEffort,
             AvailableToolIds = assistant.ChatSettings.AvailableToolIds
         };
 
-        return (settings, enforceToolAccess: !assistant.IsSystem);
-    }
-
-    // The one place assistant settings become a provider request: capabilities are reconciled
-    // once here, so no provider has to re-derive what the model will accept. Tools are the
-    // assistant's list cut down to what this user may use, plus the client's own tools.
-    private async Task<AiRequest> BuildAiRequestAsync(
-        Model model,
-        ModelEndpoint endpoint,
-        ChatSettings settings,
-        List<Models.ChatMessage> messages,
-        ToolSessionInput tools,
-        bool enforceToolAccess)
-    {
         var parameters = ChatParameterResolver.Resolve(model.Capabilities, settings);
 
-        var resolvedTools = new List<ITool>(enforceToolAccess
+        var resolvedTools = new List<ITool>(resolved.EnforceToolAccess
             ? await _toolAccess.FilterAllowedAsync(parameters.ToolIds, tools.Access)
             : _toolRegistry.Resolve(parameters.ToolIds));
 
-        if (model.Capabilities.SupportsFunctionCalling && tools.ClientTools.Count > 0 && await _toolAccess.MayUseClientToolsAsync(tools.Access))
+        if (canLoadOnDemand && onDemandFiles.Count > 0)
+        {
+            resolvedTools.Add(new LoadKnowledgeFileTool(assistant.Id, onDemandFiles, _databaseService, _tokenCounting, _toolOptions, _logger));
+        }
+
+        if (canLoadOnDemand && tools.ClientTools.Count > 0 && await _toolAccess.MayUseClientToolsAsync(tools.Access))
         {
             resolvedTools.AddRange(_toolRegistry.CreateClientTools(tools.ClientTools));
         }
+
+        _logger.LogInformation(
+            "Assistant {AssistantId}: {PinnedCount} pinned files ({PinnedIds}), {OnDemandCount} on-demand files offered ({OnDemandIds})",
+            assistant.Id,
+            pinnedFileIds.Count,
+            string.Join(",", pinnedFileIds),
+            onDemandFiles.Count,
+            string.Join(",", onDemandFiles.Select(f => f.Id)));
 
         return new AiRequest
         {
             Model = model,
             Endpoint = endpoint,
             SystemPrompt = settings.SystemPrompt,
-            Messages = messages,
+            Messages = [.. KnowledgeFileMessages.Build(assistant.Files, resolved.PinnedFileIds), .. messages],
             Parameters = parameters,
             Tools = resolvedTools
         };

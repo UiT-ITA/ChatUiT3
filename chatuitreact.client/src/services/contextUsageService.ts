@@ -85,14 +85,19 @@ export function getContextUsage(chatId: string | undefined): Signal<ContextUsage
         const tokenizer = getTokenizer(scheme).value;
         if (!tokenizer) return { ...UNAVAILABLE, scheme: scheme.id, isEstimate: scheme.isEstimate };
 
-        const fixed = assistant.promptTokenCounts?.[scheme.id] ?? 0;
-        const knowledge = Math.min(fixed, assistant.knowledgeTokenCounts?.[scheme.id] ?? 0);
+        const chat = chatId !== undefined ? getChat(chatId).value : undefined;
+
+        // Files the model pinned to this chat are sent as leading messages on every turn, so
+        // they belong to the fixed cost and to the knowledge share, but are counted per chat.
+        const pinned = (chat?.loadedFiles ?? []).reduce((sum, file) => sum + (file.tokenCounts[scheme.id] ?? 0), 0);
+        const assistantFixed = assistant.promptTokenCounts?.[scheme.id] ?? 0;
+        const fixed = assistantFixed + pinned;
+        const knowledge = Math.min(assistantFixed, assistant.knowledgeTokenCounts?.[scheme.id] ?? 0) + pinned;
         const systemPrompt = fixed - knowledge;
 
         let fileTokensTotal = 0;
         let messages = 0;
         let unknownMessages = 0;
-        const chat = chatId !== undefined ? getChat(chatId).value : undefined;
         for (const message of chat?.messages ?? []) {
             if (message.status === 'Generating') continue;
             const tokens = message.tokenCounts?.[scheme.id];

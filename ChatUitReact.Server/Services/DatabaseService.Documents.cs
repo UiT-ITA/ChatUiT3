@@ -91,6 +91,22 @@ public partial class DatabaseService
 
         [JsonProperty("isFavorite")]
         public bool IsFavorite { get; set; }
+
+        // Absent on rows written before on-demand files existed.
+        [JsonProperty("loadedFiles")]
+        public List<ChatLoadedFileDocument> LoadedFiles { get; set; } = new();
+    }
+
+    private sealed class ChatLoadedFileDocument
+    {
+        [JsonProperty("fileId")]
+        public string FileId { get; set; } = string.Empty;
+
+        [JsonProperty("sourceFilename")]
+        public string SourceFilename { get; set; } = string.Empty;
+
+        [JsonProperty("tokenCounts")]
+        public Dictionary<string, int> TokenCounts { get; set; } = new();
     }
 
     private sealed class ChatMessageDocument

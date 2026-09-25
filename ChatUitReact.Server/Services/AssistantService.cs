@@ -5,6 +5,7 @@ using ChatUitReact.Server.Services.AiProviders;
 using ChatUitReact.Server.Services.TokenCounting;
 using ChatUitReact.Server.Services.Tools;
 using Microsoft.AspNetCore.SignalR;
+using Microsoft.Extensions.Options;
 
 namespace ChatUitReact.Server.Services
 {
@@ -16,6 +17,8 @@ namespace ChatUitReact.Server.Services
         private readonly IToolRegistry _toolRegistry;
         private readonly IToolAccessService _toolAccess;
         private readonly ITokenCountingService _tokenCounting;
+        private readonly ToolOptions _toolOptions;
+        private readonly ILogger<AssistantService> _logger;
 
         // Keyed by assistant id. Invalidated by the assistant's UpdatedAt and by the set of
         // active schemes, so both an edit and a newly registered model recount.
@@ -32,7 +35,9 @@ namespace ChatUitReact.Server.Services
             IHubContext<ChatHub, IChatHubClient> hubContext,
             IToolRegistry toolRegistry,
             IToolAccessService toolAccess,
-            ITokenCountingService tokenCounting)
+            ITokenCountingService tokenCounting,
+            IOptions<ToolOptions> toolOptions,
+            ILogger<AssistantService> logger)
         {
             _databaseService = databaseService;
             _modelService = modelService;
@@ -40,6 +45,8 @@ namespace ChatUitReact.Server.Services
             _toolRegistry = toolRegistry;
             _toolAccess = toolAccess;
             _tokenCounting = tokenCounting;
+            _toolOptions = toolOptions.Value;
+            _logger = logger;
         }
 
         // The fixed cost of every request through this assistant, per scheme. Counted from the
@@ -63,32 +70,39 @@ namespace ChatUitReact.Server.Services
             var files = assistant.Files;
             var needsContent = files.Any(f =>
                 f.Category == AssistantFileCategories.AlwaysLoaded &&
-                f.Chunks.Any(c => c.Type.Equals("text", StringComparison.OrdinalIgnoreCase) && c.Text == null));
+                f.Chunks.Any(c =>
+                    (c.Type.Equals("text", StringComparison.OrdinalIgnoreCase) && c.Text == null) ||
+                    (c.Type.Equals("image", StringComparison.OrdinalIgnoreCase) && c.Base64 == null)));
             if (needsContent)
             {
                 var loaded = await _databaseService.GetAssistantByIdAsync(assistant.Id, includeFileContent: true);
                 files = loaded?.Files ?? files;
             }
 
-            var prompt = SystemPromptAssembler.Build(assistant.ChatSettings.SystemPrompt, snippets, user, files);
+            // Pinned files are per chat and are counted by the client from the chat itself, so
+            // the assistant's fixed cost is built with nothing pinned. The always-loaded files
+            // are counted as the messages that carry them.
+            var noLoadedFiles = new HashSet<string>();
+            var knowledgeMessages = KnowledgeFileMessages.Build(files, []);
+            var canLoadOnDemand = assistant.ChatSettings.Model.Capabilities.SupportsFunctionCalling;
+            var prompt = SystemPromptAssembler.Build(assistant.ChatSettings.SystemPrompt, snippets, user, files, noLoadedFiles, canLoadOnDemand);
             // Resolved against the model row rather than the stored tool ids, so a model that
             // lost function calling after the assistant was saved counts no tools.
             var parameters = ChatParameterResolver.Resolve(assistant.ChatSettings.Model.Capabilities, assistant.ChatSettings);
-            var tools = _toolRegistry.Resolve(parameters.ToolIds);
-
-            // The knowledge share is the difference against the same prompt without files, so
-            // snippet text is never attributed to knowledge.
-            var promptWithoutFiles = SystemPromptAssembler.Build(assistant.ChatSettings.SystemPrompt, snippets, user, new List<AssistantFile>());
-            var hasKnowledge = prompt != promptWithoutFiles;
+            var tools = new List<ITool>(_toolRegistry.Resolve(parameters.ToolIds));
+            var onDemandFiles = KnowledgeFileMessages.Loadable(files, noLoadedFiles);
+            if (canLoadOnDemand && onDemandFiles.Count > 0)
+            {
+                tools.Add(new LoadKnowledgeFileTool(assistant.Id, onDemandFiles, _databaseService, _tokenCounting, _toolOptions, _logger));
+            }
 
             var promptCounts = new Dictionary<string, int>();
             var knowledgeCounts = new Dictionary<string, int>();
             foreach (var scheme in schemes)
             {
-                promptCounts[scheme] = _tokenCounting.CountSystemPrompt(prompt, tools, scheme);
-                knowledgeCounts[scheme] = hasKnowledge
-                    ? Math.Max(0, _tokenCounting.CountText(prompt, scheme) - _tokenCounting.CountText(promptWithoutFiles, scheme))
-                    : 0;
+                var knowledge = knowledgeMessages.Sum(message => _tokenCounting.CountMessage(message, scheme));
+                promptCounts[scheme] = _tokenCounting.CountSystemPrompt(prompt, tools, scheme) + knowledge;
+                knowledgeCounts[scheme] = knowledge;
             }
 
             var counts = new PromptTokenCounts(promptCounts, knowledgeCounts);
@@ -675,12 +689,20 @@ namespace ChatUitReact.Server.Services
                 return new List<AssistantFile>();
             }
 
+            foreach (var dto in fileDtos)
+            {
+                if (dto.Category == AssistantFileCategories.SelectiveLoaded && string.IsNullOrWhiteSpace(dto.Description))
+                {
+                    throw new AssistantValidationException($"On-demand file '{dto.SourceFilename}' needs a description.");
+                }
+            }
+
             return fileDtos.Select(dto => new AssistantFile
             {
                 Id = string.IsNullOrWhiteSpace(dto.Id) ? Guid.NewGuid().ToString() : dto.Id,
                 SourceFilename = dto.SourceFilename,
                 Category = dto.Category,
-                Description = dto.Description,
+                Description = dto.Description?.Trim(),
                 Chunks = dto.Chunks.Select(chunk => new ChatFileChunk
                 {
                     Type = chunk.Type,
@@ -730,6 +752,14 @@ namespace ChatUitReact.Server.Services
                 CreatedBy = assistant.OwnerId
             };
         }
+    }
+}
+
+/// <summary>Thrown when an assistant create or update request fails validation. The message is safe to show the caller.</summary>
+public sealed class AssistantValidationException : Exception
+{
+    public AssistantValidationException(string message) : base(message)
+    {
     }
 }
 

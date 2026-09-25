@@ -55,6 +55,19 @@ public sealed class LookupTool : Tool<LookupArgs>
 `ToolResult.Content` goes to the model (cut at `Tools:MaxModelContentChars`); `Display` is what the user sees in
 the activity panel. Throw `ToolArgumentException` for bad arguments; the message is written for the model.
 
+### Per-request tools
+
+A tool can also be built for one request instead of registered in DI, when what it does depends on the
+assistant or chat it runs for. `LoadKnowledgeFileTool` (`Services/Tools/Knowledge/`) is one: `ChatService`
+constructs it with the assistant's on-demand files still loadable and adds it to `AiRequest.Tools`, and
+`AssistantService` constructs it the same way to count its definition. Rules for such a tool:
+
+- It is not in `ToolRegistry`, so it never appears in the tool picker and cannot be stored in
+  `AvailableToolIds`. Its id must still match `^[a-z][a-z0-9_]{0,63}$` and must not collide with a registered
+  id, since the conversation runner matches calls by id across `AiRequest.Tools`.
+- Access falls back to the tool's `DefaultPolicy`; admins cannot override it in `ToolPolicies`.
+- The executor runs it like any other server tool: same output cap, same confirmation and consent routing.
+
 ### Delegated Microsoft Graph access
 
 Call `await invocation.Context.Tokens.GetAccessTokenAsync(RequiredScopes, ct)` and use the token with

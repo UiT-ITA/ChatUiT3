@@ -78,6 +78,10 @@ public class AdminAssistantsController : ControllerBase
             var assistant = await _assistantService.CreateSystemAssistantAsync(createDto);
             return CreatedAtAction(nameof(GetAssistant), new { id = assistant.Id }, assistant);
         }
+        catch (AssistantValidationException ex)
+        {
+            return BadRequest(ex.Message);
+        }
         catch (ArgumentException ex)
         {
             return BadRequest(ex.Message);
@@ -116,6 +120,10 @@ public class AdminAssistantsController : ControllerBase
             }
 
             return Ok(assistant);
+        }
+        catch (AssistantValidationException ex)
+        {
+            return BadRequest(ex.Message);
         }
         catch (Exception ex)
         {

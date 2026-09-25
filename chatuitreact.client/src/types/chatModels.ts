@@ -194,6 +194,14 @@ export interface ChatHeaderDto {
   updatedAt: string;
   status: AiChatStatus;
   isFavorite: boolean;
+  /** On-demand assistant files the model pinned to this chat. Token counts are per scheme id. */
+  loadedFiles: ChatLoadedFileDto[];
+}
+
+export interface ChatLoadedFileDto {
+  fileId: string;
+  sourceFilename: string;
+  tokenCounts: Record<string, number>;
 }
 
 export interface ChatDto extends ChatHeaderDto {

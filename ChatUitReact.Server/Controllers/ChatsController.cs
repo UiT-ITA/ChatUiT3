@@ -363,9 +363,18 @@ public class ChatsController : ControllerBase
             UpdatedAt = chat.UpdatedAt,
             Status = chat.Status,
             IsFavorite = chat.IsFavorite,
-            AssistantId = chat.AssistantId
+            AssistantId = chat.AssistantId,
+            LoadedFiles = MapLoadedFiles(chat.LoadedFiles)
         };
     }
+
+    private static List<ChatLoadedFileDto> MapLoadedFiles(List<ChatLoadedFile> files)
+        => files.Select(f => new ChatLoadedFileDto
+        {
+            FileId = f.FileId,
+            SourceFilename = f.SourceFilename,
+            TokenCounts = new Dictionary<string, int>(f.TokenCounts)
+        }).ToList();
 
     private ChatDto MapToDto(Chat chat)
     {
@@ -378,6 +387,7 @@ public class ChatsController : ControllerBase
             Status = chat.Status,
             IsFavorite = chat.IsFavorite,
             AssistantId = chat.AssistantId,
+            LoadedFiles = MapLoadedFiles(chat.LoadedFiles),
             Messages = chat.Messages.Select(MapMessageToDto).ToList()
         };
     }

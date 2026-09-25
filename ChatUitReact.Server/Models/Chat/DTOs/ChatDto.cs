@@ -12,6 +12,14 @@ public class ChatHeaderDto
     public DateTime UpdatedAt { get; set; }
     public AiChatStatus Status { get; set; }
     public bool IsFavorite { get; set; }
+    public List<ChatLoadedFileDto> LoadedFiles { get; set; } = new();
+}
+
+public class ChatLoadedFileDto
+{
+    public string FileId { get; set; } = string.Empty;
+    public string SourceFilename { get; set; } = string.Empty;
+    public Dictionary<string, int> TokenCounts { get; set; } = new();
 }
 
 public class ChatDto : ChatHeaderDto
