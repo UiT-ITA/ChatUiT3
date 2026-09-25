@@ -301,3 +301,8 @@
   color: var(--text-3);
 }
 
+
+.af-knowledge-hint {
+  margin: 0.5rem 0 0;
+  color: var(--danger);
+}

@@ -1,5 +1,6 @@
 using System.Text;
 using ChatUitReact.Server.Models;
+using ChatUitReact.Server.Services.Tools;
 
 namespace ChatUitReact.Server.Services.AiProviders;
 
@@ -8,22 +9,28 @@ namespace ChatUitReact.Server.Services.AiProviders;
 /// when counting an assistant's fixed token cost, so the counted prompt is byte-identical
 /// to the sent one.
 ///
-/// Order: the owner's instructions verbatim, then one section per enabled snippet group,
-/// then the knowledge files. Sections are joined with a blank line.
+/// Order: the owner's instructions under their own header, then one section per enabled
+/// snippet group, then the list of on-demand files. Every section has an H1 header so the
+/// prompt reads as one document wherever the provider places it. File content is not part of
+/// the prompt; <see cref="KnowledgeFileMessages"/> carries it as messages.
 /// </summary>
 public static class SystemPromptAssembler
 {
+    /// <param name="loadedFileIds">On-demand files pinned to the chat; they are left out of the on-demand list.</param>
+    /// <param name="canLoadOnDemand">Whether the model can call the load tool. Without it the on-demand list is left out.</param>
     public static string Build(
         string systemPrompt,
         IReadOnlyList<string> snippetIds,
         PromptUserContext? user,
-        List<AssistantFile> files)
+        List<AssistantFile> files,
+        IReadOnlySet<string> loadedFileIds,
+        bool canLoadOnDemand)
     {
         var sections = new List<string>();
 
         if (!string.IsNullOrWhiteSpace(systemPrompt))
         {
-            sections.Add(systemPrompt);
+            sections.Add("# Assistant instructions\n" + systemPrompt.Trim());
         }
 
         var guidelines = BuildResponseGuidelines(snippetIds);
@@ -46,10 +53,13 @@ public static class SystemPromptAssembler
             }
         }
 
-        var knowledge = BuildKnowledgeFiles(files);
-        if (knowledge != null)
+        if (canLoadOnDemand)
         {
-            sections.Add(knowledge);
+            var onDemand = BuildOnDemandFiles(files, loadedFileIds);
+            if (onDemand != null)
+            {
+                sections.Add(onDemand);
+            }
         }
 
         return string.Join("\n\n", sections);
@@ -98,28 +108,29 @@ public static class SystemPromptAssembler
         builder.Append('\n').Append("- ").Append(label).Append(": ").Append(trimmed);
     }
 
-    private static string? BuildKnowledgeFiles(List<AssistantFile> files)
+    // Pinned files are already carried as messages and are not mentioned here at all.
+    private static string? BuildOnDemandFiles(List<AssistantFile> files, IReadOnlySet<string> loadedFileIds)
     {
-        // Only always-loaded files go into the system message, and only their text
-        // content — images cannot be carried in a system message.
-        var builder = new StringBuilder();
-        foreach (var file in files.Where(f => f.Category == AssistantFileCategories.AlwaysLoaded))
+        var available = KnowledgeFileMessages.Loadable(files, loadedFileIds);
+        if (available.Count == 0)
         {
-            var text = string.Concat(file.Chunks
-                .Where(chunk => chunk.Type.Equals("text", StringComparison.OrdinalIgnoreCase))
-                .Select(chunk => chunk.Text));
-
-            if (string.IsNullOrWhiteSpace(text))
-            {
-                continue;
-            }
-
-            builder.AppendLine();
-            builder.AppendLine();
-            builder.AppendLine($"## {file.SourceFilename}");
-            builder.AppendLine(text);
+            return null;
         }
 
-        return builder.Length == 0 ? null : "# Knowledge files" + builder;
+        var builder = new StringBuilder("# On-demand knowledge files\n");
+        builder.Append("These files are not loaded. When one is relevant, call `").Append(LoadKnowledgeFileTool.ToolId).Append("` with its id. ");
+        builder.Append("Use mode \"temporary\" for a one-off lookup and \"permanent\" to keep the file in context for the rest of the conversation. ");
+        builder.Append("Long files come in parts; pass the returned `nextOffset` as `offset` to continue.");
+        foreach (var file in available)
+        {
+            var description = file.Description?.Trim();
+            builder.Append('\n').Append("- ").Append(file.SourceFilename).Append(" (id: ").Append(file.Id).Append(')');
+            if (!string.IsNullOrEmpty(description))
+            {
+                builder.Append(": ").Append(description);
+            }
+        }
+
+        return builder.ToString();
     }
 }

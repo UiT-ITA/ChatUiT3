@@ -257,6 +257,7 @@
       "noFilesAdded": "No files added",
       "notAvailableYet": "Not available yet",
       "shortDescriptionPlaceholder": "Add short description",
+      "descriptionRequired": "Every selective loaded file needs a short description.",
       "categories": {
         "alwaysLoaded": {
           "title": "Always loaded files",
@@ -264,7 +265,7 @@
         },
         "selectiveLoaded": {
           "title": "Selective loaded files",
-          "description": "Files that can be included only when needed."
+          "description": "Files the assistant loads on request. The description tells it what each file contains."
         },
         "ragLoaded": {
           "title": "RAG loaded files",

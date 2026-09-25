@@ -257,6 +257,7 @@
       "noFilesAdded": "Ingen filer lagt til",
       "notAvailableYet": "Ikke tilgjengelig ennå",
       "shortDescriptionPlaceholder": "Legg til kort beskrivelse",
+      "descriptionRequired": "Hver selektivt lastede fil trenger en kort beskrivelse.",
       "categories": {
         "alwaysLoaded": {
           "title": "Alltid lastede filer",
@@ -264,7 +265,7 @@
         },
         "selectiveLoaded": {
           "title": "Selektivt lastede filer",
-          "description": "Filer som kan inkluderes bare ved behov."
+          "description": "Filer assistenten laster ved behov. Beskrivelsen forteller den hva hver fil inneholder."
         },
         "ragLoaded": {
           "title": "RAG-lastede filer",

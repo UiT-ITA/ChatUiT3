@@ -64,6 +64,7 @@ public partial class DatabaseService
             UpdatedAt = chatDocument.UpdatedAt,
             Status = chatDocument.Status,
             IsFavorite = chatDocument.IsFavorite,
+            LoadedFiles = MapLoadedFiles(chatDocument.LoadedFiles),
             Messages = messages
         };
     }
@@ -111,7 +112,8 @@ public partial class DatabaseService
             CreatedAt = createdAt,
             UpdatedAt = updatedAt,
             Status = chat.Status,
-            IsFavorite = chat.IsFavorite
+            IsFavorite = chat.IsFavorite,
+            LoadedFiles = chat.LoadedFiles.Select(MapLoadedFile).ToList()
         };
 
         await _chatContainer!.CreateItemAsync(chatDocument, new PartitionKey(userId));
@@ -396,8 +398,51 @@ public partial class DatabaseService
             CreatedAt = chatDocument.CreatedAt,
             UpdatedAt = chatDocument.UpdatedAt,
             Status = chatDocument.Status,
-            IsFavorite = chatDocument.IsFavorite
+            IsFavorite = chatDocument.IsFavorite,
+            LoadedFiles = MapLoadedFiles(chatDocument.LoadedFiles)
         };
+    }
+
+    private static List<ChatLoadedFile> MapLoadedFiles(List<ChatLoadedFileDocument>? documents)
+        => (documents ?? new List<ChatLoadedFileDocument>()).Select(d => new ChatLoadedFile
+        {
+            FileId = d.FileId,
+            SourceFilename = d.SourceFilename,
+            TokenCounts = new Dictionary<string, int>(d.TokenCounts)
+        }).ToList();
+
+    private static ChatLoadedFileDocument MapLoadedFile(ChatLoadedFile file)
+        => new()
+        {
+            FileId = file.FileId,
+            SourceFilename = file.SourceFilename,
+            TokenCounts = new Dictionary<string, int>(file.TokenCounts)
+        };
+
+    public async Task<bool> AddChatLoadedFileAsync(string userId, string chatId, ChatLoadedFile file)
+    {
+        await EnsureInitializedAsync();
+
+        var document = await ReadItemOrDefaultAsync<ChatDocument>(_chatContainer!, chatId, userId);
+        if (document == null)
+        {
+            return false;
+        }
+
+        var files = document.LoadedFiles ?? new List<ChatLoadedFileDocument>();
+        if (files.Any(f => f.FileId == file.FileId))
+        {
+            return true;
+        }
+
+        files.Add(MapLoadedFile(file));
+
+        // Pinning is metadata, like renaming: updatedAt stays with the last message write.
+        await _chatContainer!.PatchItemAsync<ChatDocument>(
+            chatId,
+            new PartitionKey(userId),
+            new[] { PatchOperation.Set("/loadedFiles", files) });
+        return true;
     }
 
     private ChatMessage MapChatMessage(

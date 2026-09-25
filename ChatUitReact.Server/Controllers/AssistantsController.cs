@@ -127,6 +127,10 @@ public class AssistantsController : ControllerBase
 
             return Ok();
         }
+        catch (AssistantValidationException ex)
+        {
+            return BadRequest(ex.Message);
+        }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error creating assistant");
@@ -151,6 +155,10 @@ public class AssistantsController : ControllerBase
             await _hubContext.Clients.Group(userId).AssistantsUpdated();
 
             return Ok();
+        }
+        catch (AssistantValidationException ex)
+        {
+            return BadRequest(ex.Message);
         }
         catch (Exception ex)
         {

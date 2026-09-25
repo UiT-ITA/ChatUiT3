@@ -36,6 +36,8 @@ const KnowledgeFileItem = ({
   onDescriptionChange,
   disabled = false
 }: KnowledgeFileItemProps) => {
+  const isDescriptionMissing = allowDescription && !item.description?.trim();
+
   return (
     <article className={[
       'knowledge-file-item',
@@ -62,9 +64,15 @@ const KnowledgeFileItem = ({
             type="text"
             value={item.description ?? ''}
             onChange={(event) => onDescriptionChange?.(event.target.value)}
-            className="knowledge-file-item__description-input t-ui-plain"
+            className={[
+              'knowledge-file-item__description-input',
+              't-ui-plain',
+              ...(isDescriptionMissing ? ['knowledge-file-item__description-input--invalid'] : [])
+            ].join(' ')}
             placeholder={descriptionPlaceholder}
             disabled={disabled}
+            required
+            aria-invalid={isDescriptionMissing}
           />
         )}
       </div>

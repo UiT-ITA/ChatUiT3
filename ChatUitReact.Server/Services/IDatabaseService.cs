@@ -18,6 +18,11 @@ public interface IDatabaseService
     Task DeleteChatAsync(string userId, string chatId);
     Task UpdateChatAsync(string userId, string chatId, string? newTitle, string? newAssistantId = null);
     Task SetChatFavoriteAsync(string userId, string chatId, bool isFavorite);
+    /// <summary>
+    /// Pins an on-demand assistant file to the chat. A file already pinned is left as is.
+    /// Returns false when the chat does not exist.
+    /// </summary>
+    Task<bool> AddChatLoadedFileAsync(string userId, string chatId, ChatLoadedFile file);
 
     // Message management
     Task AddMessageAsync(string userId, string chatId, ChatMessage message);

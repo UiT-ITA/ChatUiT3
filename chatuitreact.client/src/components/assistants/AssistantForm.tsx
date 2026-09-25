@@ -215,9 +215,7 @@ const AssistantForm: React.FC<AssistantFormProps> = ({
       category: 'selectiveLoaded',
       title: t('assistants.knowledge.categories.selectiveLoaded.title'),
       description: t('assistants.knowledge.categories.selectiveLoaded.description'),
-      allowItemDescription: true,
-      // Selective loading is not implemented on the server yet.
-      unavailable: true
+      allowItemDescription: true
     },
     {
       category: 'ragLoaded',
@@ -331,7 +329,7 @@ const AssistantForm: React.FC<AssistantFormProps> = ({
         id: item.fileId,
         sourceFilename: item.name,
         category,
-        description: item.description,
+        description: item.description?.trim(),
         // Already-stored files are sent without content; the server keeps them as-is.
         chunks: item.ChatFile
           ? item.ChatFile.chunks.map((chunk) => ({
@@ -367,8 +365,12 @@ const AssistantForm: React.FC<AssistantFormProps> = ({
     }
   };
 
+  // The description is what the model reads to decide whether to load the file, so an
+  // on-demand file without one cannot be saved. The server rejects it too.
+  const hasMissingDescriptions = knowledgeFiles.selectiveLoaded.some((item) => !item.description?.trim());
+
   const handleSubmit = async () => {
-    if (!formData.name.trim() || !formData.modelId || loading) return;
+    if (!formData.name.trim() || !formData.modelId || loading || hasMissingDescriptions) return;
 
     // Normalize unsupported params on submit
     const normalized: CreateAssistantDto = { ...formData, files: buildFileDtos() };
@@ -552,6 +554,11 @@ const AssistantForm: React.FC<AssistantFormProps> = ({
               onItemRemove={(itemId) => handleKnowledgeFileRemove(section.category, itemId)}
             />
           ))}
+          {hasMissingDescriptions && (
+            <p className="af-knowledge-hint t-meta" role="alert">
+              {t('assistants.knowledge.descriptionRequired')}
+            </p>
+          )}
         </div>
       </div>
 
@@ -704,7 +711,7 @@ const AssistantForm: React.FC<AssistantFormProps> = ({
           type="button"
           className="af-save-button t-ui"
           onClick={handleSubmit}
-          disabled={!formData.name.trim() || !formData.modelId || loading}
+          disabled={!formData.name.trim() || !formData.modelId || loading || hasMissingDescriptions}
         >
           {loading
             ? t('assistants.saving')

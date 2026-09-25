@@ -114,6 +114,10 @@ public sealed class OpenAiResponsesProtocol : IApiProtocol
             StoredOutputEnabled = false
         };
 
+        // Sent as `instructions`, the prompt arrives as a developer message after the tool
+        // definitions, leaving the wrapper's own "# Instructions" header empty. A developer
+        // input item at the head of the input renders exactly the same way (tested against
+        // GPT-5 in September 2026), so the documented field is used.
         if (!string.IsNullOrEmpty(request.SystemPrompt))
         {
             options.Instructions = request.SystemPrompt;
