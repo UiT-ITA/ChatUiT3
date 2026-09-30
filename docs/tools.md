@@ -162,26 +162,59 @@ the Configuration database.
 `appsettings.json` section `Tools`: `MaxModelContentChars`, `ConfirmationTimeout`, `ConsentTimeout`,
 `ClientToolTimeout`, `MaxClientTools`, `MaxClientSchemaBytes`.
 
-Section `InternalAgents`: `Models` maps an agent id to the `Model.Id` (the GUID from the Models admin page) it
-runs on. An agent without an entry runs on the calling chat's model.
-
 ## Internal agents
 
-Code under `ChatUitReact.Server/Services/Agents/`. An internal agent is an `InternalAgent` subclass: `Id`,
-`DisplayName`, `Description` (what the outer model reads to decide when to delegate), `SystemPrompt`,
-`Functions` (private `ITool` instances), `DefaultPolicy`, `MaxRounds`. `AddInternalAgent<TAgent>()` registers
-it and wraps it in `InternalAgentTool`, so from then on it is an ordinary tool: it appears in the registry, the
-admin Tools page (with its functions listed read-only), the assistant editor, and access policies apply to it as
-a whole.
+ChatUiT has two kinds of agent: app-created agents (assistants, including system assistants, which are
+ordinary assistant documents) and internal agents, defined in code under `ChatUitReact.Server/Services/Agents/`.
 
-Internal agents are code only. They are never stored and have no editor. They are unrelated to system
-assistants, which are ordinary assistant documents.
+An internal agent is a definition: an `InternalAgent` subclass with `Id`, `DisplayName`, `Description` (what the
+outer model reads to decide when to delegate), `SystemPrompt`, `Functions` (private `ITool` instances),
+`DefaultPolicy` and `MaxRounds`. The shipped agents are all instances of it and differ only in name and config:
 
-How a call runs: the outer model calls the agent with one `task` string. `InternalAgentRunner` starts a nested
-conversation on the agent's model with the agent's prompt, the task as the only user message and the agent's
-functions as tools, and loops until the inner model answers without calling functions (or `MaxRounds` is spent,
-after which pending calls get a "budget exhausted" error and the model is expected to answer). The final text
-is the tool result. Inner thinking and intermediate text are discarded.
+- `m365_reader`: people, presence, calendar, free/busy, Teams chats, file search and text file reading.
+- `m365_writer`: the same plus sending Teams messages, creating group chats and writing text files to OneDrive;
+  every write is confirmed. Its code default allows the Admin role only.
+- `office_word`: the Word add-in's agent. Its only function is the `m365_reader` agent tool; the document tools
+  are declared by the add-in with each request.
+- `dev_probe` (Development only): its one function, `dev_echo`, is confirmable and has no side effects, so the
+  confirmation path of the Responses API can be tested.
+
+Registration (`InternalAgentServiceCollectionExtensions`):
+
+- `AddInternalAgent<TAgent>()` registers the definition only. `IInternalAgentRegistry` lists every definition and
+  validates at startup that ids follow the tool id rule and are unique, and that function ids are unique within
+  each agent.
+- `AddInternalAgentTool<TAgent>()` is opt-in. It registers the `InternalAgentTool` that calls the agent, once,
+  keyed by the agent's type, and puts that instance in the tool registry. From then on the agent is also an
+  ordinary tool: it appears in the admin Tools page (with its functions listed read-only), the assistant editor,
+  and tool access policies apply to it as a whole. Another agent takes it as a function with
+  `[FromKeyedServices(typeof(TAgent))]`. `m365_reader` and `m365_writer` have tools; `office_word` and
+  `dev_probe` do not.
+
+Model and reasoning level: one admin setting per agent, `{agentId, modelId, reasoningEffort}`, edited under Admin >
+Internal agents (`GET /api/admin/internal-agents`, `PUT /api/admin/internal-agents/{id}`) and stored in the
+`InternalAgents` container of the Configuration database. The model must support function calling; the effort is
+clamped to what the model accepts. The setting applies to every run of the agent. The caller's roles on that
+model are not checked.
+
+One setup for every run: `InternalAgentRunner.SetupAsync` turns the agent and the run's context into the model and
+endpoint, system prompt, parameters, functions and round budget. The same setup is used by both runs:
+
+- Model: the admin setting. A nested run falls back to the chat's model at its lowest reasoning level. The
+  Responses API has no chat model, so an agent without a setting is not usable there.
+- System prompt: the agent's prompt, the current date and time, and the signed-in user.
+- Temperature 0.2.
+- Round budget: once `MaxRounds` is reached, the calls get "budget exhausted" results and the model must answer.
+  The Responses API counts rounds across requests.
+
+The two loops stay separate:
+
+- Nested run (`InternalAgentRunner.RunAsync`, through the agent tool): the outer model calls the agent with one
+  `task` string, which is the only user message. The loop runs until the inner model answers without calling
+  functions, and the final text is the tool result. Inner reasoning summaries are reported as progress only;
+  intermediate text is discarded.
+- API run (`ResponsesRunner`, `/api/v1/responses`): the client sends the history, items stream back, client
+  tools and approvals are handled. The agent's functions are its server tools. Raw models use this loop too.
 
 Inner functions run through the normal `IToolExecutor`, so consent and confirmation work unchanged. Their pauses
 are forwarded under the outer tool call id (the only id the client knows), which `IStreamingTool` makes possible:
@@ -191,6 +224,15 @@ a tool that yields `ToolExecutionEvent`s instead of returning one result. Two co
 - Inner confirmable functions must return previews with `AllowEdit = false`, because the respond endpoint can
   only validate edits against the outer tool's schema.
 
+Access:
+
+- Through its tool, the agent is gated by the tool's policy: `DefaultPolicy` until an admin stores an override.
+- Through the Responses API, an agent needs both its API catalog entry's policy and its `DefaultPolicy`.
+- Exposure rule: nested approvals cannot be resumed through the Responses API, because a pause inside a nested
+  agent ends the outer call, which then runs again in full. So an agent can only be exposed if none of its
+  functions is an agent tool whose agent has confirmable functions. This is checked when the catalog entry is
+  saved and when it is resolved. Chats wait in place and have no such limit.
+
 Adding an agent:
 
 1. Write the functions as `Tool<TArgs>` / `ConfirmableTool<TArgs>` classes under `Services/Agents/<Name>/Functions/`.
@@ -199,16 +241,8 @@ Adding an agent:
 2. Subclass `InternalAgent`. Keep `Description` about *what to delegate and what to include in the task*: the
    agent cannot see the conversation.
 3. Call `services.AddInternalAgent<MyAgent>()` from `AddInternalAgents` (or a per-area extension like
-   `AddM365Agents`).
-4. Optionally pin a model in `InternalAgents:Models`.
-
-Shipped agents: `m365_reader` (people, presence, calendar, free/busy, Teams chats, file search and text file
-reading) and `m365_writer` (the same plus sending Teams messages, creating group chats and writing text files
-to OneDrive; every write is confirmed). The writer's code default allows the Admin role only.
-
-Future top-level use (for example a fixed agent inside an Office add-in) needs only a `ChatService` entry point
-that builds the `AiRequest` from an `InternalAgent` instead of an assistant document; the definition itself does
-not change.
+   `AddM365Agents`), and `services.AddInternalAgentTool<MyAgent>()` if assistants or other agents should call it.
+4. Set its model under Admin > Internal agents.
 
 ## Entra ID checklist (TODO outside the code)
 

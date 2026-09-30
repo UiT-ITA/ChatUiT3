@@ -13,7 +13,11 @@ import type { DirectoryGroupDto,
   UpdateAppSettingsDto,
   CatalogModelDto,
   AdminToolDto,
-  ToolAccessPolicyDto
+  ToolAccessPolicyDto,
+  ApiCatalogDto,
+  SaveApiCatalogEntryDto,
+  InternalAgentDto,
+  InternalAgentSettingDto
 } from '../types/admin';
 
 export async function getEndpoints(): Promise<EndpointDto[]> {
@@ -95,6 +99,27 @@ export async function updateAdminToolPolicy(id: string, policy: ToolAccessPolicy
 /** Drops the stored override so the tool's code default applies again. */
 export async function resetAdminToolPolicy(id: string): Promise<AdminToolDto> {
   return apiService.delete<AdminToolDto>(`/api/admin/tools/${id}/policy`);
+}
+
+export async function getAdminApiCatalog(): Promise<ApiCatalogDto> {
+  return apiService<ApiCatalogDto>('/api/admin/api-catalog');
+}
+
+/** Creates or replaces the entry; the response is the whole catalog. */
+export async function saveAdminApiCatalogEntry(publicId: string, entry: SaveApiCatalogEntryDto): Promise<ApiCatalogDto> {
+  return apiService.put<ApiCatalogDto>(`/api/admin/api-catalog/${encodeURIComponent(publicId)}`, entry);
+}
+
+export async function deleteAdminApiCatalogEntry(publicId: string): Promise<ApiCatalogDto> {
+  return apiService.delete<ApiCatalogDto>(`/api/admin/api-catalog/${encodeURIComponent(publicId)}`);
+}
+
+export async function getAdminInternalAgents(): Promise<InternalAgentDto[]> {
+  return apiService<InternalAgentDto[]>('/api/admin/internal-agents');
+}
+
+export async function saveAdminInternalAgentSetting(id: string, setting: InternalAgentSettingDto): Promise<InternalAgentDto> {
+  return apiService.put<InternalAgentDto>(`/api/admin/internal-agents/${encodeURIComponent(id)}`, setting);
 }
 
 export async function searchAdminGroups(query: string): Promise<DirectoryGroupDto[]> {

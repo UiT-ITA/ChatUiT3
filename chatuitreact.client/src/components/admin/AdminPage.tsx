@@ -3,12 +3,14 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { useSignals } from '@preact/signals-react/runtime';
 import './AdminPage.css';
-import { adminEndpointsSignal, adminModelsSignal, adminAssistantsSignal, adminSettingsSignal, adminToolsSignal, loadAdminData } from '../../services/adminDataService';
+import { adminEndpointsSignal, adminModelsSignal, adminAssistantsSignal, adminSettingsSignal, adminToolsSignal, adminApiCatalogSignal, adminInternalAgentsSignal, loadAdminData } from '../../services/adminDataService';
 import EndpointEditor from './EndpointEditor';
 import ModelEditor from './ModelEditor';
 import AdminAssistantEditor from './AdminAssistantEditor';
 import SettingsEditor from './SettingsEditor';
 import ToolEditor from './ToolEditor';
+import ApiCatalogEditor from './ApiCatalogEditor';
+import InternalAgentEditor from './InternalAgentEditor';
 
 const AdminPage: React.FC = () => {
   useSignals();
@@ -21,6 +23,8 @@ const AdminPage: React.FC = () => {
   const assistants = adminAssistantsSignal.value;
   const settings = adminSettingsSignal.value;
   const tools = adminToolsSignal.value;
+  const apiCatalog = adminApiCatalogSignal.value;
+  const internalAgents = adminInternalAgentsSignal.value;
 
   const modelNameById = (id: string) =>
     models?.find(m => m.id === id)?.modelName ?? t('admin.settings.fields.none');
@@ -28,6 +32,104 @@ const AdminPage: React.FC = () => {
   useEffect(() => {
     loadAdminData();
   }, []);
+
+  const entryMeta = (publicId: string) => {
+    const entry = apiCatalog?.entries.find(candidate => candidate.publicId === publicId);
+    if (!entry) return t('admin.api.meta.notExposed');
+    return entry.enabled ? t('admin.api.meta.enabled') : t('admin.api.meta.disabled');
+  };
+
+  // The API catalog: every agent (exposed or not) and every exposed model.
+  const renderApiCatalog = () => (
+    <>
+      <h1 className="t-page-title">{t('admin.api.title')}</h1>
+      <div className="page-title-bar" />
+      <p className="admin-intro t-body-lg">{t('admin.api.intro')}</p>
+
+      {apiCatalog === undefined ? (
+        <div className="admin-empty t-ui-plain">{t('common.loading')}</div>
+      ) : (
+        <>
+          <div className="admin-overview-group">
+            <div className="t-overline">{t('admin.api.groups.agents')}</div>
+            <div className="admin-list">
+              {apiCatalog.agents.map((agent) => (
+                <button
+                  key={agent.id}
+                  className="admin-list-row"
+                  onClick={() => navigate(`/admin/api/${agent.id}`)}
+                >
+                  <div className="admin-row-main">
+                    <div className="admin-row-title t-table-strong">{agent.name}</div>
+                    <div className="admin-row-sub t-caption">{agent.description}</div>
+                  </div>
+                  <div className="admin-row-meta t-meta">{entryMeta(agent.id)}</div>
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <div className="admin-overview-group">
+            <div className="t-overline">{t('admin.api.groups.models')}</div>
+            <div className="admin-list">
+              {apiCatalog.entries.filter(entry => entry.kind === 'model').length === 0 && (
+                <div className="admin-list-empty t-ui-plain">{t('admin.api.list.emptyModels')}</div>
+              )}
+              {apiCatalog.entries.filter(entry => entry.kind === 'model').map((entry) => (
+                <button
+                  key={entry.publicId}
+                  className="admin-list-row"
+                  onClick={() => navigate(`/admin/api/${entry.publicId}`)}
+                >
+                  <div className="admin-row-main">
+                    <div className="admin-row-title t-table-strong">{entry.publicId}</div>
+                    <div className="admin-row-sub t-caption">
+                      {apiCatalog.models.find(model => model.id === entry.targetId)?.modelName ?? ''}
+                    </div>
+                  </div>
+                  <div className="admin-row-meta t-meta">{entryMeta(entry.publicId)}</div>
+                </button>
+              ))}
+              <button className="admin-list-add t-ui" onClick={() => navigate('/admin/api/new')}>
+                + {t('admin.api.add.title')}
+              </button>
+            </div>
+          </div>
+        </>
+      )}
+    </>
+  );
+
+  // Every internal agent definition and the model it runs on.
+  const renderInternalAgents = () => (
+    <>
+      <h1 className="t-page-title">{t('admin.agents.title')}</h1>
+      <div className="page-title-bar" />
+      <p className="admin-intro t-body-lg">{t('admin.agents.intro')}</p>
+
+      {internalAgents === undefined ? (
+        <div className="admin-empty t-ui-plain">{t('common.loading')}</div>
+      ) : (
+        <div className="admin-list">
+          {internalAgents.map((agent) => (
+            <button
+              key={agent.id}
+              className="admin-list-row"
+              onClick={() => navigate(`/admin/agents/${agent.id}`)}
+            >
+              <div className="admin-row-main">
+                <div className="admin-row-title t-table-strong">{agent.name}</div>
+                <div className="admin-row-sub t-caption">{agent.description}</div>
+              </div>
+              <div className="admin-row-meta t-meta">
+                {agent.modelId ? modelNameById(agent.modelId) : t('admin.agents.meta.notSet')}
+              </div>
+            </button>
+          ))}
+        </div>
+      )}
+    </>
+  );
 
   const renderContent = () => {
     if (tab === 'settings') {
@@ -44,6 +146,18 @@ const AdminPage: React.FC = () => {
     }
     if (tab === 'tools' && id) {
       return <ToolEditor toolId={id} />;
+    }
+    if (tab === 'agents' && id) {
+      return <InternalAgentEditor key={id} agentId={id} />;
+    }
+    if (tab === 'agents') {
+      return renderInternalAgents();
+    }
+    if (tab === 'api' && id) {
+      return <ApiCatalogEditor key={id} publicId={id === 'new' ? undefined : id} />;
+    }
+    if (tab === 'api') {
+      return renderApiCatalog();
     }
 
     // Overview — each group is a bordered row list; clicking a row opens it in the main area

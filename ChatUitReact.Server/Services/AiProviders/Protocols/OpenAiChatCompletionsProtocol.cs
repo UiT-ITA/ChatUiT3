@@ -4,6 +4,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Runtime.CompilerServices;
 using System.Text;
+using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Extensions.Logging;
@@ -41,6 +42,7 @@ public sealed class OpenAiChatCompletionsProtocol : IApiProtocol
 {
     private static readonly byte[] ReasoningContentDeltaPath = "$.choices[0].delta.reasoning_content"u8.ToArray();
     private static readonly byte[] ReasoningContentPath = "$.reasoning_content"u8.ToArray();
+    private const string ReasoningContentField = "reasoning_content";
 
     private readonly ILogger<OpenAiChatCompletionsProtocol> _logger;
 
@@ -144,29 +146,99 @@ public sealed class OpenAiChatCompletionsProtocol : IApiProtocol
             messages.Add(new SystemChatMessage(request.SystemPrompt));
         }
 
-        foreach (var message in request.Messages)
+        foreach (var segment in AiInputSegment.Split(request.Messages, ApiProtocol.OpenAiChatCompletions, request.Model.Id))
         {
-            switch (message.Role)
+            switch (segment)
             {
-                case AiChatRole.User:
-                    messages.Add(BuildUserMessage(message, request.Parameters.AllowImages));
+                case AiInputSegment.Message message:
+                    AddMessage(messages, message.Value, request.Parameters.AllowImages);
                     break;
-                case AiChatRole.Assistant:
-                    // A failed or cancelled generation can leave an empty assistant message,
-                    // which this API rejects.
-                    if (!string.IsNullOrEmpty(message.Content))
+                case AiInputSegment.AssistantTurn { IsPlainText: true } turn:
+                    foreach (var message in turn.Messages)
                     {
-                        messages.Add(new AssistantChatMessage(message.Content));
+                        AddMessage(messages, message, request.Parameters.AllowImages);
                     }
                     break;
-                case AiChatRole.System:
-                    messages.Add(new SystemChatMessage(message.Content));
+                case AiInputSegment.AssistantTurn turn:
+                    AddAssistantTurn(messages, turn, request);
+                    break;
+                case AiInputSegment.ToolResults results:
+                    foreach (var result in results.Results)
+                    {
+                        messages.Add(new ToolChatMessage(result.ToolCallId, result.Content));
+                    }
                     break;
             }
         }
 
         return messages;
     }
+
+    private static void AddMessage(List<OpenAiChatMessage> messages, DomainChatMessage message, bool allowImages)
+    {
+        switch (message.Role)
+        {
+            case AiChatRole.User:
+                messages.Add(BuildUserMessage(message, allowImages));
+                break;
+            case AiChatRole.Assistant:
+                // A failed or cancelled generation can leave an empty assistant message,
+                // which this API rejects.
+                if (!string.IsNullOrEmpty(message.Content))
+                {
+                    messages.Add(new AssistantChatMessage(message.Content));
+                }
+                break;
+            case AiChatRole.System:
+                messages.Add(new SystemChatMessage(message.Content));
+                break;
+        }
+    }
+
+    /// <summary>
+    /// A replayed turn with reasoning or tool calls becomes one assistant message, the way the
+    /// conversation below appends its own turns: tool calls, text, and reasoning_content on a
+    /// turn that called tools.
+    /// </summary>
+    private static void AddAssistantTurn(List<OpenAiChatMessage> messages, AiInputSegment.AssistantTurn turn, AiRequest request)
+    {
+        var text = string.Concat(turn.Messages.Select(message => message.Content));
+
+        AssistantChatMessage assistant;
+        if (turn.ToolCalls.Count > 0)
+        {
+            assistant = new AssistantChatMessage(turn.ToolCalls.Select(call =>
+                ChatToolCall.CreateFunctionToolCall(call.Id, call.Name, BinaryData.FromString(call.ArgumentsJson))));
+            if (text.Length > 0)
+            {
+                assistant.Content.Add(ChatMessageContentPart.CreateTextPart(text));
+            }
+        }
+        else if (text.Length > 0)
+        {
+            assistant = new AssistantChatMessage(text);
+        }
+        else
+        {
+            return;
+        }
+
+        var reasoning = string.Concat(turn.Reasoning.Select(ReasoningContentOf));
+        if (turn.ToolCalls.Count > 0 && request.Tools.Count > 0 && reasoning.Length > 0)
+        {
+            assistant.Patch.Set(ReasoningContentPath, reasoning);
+        }
+
+        messages.Add(assistant);
+    }
+
+    /// <summary>The payload is <c>{"reasoning_content": "..."}</c>, as the conversation emits it.</summary>
+    private static string ReasoningContentOf(AiInputItem.ReasoningState state)
+        => state.Payload.ValueKind == JsonValueKind.Object
+           && state.Payload.TryGetProperty(ReasoningContentField, out var content)
+           && content.ValueKind == JsonValueKind.String
+            ? content.GetString() ?? string.Empty
+            : string.Empty;
 
     private static UserChatMessage BuildUserMessage(DomainChatMessage message, bool allowImages)
     {
@@ -302,6 +374,12 @@ public sealed class OpenAiChatCompletionsProtocol : IApiProtocol
                 }
 
                 _messages.Add(assistant);
+            }
+
+            if (turn.Reasoning.Length > 0)
+            {
+                yield return new AiStreamEvent.ReasoningState(
+                    JsonSerializer.SerializeToElement(new Dictionary<string, string> { [ReasoningContentField] = turn.Reasoning }));
             }
 
             foreach (var call in calls)

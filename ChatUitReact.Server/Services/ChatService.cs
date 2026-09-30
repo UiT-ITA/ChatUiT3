@@ -425,13 +425,25 @@ public class ChatService : IChatService
                     return;
                 }
 
-                _logger.LogError(ex, "Error getting chat completion");
+                // A turn the provider ended early carries its reason, which the protocol has
+                // already logged as status, reason and code; it is shown in place of the generic text.
+                var failedText = GenerationFailedText;
+                if (ex is AiTurnFailedException turnFailed)
+                {
+                    _logger.LogWarning("Chat completion failed: the provider ended the turn early");
+                    failedText = $"*{turnFailed.Message}*";
+                }
+                else
+                {
+                    _logger.LogError(ex, "Error getting chat completion");
+                }
+
                 _streamingService.CompleteMessage(userId, assistantMessage.Id);
 
                 var partialContent = content.ToString();
                 assistantMessage.Content = string.IsNullOrWhiteSpace(partialContent)
-                    ? GenerationFailedText
-                    : $"{partialContent}\n\n{GenerationFailedText}";
+                    ? failedText
+                    : $"{partialContent}\n\n{failedText}";
                 assistantMessage.Status = AiChatStatus.Error;
                 AiConversationRunner.Finish(activity, stopwatch.ElapsedMilliseconds);
                 assistantMessage.Activity = activity;
@@ -655,7 +667,7 @@ public class ChatService : IChatService
             Model = model,
             Endpoint = endpoint,
             SystemPrompt = settings.SystemPrompt,
-            Messages = [.. KnowledgeFileMessages.Build(assistant.Files, resolved.PinnedFileIds), .. messages],
+            Messages = AiInputItem.From([.. KnowledgeFileMessages.Build(assistant.Files, resolved.PinnedFileIds), .. messages]),
             Parameters = parameters,
             Tools = resolvedTools
         };
@@ -769,10 +781,10 @@ public class ChatService : IChatService
             Model = model,
             Endpoint = endpoint,
             SystemPrompt = string.Empty,
-            Messages = new List<Models.ChatMessage>
+            Messages = AiInputItem.From(new List<Models.ChatMessage>
             {
                 new() { Role = AiChatRole.User, Content = ChatNamingPrompt + prompt }
-            },
+            }),
             Parameters = ChatParameterResolver.Resolve(model.Capabilities, namingSettings)
         };
 

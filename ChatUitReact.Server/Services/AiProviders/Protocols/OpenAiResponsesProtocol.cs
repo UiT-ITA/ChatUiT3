@@ -1,6 +1,8 @@
 using System;
 using System.ClientModel;
+using System.ClientModel.Primitives;
 using System.Collections.Generic;
+using System.Linq;
 using System.Runtime.CompilerServices;
 using System.Text.Json;
 using System.Threading;
@@ -148,9 +150,18 @@ public sealed class OpenAiResponsesProtocol : IApiProtocol
                 // Reasoning summaries are only returned when asked for. The raw reasoning is
                 // never available; this is what the activity panel shows as thinking.
                 ReasoningSummaryVerbosity = parameters.ReasoningActive
-                    ? ResponseReasoningSummaryVerbosity.Detailed
+                    ? parameters.SummaryLength == ReasoningSummaryLength.Concise
+                        ? ResponseReasoningSummaryVerbosity.Concise
+                        : ResponseReasoningSummaryVerbosity.Detailed
                     : (ResponseReasoningSummaryVerbosity?)null
             };
+        }
+
+        // Nothing is stored on the service, so a reasoning item replayed on a later round or
+        // request is only accepted with its encrypted content.
+        if (parameters.ReasoningActive)
+        {
+            options.IncludedProperties.Add(IncludedResponseProperty.ReasoningEncryptedContent);
         }
 
         foreach (var tool in request.Tools)
@@ -169,23 +180,78 @@ public sealed class OpenAiResponsesProtocol : IApiProtocol
     {
         var items = new List<ResponseItem>();
 
-        foreach (var message in request.Messages)
+        foreach (var segment in AiInputSegment.Split(request.Messages, Protocol, request.Model.Id))
         {
-            switch (message.Role)
+            switch (segment)
             {
-                case AiChatRole.User:
-                    items.Add(BuildUserItem(message, request.Parameters.AllowImages));
+                case AiInputSegment.Message message:
+                    AddMessage(items, message.Value, request.Parameters.AllowImages);
                     break;
-                case AiChatRole.Assistant:
-                    items.Add(ResponseItem.CreateAssistantMessageItem(message.Content));
+                case AiInputSegment.AssistantTurn turn:
+                    // Reasoning items lead the turn: the service expects each one before the
+                    // message or function call it produced.
+                    foreach (var state in turn.Reasoning)
+                    {
+                        AddReasoning(items, state);
+                    }
+
+                    foreach (var message in turn.Messages)
+                    {
+                        AddMessage(items, message, request.Parameters.AllowImages);
+                    }
+
+                    foreach (var call in turn.ToolCalls)
+                    {
+                        items.Add(ResponseItem.CreateFunctionCallItem(call.Id, call.Name, BinaryData.FromString(call.ArgumentsJson)));
+                    }
                     break;
-                case AiChatRole.System:
-                    items.Add(ResponseItem.CreateSystemMessageItem(message.Content));
+                case AiInputSegment.ToolResults results:
+                    foreach (var result in results.Results)
+                    {
+                        items.Add(ResponseItem.CreateFunctionCallOutputItem(result.ToolCallId, result.Content));
+                    }
                     break;
             }
         }
 
         return items;
+    }
+
+    private static void AddMessage(List<ResponseItem> items, Models.ChatMessage message, bool allowImages)
+    {
+        switch (message.Role)
+        {
+            case AiChatRole.User:
+                items.Add(BuildUserItem(message, allowImages));
+                break;
+            case AiChatRole.Assistant:
+                items.Add(ResponseItem.CreateAssistantMessageItem(message.Content));
+                break;
+            case AiChatRole.System:
+                items.Add(ResponseItem.CreateSystemMessageItem(message.Content));
+                break;
+        }
+    }
+
+    /// <summary>The payload is the turn's reasoning items exactly as the service returned them.</summary>
+    private void AddReasoning(List<ResponseItem> items, AiInputItem.ReasoningState state)
+    {
+        if (state.Payload.ValueKind != JsonValueKind.Array)
+        {
+            return;
+        }
+
+        foreach (var element in state.Payload.EnumerateArray())
+        {
+            try
+            {
+                items.Add(ModelReaderWriter.Read<ResponseItem>(BinaryData.FromString(element.GetRawText()), ModelReaderWriterOptions.Json)!);
+            }
+            catch (Exception ex) when (ex is FormatException or JsonException or InvalidOperationException)
+            {
+                _logger.LogWarning(ex, "Dropping a reasoning item that could not be read back");
+            }
+        }
     }
 
     private static ResponseItem BuildUserItem(Models.ChatMessage message, bool allowImages)
@@ -244,6 +310,7 @@ public sealed class OpenAiResponsesProtocol : IApiProtocol
             var stream = GetClient(_target).CreateResponseStreamingAsync(options, cancellationToken);
 
             var toolCalls = new List<FunctionCallResponseItem>();
+            var reasoning = new List<ReasoningResponseItem>();
 
             await foreach (var update in stream.WithCancellation(cancellationToken))
             {
@@ -266,6 +333,25 @@ public sealed class OpenAiResponsesProtocol : IApiProtocol
                     // Each summary part is a paragraph of its own.
                     yield return new AiStreamEvent.ThinkingBreak();
                 }
+                else if (update is StreamingResponseIncompleteUpdate incomplete)
+                {
+                    // Without this a turn cut short (output limit, content filter) ends silently,
+                    // with whatever it had produced, or with nothing at all.
+                    var reason = incomplete.Response?.IncompleteStatusDetails?.Reason?.ToString() ?? "unknown";
+                    _logger.LogWarning("OpenAI Responses turn on {Model} ended incomplete: reason {Reason}", _request.Model.ModelId, reason);
+                    throw new AiTurnFailedException($"The model stopped before finishing its answer (incomplete: {reason}).");
+                }
+                else if (update is StreamingResponseFailedUpdate failed)
+                {
+                    var code = failed.Response?.Error?.Code.ToString() ?? "unknown";
+                    _logger.LogWarning("OpenAI Responses turn on {Model} failed: code {Code}", _request.Model.ModelId, code);
+                    throw new AiTurnFailedException($"The model service reported a failure ({code}): {failed.Response?.Error?.Message ?? "no message"}");
+                }
+                else if (update is StreamingResponseErrorUpdate error)
+                {
+                    _logger.LogWarning("OpenAI Responses turn on {Model} got a stream error: code {Code}", _request.Model.ModelId, error.Code ?? "unknown");
+                    throw new AiTurnFailedException($"The model service sent an error ({error.Code ?? "unknown"}): {error.Message ?? "no message"}");
+                }
                 else if (update is StreamingResponseOutputItemDoneUpdate done)
                 {
                     _items.Add(done.Item);
@@ -274,7 +360,17 @@ public sealed class OpenAiResponsesProtocol : IApiProtocol
                     {
                         toolCalls.Add(toolCall);
                     }
+                    else if (done.Item is ReasoningResponseItem reasoningItem)
+                    {
+                        reasoning.Add(reasoningItem);
+                    }
                 }
+            }
+
+            if (reasoning.Count > 0)
+            {
+                using var payload = JsonDocument.Parse("[" + string.Join(",", reasoning.Select(item => ModelReaderWriter.Write(item, ModelReaderWriterOptions.Json).ToString())) + "]");
+                yield return new AiStreamEvent.ReasoningState(payload.RootElement.Clone());
             }
 
             foreach (var toolCall in toolCalls)

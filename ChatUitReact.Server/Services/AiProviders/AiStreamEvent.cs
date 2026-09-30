@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using System.Text.Json;
 
 namespace ChatUitReact.Server.Services.AiProviders;
 
@@ -23,6 +24,27 @@ public abstract record AiStreamEvent
     /// this once the call is whole.
     /// </summary>
     public sealed record ToolCall(string Id, string FunctionName, string ArgumentsJson) : AiStreamEvent;
+
+    /// <summary>
+    /// The turn's reasoning as the provider must see it again on replay (signatures, encrypted
+    /// reasoning, reasoning_content), in the protocol's own shape. Emitted once, after the text
+    /// and before the tool calls, when the turn had reasoning. Chat runners ignore it; the
+    /// Responses API hands it to the client sealed and gets it back as
+    /// <see cref="AiInputItem.ReasoningState"/>.
+    /// </summary>
+    public sealed record ReasoningState(JsonElement Payload) : AiStreamEvent;
+}
+
+/// <summary>
+/// The provider ended a turn early: the stream reported the response as incomplete or failed,
+/// or sent an error. The message carries the service's reason and is safe to show; it never
+/// holds generated content.
+/// </summary>
+public sealed class AiTurnFailedException : Exception
+{
+    public AiTurnFailedException(string message) : base(message)
+    {
+    }
 }
 
 /// <summary>The result of a tool the runner executed, on its way back to the provider.</summary>

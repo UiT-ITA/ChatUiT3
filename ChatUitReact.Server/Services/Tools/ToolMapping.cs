@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using System.Linq;
 using System.Text.Json;
 using ChatUitReact.Server.Models;
@@ -44,14 +45,14 @@ public static class ToolMapping
         Policy = ToDto(effective),
         IsOverridden = stored != null,
         UpdatedAt = stored?.UpdatedAt,
-        Functions = tool is InternalAgentTool agentTool
-            ? agentTool.Agent.Functions.Select(f => new ToolFunctionDto
-            {
-                Id = f.Id,
-                Description = f.Description,
-                RequiresConfirmation = f is IConfirmableTool,
-                RequiredScopes = f.RequiredScopes.ToList()
-            }).ToList()
-            : null
+        Functions = tool is InternalAgentTool agentTool ? ToFunctionDtos(agentTool.Agent) : null
     };
+
+    public static List<ToolFunctionDto> ToFunctionDtos(InternalAgent agent) => agent.Functions.Select(f => new ToolFunctionDto
+    {
+        Id = f.Id,
+        Description = f.Description,
+        RequiresConfirmation = f is IConfirmableTool,
+        RequiredScopes = f.RequiredScopes.ToList()
+    }).ToList();
 }

@@ -7,7 +7,7 @@ import { ChatList } from '../chat/ChatList';
 import { AssistantList } from '../assistants/AssistantList';
 import { getChats } from '../../services/chatService';
 import { getAssistants } from '../../services/assistantService';
-import { adminEndpointsSignal, adminModelsSignal, adminAssistantsSignal, adminToolsSignal, loadAdminData } from '../../services/adminDataService';
+import { adminEndpointsSignal, adminModelsSignal, adminAssistantsSignal, adminToolsSignal, adminApiCatalogSignal, adminInternalAgentsSignal, loadAdminData } from '../../services/adminDataService';
 import { useAuth } from '../../hooks/useAuth';
 import type { SettingsCategory } from '../../types/settingsModels';
 import { HELP_SECTIONS, isHelpSection } from '../help/helpSections';
@@ -49,6 +49,9 @@ const ContextColumn = ({ isMobile }: ContextColumnProps) => {
   const adminModels = adminModelsSignal.value;
   const adminAssistants = adminAssistantsSignal.value;
   const adminTools = adminToolsSignal.value;
+  const adminApiCatalog = adminApiCatalogSignal.value;
+  const adminInternalAgents = adminInternalAgentsSignal.value;
+  const adminApiModelEntries = adminApiCatalog?.entries.filter(entry => entry.kind === 'model') ?? [];
 
   const count = section === 'chats' && chats.value !== undefined
     ? chats.value.length
@@ -56,6 +59,7 @@ const ContextColumn = ({ isMobile }: ContextColumnProps) => {
       ? assistants.value.owned.length + assistants.value.system.length + assistants.value.shared.length
       : section === 'admin' && adminEndpoints !== undefined
         ? adminEndpoints.length + (adminModels?.length ?? 0) + (adminAssistants?.length ?? 0) + (adminTools?.length ?? 0)
+          + (adminInternalAgents?.length ?? 0) + (adminApiCatalog?.agents.length ?? 0) + adminApiModelEntries.length
         : undefined;
 
   const titles: Record<string, string> = {
@@ -248,6 +252,67 @@ const ContextColumn = ({ isMobile }: ContextColumnProps) => {
               </button>
             ))
           )}
+
+          <div className="context-group-label t-group-label">{t('admin.tabs.agents')}</div>
+          {adminInternalAgents === undefined ? (
+            <div className="context-column-note t-ui-plain">{t('common.loading')}</div>
+          ) : (
+            adminInternalAgents.map((agent) => (
+              <button
+                key={agent.id}
+                className={`context-nav-row context-list-row t-ui ${activeAdminTab === 'agents' && activeAdminId === agent.id ? 'active' : ''}`}
+                onClick={() => adminNav(`/admin/agents/${agent.id}`)}
+              >
+                <span className="context-list-row-title">{agent.name}</span>
+                <span className="context-list-row-meta t-meta">
+                  {agent.modelId ? adminModels?.find(model => model.id === agent.modelId)?.modelName ?? agent.modelId : t('admin.agents.meta.notSet')}
+                </span>
+              </button>
+            ))
+          )}
+
+          <div className="context-group-label t-group-label">{t('admin.tabs.api')}</div>
+          {adminApiCatalog === undefined ? (
+            <div className="context-column-note t-ui-plain">{t('common.loading')}</div>
+          ) : (
+            <>
+              {adminApiCatalog.agents.map((agent) => {
+                const entry = adminApiCatalog.entries.find(candidate => candidate.publicId === agent.id);
+                return (
+                  <button
+                    key={agent.id}
+                    className={`context-nav-row context-list-row t-ui ${activeAdminTab === 'api' && activeAdminId === agent.id ? 'active' : ''}`}
+                    onClick={() => adminNav(`/admin/api/${agent.id}`)}
+                  >
+                    <span className="context-list-row-title">{agent.name}</span>
+                    <span className="context-list-row-meta t-meta">
+                      {!entry ? t('admin.api.meta.notExposed') : entry.enabled ? agent.id : t('admin.api.meta.disabled')}
+                    </span>
+                  </button>
+                );
+              })}
+              {adminApiModelEntries.map((entry) => (
+                <button
+                  key={entry.publicId}
+                  className={`context-nav-row context-list-row t-ui ${activeAdminTab === 'api' && activeAdminId === entry.publicId ? 'active' : ''}`}
+                  onClick={() => adminNav(`/admin/api/${entry.publicId}`)}
+                >
+                  <span className="context-list-row-title">{entry.publicId}</span>
+                  <span className="context-list-row-meta t-meta">
+                    {entry.enabled
+                      ? adminApiCatalog.models.find(model => model.id === entry.targetId)?.modelName ?? ''
+                      : t('admin.api.meta.disabled')}
+                  </span>
+                </button>
+              ))}
+            </>
+          )}
+          <button
+            className={`context-add-row t-ui ${activeAdminTab === 'api' && activeAdminId === 'new' ? 'active' : ''}`}
+            onClick={() => adminNav('/admin/api/new')}
+          >
+            + {t('admin.api.add.title')}
+          </button>
 
           <div className="context-group-label t-group-label">{t('admin.tabs.settings')}</div>
           <button
