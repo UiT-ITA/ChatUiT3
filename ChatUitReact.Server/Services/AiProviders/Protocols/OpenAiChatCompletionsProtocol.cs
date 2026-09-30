@@ -89,7 +89,7 @@ public sealed class OpenAiChatCompletionsProtocol : IApiProtocol
             options: new OpenAIClientOptions { Endpoint = new Uri(target.BaseUrl) });
     }
 
-    private static ChatCompletionOptions BuildOptions(AiRequest request, bool includeTools)
+    private static ChatCompletionOptions BuildOptions(AiRequest request, bool includeTools, bool allowToolCalls = true)
     {
         var parameters = request.Parameters;
         var capabilities = request.Model.Capabilities;
@@ -130,6 +130,11 @@ public sealed class OpenAiChatCompletionsProtocol : IApiProtocol
                     tool.Id,
                     tool.Description,
                     BinaryData.FromString(tool.ParametersSchema.ToJsonString())));
+            }
+
+            if (!allowToolCalls && request.Tools.Count > 0)
+            {
+                options.ToolChoice = ChatToolChoice.CreateNoneChoice();
             }
         }
 
@@ -284,9 +289,10 @@ public sealed class OpenAiChatCompletionsProtocol : IApiProtocol
         }
 
         public async IAsyncEnumerable<AiStreamEvent> StreamTurnAsync(
+            bool allowToolCalls = true,
             [EnumeratorCancellation] CancellationToken cancellationToken = default)
         {
-            var options = BuildOptions(_request, includeTools: true);
+            var options = BuildOptions(_request, includeTools: true, allowToolCalls);
             var client = CreateClient(_request, _target);
 
             var turn = new TurnState();

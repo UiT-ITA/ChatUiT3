@@ -8,6 +8,13 @@ using Microsoft.AspNetCore.DataProtection;
 
 namespace ChatUitReact.Server.Services.ResponsesApi;
 
+/// <summary>What an approval request asks the user for.</summary>
+public enum ApprovalKind
+{
+    Consent,
+    Confirmation
+}
+
 /// <summary>
 /// What an approval request carries through the client and back: enough to execute or commit
 /// the call on a later request. <see cref="CatalogId"/> ties it to the catalog entry that asked.
@@ -17,7 +24,7 @@ public sealed record ApprovalState(
     string CallId,
     string Tool,
     string ArgumentsJson,
-    string Kind,
+    ApprovalKind Kind,
     ConsentPhase? Phase,
     string? ApprovedArgumentsJson,
     int Attempts,

@@ -108,7 +108,7 @@ public sealed class OpenAiResponsesProtocol : IApiProtocol
     /// The conversation is kept client-side, so nothing is stored on the service and no
     /// output limit is sent.
     /// </summary>
-    private static CreateResponseOptions BuildOptions(AiRequest request, List<ResponseItem> inputItems)
+    private static CreateResponseOptions BuildOptions(AiRequest request, List<ResponseItem> inputItems, bool allowToolCalls = true)
     {
         var parameters = request.Parameters;
         var options = new CreateResponseOptions(request.Model.ModelId, inputItems)
@@ -171,6 +171,11 @@ public sealed class OpenAiResponsesProtocol : IApiProtocol
                 functionParameters: BinaryData.FromString(tool.ParametersSchema.ToJsonString()),
                 strictModeEnabled: false,
                 functionDescription: tool.Description));
+        }
+
+        if (!allowToolCalls && request.Tools.Count > 0)
+        {
+            options.ToolChoice = ResponseToolChoice.CreateNoneChoice();
         }
 
         return options;
@@ -299,10 +304,11 @@ public sealed class OpenAiResponsesProtocol : IApiProtocol
         }
 
         public async IAsyncEnumerable<AiStreamEvent> StreamTurnAsync(
+            bool allowToolCalls = true,
             [EnumeratorCancellation] CancellationToken cancellationToken = default)
         {
             // Options are rebuilt each turn from the endpoint row as it is right now.
-            var options = BuildOptions(_request, _items);
+            var options = BuildOptions(_request, _items, allowToolCalls);
 
             // The SDK refuses CreateResponseStreamingAsync unless the options say so.
             options.StreamingEnabled = true;

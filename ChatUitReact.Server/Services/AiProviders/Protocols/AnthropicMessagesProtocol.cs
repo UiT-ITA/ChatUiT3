@@ -94,7 +94,8 @@ public sealed class AnthropicMessagesProtocol : IApiProtocol
         List<MessageParam> messages,
         int maxTokens,
         bool includeTools,
-        bool allowThinking = true)
+        bool allowThinking = true,
+        bool allowToolCalls = true)
     {
         var effort = MapEffort(request.Parameters.Effort);
 
@@ -124,6 +125,9 @@ public sealed class AnthropicMessagesProtocol : IApiProtocol
                 : null,
             Tools = includeTools && request.Tools.Count > 0
                 ? request.Tools.Select(tool => new ToolUnion(ToAnthropicTool(tool))).ToList()
+                : null,
+            ToolChoice = includeTools && request.Tools.Count > 0 && !allowToolCalls
+                ? (ToolChoice)new ToolChoiceNone()
                 : null
         };
 #pragma warning restore CS0618
@@ -412,9 +416,10 @@ public sealed class AnthropicMessagesProtocol : IApiProtocol
         }
 
         public async IAsyncEnumerable<AiStreamEvent> StreamTurnAsync(
+            bool allowToolCalls = true,
             [EnumeratorCancellation] CancellationToken cancellationToken = default)
         {
-            var parameters = BuildParams(_request, _messages, _request.Parameters.MaxOutputTokens, includeTools: true, _allowThinking);
+            var parameters = BuildParams(_request, _messages, _request.Parameters.MaxOutputTokens, includeTools: true, _allowThinking, allowToolCalls);
 
             using var client = CreateClient(_target);
 

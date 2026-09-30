@@ -120,7 +120,7 @@ builder.Services.AddSingleton<IAiProvider, AnthropicProvider>();
 builder.Services.AddSingleton<IAiProviderRegistry, AiProviderRegistry>();
 builder.Services.AddSingleton<AiConversationRunner>();
 builder.Services.AddTools(builder.Configuration);
-builder.Services.AddInternalAgents(builder.Environment);
+builder.Services.AddInternalAgents();
 // The Responses API (api/v1): the admin-managed catalog that exposes internal agents and raw
 // models, and the sealing of items clients hand back. Sealed items only open with the same key
 // ring, so the Data Protection keys must persist across restarts and be shared by instances.

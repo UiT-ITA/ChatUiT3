@@ -39,8 +39,9 @@ public abstract class InternalAgent
     public virtual ToolAccessPolicy DefaultPolicy => ToolAccessPolicy.Everyone;
 
     /// <summary>
-    /// How many rounds of function calls a run may take before the calls get "budget exhausted"
-    /// results and the model must answer. The Responses API counts rounds across requests.
+    /// How many rounds of function calls a run may take. After that the model gets one more turn
+    /// with function calls switched off and must answer. The Responses API counts rounds across
+    /// requests.
     /// </summary>
     public virtual int MaxRounds => 12;
 

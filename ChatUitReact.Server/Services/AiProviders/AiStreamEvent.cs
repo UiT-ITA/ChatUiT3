@@ -59,8 +59,12 @@ public sealed record AiToolResult(string ToolCallId, string Content, bool IsErro
 /// </summary>
 public interface IAiConversation
 {
-    /// <summary>Streams one assistant turn. Completing the enumeration ends the turn.</summary>
-    IAsyncEnumerable<AiStreamEvent> StreamTurnAsync(CancellationToken cancellationToken = default);
+    /// <summary>
+    /// Streams one assistant turn. Completing the enumeration ends the turn. With
+    /// <paramref name="allowToolCalls"/> false the tools stay declared, so the history and the
+    /// tool set are unchanged, but the model is told it may not call them and has to answer.
+    /// </summary>
+    IAsyncEnumerable<AiStreamEvent> StreamTurnAsync(bool allowToolCalls = true, CancellationToken cancellationToken = default);
 
     /// <summary>Appends tool results so the next <see cref="StreamTurnAsync"/> continues from them.</summary>
     void AppendToolResults(IReadOnlyList<AiToolResult> results);

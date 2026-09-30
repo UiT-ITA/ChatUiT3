@@ -171,10 +171,22 @@ export const REASONING_EFFORT_ORDER: ReasoningEffortLevel[] = [
   'None', 'Low', 'Medium', 'High', 'XHigh', 'Max',
 ];
 
-/** The level shown for a model: the chosen one when the model accepts it, else its weakest. The server clamps on save. */
-export function effortFor(requested: ReasoningEffortLevel, supported: ReasoningEffortLevel[]): ReasoningEffortLevel {
-  if (supported.length === 0) return 'None';
-  return supported.includes(requested) ? requested : supported[0];
+/**
+ * Maps a chosen effort onto the nearest level the model accepts, mirroring the server's
+ * clamping. A model that cannot reason resolves to 'None'; a model that always reasons
+ * resolves 'None' up to its weakest level.
+ */
+export function clampEffort(
+  requested: ReasoningEffortLevel | undefined,
+  supported: ReasoningEffortLevel[] | undefined,
+): ReasoningEffortLevel {
+  const levels = supported ?? [];
+  if (levels.length === 0) return 'None';
+
+  const effort = requested ?? 'None';
+  if (levels.includes(effort)) return effort;
+
+  return levels[0];
 }
 
 export interface ModelCapabilities {

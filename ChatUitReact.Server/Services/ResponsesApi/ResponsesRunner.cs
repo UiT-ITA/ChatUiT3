@@ -90,7 +90,7 @@ public sealed class ResponsesRunner
         ResponsesEventWriter writer,
         CancellationToken cancellationToken)
     {
-        var run = new Run(target, writer);
+        var output = new OutputItems(target, writer, _sealer);
 
         var waiting = false;
         foreach (var resume in request.Resumes)
@@ -106,9 +106,9 @@ public sealed class ResponsesRunner
             var announce = resume.Input is ResumeInput.Commit or ResumeInput.AfterConsent { Phase: ConsentPhase.Run or ConsentPhase.Commit };
 
             var result = tool == null
-                ? run.CompleteWithError(call, $"Unknown tool: {call.FunctionName}")
-                : await run.ExecuteServerCallAsync(
-                    tool, call, _executor.ResumeAsync(tool, call, context, resume.Input, cancellationToken), announce, displayArguments, _sealer);
+                ? output.CompleteWithError(call, $"Unknown tool: {call.FunctionName}")
+                : await output.ExecuteServerCallAsync(
+                    tool, call, _executor.ResumeAsync(tool, call, context, resume.Input, cancellationToken), announce, displayArguments);
 
             if (result == null)
             {
@@ -140,7 +140,12 @@ public sealed class ResponsesRunner
 
         for (var round = 0; ; round++)
         {
-            var calls = await StreamTurnAsync(conversation, protocol, target, writer, cancellationToken);
+            // An agent's budget, as in a nested run: once it is spent the model gets one more
+            // turn with tool calls switched off, so it has to answer.
+            var rounds = request.RoundsSinceUserMessage + round;
+            var allowToolCalls = request.MaxRounds is not { } maxRounds || rounds < maxRounds;
+
+            var calls = await StreamTurnAsync(conversation, protocol, target, writer, allowToolCalls, cancellationToken);
             _logger.LogInformation("Response {ResponseId} round {Round}: model called [{Calls}]",
                 writer.Response.Id, round, string.Join(", ", calls.Select(c => c.FunctionName)));
             if (calls.Count == 0)
@@ -148,29 +153,15 @@ public sealed class ResponsesRunner
                 return;
             }
 
-            var results = new List<AiToolResult>(calls.Count);
-
-            // An agent's budget, as in a nested run: once it is spent the calls get "budget
-            // exhausted" results and the model must answer; calling again ends the response.
-            var rounds = request.RoundsSinceUserMessage + round;
-            if (request.MaxRounds is { } maxRounds && rounds >= maxRounds)
+            if (!allowToolCalls)
             {
-                foreach (var call in calls)
-                {
-                    results.Add(run.CompleteWithError(call, InternalAgentRunner.BudgetExhausted));
-                }
-
-                if (rounds > maxRounds)
-                {
-                    _logger.LogWarning("Stopping response {ResponseId} on {Model}: the model kept calling tools after its budget of {Rounds} rounds ran out.",
-                        writer.Response.Id, target.Entry.PublicId, maxRounds);
-                    run.EmitMessage($"_{AiConversationRunner.ToolRoundLimitText}_");
-                    return;
-                }
-
-                conversation.AppendToolResults(results);
-                continue;
+                _logger.LogWarning("Stopping response {ResponseId} on {Model}: the model called tools after its budget of {Rounds} rounds ran out.",
+                    writer.Response.Id, target.Entry.PublicId, request.MaxRounds);
+                output.EmitMessage($"_{AiConversationRunner.ToolRoundLimitText}_");
+                return;
             }
+
+            var results = new List<AiToolResult>(calls.Count);
 
             foreach (var call in calls)
             {
@@ -178,7 +169,7 @@ public sealed class ResponsesRunner
 
                 if (request.ClientTools.Any(t => t.Id == call.FunctionName))
                 {
-                    run.EmitFunctionCall(call);
+                    output.EmitFunctionCall(call);
                     waiting = true;
                     continue;
                 }
@@ -187,13 +178,13 @@ public sealed class ResponsesRunner
                 if (tool == null)
                 {
                     _logger.LogWarning("Model called unknown tool {ToolName} in response {ResponseId}", call.FunctionName, writer.Response.Id);
-                    results.Add(run.CompleteWithError(call, $"Unknown tool: {call.FunctionName}"));
+                    results.Add(output.CompleteWithError(call, $"Unknown tool: {call.FunctionName}"));
                     continue;
                 }
 
-                var result = await run.ExecuteServerCallAsync(
+                var result = await output.ExecuteServerCallAsync(
                     tool, call, _executor.ExecuteAsync(tool, call, context, cancellationToken),
-                    announce: tool is not IConfirmableTool, call.ArgumentsJson, _sealer);
+                    announce: tool is not IConfirmableTool, call.ArgumentsJson);
                 _logger.LogInformation("Response {ResponseId} server tool {Tool} -> {Outcome}",
                     writer.Response.Id, call.FunctionName, result == null ? "deferred" : result.IsError ? "error" : "ok");
                 if (result == null)
@@ -230,6 +221,7 @@ public sealed class ResponsesRunner
         Models.ApiProtocol protocol,
         ApiTarget target,
         ResponsesEventWriter writer,
+        bool allowToolCalls,
         CancellationToken cancellationToken)
     {
         var calls = new List<AiStreamEvent.ToolCall>();
@@ -265,7 +257,7 @@ public sealed class ResponsesRunner
             summary = null;
         }
 
-        await foreach (var streamEvent in conversation.StreamTurnAsync(cancellationToken))
+        await foreach (var streamEvent in conversation.StreamTurnAsync(allowToolCalls, cancellationToken))
         {
             switch (streamEvent)
             {
@@ -291,9 +283,7 @@ public sealed class ResponsesRunner
                     CloseSummaryPart();
                     if (message == null)
                     {
-                        message = new MessageItem { Id = NewId("msg"), Role = "assistant", Status = "in_progress", Content = JsonSerializer.SerializeToElement(Array.Empty<object>()) };
-                        messageIndex = writer.AddItem(message);
-                        writer.ContentPartAdded(messageIndex);
+                        (message, messageIndex) = OpenMessage(writer);
                     }
 
                     text.Append(delta.Delta);
@@ -322,11 +312,7 @@ public sealed class ResponsesRunner
 
         if (message != null)
         {
-            var finalText = text.ToString();
-            message.Content = JsonSerializer.SerializeToElement(new[] { new OutputTextPart { Text = finalText } }, ResponsesJson.Options);
-            message.Status = "completed";
-            writer.OutputTextDone(messageIndex, finalText);
-            writer.ItemDone(messageIndex);
+            CompleteMessage(writer, message, messageIndex, text.ToString());
         }
 
         return calls;
@@ -334,16 +320,38 @@ public sealed class ResponsesRunner
 
     private static string NewId(string prefix) => $"{prefix}_{Guid.NewGuid():N}";
 
-    /// <summary>Output items for tool calls within one response.</summary>
-    private sealed class Run
+    /// <summary>Adds an assistant message item with an empty output text part; text deltas follow.</summary>
+    private static (MessageItem Item, int Index) OpenMessage(ResponsesEventWriter writer)
+    {
+        var item = new MessageItem { Id = NewId("msg"), Role = "assistant", Status = "in_progress", Content = JsonSerializer.SerializeToElement(Array.Empty<object>()) };
+        var index = writer.AddItem(item);
+        writer.ContentPartAdded(index);
+        return (item, index);
+    }
+
+    private static void CompleteMessage(ResponsesEventWriter writer, MessageItem item, int index, string text)
+    {
+        item.Content = JsonSerializer.SerializeToElement(new[] { new OutputTextPart { Text = text } }, ResponsesJson.Options);
+        item.Status = "completed";
+        writer.OutputTextDone(index, text);
+        writer.ItemDone(index);
+    }
+
+    /// <summary>
+    /// The output items of one response that do not come from streamed model text: server calls,
+    /// client calls, approval requests and fixed messages.
+    /// </summary>
+    private sealed class OutputItems
     {
         private readonly ApiTarget _target;
         private readonly ResponsesEventWriter _writer;
+        private readonly ItemSealer _sealer;
 
-        public Run(ApiTarget target, ResponsesEventWriter writer)
+        public OutputItems(ApiTarget target, ResponsesEventWriter writer, ItemSealer sealer)
         {
             _target = target;
             _writer = writer;
+            _sealer = sealer;
         }
 
         /// <summary>
@@ -359,8 +367,7 @@ public sealed class ResponsesRunner
             AiStreamEvent.ToolCall call,
             IAsyncEnumerable<ToolExecutionEvent> events,
             bool announce,
-            string displayArguments,
-            ItemSealer sealer)
+            string displayArguments)
         {
             var item = new McpCallItem { Id = call.Id, Name = tool.Id, Arguments = displayArguments, Status = "in_progress" };
             int? index = null;
@@ -405,7 +412,7 @@ public sealed class ResponsesRunner
                             _writer.ItemDone(announced);
                         }
 
-                        EmitApprovalRequest(tool, call, deferred.Step, sealer);
+                        EmitApprovalRequest(tool, call, deferred.Step);
                         return null;
                 }
             }
@@ -436,14 +443,9 @@ public sealed class ResponsesRunner
 
         public void EmitMessage(string text)
         {
-            var item = new MessageItem { Id = NewId("msg"), Role = "assistant", Status = "in_progress", Content = JsonSerializer.SerializeToElement(Array.Empty<object>()) };
-            var index = _writer.AddItem(item);
-            _writer.ContentPartAdded(index);
+            var (item, index) = OpenMessage(_writer);
             _writer.OutputTextDelta(index, text);
-            item.Content = JsonSerializer.SerializeToElement(new[] { new OutputTextPart { Text = text } }, ResponsesJson.Options);
-            item.Status = "completed";
-            _writer.OutputTextDone(index, text);
-            _writer.ItemDone(index);
+            CompleteMessage(_writer, item, index, text);
         }
 
         private void Finish(McpCallItem item, int? index, ToolResult result)
@@ -469,7 +471,7 @@ public sealed class ResponsesRunner
         /// The approval request's id is the sealed state that continues the call; the arguments
         /// shown are the ones the next step would use.
         /// </summary>
-        private void EmitApprovalRequest(ITool tool, AiStreamEvent.ToolCall call, DeferredStep step, ItemSealer sealer)
+        private void EmitApprovalRequest(ITool tool, AiStreamEvent.ToolCall call, DeferredStep step)
         {
             McpApprovalRequestItem item;
             switch (step)
@@ -477,11 +479,11 @@ public sealed class ResponsesRunner
                 case DeferredStep.Confirmation confirmation:
                     var preview = confirmation.Preview;
                     var confirmationState = new ApprovalState(
-                        _target.Entry.PublicId, call.Id, tool.Id, call.ArgumentsJson, ResponsesJson.KindConfirmation,
+                        _target.Entry.PublicId, call.Id, tool.Id, call.ArgumentsJson, ApprovalKind.Confirmation,
                         Phase: null, ApprovedArgumentsJson: null, Attempts: 0, AllowEdit: preview.AllowEdit);
                     item = new McpApprovalRequestItem
                     {
-                        Id = sealer.SealApproval(confirmationState),
+                        Id = _sealer.SealApproval(confirmationState),
                         Name = tool.Id,
                         Arguments = call.ArgumentsJson,
                         ChatuitKind = ResponsesJson.KindConfirmation,
@@ -498,11 +500,11 @@ public sealed class ResponsesRunner
                 case DeferredStep.Consent consent:
                     var approved = consent.ApprovedArguments?.GetRawText();
                     var consentState = new ApprovalState(
-                        _target.Entry.PublicId, call.Id, tool.Id, call.ArgumentsJson, ResponsesJson.KindConsent,
+                        _target.Entry.PublicId, call.Id, tool.Id, call.ArgumentsJson, ApprovalKind.Consent,
                         consent.Phase, approved, consent.Attempts, AllowEdit: false);
                     item = new McpApprovalRequestItem
                     {
-                        Id = sealer.SealApproval(consentState),
+                        Id = _sealer.SealApproval(consentState),
                         Name = tool.Id,
                         Arguments = approved ?? call.ArgumentsJson,
                         ChatuitKind = ResponsesJson.KindConsent,

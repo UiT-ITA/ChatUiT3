@@ -2,6 +2,7 @@ using System.Net.ServerSentEvents;
 using System.Runtime.CompilerServices;
 using System.Text.Json;
 using System.Threading.Channels;
+using ChatUitReact.Server.Authentication;
 using ChatUitReact.Server.Services;
 using ChatUitReact.Server.Services.Agents;
 using ChatUitReact.Server.Services.AiProviders;
@@ -135,7 +136,7 @@ public class ResponsesController : ControllerBase
                 Access = access,
                 // The bearer token of this request is the On-Behalf-Of assertion, including the
                 // request that follows a consent grant.
-                Tokens = _tokenProviders.Create(User, IncomingBearerToken()),
+                Tokens = _tokenProviders.Create(User, Request.BearerToken()),
                 UserDisplayName = identity.DisplayName,
                 UserPrincipalName = identity.Username,
                 Model = target.Model,
@@ -157,7 +158,7 @@ public class ResponsesController : ControllerBase
                 }
             }
 
-            mapped = await _mapper.MapAsync(request, target, setup, context);
+            mapped = _mapper.Map(request, target, setup, context);
         }
         catch (ResponsesApiException ex)
         {
@@ -225,14 +226,6 @@ public class ResponsesController : ControllerBase
         Id = target.Entry.PublicId,
         Created = new DateTimeOffset(DateTime.SpecifyKind(target.Entry.UpdatedAt, DateTimeKind.Utc)).ToUnixTimeSeconds()
     };
-
-    /// <summary>The raw token this request was authenticated with; it is the On-Behalf-Of assertion.</summary>
-    private string? IncomingBearerToken()
-    {
-        var header = Request.Headers.Authorization.ToString();
-        const string prefix = "Bearer ";
-        return header.StartsWith(prefix, StringComparison.OrdinalIgnoreCase) ? header[prefix.Length..].Trim() : null;
-    }
 
     private static IResult Json<T>(T body, int statusCode = StatusCodes.Status200OK)
         => TypedResults.Json(body, ResponsesJson.Options, statusCode: statusCode);

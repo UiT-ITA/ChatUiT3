@@ -1,16 +1,14 @@
-using ChatUitReact.Server.Services.Agents.Dev;
 using ChatUitReact.Server.Services.Agents.M365;
 using ChatUitReact.Server.Services.Agents.Office;
 using ChatUitReact.Server.Services.Tools;
 using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.Hosting;
 
 namespace ChatUitReact.Server.Services.Agents;
 
 public static class InternalAgentServiceCollectionExtensions
 {
-    /// <summary>Registers the internal agents, their registry and settings. The probe agent exists in Development only.</summary>
-    public static IServiceCollection AddInternalAgents(this IServiceCollection services, IHostEnvironment environment)
+    /// <summary>Registers the internal agents, their registry and settings.</summary>
+    public static IServiceCollection AddInternalAgents(this IServiceCollection services)
     {
         services.AddSingleton<InternalAgentRunner>();
         services.AddSingleton<InternalAgentSettingsService>();
@@ -18,11 +16,6 @@ public static class InternalAgentServiceCollectionExtensions
 
         services.AddM365Agents();
         services.AddInternalAgent<WordAgent>();
-
-        if (environment.IsDevelopment())
-        {
-            services.AddInternalAgent<DevProbeAgent>();
-        }
 
         return services;
     }

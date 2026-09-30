@@ -7,7 +7,7 @@ import { getModels } from '../../services/modelService';
 import { getAppDefaults } from '../../services/appSettingsService';
 import { getTools } from '../../services/toolService';
 import { adminToolsSignal } from '../../services/adminDataService';
-import type { AdminToolDto, ToolAccessPolicyDto } from '../../types/admin';
+import { clampEffort, type AdminToolDto, type ToolAccessPolicyDto } from '../../types/admin';
 import GroupPicker from '../common/GroupPicker';
 import type { UserModelDto } from '../../types/modelModels';
 import { createAssistant, updateAssistant, fetchAssistantFile, getAssistants } from '../../services/assistantService';
@@ -21,24 +21,6 @@ const createEmptyKnowledgeFiles = (): Record<KnowledgeFileCategory, KnowledgeFil
   selectiveLoaded: [],
   ragLoaded: []
 });
-
-/**
- * Maps a chosen effort onto the nearest level the model accepts, mirroring the server's
- * clamping. A model that cannot reason resolves to 'None'; a model that always reasons
- * resolves 'None' up to its weakest level.
- */
-const clampEffort = (
-  requested: ReasoningEffort | undefined,
-  supported: ReasoningEffort[] | undefined,
-): ReasoningEffort => {
-  const levels = supported ?? [];
-  if (levels.length === 0) return 'None';
-
-  const effort = requested ?? 'None';
-  if (levels.includes(effort)) return effort;
-
-  return levels[0];
-};
 
 /** True when a temperature control makes sense for the model at the current effort. */
 const showsTemperature = (model: UserModelDto | undefined, effort: ReasoningEffort | undefined) => {

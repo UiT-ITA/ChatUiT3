@@ -21,6 +21,7 @@ public static class ResponsesJson
     /// <summary>The <c>server_label</c> of every server tool call.</summary>
     public const string ServerLabel = "chatuit";
 
+    /// <summary>The <c>chatuit_kind</c> values of an approval request.</summary>
     public const string KindConsent = "consent";
     public const string KindConfirmation = "confirmation";
 }

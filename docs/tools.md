@@ -105,6 +105,12 @@ Access for client tools is one policy, id `client_tools` (default: everyone). Se
 `client_`, so the two namespaces cannot collide. Declarations are capped by `Tools:MaxClientTools` and
 `Tools:MaxClientSchemaBytes` and must be object schemas.
 
+The Responses API (`/api/v1/responses`) takes client tools in the Responses shape instead: `type: "function"`,
+a name matching `^[a-zA-Z0-9_-]{1,64}$` with no `client_` prefix, an optional description and an optional
+`parameters` schema; `strict: true` is refused. No prefix keeps these names apart from the agent's server tools,
+so each request is checked for a name that clashes with one of them. The same count and schema caps apply. The
+`client_tools` policy does not: the API catalog entry decides who may use the model or agent.
+
 ## Wire contract
 
 Stream chunk kinds added by the tool system, all on `ReceiveMessageChunk`:
@@ -176,8 +182,6 @@ outer model reads to decide when to delegate), `SystemPrompt`, `Functions` (priv
   every write is confirmed. Its code default allows the Admin role only.
 - `office_word`: the Word add-in's agent. Its only function is the `m365_reader` agent tool; the document tools
   are declared by the add-in with each request.
-- `dev_probe` (Development only): its one function, `dev_echo`, is confirmable and has no side effects, so the
-  confirmation path of the Responses API can be tested.
 
 Registration (`InternalAgentServiceCollectionExtensions`):
 
@@ -188,8 +192,8 @@ Registration (`InternalAgentServiceCollectionExtensions`):
   keyed by the agent's type, and puts that instance in the tool registry. From then on the agent is also an
   ordinary tool: it appears in the admin Tools page (with its functions listed read-only), the assistant editor,
   and tool access policies apply to it as a whole. Another agent takes it as a function with
-  `[FromKeyedServices(typeof(TAgent))]`. `m365_reader` and `m365_writer` have tools; `office_word` and
-  `dev_probe` do not.
+  `[FromKeyedServices(typeof(TAgent))]`. `m365_reader` and `m365_writer` have tools; `office_word` does
+  not.
 
 Model and reasoning level: one admin setting per agent, `{agentId, modelId, reasoningEffort}`, edited under Admin >
 Internal agents (`GET /api/admin/internal-agents`, `PUT /api/admin/internal-agents/{id}`) and stored in the
@@ -204,8 +208,8 @@ endpoint, system prompt, parameters, functions and round budget. The same setup 
   Responses API has no chat model, so an agent without a setting is not usable there.
 - System prompt: the agent's prompt, the current date and time, and the signed-in user.
 - Temperature 0.2.
-- Round budget: once `MaxRounds` is reached, the calls get "budget exhausted" results and the model must answer.
-  The Responses API counts rounds across requests.
+- Round budget: once `MaxRounds` is reached, the model gets one more turn with tool calls switched off
+  (`tool_choice: none`; the tools stay declared) and must answer. The Responses API counts rounds across requests.
 
 The two loops stay separate:
 

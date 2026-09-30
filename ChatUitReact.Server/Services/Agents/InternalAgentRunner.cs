@@ -17,7 +17,7 @@ namespace ChatUitReact.Server.Services.Agents;
 /// Everything one run of an agent is set up with. The nested run and the Responses API run get
 /// the same setup from <see cref="InternalAgentRunner.SetupAsync"/>.
 /// </summary>
-/// <param name="MaxRounds">Function call rounds before the calls get <see cref="InternalAgentRunner.BudgetExhausted"/> results.</param>
+/// <param name="MaxRounds">Function call rounds before the model gets one last turn with function calls switched off.</param>
 public sealed record InternalAgentSetup(
     Model Model,
     ModelEndpoint Endpoint,
@@ -35,8 +35,6 @@ public sealed record InternalAgentSetup(
 /// </summary>
 public sealed class InternalAgentRunner
 {
-    public const string BudgetExhausted = "Function budget exhausted. Answer now with what you have; do not call more functions.";
-
     private const float Temperature = 0.2f;
 
     private readonly IModelService _modelService;
@@ -153,17 +151,19 @@ public sealed class InternalAgentRunner
         _logger.LogInformation("Agent {AgentId} starting on {Model}", agent.Id, setup.Model.ModelId);
 
         var lastText = new StringBuilder();
-        var budgetExhausted = false;
 
         var round = 0;
         for (; ; round++)
         {
+            // Once the budget is spent the model gets one more turn with function calls
+            // switched off, so it has to answer.
+            var allowToolCalls = round < setup.MaxRounds;
             var toolCalls = new List<AiStreamEvent.ToolCall>();
             lastText.Clear();
             // Reasoning summaries are reported as progress only; they never reach the outer model.
             var reasoningPartOpen = false;
 
-            await foreach (var streamEvent in conversation.StreamTurnAsync(cancellationToken))
+            await foreach (var streamEvent in conversation.StreamTurnAsync(allowToolCalls, cancellationToken))
             {
                 switch (streamEvent)
                 {
@@ -193,24 +193,17 @@ public sealed class InternalAgentRunner
                 break;
             }
 
-            if (budgetExhausted)
+            if (!allowToolCalls)
             {
-                _logger.LogWarning("Agent {AgentId} kept calling functions after the budget ran out", agent.Id);
+                _logger.LogWarning("Agent {AgentId} called functions after the budget ran out", agent.Id);
                 break;
             }
 
             var results = new List<AiToolResult>(toolCalls.Count);
-            budgetExhausted = round >= setup.MaxRounds;
 
             foreach (var call in toolCalls)
             {
                 cancellationToken.ThrowIfCancellationRequested();
-
-                if (budgetExhausted)
-                {
-                    results.Add(new AiToolResult(call.Id, BudgetExhausted, IsError: true));
-                    continue;
-                }
 
                 var function = setup.Functions.FirstOrDefault(f => f.Id == call.FunctionName);
                 if (function == null)

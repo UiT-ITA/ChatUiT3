@@ -3,14 +3,11 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text.Json;
 using System.Text.Json.Nodes;
-using System.Text.RegularExpressions;
-using System.Threading.Tasks;
 using ChatUitReact.Server.Models;
 using ChatUitReact.Server.Services.Agents;
 using ChatUitReact.Server.Services.AiProviders;
 using ChatUitReact.Server.Services.ApiCatalog;
 using ChatUitReact.Server.Services.Tools;
-using Microsoft.Extensions.Options;
 
 namespace ChatUitReact.Server.Services.ResponsesApi;
 
@@ -59,11 +56,8 @@ public sealed class MappedRequest
 /// An unanswered one followed by a new user message is recorded as not performed.</item>
 /// </list>
 /// </summary>
-public sealed partial class ResponsesRequestMapper
+public sealed class ResponsesRequestMapper
 {
-    [GeneratedRegex("^[a-zA-Z0-9_-]{1,64}$")]
-    private static partial Regex FunctionNamePattern();
-
     private const string NotRespondedText = "The user did not respond; the action was not performed.";
     private const string NotCompletedText = "The call did not complete; the action was not performed.";
     private const string AdditionalInstructionsHeader = "# Additional instructions from the client";
@@ -74,19 +68,17 @@ public sealed partial class ResponsesRequestMapper
     };
 
     private readonly ItemSealer _sealer;
-    private readonly IToolAccessService _toolAccess;
-    private readonly ToolOptions _toolOptions;
+    private readonly IToolRegistry _toolRegistry;
 
-    public ResponsesRequestMapper(ItemSealer sealer, IToolAccessService toolAccess, IOptions<ToolOptions> toolOptions)
+    public ResponsesRequestMapper(ItemSealer sealer, IToolRegistry toolRegistry)
     {
         _sealer = sealer;
-        _toolAccess = toolAccess;
-        _toolOptions = toolOptions.Value;
+        _toolRegistry = toolRegistry;
     }
 
     /// <param name="setup">The agent's run setup; null for a raw model.</param>
     /// <exception cref="ResponsesApiException">The request breaks the contract.</exception>
-    public async Task<MappedRequest> MapAsync(CreateResponseRequest request, ApiTarget target, InternalAgentSetup? setup, ToolExecutionContext context)
+    public MappedRequest Map(CreateResponseRequest request, ApiTarget target, InternalAgentSetup? setup, ToolExecutionContext context)
     {
         RejectUnsupported(request.Unsupported, null);
 
@@ -109,7 +101,7 @@ public sealed partial class ResponsesRequestMapper
             History = BuildHistory(ParseInput(request.Input), target.Entry.PublicId, out var resumes, out var rounds),
             Resumes = resumes,
             RoundsSinceUserMessage = rounds,
-            ClientTools = await BuildClientToolsAsync(request, target, serverTools, context.Access),
+            ClientTools = BuildClientTools(request, target, serverTools),
             ServerTools = serverTools,
             MaxRounds = setup?.MaxRounds,
             SystemPrompt = BuildSystemPrompt(request, setup),
@@ -195,7 +187,7 @@ public sealed partial class ResponsesRequestMapper
         _ => throw ResponsesApiException.BadRequest($"Unsupported reasoning.effort '{effort}'.", "reasoning.effort", "unsupported_value")
     };
 
-    private async Task<IReadOnlyList<ITool>> BuildClientToolsAsync(CreateResponseRequest request, ApiTarget target, IReadOnlyList<ITool> serverTools, UserAccess access)
+    private IReadOnlyList<ITool> BuildClientTools(CreateResponseRequest request, ApiTarget target, IReadOnlyList<ITool> serverTools)
     {
         var declared = request.Tools ?? [];
         if (declared.Count == 0)
@@ -208,18 +200,7 @@ public sealed partial class ResponsesRequestMapper
             throw ResponsesApiException.BadRequest("This model cannot call functions.", "tools", "unsupported_parameter");
         }
 
-        if (!await _toolAccess.MayUseClientToolsAsync(access))
-        {
-            throw ResponsesApiException.BadRequest("You are not permitted to use client tools.", "tools", "tools_not_allowed");
-        }
-
-        if (declared.Count > _toolOptions.MaxClientTools)
-        {
-            throw ResponsesApiException.BadRequest($"At most {_toolOptions.MaxClientTools} tools may be declared.", "tools", "too_many_tools");
-        }
-
-        var names = new HashSet<string>(StringComparer.Ordinal);
-        var tools = new List<ITool>(declared.Count);
+        var declarations = new List<ClientToolDeclaration>(declared.Count);
         for (var i = 0; i < declared.Count; i++)
         {
             var tool = declared[i];
@@ -231,43 +212,31 @@ public sealed partial class ResponsesRequestMapper
                 throw ResponsesApiException.BadRequest($"{param}: only tools of type \"function\" are supported.", $"{param}.type", "unsupported_value");
             }
 
-            var name = tool.Name ?? string.Empty;
-            if (!FunctionNamePattern().IsMatch(name))
-            {
-                throw ResponsesApiException.BadRequest($"{param}: name must match ^[a-zA-Z0-9_-]{{1,64}}$.", $"{param}.name", "invalid_value");
-            }
-
-            if (serverTools.Any(t => t.Id == name))
-            {
-                throw ResponsesApiException.BadRequest($"{param}: '{name}' is the name of one of this model's server tools.", $"{param}.name", "invalid_value");
-            }
-
-            if (!names.Add(name))
-            {
-                throw ResponsesApiException.BadRequest($"{param}: '{name}' is declared twice.", $"{param}.name", "invalid_value");
-            }
-
             if (tool.Strict == true)
             {
                 throw ResponsesApiException.BadRequest($"{param}: strict function tools are not supported.", $"{param}.strict", "unsupported_value");
             }
 
-            JsonObject schema;
-            try
-            {
-                schema = tool.Parameters is { ValueKind: not JsonValueKind.Null } parameters
-                    ? ToolSchema.ValidateClientSchema(parameters, _toolOptions)
-                    : ToolSchema.Empty();
-            }
-            catch (ToolArgumentException ex)
-            {
-                throw ResponsesApiException.BadRequest($"{param}: {ex.Message}", $"{param}.parameters", "invalid_value");
-            }
-
-            tools.Add(new ClientTool(name, tool.Description?.Trim() ?? string.Empty, schema));
+            declarations.Add(new ClientToolDeclaration(
+                tool.Name ?? string.Empty,
+                tool.Description,
+                tool.Parameters is { ValueKind: not JsonValueKind.Null } parameters ? parameters : null));
         }
 
-        return tools;
+        try
+        {
+            return _toolRegistry.CreateResponsesClientTools(declarations, serverTools.Select(t => t.Id).ToList());
+        }
+        catch (ClientToolDeclarationException ex)
+        {
+            if (ex.Index is not { } index)
+            {
+                throw ResponsesApiException.BadRequest(ex.Message, "tools", "too_many_tools");
+            }
+
+            var param = $"tools[{index}]";
+            throw ResponsesApiException.BadRequest($"{param}: {ex.Message}", $"{param}.{ex.Field}", "invalid_value");
+        }
     }
 
     private static List<ResponseItem> ParseInput(JsonElement input)
@@ -590,12 +559,12 @@ public sealed partial class ResponsesRequestMapper
     private static ResumeInput ToResumeInput(ApprovalState state, McpApprovalResponseItem answer, string param)
     {
         var edited = answer.ChatuitEditedArguments;
-        if (edited != null && (state.Kind != ResponsesJson.KindConfirmation || !state.AllowEdit))
+        if (edited != null && (state.Kind != ApprovalKind.Confirmation || !state.AllowEdit))
         {
             throw ResponsesApiException.BadRequest($"{param}: chatuit_edited_arguments is only accepted when the preview allows editing.", "chatuit_edited_arguments", "invalid_value");
         }
 
-        if (state.Kind == ResponsesJson.KindConfirmation)
+        if (state.Kind == ApprovalKind.Confirmation)
         {
             if (!answer.Approve)
             {

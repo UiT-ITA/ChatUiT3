@@ -4,7 +4,7 @@ import { useTranslation } from 'react-i18next';
 import { useSignals } from '@preact/signals-react/runtime';
 import { saveAdminInternalAgentSetting } from '../../services/adminService';
 import { adminInternalAgentsSignal, adminModelsSignal, loadAdminData } from '../../services/adminDataService';
-import { effortFor } from '../../types/admin';
+import { clampEffort } from '../../types/admin';
 import type { ReasoningEffortLevel } from '../../types/admin';
 import AgentFunctionRows from './AgentFunctionRows';
 
@@ -49,7 +49,7 @@ const InternalAgentEditor: React.FC<InternalAgentEditorProps> = ({ agentId }) =>
 
   const modelOptions = (models ?? []).filter(model => model.capabilities.supportsFunctionCalling);
   const supportedEfforts = modelOptions.find(model => model.id === modelId)?.capabilities.supportedEfforts ?? [];
-  const currentEffort = effortFor(reasoningEffort, supportedEfforts);
+  const currentEffort = clampEffort(reasoningEffort, supportedEfforts);
   const canSave = !saving && modelId !== '';
 
   const handleSave = async () => {
