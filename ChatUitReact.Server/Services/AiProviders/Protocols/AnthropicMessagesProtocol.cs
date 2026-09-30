@@ -44,7 +44,8 @@ public sealed class AnthropicMessagesProtocol : IApiProtocol
 
     public IAiConversation StartConversation(AiRequest request, ProtocolTarget target)
     {
-        return new Conversation(request, target, BuildMessages(request), _logger);
+        var messages = BuildMessages(request, out var lastToolUseTurnHasThinking);
+        return new Conversation(request, target, messages, allowThinking: lastToolUseTurnHasThinking, _logger);
     }
 
     public async Task<string> GenerateChatNameAsync(AiRequest request, ProtocolTarget target, CancellationToken cancellationToken = default)
@@ -92,7 +93,9 @@ public sealed class AnthropicMessagesProtocol : IApiProtocol
         AiRequest request,
         List<MessageParam> messages,
         int maxTokens,
-        bool includeTools)
+        bool includeTools,
+        bool allowThinking = true,
+        bool allowToolCalls = true)
     {
         var effort = MapEffort(request.Parameters.Effort);
 
@@ -117,11 +120,14 @@ public sealed class AnthropicMessagesProtocol : IApiProtocol
             // Adaptive thinking is the only mode current Claude models accept. "summarized"
             // has to be explicit: models from Opus 4.7 on default to "omitted", which returns
             // thinking blocks with empty text. The raw chain of thought is never returned.
-            Thinking = request.Parameters.ReasoningActive
+            Thinking = request.Parameters.ReasoningActive && allowThinking
                 ? (ThinkingConfigParam)new ThinkingConfigAdaptive { Display = Display.Summarized }
                 : null,
             Tools = includeTools && request.Tools.Count > 0
                 ? request.Tools.Select(tool => new ToolUnion(ToAnthropicTool(tool))).ToList()
+                : null,
+            ToolChoice = includeTools && request.Tools.Count > 0 && !allowToolCalls
+                ? (ToolChoice)new ToolChoiceNone()
                 : null
         };
 #pragma warning restore CS0618
@@ -163,29 +169,81 @@ public sealed class AnthropicMessagesProtocol : IApiProtocol
     /// generation can leave two assistant messages in a row — so turns are merged rather
     /// than sent as-is and rejected.
     /// </summary>
-    internal List<MessageParam> BuildMessages(AiRequest request)
+    internal List<MessageParam> BuildMessages(AiRequest request) => BuildMessages(request, out _);
+
+    /// <param name="lastToolUseTurnHasThinking">
+    /// False when the last assistant turn called tools but carries no thinking block (the client
+    /// dropped it, or it came from another model). With thinking on, Anthropic rejects such a
+    /// history, so the conversation then runs without it.
+    /// </param>
+    private List<MessageParam> BuildMessages(AiRequest request, out bool lastToolUseTurnHasThinking)
     {
         var turns = new List<(Role Role, List<ContentBlockParam> Blocks)>();
+        lastToolUseTurnHasThinking = true;
 
-        foreach (var message in request.Messages)
+        void Add(Role role, List<ContentBlockParam> content)
         {
-            // Anthropic has no mid-conversation system role, so such a message is folded
-            // into the user turn rather than dropped.
-            var role = message.Role == AiChatRole.Assistant ? Role.Assistant : Role.User;
-            var content = BuildContent(message, request.Parameters.AllowImages);
-
             if (content.Count == 0)
             {
-                continue;
+                return;
             }
 
             if (turns.Count > 0 && turns[^1].Role == role)
             {
                 turns[^1].Blocks.AddRange(content);
-                continue;
+                return;
             }
 
             turns.Add((role, content));
+        }
+
+        foreach (var segment in AiInputSegment.Split(request.Messages, Protocol, request.Model.Id))
+        {
+            switch (segment)
+            {
+                case AiInputSegment.Message message:
+                    // Anthropic has no mid-conversation system role, so such a message is folded
+                    // into the user turn rather than dropped.
+                    Add(Role.User, BuildContent(message.Value, request.Parameters.AllowImages));
+                    break;
+                case AiInputSegment.AssistantTurn { IsPlainText: true } turn:
+                    foreach (var message in turn.Messages)
+                    {
+                        Add(Role.Assistant, BuildContent(message, request.Parameters.AllowImages));
+                    }
+
+                    lastToolUseTurnHasThinking = true;
+                    break;
+                case AiInputSegment.AssistantTurn turn:
+                    // Thinking blocks first, unchanged and with their signatures, then text,
+                    // then tool_use: the order the model produced them in.
+                    var blocks = new List<ContentBlockParam>();
+                    foreach (var state in turn.Reasoning)
+                    {
+                        blocks.AddRange(ThinkingBlocksOf(state));
+                    }
+
+                    var hasThinking = blocks.Count > 0;
+                    foreach (var message in turn.Messages)
+                    {
+                        blocks.AddRange(BuildContent(message, request.Parameters.AllowImages));
+                    }
+
+                    foreach (var call in turn.ToolCalls)
+                    {
+                        blocks.Add(new ToolUseBlockParam { ID = call.Id, Name = call.Name, Input = ParseArguments(call.ArgumentsJson, call.Name, _logger) });
+                    }
+
+                    lastToolUseTurnHasThinking = turn.ToolCalls.Count == 0 || hasThinking;
+
+                    Add(Role.Assistant, blocks);
+                    break;
+                case AiInputSegment.ToolResults results:
+                    Add(Role.User, results.Results
+                        .Select(result => (ContentBlockParam)new ToolResultBlockParam { ToolUseID = result.ToolCallId, Content = result.Content, IsError = result.IsError })
+                        .ToList());
+                    break;
+            }
         }
 
         // The first turn must be a user turn.
@@ -271,6 +329,53 @@ public sealed class AnthropicMessagesProtocol : IApiProtocol
         }
     }
 
+    /// <summary>The payload is the turn's thinking blocks, as <see cref="Conversation"/> emits them.</summary>
+    private IEnumerable<ContentBlockParam> ThinkingBlocksOf(AiInputItem.ReasoningState state)
+    {
+        if (state.Payload.ValueKind != JsonValueKind.Array)
+        {
+            yield break;
+        }
+
+        foreach (var block in state.Payload.EnumerateArray())
+        {
+            var type = block.TryGetProperty("type", out var t) ? t.GetString() : null;
+            if (type == ThinkingType && block.TryGetProperty("signature", out var signature))
+            {
+                yield return new ThinkingBlockParam
+                {
+                    Thinking = block.TryGetProperty("thinking", out var thinking) ? thinking.GetString() ?? string.Empty : string.Empty,
+                    Signature = signature.GetString() ?? string.Empty
+                };
+            }
+            else if (type == RedactedThinkingType && block.TryGetProperty("data", out var data))
+            {
+                yield return new RedactedThinkingBlockParam { Data = data.GetString() ?? string.Empty };
+            }
+            else
+            {
+                _logger.LogWarning("Dropping an unreadable thinking block from replayed reasoning state");
+            }
+        }
+    }
+
+    private const string ThinkingType = "thinking";
+    private const string RedactedThinkingType = "redacted_thinking";
+
+    private static Dictionary<string, JsonElement> ParseArguments(string json, string toolName, ILogger logger)
+    {
+        try
+        {
+            return JsonSerializer.Deserialize<Dictionary<string, JsonElement>>(json)
+                   ?? new Dictionary<string, JsonElement>();
+        }
+        catch (JsonException ex)
+        {
+            logger.LogWarning(ex, "Could not parse streamed arguments for tool {ToolName}", toolName);
+            return new Dictionary<string, JsonElement>();
+        }
+    }
+
     private static MediaType ResolveMediaType(string? format)
     {
         var normalized = (format ?? string.Empty).Trim().ToLowerInvariant().Replace("image/", string.Empty);
@@ -293,20 +398,28 @@ public sealed class AnthropicMessagesProtocol : IApiProtocol
         private readonly AiRequest _request;
         private readonly ProtocolTarget _target;
         private readonly List<MessageParam> _messages;
+        private readonly bool _allowThinking;
         private readonly ILogger _logger;
 
-        public Conversation(AiRequest request, ProtocolTarget target, List<MessageParam> messages, ILogger logger)
+        /// <param name="allowThinking">
+        /// False when the replayed history ends in a tool-use turn without its thinking state.
+        /// Every turn of this conversation then runs without thinking, since each one it adds is
+        /// again a tool-use turn without a thinking block.
+        /// </param>
+        public Conversation(AiRequest request, ProtocolTarget target, List<MessageParam> messages, bool allowThinking, ILogger logger)
         {
             _request = request;
             _target = target;
             _messages = messages;
+            _allowThinking = allowThinking;
             _logger = logger;
         }
 
         public async IAsyncEnumerable<AiStreamEvent> StreamTurnAsync(
+            bool allowToolCalls = true,
             [EnumeratorCancellation] CancellationToken cancellationToken = default)
         {
-            var parameters = BuildParams(_request, _messages, _request.Parameters.MaxOutputTokens, includeTools: true);
+            var parameters = BuildParams(_request, _messages, _request.Parameters.MaxOutputTokens, includeTools: true, _allowThinking, allowToolCalls);
 
             using var client = CreateClient(_target);
 
@@ -376,6 +489,7 @@ public sealed class AnthropicMessagesProtocol : IApiProtocol
 
             var assistantBlocks = new List<ContentBlockParam>();
             var toolCalls = new List<AiStreamEvent.ToolCall>();
+            var thinkingState = new List<Dictionary<string, string>>();
 
             foreach (var block in blocks.Values)
             {
@@ -390,9 +504,11 @@ public sealed class AnthropicMessagesProtocol : IApiProtocol
                             Thinking = block.Content.ToString(),
                             Signature = block.Signature ?? string.Empty
                         });
+                        thinkingState.Add(new() { ["type"] = ThinkingType, ["thinking"] = block.Content.ToString(), ["signature"] = block.Signature ?? string.Empty });
                         break;
                     case PendingBlockKind.RedactedThinking:
                         assistantBlocks.Add(new RedactedThinkingBlockParam { Data = block.Data ?? string.Empty });
+                        thinkingState.Add(new() { ["type"] = RedactedThinkingType, ["data"] = block.Data ?? string.Empty });
                         break;
                     case PendingBlockKind.ToolUse:
                         var arguments = block.Content.Length > 0 ? block.Content.ToString() : "{}";
@@ -400,7 +516,7 @@ public sealed class AnthropicMessagesProtocol : IApiProtocol
                         {
                             ID = block.Id!,
                             Name = block.Name!,
-                            Input = ParseArguments(arguments, block.Name!)
+                            Input = ParseArguments(arguments, block.Name!, _logger)
                         });
                         toolCalls.Add(new AiStreamEvent.ToolCall(block.Id!, block.Name!, arguments));
                         break;
@@ -412,6 +528,11 @@ public sealed class AnthropicMessagesProtocol : IApiProtocol
             if (assistantBlocks.Count > 0)
             {
                 _messages.Add(new MessageParam { Role = Role.Assistant, Content = assistantBlocks });
+            }
+
+            if (thinkingState.Count > 0)
+            {
+                yield return new AiStreamEvent.ReasoningState(JsonSerializer.SerializeToElement(thinkingState));
             }
 
             foreach (var toolCall in toolCalls)
@@ -437,20 +558,6 @@ public sealed class AnthropicMessagesProtocol : IApiProtocol
             // Unlike OpenAI's per-result tool messages, Anthropic wants every result for a
             // turn in a single following user message.
             _messages.Add(new MessageParam { Role = Role.User, Content = blocks });
-        }
-
-        private Dictionary<string, JsonElement> ParseArguments(string json, string toolName)
-        {
-            try
-            {
-                return JsonSerializer.Deserialize<Dictionary<string, JsonElement>>(json)
-                       ?? new Dictionary<string, JsonElement>();
-            }
-            catch (JsonException ex)
-            {
-                _logger.LogWarning(ex, "Could not parse streamed arguments for tool {ToolName}", toolName);
-                return new Dictionary<string, JsonElement>();
-            }
         }
 
         private enum PendingBlockKind

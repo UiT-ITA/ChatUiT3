@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Text.Json.Nodes;
 using System.Text.RegularExpressions;
 using ChatUitReact.Server.Models;
 using Microsoft.Extensions.Logging;
@@ -16,8 +17,16 @@ public sealed partial class ToolRegistry : IToolRegistry
     [GeneratedRegex("^[a-z][a-z0-9_]{0,63}$")]
     private static partial Regex ServerIdPattern();
 
-    [GeneratedRegex("^client_[a-z0-9_]{1,50}$")]
+    private const string ClientIdRule = "^client_[a-z0-9_]{1,50}$";
+
+    /// <summary>The Responses API's own function name rule; clashes with server tools are checked per request.</summary>
+    private const string ResponsesFunctionNameRule = "^[a-zA-Z0-9_-]{1,64}$";
+
+    [GeneratedRegex(ClientIdRule)]
     private static partial Regex ClientIdPattern();
+
+    [GeneratedRegex(ResponsesFunctionNameRule)]
+    private static partial Regex ResponsesFunctionNamePattern();
 
     private readonly Dictionary<string, ITool> _byId;
     private readonly Dictionary<string, ITool> _byAnyId;
@@ -80,36 +89,65 @@ public sealed partial class ToolRegistry : IToolRegistry
     }
 
     public IReadOnlyList<ITool> CreateClientTools(IEnumerable<ClientToolDeclarationDto> declarations)
+        => CreateClientTools(
+            (declarations ?? []).Select(d => new ClientToolDeclaration(d.Name?.Trim() ?? string.Empty, d.Description, d.ParametersSchema)).ToList(),
+            ClientIdPattern(), ClientIdRule, descriptionRequired: true, reservedNames: []);
+
+    public IReadOnlyList<ITool> CreateResponsesClientTools(IReadOnlyList<ClientToolDeclaration> declarations, IReadOnlyCollection<string> serverToolIds)
+        => CreateClientTools(declarations, ResponsesFunctionNamePattern(), ResponsesFunctionNameRule, descriptionRequired: false, serverToolIds);
+
+    private IReadOnlyList<ITool> CreateClientTools(
+        IReadOnlyList<ClientToolDeclaration> declarations,
+        Regex namePattern,
+        string nameRule,
+        bool descriptionRequired,
+        IReadOnlyCollection<string> reservedNames)
     {
-        var list = declarations?.ToList() ?? [];
-        if (list.Count > _options.MaxClientTools)
+        if (declarations.Count > _options.MaxClientTools)
         {
-            throw new ToolArgumentException($"At most {_options.MaxClientTools} client tools may be declared.");
+            throw new ClientToolDeclarationException(null, "tools", $"At most {_options.MaxClientTools} client tools may be declared.");
         }
 
-        var result = new List<ITool>(list.Count);
+        var result = new List<ITool>(declarations.Count);
         var names = new HashSet<string>(StringComparer.Ordinal);
 
-        foreach (var declaration in list)
+        for (var i = 0; i < declarations.Count; i++)
         {
-            var name = declaration.Name?.Trim() ?? string.Empty;
-            if (!ClientIdPattern().IsMatch(name))
+            var declaration = declarations[i];
+            var name = declaration.Name;
+            if (!namePattern.IsMatch(name))
             {
-                throw new ToolArgumentException($"Client tool name '{name}' must match ^client_[a-z0-9_]{{1,50}}$.");
+                throw new ClientToolDeclarationException(i, "name", $"Client tool name '{name}' must match {nameRule}.");
+            }
+
+            if (reservedNames.Contains(name))
+            {
+                throw new ClientToolDeclarationException(i, "name", $"'{name}' is the name of one of this model's server tools.");
             }
 
             if (!names.Add(name))
             {
-                throw new ToolArgumentException($"Client tool '{name}' is declared twice.");
+                throw new ClientToolDeclarationException(i, "name", $"Client tool '{name}' is declared twice.");
             }
 
-            if (string.IsNullOrWhiteSpace(declaration.Description))
+            if (descriptionRequired && string.IsNullOrWhiteSpace(declaration.Description))
             {
-                throw new ToolArgumentException($"Client tool '{name}' needs a description.");
+                throw new ClientToolDeclarationException(i, "description", $"Client tool '{name}' needs a description.");
             }
 
-            var schema = ToolSchema.ValidateClientSchema(declaration.ParametersSchema, _options);
-            result.Add(new ClientTool(name, declaration.Description.Trim(), schema));
+            JsonObject schema;
+            try
+            {
+                schema = declaration.ParametersSchema is { } parameters
+                    ? ToolSchema.ValidateClientSchema(parameters, _options)
+                    : ToolSchema.Empty();
+            }
+            catch (ToolArgumentException ex)
+            {
+                throw new ClientToolDeclarationException(i, "parameters", ex.Message);
+            }
+
+            result.Add(new ClientTool(name, declaration.Description?.Trim() ?? string.Empty, schema));
         }
 
         return result;

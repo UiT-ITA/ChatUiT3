@@ -85,6 +85,24 @@ export interface AdminToolDto {
   functions: AdminToolFunctionDto[] | null;
 }
 
+/** An internal agent definition (code) and the model an admin set for it. */
+export interface InternalAgentDto {
+  id: string;
+  name: string;
+  description: string;
+  functions: AdminToolFunctionDto[];
+  /** Null when none is set: a nested run uses the chat's model, and the Responses API cannot use the agent. */
+  modelId: string | null;
+  reasoningEffort: ReasoningEffortLevel | null;
+  updatedAt: string | null;
+}
+
+/** What the internal agent editor saves. The server clamps the effort to what the model accepts. */
+export interface InternalAgentSettingDto {
+  modelId: string;
+  reasoningEffort: ReasoningEffortLevel;
+}
+
 /** An Entra group from the admin group search. displayName is null when a stored id no longer resolves. */
 export interface DirectoryGroupDto {
   id: string;
@@ -95,6 +113,50 @@ export interface DirectoryGroupDto {
 
 /** The pseudo tool whose policy gates client-declared tools as a group. */
 export const CLIENT_TOOLS_POLICY_ID = 'client_tools';
+
+/** What a Responses API catalog entry serves: an internal agent, or a model row as it is. */
+export type ApiCatalogKind = 'agent' | 'model';
+
+/**
+ * One entry of the Responses API catalog. The entry only admits callers; the agent's own
+ * default and the model's roles still apply.
+ */
+export interface ApiCatalogEntryDto {
+  /** What clients send as `model`. An agent's is its id. */
+  publicId: string;
+  kind: ApiCatalogKind;
+  /** The internal agent id, or the model row id. */
+  targetId: string;
+  enabled: boolean;
+  allowedRoles: UserRole[];
+  allowedGroupIds: string[];
+  updatedAt: string | null;
+}
+
+export type SaveApiCatalogEntryDto = Omit<ApiCatalogEntryDto, 'publicId' | 'updatedAt'>;
+
+/** An internal agent the catalog can expose. Its model is set under Internal agents; only its entry is edited here. */
+export interface ApiCatalogAgentDto {
+  id: string;
+  name: string;
+  description: string;
+  toolIds: string[];
+  defaultPolicy: ToolAccessPolicyDto;
+}
+
+export interface ApiCatalogModelDto {
+  id: string;
+  modelName: string;
+  modelId: string;
+}
+
+export interface ApiCatalogDto {
+  entries: ApiCatalogEntryDto[];
+  agents: ApiCatalogAgentDto[];
+  models: ApiCatalogModelDto[];
+}
+
+export const API_PUBLIC_ID_PATTERN = /^[a-z0-9][a-z0-9._-]{0,63}$/;
 
 /**
  * How a model handles the `temperature` parameter. A boolean cannot express the gpt-5.x
@@ -108,6 +170,24 @@ export type ReasoningEffortLevel = 'None' | 'Low' | 'Medium' | 'High' | 'XHigh' 
 export const REASONING_EFFORT_ORDER: ReasoningEffortLevel[] = [
   'None', 'Low', 'Medium', 'High', 'XHigh', 'Max',
 ];
+
+/**
+ * Maps a chosen effort onto the nearest level the model accepts, mirroring the server's
+ * clamping. A model that cannot reason resolves to 'None'; a model that always reasons
+ * resolves 'None' up to its weakest level.
+ */
+export function clampEffort(
+  requested: ReasoningEffortLevel | undefined,
+  supported: ReasoningEffortLevel[] | undefined,
+): ReasoningEffortLevel {
+  const levels = supported ?? [];
+  if (levels.length === 0) return 'None';
+
+  const effort = requested ?? 'None';
+  if (levels.includes(effort)) return effort;
+
+  return levels[0];
+}
 
 export interface ModelCapabilities {
   supportsVision: boolean;

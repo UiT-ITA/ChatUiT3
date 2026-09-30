@@ -171,7 +171,7 @@ public static class ToolSchema
 }
 
 /// <summary>The model sent arguments the tool cannot use. The message is written for the model.</summary>
-public sealed class ToolArgumentException : Exception
+public class ToolArgumentException : Exception
 {
     public ToolArgumentException(string message, Exception? inner = null) : base(message, inner)
     {

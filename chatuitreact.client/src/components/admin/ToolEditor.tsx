@@ -7,6 +7,7 @@ import { adminToolsSignal, loadAdminData } from '../../services/adminDataService
 import { refreshTools } from '../../services/toolService';
 import type { UserRole, AdminToolDto, ToolAccessPolicyDto } from '../../types/admin';
 import GroupPicker from '../common/GroupPicker';
+import AgentFunctionRows from './AgentFunctionRows';
 
 const ALL_ROLES: UserRole[] = ['User', 'Admin', 'Beta', 'Super', 'External'];
 
@@ -139,22 +140,7 @@ const ToolEditor: React.FC<ToolEditorProps> = ({ toolId }) => {
         <div className="admin-field">
           <div className="admin-label t-label">{t('admin.tools.fields.functions')}</div>
           <div className="admin-field-help t-caption">{t('admin.tools.fields.functionsHelp')}</div>
-          {tool.functions.map(fn => (
-            <div key={fn.id} className="admin-list-row" style={{ cursor: 'default' }}>
-              <div className="admin-row-main">
-                <div className="admin-row-title t-code">{fn.id}</div>
-                <div className="admin-row-subtitle t-caption">{fn.description}</div>
-                {(fn.requiresConfirmation || fn.requiredScopes.length > 0) && (
-                  <div className="t-caption">
-                    {[
-                      fn.requiresConfirmation ? t('admin.tools.fields.requiresConfirmation') : null,
-                      fn.requiredScopes.length > 0 ? fn.requiredScopes.join(', ') : null,
-                    ].filter(Boolean).join(' · ')}
-                  </div>
-                )}
-              </div>
-            </div>
-          ))}
+          <AgentFunctionRows functions={tool.functions} />
         </div>
       )}
 

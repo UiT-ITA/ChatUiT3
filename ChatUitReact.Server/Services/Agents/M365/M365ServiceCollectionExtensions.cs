@@ -23,7 +23,9 @@ public static class M365ServiceCollectionExtensions
         services.AddSingleton<WriteTextFileFunction>();
 
         services.AddInternalAgent<M365ReaderAgent>();
+        services.AddInternalAgentTool<M365ReaderAgent>();
         services.AddInternalAgent<M365WriterAgent>();
+        services.AddInternalAgentTool<M365WriterAgent>();
 
         return services;
     }

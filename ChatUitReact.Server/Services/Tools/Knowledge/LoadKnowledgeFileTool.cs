@@ -128,6 +128,11 @@ public sealed class LoadKnowledgeFileTool : Tool<LoadKnowledgeFileArgs>
     // cost matches what is sent.
     private async Task<bool> PinAsync(ToolExecutionContext context, AssistantFile file)
     {
+        if (context.ChatId == null)
+        {
+            return false;
+        }
+
         var message = KnowledgeFileMessages.For(file);
         var counts = new Dictionary<string, int>();
         foreach (var scheme in await _tokenCounting.GetActiveSchemeIdsAsync())

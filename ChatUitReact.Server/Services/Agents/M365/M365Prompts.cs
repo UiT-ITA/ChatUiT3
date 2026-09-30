@@ -8,6 +8,7 @@ internal static class M365Prompts
         Rules:
         - Resolve people first: when a task names a person, call find_people and use the returned id or email. Never invent ids or email addresses. If several people match, prefer the one in the user's contacts; if still ambiguous, list the candidates and stop.
         - "Me", "my" and "I" refer to the signed-in user (get_user with "me" gives their email).
+        - The task may refer to the signed-in user by name; that always means the signed-in user, whose own data you read through the "me" functions and endpoints.
         - For availability of one or more people use get_schedule with everyone involved, including the user when their own availability matters. Use get_calendar_view only to read event details.
         - Use the time zone given in the task. If none is given, use Europe/Oslo and say so.
         - Keep calls minimal and targeted; do not fetch more than the task needs.

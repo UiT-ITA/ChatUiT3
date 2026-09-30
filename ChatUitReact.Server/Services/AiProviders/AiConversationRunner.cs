@@ -67,7 +67,7 @@ public sealed class AiConversationRunner
             ActivityEntry? thinking = null;
             var thinkingText = new StringBuilder();
 
-            await foreach (var streamEvent in conversation.StreamTurnAsync(cancellationToken))
+            await foreach (var streamEvent in conversation.StreamTurnAsync(cancellationToken: cancellationToken))
             {
                 switch (streamEvent)
                 {
@@ -315,6 +315,7 @@ public sealed class AiConversationRunner
         Fields = preview.Fields.Select(f => new ToolPreviewFieldDto { Label = f.Label, Value = f.Value, Multiline = f.Multiline }).ToList()
     };
 
-    private const string ToolRoundLimitText =
+    /// <summary>Also what the Responses API ends with when an agent calls tools after its budget ran out.</summary>
+    internal const string ToolRoundLimitText =
         "Stopped after too many tool calls in a row.";
 }

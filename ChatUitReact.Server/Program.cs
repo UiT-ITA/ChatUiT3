@@ -5,6 +5,8 @@ using ChatUitReact.Server.Services.AiProviders;
 using ChatUitReact.Server.Services.AiProviders.Protocols;
 using ChatUitReact.Server.Services.TokenCounting;
 using ChatUitReact.Server.Services.Agents;
+using ChatUitReact.Server.Services.ApiCatalog;
+using ChatUitReact.Server.Services.ResponsesApi;
 using ChatUitReact.Server.Services.Directory;
 using ChatUitReact.Server.Services.Tools;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
@@ -118,11 +120,20 @@ builder.Services.AddSingleton<IAiProvider, AnthropicProvider>();
 builder.Services.AddSingleton<IAiProviderRegistry, AiProviderRegistry>();
 builder.Services.AddSingleton<AiConversationRunner>();
 builder.Services.AddTools(builder.Configuration);
-builder.Services.AddInternalAgents(builder.Configuration);
+builder.Services.AddInternalAgents();
+// The Responses API (api/v1): the admin-managed catalog that exposes internal agents and raw
+// models, and the sealing of items clients hand back. Sealed items only open with the same key
+// ring, so the Data Protection keys must persist across restarts and be shared by instances.
+builder.Services.AddDataProtection();
+builder.Services.AddSingleton<IApiCatalogService, ApiCatalogService>();
+builder.Services.AddResponsesApi();
 builder.Services.AddScoped<IGroupDirectoryService, GroupDirectoryService>();
 builder.Services.AddSingleton<ITokenCountingService, TokenCountingService>();
 
 var app = builder.Build();
+
+// Built now so an invalid agent id or a duplicate id stops startup.
+app.Services.GetRequiredService<IInternalAgentRegistry>();
 
 // The AzureOpenAI configuration is only used to seed an endpoint into the database on first
 // run. Everything at request time reads endpoints from the database instead.

@@ -471,7 +471,9 @@
       "models": "Models",
       "assistants": "Assistants",
       "settings": "Settings",
-      "tools": "Tools"
+      "tools": "Tools",
+      "agents": "Internal agents",
+      "api": "API"
     },
     "endpoints": {
       "title": "Endpoints",
@@ -670,6 +672,67 @@
       "actions": {
         "reset": "Reset to default",
         "resetConfirm": "Drop the custom policy and go back to the code default?"
+      }
+    },
+    "agents": {
+      "title": "Internal agents",
+      "intro": "Agents defined in code. Each runs on the model set here, in chats through its tool and in the API.",
+      "meta": {
+        "notSet": "No model set"
+      },
+      "fields": {
+        "id": "Id",
+        "description": "Description",
+        "functions": "Functions",
+        "functionsHelp": "The functions the agent may call on the user's behalf. They have no separate access policies.",
+        "model": "Runs on model",
+        "chooseModel": "Choose a model",
+        "modelHelp": "Only models that support function calling are listed. Applies to every run of the agent, in chats and in the API.",
+        "notSetHelp": "No model is set. In chats the agent runs on the chat's model. The API cannot use it.",
+        "reasoningEffort": "Reasoning effort",
+        "reasoningEffortHelp": "Only the levels the selected model accepts are offered.",
+        "updated": "Saved {{date}}."
+      }
+    },
+    "api": {
+      "title": "API",
+      "intro": "Agents and models served to API clients such as the Office add-ins, through the Responses API. An entry only admits callers: an agent's own default, or a model's roles, still apply.",
+      "list": {
+        "emptyModels": "No models exposed."
+      },
+      "groups": {
+        "agents": "Agents",
+        "models": "Models"
+      },
+      "meta": {
+        "enabled": "Exposed",
+        "disabled": "Disabled",
+        "notExposed": "Not exposed"
+      },
+      "add": {
+        "title": "Expose a model"
+      },
+      "fields": {
+        "publicId": "Public id",
+        "publicIdHelp": "What clients send as model. Lowercase letters, digits, '.', '_' and '-'; it cannot be changed later.",
+        "publicIdInvalid": "The public id must match ^[a-z0-9][a-z0-9._-]{0,63}$.",
+        "description": "Description",
+        "tools": "Server tools",
+        "agentDefault": "Agent's code default",
+        "agentModel": "Runs on model",
+        "agentModelNotSet": "Not set",
+        "agentModelHelp": "Set under Internal agents. The API cannot use an agent without a model.",
+        "targetModel": "Model to expose",
+        "targetModelHelp": "Callers must also hold one of the model's allowed roles.",
+        "chooseModel": "Choose a model",
+        "enabled": "Enabled",
+        "enabledHelp": "Off hides the entry from every caller.",
+        "nobodyWarning": "No roles and no groups: nobody can use this entry.",
+        "updated": "Saved {{date}}."
+      },
+      "actions": {
+        "delete": "Remove entry",
+        "deleteConfirm": "Remove this entry? Clients using it get model_not_found."
       }
     }
   },

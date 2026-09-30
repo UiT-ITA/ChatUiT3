@@ -84,7 +84,8 @@ public sealed class ToolExecutionContext
 {
     public required string UserId { get; init; }
 
-    public required string ChatId { get; init; }
+    /// <summary>Null when the run belongs to no stored chat (the Responses API).</summary>
+    public required string? ChatId { get; init; }
 
     public required string MessageId { get; init; }
 
@@ -101,6 +102,28 @@ public sealed class ToolExecutionContext
     public Model? Model { get; init; }
 
     public ModelEndpoint? Endpoint { get; init; }
+
+    /// <summary>How a pause for the user is handled. Chats wait; the Responses API defers.</summary>
+    public InteractionMode Mode { get; init; } = InteractionMode.Wait;
+
+    /// <summary>
+    /// The reasoning summary length the outer run asked for, so nested agent runs ask for the same.
+    /// Chats leave the default; the Responses API sets it.
+    /// </summary>
+    public AiProviders.ReasoningSummaryLength ReasoningSummaryLength { get; init; } = AiProviders.ReasoningSummaryLength.Detailed;
+}
+
+public enum InteractionMode
+{
+    /// <summary>The executor waits in process for the user's answer (chats).</summary>
+    Wait,
+
+    /// <summary>
+    /// The executor ends the call with <see cref="ToolExecutionEvent.Deferred"/> instead of
+    /// waiting; the answer arrives with a later request and continues through
+    /// <see cref="IToolExecutor.ResumeAsync"/>.
+    /// </summary>
+    Defer
 }
 
 /// <summary>

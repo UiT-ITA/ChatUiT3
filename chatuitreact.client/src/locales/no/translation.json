@@ -471,7 +471,9 @@
       "models": "Modeller",
       "assistants": "Systemassistenter",
       "settings": "Innstillinger",
-      "tools": "Verktøy"
+      "tools": "Verktøy",
+      "agents": "Interne agenter",
+      "api": "API"
     },
     "endpoints": {
       "title": "Endepunkter",
@@ -670,6 +672,67 @@
       "actions": {
         "reset": "Tilbakestill til standard",
         "resetConfirm": "Slette den tilpassede policyen og gå tilbake til standarden fra koden?"
+      }
+    },
+    "agents": {
+      "title": "Interne agenter",
+      "intro": "Agenter definert i kode. Hver kjører på modellen som settes her, i chatter gjennom verktøyet sitt og i API-et.",
+      "meta": {
+        "notSet": "Ingen modell satt"
+      },
+      "fields": {
+        "id": "Id",
+        "description": "Beskrivelse",
+        "functions": "Funksjoner",
+        "functionsHelp": "Funksjonene agenten kan kalle på vegne av brukeren. De har ingen egne tilgangspolicyer.",
+        "model": "Kjører på modell",
+        "chooseModel": "Velg en modell",
+        "modelHelp": "Bare modeller som støtter funksjonskall vises. Gjelder hver kjøring av agenten, i chatter og i API-et.",
+        "notSetHelp": "Ingen modell er satt. I chatter kjører agenten på chattens modell. API-et kan ikke bruke den.",
+        "reasoningEffort": "Resonneringsinnsats",
+        "reasoningEffortHelp": "Bare nivåene den valgte modellen godtar, vises.",
+        "updated": "Lagret {{date}}."
+      }
+    },
+    "api": {
+      "title": "API",
+      "intro": "Agenter og modeller som API-klienter, som Office-tilleggene, får bruke gjennom Responses-API-et. En oppføring slipper bare inn brukere: agentens egen standard, eller modellens roller, gjelder fortsatt.",
+      "list": {
+        "emptyModels": "Ingen modeller er eksponert."
+      },
+      "groups": {
+        "agents": "Agenter",
+        "models": "Modeller"
+      },
+      "meta": {
+        "enabled": "Eksponert",
+        "disabled": "Avslått",
+        "notExposed": "Ikke eksponert"
+      },
+      "add": {
+        "title": "Eksponer en modell"
+      },
+      "fields": {
+        "publicId": "Offentlig id",
+        "publicIdHelp": "Det klienter sender som model. Små bokstaver, sifre, '.', '_' og '-'; den kan ikke endres senere.",
+        "publicIdInvalid": "Den offentlige id-en må følge ^[a-z0-9][a-z0-9._-]{0,63}$.",
+        "description": "Beskrivelse",
+        "tools": "Serververktøy",
+        "agentDefault": "Agentens standard fra kode",
+        "agentModel": "Kjører på modell",
+        "agentModelNotSet": "Ikke satt",
+        "agentModelHelp": "Settes under Interne agenter. API-et kan ikke bruke en agent uten modell.",
+        "targetModel": "Modell som eksponeres",
+        "targetModelHelp": "Brukerne må også ha en av modellens tillatte roller.",
+        "chooseModel": "Velg en modell",
+        "enabled": "Aktivert",
+        "enabledHelp": "Av skjuler oppføringen for alle.",
+        "nobodyWarning": "Ingen roller og ingen grupper: ingen kan bruke denne oppføringen.",
+        "updated": "Lagret {{date}}."
+      },
+      "actions": {
+        "delete": "Fjern oppføring",
+        "deleteConfirm": "Fjerne denne oppføringen? Klienter som bruker den får model_not_found."
       }
     }
   },

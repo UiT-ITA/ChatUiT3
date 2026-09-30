@@ -21,7 +21,8 @@ public sealed record AiRequest
 
     public string SystemPrompt { get; init; } = string.Empty;
 
-    public required IReadOnlyList<ChatMessage> Messages { get; init; }
+    /// <summary>The history. Chats send only <see cref="AiInputItem.Message"/>.</summary>
+    public required IReadOnlyList<AiInputItem> Messages { get; init; }
 
     public required ResolvedChatParameters Parameters { get; init; }
 

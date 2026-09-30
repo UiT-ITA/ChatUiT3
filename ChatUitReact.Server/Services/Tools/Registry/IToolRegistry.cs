@@ -22,4 +22,11 @@ public interface IToolRegistry
     /// Throws <see cref="ToolArgumentException"/> on a bad name or schema.
     /// </summary>
     IReadOnlyList<ITool> CreateClientTools(IEnumerable<ClientToolDeclarationDto> declarations);
+
+    /// <summary>
+    /// Turns a Responses request's function tools into client tools. Names follow the Responses
+    /// rule and may not be one of <paramref name="serverToolIds"/>; the schema is optional.
+    /// Throws <see cref="ClientToolDeclarationException"/> naming the refused declaration.
+    /// </summary>
+    IReadOnlyList<ITool> CreateResponsesClientTools(IReadOnlyList<ClientToolDeclaration> declarations, IReadOnlyCollection<string> serverToolIds);
 }

@@ -1,3 +1,4 @@
+using ChatUitReact.Server.Authentication;
 using ChatUitReact.Server.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -79,19 +80,11 @@ public class ChatsController : ControllerBase
         return new ToolSessionInput
         {
             Access = _userService.GetUserAccess(User),
-            Tokens = _tokenProviders.Create(User, IncomingBearerToken()),
+            Tokens = _tokenProviders.Create(User, Request.BearerToken()),
             ClientTools = clientTools ?? [],
             UserDisplayName = identity.DisplayName,
             UserPrincipalName = identity.Username
         };
-    }
-
-    /// <summary>The raw token this request was authenticated with; it is the On-Behalf-Of assertion.</summary>
-    private string? IncomingBearerToken()
-    {
-        var header = Request.Headers.Authorization.ToString();
-        const string prefix = "Bearer ";
-        return header.StartsWith(prefix, StringComparison.OrdinalIgnoreCase) ? header[prefix.Length..].Trim() : null;
     }
 
     [HttpGet]
@@ -283,7 +276,7 @@ public class ChatsController : ControllerBase
         try
         {
             var userId = GetCurrentUserId();
-            var result = await _chatService.RespondToToolCallAsync(userId, chatId, messageId, toolCallId, response, User, IncomingBearerToken());
+            var result = await _chatService.RespondToToolCallAsync(userId, chatId, messageId, toolCallId, response, User, Request.BearerToken());
 
             return result.Accepted ? Ok(result) : Conflict(result);
         }

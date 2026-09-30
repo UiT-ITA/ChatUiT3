@@ -27,4 +27,17 @@ public sealed record ResolvedChatParameters
     public bool AllowImages { get; init; }
 
     public bool ReasoningActive => Effort != ReasoningEffort.None;
+
+    /// <summary>
+    /// How long a reasoning summary to ask for, where the protocol offers a choice (OpenAI
+    /// Responses). Chats ask for <see cref="ReasoningSummaryLength.Detailed"/>; the Responses API
+    /// sets <see cref="ReasoningSummaryLength.Concise"/> explicitly.
+    /// </summary>
+    public ReasoningSummaryLength SummaryLength { get; init; } = ReasoningSummaryLength.Detailed;
+}
+
+public enum ReasoningSummaryLength
+{
+    Detailed,
+    Concise
 }
