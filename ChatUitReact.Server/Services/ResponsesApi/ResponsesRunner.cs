@@ -57,28 +57,28 @@ public sealed class ResponsesRunner
         writer.Created();
         // Names, types and counts only: arguments, results and text carry the user's data.
         _logger.LogInformation("Response {ResponseId} on {Model} started: {InputItems} input items, {Resumes} resumed calls",
-            writer.Response.Id, target.Entry.PublicId, request.History.Count, request.Resumes.Count);
+            writer.Response.Id, target.PublicId, request.History.Count, request.Resumes.Count);
         try
         {
             await RunCoreAsync(target, request, context, writer, cancellationToken);
             writer.Completed();
             _logger.LogInformation("Response {ResponseId} on {Model} completed with output [{Output}]",
-                writer.Response.Id, target.Entry.PublicId, string.Join(", ", writer.Response.Output.Select(DescribeItem)));
+                writer.Response.Id, target.PublicId, string.Join(", ", writer.Response.Output.Select(DescribeItem)));
         }
         catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
         {
-            _logger.LogInformation("Response {ResponseId} on {Model} cancelled by the client", writer.Response.Id, target.Entry.PublicId);
+            _logger.LogInformation("Response {ResponseId} on {Model} cancelled by the client", writer.Response.Id, target.PublicId);
             throw;
         }
         catch (AiTurnFailedException ex)
         {
             // The provider's reason is safe to show and tells the client why the turn stopped.
-            _logger.LogWarning("Response {ResponseId} on {Model} failed: the provider ended the turn early", writer.Response.Id, target.Entry.PublicId);
+            _logger.LogWarning("Response {ResponseId} on {Model} failed: the provider ended the turn early", writer.Response.Id, target.PublicId);
             writer.Failed(ex.Message);
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Response {ResponseId} on {Model} failed", writer.Response.Id, target.Entry.PublicId);
+            _logger.LogError(ex, "Response {ResponseId} on {Model} failed", writer.Response.Id, target.PublicId);
             writer.Failed("The response could not be completed because an error occurred while generating it.");
         }
     }
@@ -156,7 +156,7 @@ public sealed class ResponsesRunner
             if (!allowToolCalls)
             {
                 _logger.LogWarning("Stopping response {ResponseId} on {Model}: the model called tools after its budget of {Rounds} rounds ran out.",
-                    writer.Response.Id, target.Entry.PublicId, request.MaxRounds);
+                    writer.Response.Id, target.PublicId, request.MaxRounds);
                 output.EmitMessage($"_{AiConversationRunner.ToolRoundLimitText}_");
                 return;
             }
@@ -479,7 +479,7 @@ public sealed class ResponsesRunner
                 case DeferredStep.Confirmation confirmation:
                     var preview = confirmation.Preview;
                     var confirmationState = new ApprovalState(
-                        _target.Entry.PublicId, call.Id, tool.Id, call.ArgumentsJson, ApprovalKind.Confirmation,
+                        _target.PublicId, call.Id, tool.Id, call.ArgumentsJson, ApprovalKind.Confirmation,
                         Phase: null, ApprovedArgumentsJson: null, Attempts: 0, AllowEdit: preview.AllowEdit);
                     item = new McpApprovalRequestItem
                     {
@@ -500,7 +500,7 @@ public sealed class ResponsesRunner
                 case DeferredStep.Consent consent:
                     var approved = consent.ApprovedArguments?.GetRawText();
                     var consentState = new ApprovalState(
-                        _target.Entry.PublicId, call.Id, tool.Id, call.ArgumentsJson, ApprovalKind.Consent,
+                        _target.PublicId, call.Id, tool.Id, call.ArgumentsJson, ApprovalKind.Consent,
                         consent.Phase, approved, consent.Attempts, AllowEdit: false);
                     item = new McpApprovalRequestItem
                     {

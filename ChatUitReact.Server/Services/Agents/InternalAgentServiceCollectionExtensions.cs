@@ -15,7 +15,7 @@ public static class InternalAgentServiceCollectionExtensions
         services.AddSingleton<IInternalAgentRegistry, InternalAgentRegistry>();
 
         services.AddM365Agents();
-        services.AddInternalAgent<WordAgent>();
+        services.AddInternalAgent<OfficeAgent>();
 
         return services;
     }

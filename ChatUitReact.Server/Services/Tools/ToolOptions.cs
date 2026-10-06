@@ -16,7 +16,7 @@ public sealed class ToolOptions
 
     public TimeSpan ClientToolTimeout { get; set; } = TimeSpan.FromSeconds(60);
 
-    public int MaxClientTools { get; set; } = 16;
+    public int MaxClientTools { get; set; } = 64;
 
     public int MaxClientSchemaBytes { get; set; } = 16_384;
 

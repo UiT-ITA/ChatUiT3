@@ -11,7 +11,7 @@ public partial class DatabaseService
 
         var query = new QueryDefinition("SELECT * FROM c");
         var documents = await QueryItemsAsync<InternalAgentSettingDocument>(_internalAgentsContainer!, query, ConfigurationPartitionKey);
-        return documents.Select(document => new InternalAgentSetting(document.Id, document.ModelId, document.ReasoningEffort, document.UpdatedAt)).ToList();
+        return documents.Select(document => new InternalAgentSetting(document.Id, document.ModelId, document.ReasoningEffort, document.ExposedInApi, document.UpdatedAt)).ToList();
     }
 
     public async Task UpsertInternalAgentSettingAsync(InternalAgentSetting setting)
@@ -24,6 +24,7 @@ public partial class DatabaseService
             PartitionKey = ConfigurationPartitionKeyValue,
             ModelId = setting.ModelId,
             ReasoningEffort = setting.ReasoningEffort,
+            ExposedInApi = setting.ExposedInApi,
             UpdatedAt = setting.UpdatedAt
         };
 

@@ -1,5 +1,4 @@
 using ChatUitReact.Server.Models;
-using ChatUitReact.Server.Services.ApiCatalog;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Converters;
 
@@ -37,7 +36,6 @@ public partial class DatabaseService
         public CosmosContainerOptions AssistantContent { get; set; } = new CosmosContainerOptions { Name = "AssistantContent", PartitionKeyPath = "/assistantId" };
         public CosmosContainerOptions AppSettings { get; set; } = new CosmosContainerOptions { Name = "AppSettings", PartitionKeyPath = "/partitionKey" };
         public CosmosContainerOptions ToolPolicies { get; set; } = new CosmosContainerOptions { Name = "ToolPolicies", PartitionKeyPath = "/partitionKey" };
-        public CosmosContainerOptions ApiCatalog { get; set; } = new CosmosContainerOptions { Name = "ApiCatalog", PartitionKeyPath = "/partitionKey" };
         public CosmosContainerOptions InternalAgents { get; set; } = new CosmosContainerOptions { Name = "InternalAgents", PartitionKeyPath = "/partitionKey" };
     }
 
@@ -63,36 +61,7 @@ public partial class DatabaseService
         public DateTime UpdatedAt { get; set; } = DateTime.UtcNow;
     }
 
-    /// <summary>One Responses API catalog entry. Id is the public id.</summary>
-    private sealed class ApiCatalogEntryDocument
-    {
-        [JsonProperty("id")]
-        public string Id { get; set; } = string.Empty;
-
-        [JsonProperty("partitionKey")]
-        public string PartitionKey { get; set; } = ConfigurationPartitionKeyValue;
-
-        [JsonProperty("kind")]
-        [JsonConverter(typeof(StringEnumConverter))]
-        public ApiCatalogKind Kind { get; set; }
-
-        [JsonProperty("targetId")]
-        public string TargetId { get; set; } = string.Empty;
-
-        [JsonProperty("enabled")]
-        public bool Enabled { get; set; }
-
-        [JsonProperty("allowedRoles", ItemConverterType = typeof(StringEnumConverter))]
-        public List<UserRole> AllowedRoles { get; set; } = new();
-
-        [JsonProperty("allowedGroupIds")]
-        public List<string> AllowedGroupIds { get; set; } = new();
-
-        [JsonProperty("updatedAt")]
-        public DateTime UpdatedAt { get; set; } = DateTime.UtcNow;
-    }
-
-    /// <summary>An admin's model and reasoning level for one internal agent. Id is the agent id.</summary>
+    /// <summary>An admin's model and reasoning level for one internal agent, and whether the Responses API serves it. Id is the agent id.</summary>
     private sealed class InternalAgentSettingDocument
     {
         [JsonProperty("id")]
@@ -107,6 +76,9 @@ public partial class DatabaseService
         [JsonProperty("reasoningEffort")]
         [JsonConverter(typeof(StringEnumConverter))]
         public ReasoningEffort ReasoningEffort { get; set; } = ReasoningEffort.None;
+
+        [JsonProperty("exposedInApi")]
+        public bool ExposedInApi { get; set; }
 
         [JsonProperty("updatedAt")]
         public DateTime UpdatedAt { get; set; } = DateTime.UtcNow;
@@ -289,6 +261,9 @@ public partial class DatabaseService
 
         [JsonProperty("allowedAsDefault")]
         public bool AllowedAsDefault { get; set; }
+
+        [JsonProperty("exposedInApi")]
+        public bool ExposedInApi { get; set; }
 
         [JsonProperty("capabilities")]
         public ModelCapabilitiesDocument Capabilities { get; set; } = new();

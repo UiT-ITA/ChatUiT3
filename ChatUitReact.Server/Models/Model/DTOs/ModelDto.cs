@@ -65,6 +65,9 @@ public class ModelDto
     /// </summary>
     public bool AllowedAsDefault { get; set; }
 
+    /// <summary>Whether the Responses API serves this model, under its ModelId.</summary>
+    public bool ExposedInApi { get; set; }
+
     [Required]
     public ModelCapabilitiesDto Capabilities { get; set; } = new ModelCapabilitiesDto();
 
@@ -99,6 +102,9 @@ public class CreateModelDto
     /// Cost control, not a capability.
     /// </summary>
     public bool AllowedAsDefault { get; set; }
+
+    /// <summary>Whether the Responses API serves this model, under its ModelId.</summary>
+    public bool ExposedInApi { get; set; }
 
     [Required]
     public ModelCapabilitiesDto Capabilities { get; set; } = new ModelCapabilitiesDto();
@@ -137,6 +143,9 @@ public class UpdateModelDto
     /// Cost control, not a capability.
     /// </summary>
     public bool AllowedAsDefault { get; set; }
+
+    /// <summary>Whether the Responses API serves this model, under its ModelId.</summary>
+    public bool ExposedInApi { get; set; }
 
     [Required]
     public ModelCapabilitiesDto Capabilities { get; set; } = new ModelCapabilitiesDto();

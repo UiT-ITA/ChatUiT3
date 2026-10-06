@@ -2,6 +2,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using ChatUitReact.Server.Models;
 using ChatUitReact.Server.Services;
+using ChatUitReact.Server.Services.ApiCatalog;
 using ChatUitReact.Server.Services.TokenCounting;
 
 namespace ChatUitReact.Server.Controllers;
@@ -12,10 +13,12 @@ namespace ChatUitReact.Server.Controllers;
 public class AdminModelsController : ControllerBase
 {
     private readonly IModelService _modelService;
+    private readonly IApiCatalogService _catalog;
 
-    public AdminModelsController(IModelService modelService)
+    public AdminModelsController(IModelService modelService, IApiCatalogService catalog)
     {
         _modelService = modelService;
+        _catalog = catalog;
     }
 
     [HttpGet]
@@ -75,8 +78,14 @@ public class AdminModelsController : ControllerBase
                 EndpointId = createDto.EndpointId,
                 AllowedRoles = createDto.AllowedRoles,
                 AllowedAsDefault = createDto.AllowedAsDefault,
+                ExposedInApi = createDto.ExposedInApi,
                 Capabilities = ToCapabilities(createDto.Capabilities)
             };
+
+            if (model.ExposedInApi && await _catalog.ModelExposureProblemAsync(model) is { } problem)
+            {
+                return BadRequest(problem);
+            }
 
             var createdId = await _modelService.CreateModelAsync(model);
             model.Id = createdId;
@@ -119,8 +128,14 @@ public class AdminModelsController : ControllerBase
                 EndpointId = updateDto.EndpointId,
                 AllowedRoles = updateDto.AllowedRoles,
                 AllowedAsDefault = updateDto.AllowedAsDefault,
+                ExposedInApi = updateDto.ExposedInApi,
                 Capabilities = ToCapabilities(updateDto.Capabilities)
             };
+
+            if (model.ExposedInApi && await _catalog.ModelExposureProblemAsync(model) is { } problem)
+            {
+                return BadRequest(problem);
+            }
 
             var updated = await _modelService.UpdateModelAsync(model);
             if (!updated)
@@ -164,6 +179,7 @@ public class AdminModelsController : ControllerBase
         EndpointId = model.EndpointId,
         AllowedRoles = model.AllowedRoles,
         AllowedAsDefault = model.AllowedAsDefault,
+        ExposedInApi = model.ExposedInApi,
         ApiProtocol = model.ApiProtocol?.ToString() ?? string.Empty,
         Capabilities = new ModelCapabilitiesDto
         {

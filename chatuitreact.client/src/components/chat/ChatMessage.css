@@ -54,11 +54,6 @@
   line-height: 1.6;
 }
 
-/* Lead paragraph of an answer — set slightly tighter than the body that follows */
-.assistant-message .message-content > p:first-child {
-  line-height: 1.5;
-}
-
 /* System message */
 .chat-message.system-message {
   display: flex;

@@ -54,6 +54,7 @@ function formStateFor(model: ModelDto | undefined, endpoints: EndpointDto[]) {
     allowedRoles: model ? (model.allowedRoles ?? []) : [...ALL_ROLES],
     // A new model starts ticked; an admin unticks it for models too expensive to run unprompted.
     allowedAsDefault: model?.allowedAsDefault ?? true,
+    exposedInApi: model?.exposedInApi ?? false,
     apiProtocol: (model?.apiProtocol ?? '') as ApiProtocol | '',
     capabilities: caps,
     knowledgeCutoffMonth: typeof iso === 'string' && iso.length >= 7 ? iso.slice(0, 7) : '',
@@ -75,6 +76,7 @@ const ModelEditor: React.FC<ModelEditorProps> = ({ modelId: editId }) => {
   const [endpointId, setEndpointId] = useState(initial.endpointId);
   const [allowedRoles, setAllowedRoles] = useState<UserRole[]>(initial.allowedRoles);
   const [allowedAsDefault, setAllowedAsDefault] = useState(initial.allowedAsDefault);
+  const [exposedInApi, setExposedInApi] = useState(initial.exposedInApi);
   // '' until the admin picks one; a stored row from before per-model protocols also arrives as ''.
   const [apiProtocol, setApiProtocol] = useState<ApiProtocol | ''>(initial.apiProtocol);
   const [capabilities, setCapabilities] = useState<ModelCapabilities>(initial.capabilities);
@@ -98,6 +100,7 @@ const ModelEditor: React.FC<ModelEditorProps> = ({ modelId: editId }) => {
     setEndpointId(next.endpointId);
     setAllowedRoles(next.allowedRoles);
     setAllowedAsDefault(next.allowedAsDefault);
+    setExposedInApi(next.exposedInApi);
     setApiProtocol(next.apiProtocol);
     setCapabilities(next.capabilities);
     setKnowledgeCutoffMonth(next.knowledgeCutoffMonth);
@@ -174,7 +177,7 @@ const ModelEditor: React.FC<ModelEditorProps> = ({ modelId: editId }) => {
         knowledgeCutoff: knowledgeCutoffMonth ? `${knowledgeCutoffMonth}-01T00:00:00Z` : null,
         tokenCountingScheme: capabilities.tokenCountingScheme?.trim() || null,
       };
-      const payload = { modelId, modelName, description, endpointId, allowedRoles, allowedAsDefault, apiProtocol, capabilities: capsToSend };
+      const payload = { modelId, modelName, description, endpointId, allowedRoles, allowedAsDefault, exposedInApi, apiProtocol, capabilities: capsToSend };
 
       if (model) {
         await updateModel(model.id, { id: model.id, ...payload });
@@ -317,6 +320,18 @@ const ModelEditor: React.FC<ModelEditorProps> = ({ modelId: editId }) => {
           {t('admin.models.fields.allowedAsDefault')}
         </label>
         <div className="admin-field-help t-caption">{t('admin.models.fields.allowedAsDefaultHelp')}</div>
+      </div>
+
+      <div className="admin-field">
+        <label className="admin-checkbox-label t-table">
+          <input
+            type="checkbox"
+            checked={exposedInApi}
+            onChange={(e) => setExposedInApi(e.target.checked)}
+          />
+          {t('admin.models.fields.exposedInApi')}
+        </label>
+        <div className="admin-field-help t-caption">{t('admin.models.fields.exposedInApiHelp')}</div>
       </div>
 
       <div className="t-overline">{t('admin.models.fields.capabilities')}</div>

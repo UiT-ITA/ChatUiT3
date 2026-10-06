@@ -13,6 +13,8 @@ public class InternalAgentAdminDto
     /// <summary>Null when none is set: a nested run uses the chat's model, and the Responses API cannot use the agent.</summary>
     public string? ModelId { get; set; }
     public ReasoningEffort? ReasoningEffort { get; set; }
+    /// <summary>Whether the Responses API serves the agent, under its id.</summary>
+    public bool ExposedInApi { get; set; }
     public DateTime? UpdatedAt { get; set; }
 }
 
@@ -23,4 +25,6 @@ public class InternalAgentSettingDto
     public string ModelId { get; set; } = string.Empty;
     /// <summary>Clamped to what the model accepts.</summary>
     public ReasoningEffort ReasoningEffort { get; set; } = ReasoningEffort.None;
+    /// <summary>Whether the Responses API serves the agent, under its id.</summary>
+    public bool ExposedInApi { get; set; }
 }

@@ -23,6 +23,12 @@ public class Model
     /// </summary>
     public bool AllowedAsDefault { get; set; } = false;
 
+    /// <summary>
+    /// Whether the Responses API serves this model, under its <see cref="ModelId"/>, to callers
+    /// with one of its <see cref="AllowedRoles"/>.
+    /// </summary>
+    public bool ExposedInApi { get; set; } = false;
+
     public ModelCapabilities Capabilities { get; set; } = new ModelCapabilities();
 
     /// <summary>

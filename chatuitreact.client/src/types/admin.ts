@@ -94,6 +94,8 @@ export interface InternalAgentDto {
   /** Null when none is set: a nested run uses the chat's model, and the Responses API cannot use the agent. */
   modelId: string | null;
   reasoningEffort: ReasoningEffortLevel | null;
+  /** Whether the Responses API serves the agent, under its id. */
+  exposedInApi: boolean;
   updatedAt: string | null;
 }
 
@@ -101,6 +103,8 @@ export interface InternalAgentDto {
 export interface InternalAgentSettingDto {
   modelId: string;
   reasoningEffort: ReasoningEffortLevel;
+  /** Whether the Responses API serves the agent, under its id. */
+  exposedInApi: boolean;
 }
 
 /** An Entra group from the admin group search. displayName is null when a stored id no longer resolves. */
@@ -113,50 +117,6 @@ export interface DirectoryGroupDto {
 
 /** The pseudo tool whose policy gates client-declared tools as a group. */
 export const CLIENT_TOOLS_POLICY_ID = 'client_tools';
-
-/** What a Responses API catalog entry serves: an internal agent, or a model row as it is. */
-export type ApiCatalogKind = 'agent' | 'model';
-
-/**
- * One entry of the Responses API catalog. The entry only admits callers; the agent's own
- * default and the model's roles still apply.
- */
-export interface ApiCatalogEntryDto {
-  /** What clients send as `model`. An agent's is its id. */
-  publicId: string;
-  kind: ApiCatalogKind;
-  /** The internal agent id, or the model row id. */
-  targetId: string;
-  enabled: boolean;
-  allowedRoles: UserRole[];
-  allowedGroupIds: string[];
-  updatedAt: string | null;
-}
-
-export type SaveApiCatalogEntryDto = Omit<ApiCatalogEntryDto, 'publicId' | 'updatedAt'>;
-
-/** An internal agent the catalog can expose. Its model is set under Internal agents; only its entry is edited here. */
-export interface ApiCatalogAgentDto {
-  id: string;
-  name: string;
-  description: string;
-  toolIds: string[];
-  defaultPolicy: ToolAccessPolicyDto;
-}
-
-export interface ApiCatalogModelDto {
-  id: string;
-  modelName: string;
-  modelId: string;
-}
-
-export interface ApiCatalogDto {
-  entries: ApiCatalogEntryDto[];
-  agents: ApiCatalogAgentDto[];
-  models: ApiCatalogModelDto[];
-}
-
-export const API_PUBLIC_ID_PATTERN = /^[a-z0-9][a-z0-9._-]{0,63}$/;
 
 /**
  * How a model handles the `temperature` parameter. A boolean cannot express the gpt-5.x
@@ -212,6 +172,8 @@ export interface ModelDto {
   allowedRoles: UserRole[];
   /** Whether a user may pin an assistant on this model as their default. Policy, not capability. */
   allowedAsDefault: boolean;
+  /** Whether the Responses API serves this model, under its modelId, to callers with one of its roles. */
+  exposedInApi: boolean;
   capabilities: ModelCapabilities;
   /** Empty string on a stored row that predates per-model protocols; such a row cannot be used until set. */
   apiProtocol: ApiProtocol | '';
@@ -225,6 +187,8 @@ export interface CreateModelDto {
   allowedRoles: UserRole[];
   /** Whether a user may pin an assistant on this model as their default. Policy, not capability. */
   allowedAsDefault: boolean;
+  /** Whether the Responses API serves this model, under its modelId, to callers with one of its roles. */
+  exposedInApi: boolean;
   capabilities: ModelCapabilities;
   apiProtocol: ApiProtocol;
 }
@@ -238,6 +202,8 @@ export interface UpdateModelDto {
   allowedRoles: UserRole[];
   /** Whether a user may pin an assistant on this model as their default. Policy, not capability. */
   allowedAsDefault: boolean;
+  /** Whether the Responses API serves this model, under its modelId, to callers with one of its roles. */
+  exposedInApi: boolean;
   capabilities: ModelCapabilities;
   apiProtocol: ApiProtocol;
 }

@@ -1,6 +1,5 @@
 ﻿using ChatUitReact.Server.Models;
 using ChatUitReact.Server.Services.Agents;
-using ChatUitReact.Server.Services.ApiCatalog;
 
 namespace ChatUitReact.Server.Services;
 
@@ -41,12 +40,7 @@ public interface IDatabaseService
     Task UpsertToolPolicyAsync(ToolPolicy policy);
     Task<bool> DeleteToolPolicyAsync(string toolId);
 
-    // Responses API catalog (agents and models exposed to API clients)
-    Task<List<ApiCatalogEntry>> GetApiCatalogEntriesAsync();
-    Task UpsertApiCatalogEntryAsync(ApiCatalogEntry entry);
-    Task<bool> DeleteApiCatalogEntryAsync(string publicId);
-
-    // Internal agent settings (the model and reasoning level each agent runs on)
+    // Internal agent settings (the model and reasoning level each agent runs on, and whether the Responses API serves it)
     Task<List<InternalAgentSetting>> GetInternalAgentSettingsAsync();
     Task UpsertInternalAgentSettingAsync(InternalAgentSetting setting);
 

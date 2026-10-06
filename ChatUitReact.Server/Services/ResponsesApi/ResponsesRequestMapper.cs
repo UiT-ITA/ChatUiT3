@@ -98,7 +98,7 @@ public sealed class ResponsesRequestMapper
         var serverTools = setup?.Functions ?? [];
         return new MappedRequest
         {
-            History = BuildHistory(ParseInput(request.Input), target.Entry.PublicId, out var resumes, out var rounds),
+            History = BuildHistory(ParseInput(request.Input), target.PublicId, out var resumes, out var rounds),
             Resumes = resumes,
             RoundsSinceUserMessage = rounds,
             ClientTools = BuildClientTools(request, target, serverTools),

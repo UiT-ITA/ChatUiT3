@@ -109,7 +109,7 @@ The Responses API (`/api/v1/responses`) takes client tools in the Responses shap
 a name matching `^[a-zA-Z0-9_-]{1,64}$` with no `client_` prefix, an optional description and an optional
 `parameters` schema; `strict: true` is refused. No prefix keeps these names apart from the agent's server tools,
 so each request is checked for a name that clashes with one of them. The same count and schema caps apply. The
-`client_tools` policy does not: the API catalog entry decides who may use the model or agent.
+`client_tools` policy does not: the agent's `DefaultPolicy`, or the model's allowed roles, decides who may use it.
 
 ## Wire contract
 
@@ -180,8 +180,9 @@ outer model reads to decide when to delegate), `SystemPrompt`, `Functions` (priv
 - `m365_reader`: people, presence, calendar, free/busy, Teams chats, file search and text file reading.
 - `m365_writer`: the same plus sending Teams messages, creating group chats and writing text files to OneDrive;
   every write is confirmed. Its code default allows the Admin role only.
-- `office_word`: the Word add-in's agent. Its only function is the `m365_reader` agent tool; the document tools
-  are declared by the add-in with each request.
+- `office`: the agent of the Office add-ins (Word, Excel, PowerPoint, Outlook). Its only function is the
+  `m365_reader` agent tool. The add-in declares the app's tools with each request and sends the app's own rules
+  as the request's `instructions`, which are appended to the agent's prompt.
 
 Registration (`InternalAgentServiceCollectionExtensions`):
 
@@ -192,10 +193,10 @@ Registration (`InternalAgentServiceCollectionExtensions`):
   keyed by the agent's type, and puts that instance in the tool registry. From then on the agent is also an
   ordinary tool: it appears in the admin Tools page (with its functions listed read-only), the assistant editor,
   and tool access policies apply to it as a whole. Another agent takes it as a function with
-  `[FromKeyedServices(typeof(TAgent))]`. `m365_reader` and `m365_writer` have tools; `office_word` does
+  `[FromKeyedServices(typeof(TAgent))]`. `m365_reader` and `m365_writer` have tools; `office` does
   not.
 
-Model and reasoning level: one admin setting per agent, `{agentId, modelId, reasoningEffort}`, edited under Admin >
+Model and reasoning level: one admin setting per agent, `{agentId, modelId, reasoningEffort, exposedInApi}`, edited under Admin >
 Internal agents (`GET /api/admin/internal-agents`, `PUT /api/admin/internal-agents/{id}`) and stored in the
 `InternalAgents` container of the Configuration database. The model must support function calling; the effort is
 clamped to what the model accepts. The setting applies to every run of the agent. The caller's roles on that
@@ -231,11 +232,14 @@ a tool that yields `ToolExecutionEvent`s instead of returning one result. Two co
 Access:
 
 - Through its tool, the agent is gated by the tool's policy: `DefaultPolicy` until an admin stores an override.
-- Through the Responses API, an agent needs both its API catalog entry's policy and its `DefaultPolicy`.
+- Through the Responses API, an agent must be ticked "Exposed in the API" in its Internal agents setting, and the
+  caller needs its `DefaultPolicy`. A model row is served when it is ticked "Exposed in the API" in the model
+  editor, under its model id, to callers with one of its allowed roles. The model id must then match
+  `^[a-z0-9][a-z0-9._-]{0,63}$` and be unique among exposed models and agent ids.
 - Exposure rule: nested approvals cannot be resumed through the Responses API, because a pause inside a nested
   agent ends the outer call, which then runs again in full. So an agent can only be exposed if none of its
-  functions is an agent tool whose agent has confirmable functions. This is checked when the catalog entry is
-  saved and when it is resolved. Chats wait in place and have no such limit.
+  functions is an agent tool whose agent has confirmable functions. This is checked when the setting is saved
+  and when the agent is resolved. Chats wait in place and have no such limit.
 
 Adding an agent:
 

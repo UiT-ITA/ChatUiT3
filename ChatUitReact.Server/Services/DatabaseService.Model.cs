@@ -201,6 +201,7 @@ public partial class DatabaseService
             EndpointId = document.EndpointId,
             AllowedRoles = document.AllowedRoles,
             AllowedAsDefault = document.AllowedAsDefault,
+            ExposedInApi = document.ExposedInApi,
             Capabilities = MapModelCapabilities(document.Capabilities),
             ApiProtocol = document.ApiProtocol
         };
@@ -218,6 +219,7 @@ public partial class DatabaseService
             EndpointId = model.EndpointId,
             AllowedRoles = model.AllowedRoles,
             AllowedAsDefault = model.AllowedAsDefault,
+            ExposedInApi = model.ExposedInApi,
             Capabilities = MapModelCapabilitiesDocument(model.Capabilities),
             ApiProtocol = model.ApiProtocol
         };

@@ -189,7 +189,7 @@ public sealed class ToolExecutor : IToolExecutor
                 if (deferred.Step is not DeferredStep.Consent consent)
                 {
                     // An inner confirmation cannot be tied to the arguments a repeated inner run
-                    // would produce; the API catalog refuses to expose an agent with such a tool.
+                    // would produce; the Responses API refuses to expose an agent with such a tool.
                     Complete(writer, ToolResult.Error("This tool asked for a confirmation that cannot be resumed here."), ToolCallStatus.Error);
                 }
                 else if (attempts >= MaxConsentRetries)

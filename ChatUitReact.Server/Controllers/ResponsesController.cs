@@ -16,8 +16,8 @@ namespace ChatUitReact.Server.Controllers;
 
 /// <summary>
 /// The OpenAI Responses-compatible API. Stateless: the client sends the whole item history with
-/// every request, and nothing about the conversation is stored. The "models" are the API catalog
-/// entries the caller may use; any other model, or one the caller may not use, is 404
+/// every request, and nothing about the conversation is stored. The "models" are the internal
+/// agents and model rows exposed in the API that the caller may use; any other model, or one the caller may not use, is 404
 /// <c>model_not_found</c>. A request is validated in full before a stream starts, so every
 /// refusal is an HTTP error with the <c>{error:{message,type,param,code}}</c> body.
 /// </summary>
@@ -124,7 +124,7 @@ public class ResponsesController : ControllerBase
             {
                 Id = $"resp_{Guid.NewGuid():N}",
                 CreatedAt = DateTimeOffset.UtcNow.ToUnixTimeSeconds(),
-                Model = target.Entry.PublicId
+                Model = target.PublicId
             };
 
             var identity = _userService.GetUserIdentity(User);
@@ -223,8 +223,8 @@ public class ResponsesController : ControllerBase
 
     private static ModelObject ToModelObject(ApiTarget target) => new()
     {
-        Id = target.Entry.PublicId,
-        Created = new DateTimeOffset(DateTime.SpecifyKind(target.Entry.UpdatedAt, DateTimeKind.Utc)).ToUnixTimeSeconds()
+        Id = target.PublicId,
+        Created = new DateTimeOffset(DateTime.SpecifyKind(target.Created, DateTimeKind.Utc)).ToUnixTimeSeconds()
     };
 
     private static IResult Json<T>(T body, int statusCode = StatusCodes.Status200OK)

@@ -26,6 +26,7 @@ const InternalAgentEditor: React.FC<InternalAgentEditorProps> = ({ agentId }) =>
 
   const [modelId, setModelId] = useState(agent?.modelId ?? '');
   const [reasoningEffort, setReasoningEffort] = useState<ReasoningEffortLevel>(agent?.reasoningEffort ?? 'None');
+  const [exposedInApi, setExposedInApi] = useState(agent?.exposedInApi ?? false);
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
@@ -37,6 +38,7 @@ const InternalAgentEditor: React.FC<InternalAgentEditorProps> = ({ agentId }) =>
     setSynced(agent);
     setModelId(agent?.modelId ?? '');
     setReasoningEffort(agent?.reasoningEffort ?? 'None');
+    setExposedInApi(agent?.exposedInApi ?? false);
   }
 
   if (agents === undefined) {
@@ -56,7 +58,7 @@ const InternalAgentEditor: React.FC<InternalAgentEditorProps> = ({ agentId }) =>
     if (!canSave) return;
     setSaving(true);
     try {
-      await saveAdminInternalAgentSetting(agent.id, { modelId, reasoningEffort: currentEffort });
+      await saveAdminInternalAgentSetting(agent.id, { modelId, reasoningEffort: currentEffort, exposedInApi });
       await loadAdminData(true);
       navigate('/admin/agents');
     } finally {
@@ -125,6 +127,19 @@ const InternalAgentEditor: React.FC<InternalAgentEditorProps> = ({ agentId }) =>
           <div className="admin-field-help t-caption">{t('admin.agents.fields.reasoningEffortHelp')}</div>
         </div>
       )}
+
+      <div className="admin-field">
+        <label className="admin-checkbox-label t-table">
+          <input
+            type="checkbox"
+            checked={exposedInApi}
+            onChange={e => setExposedInApi(e.target.checked)}
+            disabled={saving}
+          />
+          {t('admin.agents.fields.exposedInApi')}
+        </label>
+        <div className="admin-field-help t-caption">{t('admin.agents.fields.exposedInApiHelp', { id: agent.id })}</div>
+      </div>
 
       {agent.updatedAt && (
         <div className="admin-field-help t-caption">

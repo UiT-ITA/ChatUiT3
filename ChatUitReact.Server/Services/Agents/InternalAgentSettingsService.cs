@@ -7,11 +7,12 @@ using ChatUitReact.Server.Models;
 namespace ChatUitReact.Server.Services.Agents;
 
 /// <summary>
-/// The model and reasoning level an admin chose for an internal agent. The effort is stored
-/// clamped to what the model accepts, as assistant settings are.
+/// The model and reasoning level an admin chose for an internal agent, and whether the Responses
+/// API serves it. The effort is stored clamped to what the model accepts, as assistant settings are.
 /// </summary>
 /// <param name="ModelId">The <see cref="Model.Id"/> of a function-calling model.</param>
-public sealed record InternalAgentSetting(string AgentId, string ModelId, ReasoningEffort ReasoningEffort, DateTime UpdatedAt);
+/// <param name="ExposedInApi">Whether the Responses API serves the agent, under its id.</param>
+public sealed record InternalAgentSetting(string AgentId, string ModelId, ReasoningEffort ReasoningEffort, bool ExposedInApi, DateTime UpdatedAt);
 
 /// <summary>Settings are cached in process like tool policies and written through.</summary>
 public sealed class InternalAgentSettingsService

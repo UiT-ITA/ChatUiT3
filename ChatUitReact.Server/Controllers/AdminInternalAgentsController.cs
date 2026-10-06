@@ -1,6 +1,7 @@
 using ChatUitReact.Server.Models;
 using ChatUitReact.Server.Services;
 using ChatUitReact.Server.Services.Agents;
+using ChatUitReact.Server.Services.ApiCatalog;
 using ChatUitReact.Server.Services.Tools;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -9,8 +10,8 @@ namespace ChatUitReact.Server.Controllers;
 
 /// <summary>
 /// Internal agents are code, so this controller only sets the model and reasoning level each one
-/// runs on. The setting applies to every run of the agent: through its tool and through the
-/// Responses API.
+/// runs on, and whether the Responses API serves it. The model applies to every run of the agent:
+/// through its tool and through the Responses API.
 /// </summary>
 [ApiController]
 [Route("api/admin/internal-agents")]
@@ -76,8 +77,13 @@ public class AdminInternalAgentsController : ControllerBase
                 return BadRequest(new { error = "model_cannot_call_functions", message = $"'{model.ModelName}' does not support function calling, which an agent needs." });
             }
 
+            if (dto.ExposedInApi && ApiCatalogService.ExposureProblem(agent) is { } problem)
+            {
+                return BadRequest(new { error = "agent_not_exposable", message = problem });
+            }
+
             // Stored as the model can honour it, the same reconciliation as assistant settings.
-            await _settings.SaveAsync(new InternalAgentSetting(agent.Id, model.Id, model.Capabilities.ClampEffort(dto.ReasoningEffort), DateTime.UtcNow));
+            await _settings.SaveAsync(new InternalAgentSetting(agent.Id, model.Id, model.Capabilities.ClampEffort(dto.ReasoningEffort), dto.ExposedInApi, DateTime.UtcNow));
             return Ok(await ToDtoAsync(agent));
         }
         catch (Exception ex)
@@ -98,6 +104,7 @@ public class AdminInternalAgentsController : ControllerBase
             Functions = ToolMapping.ToFunctionDtos(agent),
             ModelId = setting?.ModelId,
             ReasoningEffort = setting?.ReasoningEffort,
+            ExposedInApi = setting?.ExposedInApi ?? false,
             UpdatedAt = setting?.UpdatedAt
         };
     }
