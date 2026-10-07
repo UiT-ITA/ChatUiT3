@@ -120,7 +120,7 @@ public sealed class FunctionCallOutputItem : ResponseItem
 {
     public string? CallId { get; set; }
 
-    /// <summary>Must be a string.</summary>
+    /// <summary>A string, or <c>input_text</c> and <c>input_image</c> parts (base64 data URLs).</summary>
     public JsonElement Output { get; set; }
 }
 

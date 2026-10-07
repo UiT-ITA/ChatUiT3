@@ -111,6 +111,12 @@ a name matching `^[a-zA-Z0-9_-]{1,64}$` with no `client_` prefix, an optional de
 so each request is checked for a name that clashes with one of them. The same count and schema caps apply. The
 `client_tools` policy does not: the agent's `DefaultPolicy`, or the model's allowed roles, decides who may use it.
 
+A `function_call_output`'s `output` is a string, or a list of `input_text` parts and `input_image` parts whose
+`image_url` is a base64 data URL (png, jpeg, gif or webp; at most 4 images of 5 MB each). The pictures reach the model
+with the result: inside the function output for OpenAI Responses, inside the `tool_result` for Anthropic, and in a
+user message right after the tool messages for Chat Completions, whose tool messages carry text only. A model without
+vision gets the note that the image was omitted instead.
+
 ## Wire contract
 
 Stream chunk kinds added by the tool system, all on `ReceiveMessageChunk`:

@@ -5,6 +5,7 @@ using System.Text.Json;
 namespace ChatUitReact.Server.Services.AiProviders;
 
 using ChatUitReact.Server.Models;
+using ChatUitReact.Server.Services.TokenCounting;
 
 /// <summary>
 /// One entry of the history an <see cref="AiRequest"/> carries. Chats only ever send
@@ -21,8 +22,12 @@ public abstract record AiInputItem
     /// <summary>A tool call the model made in an earlier turn.</summary>
     public sealed record ToolCall(string Id, string Name, string ArgumentsJson) : AiInputItem;
 
-    /// <summary>The result that answered <see cref="ToolCall"/> with the same id.</summary>
-    public sealed record ToolResult(string ToolCallId, string Content, bool IsError) : AiInputItem;
+    /// <summary>
+    /// The result that answered <see cref="ToolCall"/> with the same id. <paramref name="Images"/>
+    /// are pictures a client tool returned with its text (the Responses API's <c>input_image</c>
+    /// output parts); each protocol sends them the way its service accepts images in a tool result.
+    /// </summary>
+    public sealed record ToolResult(string ToolCallId, string Content, bool IsError, IReadOnlyList<ImagePart>? Images = null) : AiInputItem;
 
     /// <summary>
     /// Provider reasoning state from an earlier turn, as that protocol emitted it in

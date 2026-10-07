@@ -7,6 +7,7 @@ using ChatUitReact.Server.Models;
 using ChatUitReact.Server.Services.Agents;
 using ChatUitReact.Server.Services.AiProviders;
 using ChatUitReact.Server.Services.ApiCatalog;
+using ChatUitReact.Server.Services.TokenCounting;
 using ChatUitReact.Server.Services.Tools;
 
 namespace ChatUitReact.Server.Services.ResponsesApi;
@@ -330,10 +331,8 @@ public sealed class ResponsesRequestMapper
                         throw ResponsesApiException.BadRequest($"{param}: no function_call with call_id '{output.CallId}' precedes this output.", $"{param}.call_id", "invalid_value");
                     }
 
-                    if (output.Output.ValueKind != JsonValueKind.String)
-                    {
-                        throw ResponsesApiException.BadRequest($"{param}: output must be a string.", $"{param}.output", "invalid_value");
-                    }
+                    // Parsed here so a malformed output is refused before anything runs.
+                    ParseToolOutput(output.Output, $"{param}.output");
 
                     if (!outputs.TryAdd(output.CallId, i))
                     {
@@ -464,7 +463,8 @@ public sealed class ResponsesRequestMapper
                     StartTurn(isCall: true);
                     turn.Items.Add(new AiInputItem.ToolCall(call.CallId!, call.Name!, string.IsNullOrWhiteSpace(call.Arguments) ? "{}" : call.Arguments));
                     var output = (FunctionCallOutputItem)items[outputs[call.CallId!]];
-                    turn.Results.Add(new TurnResult(new AiInputItem.ToolResult(call.CallId!, output.Output.GetString() ?? string.Empty, false), null, i));
+                    var (text, images) = ParseToolOutput(output.Output, $"input[{outputs[call.CallId!]}].output");
+                    turn.Results.Add(new TurnResult(new AiInputItem.ToolResult(call.CallId!, text, false, images.Count > 0 ? images : null), null, i));
                     break;
 
                 case McpCallItem or McpApprovalRequestItem:
@@ -618,6 +618,71 @@ public sealed class ResponsesRequestMapper
         "system" or "developer" => AiChatRole.System,
         _ => throw ResponsesApiException.BadRequest($"{param}: role '{role}' is not supported.", $"{param}.role", "unsupported_value")
     };
+
+    /// <summary>At most this many images in one function_call_output.</summary>
+    public const int MaxToolOutputImages = 4;
+
+    /// <summary>At most this many bytes per image, decoded.</summary>
+    public const int MaxToolOutputImageBytes = 5 * 1024 * 1024;
+
+    private static readonly System.Text.RegularExpressions.Regex ImageDataUrl =
+        new("^data:(image/(?:png|jpeg|gif|webp));base64,([A-Za-z0-9+/=]+)$", System.Text.RegularExpressions.RegexOptions.Compiled);
+
+    /// <summary>
+    /// A function_call_output's output: a string, or a list of <c>input_text</c> parts and
+    /// <c>input_image</c> parts whose <c>image_url</c> is a base64 data URL (png, jpeg, gif or webp).
+    /// The text parts are joined with newlines.
+    /// </summary>
+    private static (string Text, List<ImagePart> Images) ParseToolOutput(JsonElement output, string param)
+    {
+        if (output.ValueKind == JsonValueKind.String)
+        {
+            return (output.GetString() ?? string.Empty, new List<ImagePart>());
+        }
+
+        if (output.ValueKind != JsonValueKind.Array)
+        {
+            throw ResponsesApiException.BadRequest($"{param}: output must be a string or an array of input_text and input_image parts.", param, "invalid_value");
+        }
+
+        var texts = new List<string>();
+        var images = new List<ImagePart>();
+        var index = 0;
+        foreach (var part in output.EnumerateArray())
+        {
+            var partParam = $"{param}[{index++}]";
+            var type = part.ValueKind == JsonValueKind.Object && part.TryGetProperty("type", out var t) ? t.GetString() : null;
+            switch (type)
+            {
+                case "input_text":
+                    texts.Add(part.TryGetProperty("text", out var text) && text.ValueKind == JsonValueKind.String ? text.GetString()! : string.Empty);
+                    break;
+                case "input_image":
+                    var url = part.TryGetProperty("image_url", out var u) && u.ValueKind == JsonValueKind.String ? u.GetString()! : string.Empty;
+                    var match = ImageDataUrl.Match(url);
+                    if (!match.Success)
+                    {
+                        throw ResponsesApiException.BadRequest($"{partParam}: image_url must be a base64 data URL of a png, jpeg, gif or webp image.", $"{partParam}.image_url", "invalid_value");
+                    }
+
+                    if (match.Groups[2].Value.Length / 4 * 3 > MaxToolOutputImageBytes)
+                    {
+                        throw ResponsesApiException.BadRequest($"{partParam}: the image is larger than {MaxToolOutputImageBytes / (1024 * 1024)} MB.", $"{partParam}.image_url", "invalid_value");
+                    }
+
+                    images.Add(new ImagePart(match.Groups[2].Value, match.Groups[1].Value));
+                    if (images.Count > MaxToolOutputImages)
+                    {
+                        throw ResponsesApiException.BadRequest($"{param}: at most {MaxToolOutputImages} images per output.", param, "invalid_value");
+                    }
+                    break;
+                default:
+                    throw ResponsesApiException.BadRequest($"{partParam}: output part of type '{type}' is not supported.", $"{partParam}.type", "unsupported_value");
+            }
+        }
+
+        return (string.Join("\n", texts), images);
+    }
 
     private static string TextOf(JsonElement content, string param)
     {

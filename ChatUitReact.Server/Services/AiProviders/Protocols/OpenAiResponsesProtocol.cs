@@ -5,6 +5,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Runtime.CompilerServices;
 using System.Text.Json;
+using System.Text.Json.Nodes;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Extensions.Logging;
@@ -13,6 +14,8 @@ using OpenAI.Responses;
 
 // The OpenAI SDK ships its Responses surface as [Experimental].
 #pragma warning disable OPENAI001
+// JsonPatch, used to send a tool output as content parts, is [Experimental].
+#pragma warning disable SCME0001
 
 namespace ChatUitReact.Server.Services.AiProviders.Protocols;
 
@@ -213,13 +216,42 @@ public sealed class OpenAiResponsesProtocol : IApiProtocol
                 case AiInputSegment.ToolResults results:
                     foreach (var result in results.Results)
                     {
-                        items.Add(ResponseItem.CreateFunctionCallOutputItem(result.ToolCallId, result.Content));
+                        items.Add(BuildToolOutputItem(result, request.Parameters.AllowImages));
                     }
                     break;
             }
         }
 
         return items;
+    }
+
+    /// <summary>
+    /// A tool result as a function_call_output. With images, the output is a list of
+    /// input_text and input_image parts, which the service accepts but the SDK models only as a
+    /// string, so the list is set through the item's patch. A model that cannot read images gets
+    /// the note instead.
+    /// </summary>
+    private static ResponseItem BuildToolOutputItem(AiInputItem.ToolResult result, bool allowImages)
+    {
+        if (result.Images is not { Count: > 0 } images)
+        {
+            return ResponseItem.CreateFunctionCallOutputItem(result.ToolCallId, result.Content);
+        }
+
+        if (!allowImages)
+        {
+            return ResponseItem.CreateFunctionCallOutputItem(result.ToolCallId, $"{result.Content}\n{MessageParts.ImageOmittedText}");
+        }
+
+        var parts = new JsonArray { new JsonObject { ["type"] = "input_text", ["text"] = result.Content } };
+        foreach (var image in images)
+        {
+            parts.Add(new JsonObject { ["type"] = "input_image", ["image_url"] = $"data:{image.MediaType};base64,{image.Base64}" });
+        }
+
+        var item = ResponseItem.CreateFunctionCallOutputItem(result.ToolCallId, result.Content);
+        item.Patch.Set("$.output"u8, BinaryData.FromString(parts.ToJsonString()));
+        return item;
     }
 
     private static void AddMessage(List<ResponseItem> items, Models.ChatMessage message, bool allowImages)

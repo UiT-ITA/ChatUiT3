@@ -13,6 +13,7 @@ using Microsoft.Extensions.Logging;
 namespace ChatUitReact.Server.Services.AiProviders.Protocols;
 
 using ChatUitReact.Server.Models;
+using ChatUitReact.Server.Services.TokenCounting;
 using ChatUitReact.Server.Services.Tools;
 using DomainChatMessage = ChatUitReact.Server.Models.ChatMessage;
 
@@ -240,7 +241,7 @@ public sealed class AnthropicMessagesProtocol : IApiProtocol
                     break;
                 case AiInputSegment.ToolResults results:
                     Add(Role.User, results.Results
-                        .Select(result => (ContentBlockParam)new ToolResultBlockParam { ToolUseID = result.ToolCallId, Content = result.Content, IsError = result.IsError })
+                        .Select(result => (ContentBlockParam)BuildToolResult(result, request.Parameters.AllowImages))
                         .ToList());
                     break;
             }
@@ -375,6 +376,39 @@ public sealed class AnthropicMessagesProtocol : IApiProtocol
             return new Dictionary<string, JsonElement>();
         }
     }
+
+    /// <summary>
+    /// A tool result block. Images a tool returned go into its content next to the text; a model
+    /// that cannot read images gets the note instead.
+    /// </summary>
+    private static ToolResultBlockParam BuildToolResult(AiInputItem.ToolResult result, bool allowImages)
+    {
+        if (result.Images is not { Count: > 0 } images)
+        {
+            return new ToolResultBlockParam { ToolUseID = result.ToolCallId, Content = result.Content, IsError = result.IsError };
+        }
+
+        if (!allowImages)
+        {
+            return new ToolResultBlockParam { ToolUseID = result.ToolCallId, Content = $"{result.Content}\n{MessageParts.ImageOmittedText}", IsError = result.IsError };
+        }
+
+        var blocks = new List<Block> { new TextBlockParam { Text = result.Content } };
+        blocks.AddRange(images.Select(image => (Block)new ImageBlockParam
+        {
+            Source = new Base64ImageSource { Data = image.Base64, MediaType = ResolveToolImageMediaType(image.MediaType) }
+        }));
+        return new ToolResultBlockParam { ToolUseID = result.ToolCallId, Content = blocks, IsError = result.IsError };
+    }
+
+    /// <summary>The media types the Responses API accepts in tool output (png, jpeg, gif, webp).</summary>
+    private static MediaType ResolveToolImageMediaType(string mediaType) => mediaType switch
+    {
+        "image/png" => MediaType.ImagePng,
+        "image/gif" => MediaType.ImageGif,
+        "image/webp" => MediaType.ImageWebP,
+        _ => MediaType.ImageJpeg
+    };
 
     private static MediaType ResolveMediaType(string? format)
     {

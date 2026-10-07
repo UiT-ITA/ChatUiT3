@@ -168,10 +168,7 @@ public sealed class OpenAiChatCompletionsProtocol : IApiProtocol
                     AddAssistantTurn(messages, turn, request);
                     break;
                 case AiInputSegment.ToolResults results:
-                    foreach (var result in results.Results)
-                    {
-                        messages.Add(new ToolChatMessage(result.ToolCallId, result.Content));
-                    }
+                    AddToolResults(messages, results.Results, request.Parameters.AllowImages);
                     break;
             }
         }
@@ -244,6 +241,37 @@ public sealed class OpenAiChatCompletionsProtocol : IApiProtocol
            && content.ValueKind == JsonValueKind.String
             ? content.GetString() ?? string.Empty
             : string.Empty;
+
+    /// <summary>
+    /// Tool messages carry text only in Chat Completions, so images a tool returned follow the
+    /// tool messages in one user message, each labelled with its call. A model that cannot read
+    /// images gets the note in the tool message instead.
+    /// </summary>
+    private static void AddToolResults(List<OpenAiChatMessage> messages, IReadOnlyList<AiInputItem.ToolResult> results, bool allowImages)
+    {
+        var imageParts = new List<ChatMessageContentPart>();
+        foreach (var result in results)
+        {
+            var images = result.Images ?? [];
+            if (images.Count > 0 && !allowImages)
+            {
+                messages.Add(new ToolChatMessage(result.ToolCallId, $"{result.Content}\n{MessageParts.ImageOmittedText}"));
+                continue;
+            }
+
+            messages.Add(new ToolChatMessage(result.ToolCallId, result.Content));
+            if (images.Count > 0)
+            {
+                imageParts.Add(ChatMessageContentPart.CreateTextPart($"Images returned by tool call {result.ToolCallId}:"));
+                imageParts.AddRange(images.Select(image => ChatMessageContentPart.CreateImagePart(new Uri($"data:{image.MediaType};base64,{image.Base64}"))));
+            }
+        }
+
+        if (imageParts.Count > 0)
+        {
+            messages.Add(new UserChatMessage(imageParts));
+        }
+    }
 
     private static UserChatMessage BuildUserMessage(DomainChatMessage message, bool allowImages)
     {
