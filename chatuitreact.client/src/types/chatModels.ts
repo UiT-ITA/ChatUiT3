@@ -184,6 +184,7 @@ export interface ChatMessageDto {
   tokenCounts: Record<string, number>;
   /** The attachment share of tokenCounts per scheme; empty when the message has no files. */
   fileTokenCounts: Record<string, number>;
+  optimistic?: boolean;
 }
 
 export interface ChatHeaderDto {
@@ -225,7 +226,6 @@ export interface SendMessageDto {
 
 export interface CreateChatDto {
   assistantId: string;
-  messages: SendMessageDto[];
 }
 
 export interface UpdateChatDto {

@@ -197,42 +197,16 @@ public class ChatService : IChatService
         return await _databaseService.GetChatFileAsync(userId, chatId, fileId);
     }
 
-    public async Task<Chat> CreateChatAsync(string userId, string assistantId, List<Models.ChatMessage> messages, PromptUserContext promptUser, ToolSessionInput tools)
+    public async Task<Chat> CreateChatAsync(string userId, string assistantId)
     {
-        return await CreateChatAsync(userId, messages, assistantId, promptUser, tools);
-    }
-
-
-    private async Task<Chat> CreateChatAsync(string userId, List<Models.ChatMessage> messages, string assistantId, PromptUserContext promptUser, ToolSessionInput tools)
-    {
-        var lastMessage = messages.Last();
-        var initialMessages = messages.Take(messages.Count - 1).ToList();
-
-        var schemes = await _tokenCounting.GetActiveSchemeIdsAsync();
-        foreach (var message in initialMessages)
-        {
-            _tokenCounting.FillMissingMessageCounts(message, schemes);
-        }
-
-        var newChat = new Chat 
+        var newChat = new Chat
         {
             Name = "New chat",
-            AssistantId = assistantId,
-            Messages = initialMessages
+            AssistantId = assistantId
         };
 
         await _databaseService.AddChatAsync(userId, newChat);
         NotifyChatListUpdated(userId);
-
-        _ = Task.Run(async () => {
-            var name = await GenerateChatNameAsync(messages[0].Content);
-            if (name != null)
-            {
-                await UpdateChatAsync(userId, newChat.Id, name, null);
-            }
-        });
-
-        await SendStreamingMessageAsync(userId, newChat.Id, lastMessage, assistantId, promptUser, tools);
 
         return newChat;
     }
@@ -327,6 +301,18 @@ public class ChatService : IChatService
         
         var chat = await GetChatByIdAsync(userId, chatId);
         var messages = chat?.Messages ?? new();
+
+        var wasEmpty = messages.All(m => m.Id == userMessage.Id || m.Id == assistantMessage.Id);
+        if (wasEmpty)
+        {
+            _ = Task.Run(async () => {
+                var name = await GenerateChatNameAsync(userMessage.Content);
+                if (name != null)
+                {
+                    await UpdateChatAsync(userId, chatId, name, null);
+                }
+            });
+        }
         
         var effectiveAssistantId = string.IsNullOrWhiteSpace(assistantId) ? chat?.AssistantId : assistantId;
         if (chat != null && !string.IsNullOrWhiteSpace(assistantId) && assistantId != chat.AssistantId)

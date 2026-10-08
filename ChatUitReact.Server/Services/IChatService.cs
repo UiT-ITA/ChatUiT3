@@ -11,7 +11,7 @@ public interface IChatService
     Task<List<ChatHeader>> GetChatListAsync(string userId);
     Task<Chat?> GetChatByIdAsync(string userId, string chatId, bool includeFileContent = true);
     Task<ChatFile?> GetChatFileAsync(string userId, string chatId, string fileId);
-    Task<Chat> CreateChatAsync(string userId, string assistantId, List<ChatMessage> messages, PromptUserContext promptUser, ToolSessionInput tools);
+    Task<Chat> CreateChatAsync(string userId, string assistantId);
     Task UpdateChatAsync(string userId, string chatId, string? newTitle, string? newAssistantId = null);
     Task SetChatFavoriteAsync(string userId, string chatId, bool isFavorite);
     Task DeleteChatAsync(string userId, string chatId);

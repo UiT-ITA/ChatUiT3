@@ -68,7 +68,6 @@ public class CreateChatFileDto
 public class CreateChatDto
 {
     public string AssistantId { get; set; } = string.Empty;
-    public List<SendMessageDto> Messages { get; set; } = new List<SendMessageDto>();
 }
 
 public class UpdateChatDto

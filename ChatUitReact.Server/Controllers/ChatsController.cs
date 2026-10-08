@@ -160,30 +160,11 @@ public class ChatsController : ControllerBase
                 return Forbid();
             }
 
-            var initialMessages = new List<ChatMessage>();
-            foreach (var msgDto in request.Messages)
-            {
-                var message = new ChatMessage
-                {
-                    Role = AiChatRole.User,
-                    Content = msgDto.Content,
-                    Status = AiChatStatus.Success,
-                    Files = msgDto.Files != null ? MapDtoToFiles(msgDto.Files) : new List<ChatFile>()
-                };
-                initialMessages.Add(message);
-            }
-            
-            var promptUser = await _assistantService.GetPromptUserContextAsync(_userService.GetUserIdentity(User));
-            var clientTools = request.Messages.LastOrDefault()?.ClientTools;
-            var chat = await _chatService.CreateChatAsync(userId, request.AssistantId, initialMessages, promptUser, BuildToolSession(clientTools));
-            
+            var chat = await _chatService.CreateChatAsync(userId, request.AssistantId);
+
             await _hubContext.Clients.Group(userId).ChatListUpdated();
-            
+
             return CreatedAtAction(nameof(GetChat), new { chatId = chat.Id }, MapToDto(chat));
-        }
-        catch (ToolArgumentException ex)
-        {
-            return BadRequest(new { error = "invalid_client_tools", message = ex.Message });
         }
         catch (Exception ex)
         {
@@ -214,24 +195,12 @@ public class ChatsController : ControllerBase
 
             var promptUser = await _assistantService.GetPromptUserContextAsync(_userService.GetUserIdentity(User));
 
-            if (chatId == "new")
-            {
-                var messages = new List<ChatMessage> { message };
-                var chat = await _chatService.CreateChatAsync(userId, request.AssistantId, messages, promptUser, BuildToolSession(request.ClientTools));
-                
-                await _hubContext.Clients.Group(userId).ChatListUpdated();
-                
-                return Ok(new { chatId = chat.Id });
-            }
-            else
-            {
-                // Uses the same streaming path as the SignalR hub, so both entry points behave alike.
-                await _chatService.SendStreamingMessageAsync(userId, chatId, message, request.AssistantId, promptUser, BuildToolSession(request.ClientTools));
-                
-                await _hubContext.Clients.Group(userId).ChatUpdated(chatId);
-                
-                return Ok(new { success = true });
-            }
+            // Uses the same streaming path as the SignalR hub, so both entry points behave alike.
+            await _chatService.SendStreamingMessageAsync(userId, chatId, message, request.AssistantId, promptUser, BuildToolSession(request.ClientTools));
+
+            await _hubContext.Clients.Group(userId).ChatUpdated(chatId);
+
+            return Ok(new { success = true });
         }
         catch (ToolArgumentException ex)
         {
