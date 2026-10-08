@@ -50,16 +50,16 @@ function ChatMessage({ chatId, message, fallbackAssistantName, onStreamingChunk 
   }, [settings.mode]);
 
   const streamSignal = useMemo(() => {
-    return message.status === "Generating" ? getStreamSignal(message.id, chatId) : null;
-  }, [message.id, message.status, chatId]);
+    return message.status === "Generating" && !message.optimistic ? getStreamSignal(message.id, chatId) : null;
+  }, [message.id, message.status, message.optimistic, chatId]);
 
   const displayContent = message.status === "Generating"
     ? (streamSignal?.value || "")
     : message.content;
 
   const activitySignal = useMemo(() => {
-    return message.status === "Generating" && message.role === 'Assistant' ? getActivitySignal(message.id, chatId) : null;
-  }, [message.id, message.status, message.role, chatId]);
+    return message.status === "Generating" && message.role === 'Assistant' && !message.optimistic ? getActivitySignal(message.id, chatId) : null;
+  }, [message.id, message.status, message.role, message.optimistic, chatId]);
   const liveActivity = activitySignal?.value ?? null;
 
   const isUser = message.role === 'User';
@@ -210,6 +210,7 @@ function ChatMessage({ chatId, message, fallbackAssistantName, onStreamingChunk 
           <span className="message-time t-meta">
             {new Date(message.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
           </span>
+          {message.optimistic && <span className="t-caption">{t('chat.creating')}</span>}
         </MessageActivity>
       )}
 

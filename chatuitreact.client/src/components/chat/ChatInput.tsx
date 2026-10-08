@@ -2,7 +2,8 @@ import './ChatInput.css';
 import { useState, useRef, useEffect } from 'react';
 import { useSignals } from '@preact/signals-react/runtime';
 import { useTranslation } from 'react-i18next';
-import { sendMessage, getCurrentChatId, getCurrentAssistantId, createChat, getChat, cancelGeneration, forgetChat, getActivitySignal } from '../../services/chatService';
+import { sendMessage, sendNewChatMessage, deleteChat, getCurrentChatId, getCurrentAssistantId, getChat, cancelGeneration, forgetChat, getActivitySignal } from '../../services/chatService';
+import { removeCachedChat } from '../../hooks/useChatCache';
 import { FileProcessingService } from '../../services/fileProcessingService';
 import { Icon } from '../common/Icon';
 import AssistantSelector from '../common/AssistantSelector';
@@ -15,6 +16,11 @@ import { getContextUsage, setDraft } from '../../services/contextUsageService';
 import { formatTokens, formatTokensCompact } from '../../utils/tokenCounting';
 
 const DRAFT_COUNT_DEBOUNCE_MS = 150;
+
+function isNewChatPath(pathname: string): boolean {
+  const parts = pathname.split('/').filter(Boolean);
+  return parts.length === 0 || (parts[0] === 'chat' && (parts.length === 1 || parts[1] === 'new'));
+}
 
 export default function ChatInput() {
   useSignals();
@@ -75,6 +81,10 @@ export default function ChatInput() {
       return;
     }
 
+    if (chatId !== undefined && chat === undefined) {
+      return;
+    }
+
     const message = textareaRef.current?.value?.trim() || '';
 
     if (!message && selectedFiles.length === 0) {
@@ -83,27 +93,43 @@ export default function ChatInput() {
     }
 
     const sentFiles = selectedFiles;
+    handleCleanup();
 
+    let newChatId: string | undefined;
     try {
       if (chatId !== undefined) {
-        await sendMessage(chatId, message, sentFiles);
         lastSentRef.current.set(chatId, { text: message, files: sentFiles });
+        await sendMessage(chatId, message, sentFiles);
       } else {
-        const newChatId = await createChat(message, currentAssistantId.value!, sentFiles);
-
-        if (!newChatId) {
-          console.error('Failed to create new chat');
-          return;
-        }
-        lastSentRef.current.set(newChatId, { text: message, files: sentFiles });
-        navigate('/chat/' + newChatId);
+        await sendNewChatMessage(message, sentFiles, currentAssistantId.value!, (createdChatId) => {
+          newChatId = createdChatId;
+          lastSentRef.current.set(createdChatId, { text: message, files: sentFiles });
+          if (isNewChatPath(window.location.pathname)) {
+            navigate('/chat/' + createdChatId);
+          }
+        });
       }
-
-      handleCleanup();
     } catch (error) {
       console.error('Failed to send message:', error);
+      if (chatId === undefined) {
+        navigate('/');
+        if (newChatId !== undefined) {
+          removeCachedChat(newChatId);
+          deleteChat(newChatId).catch(() => {});
+        }
+      }
+      restoreComposer(message, sentFiles);
     }
+  };
 
+  const restoreComposer = (text: string, files: ChatFile[]) => {
+    if (textareaRef.current) {
+      textareaRef.current.value = text;
+    }
+    setCharCount(text.length);
+    setSelectedFiles(files);
+    setDraft(text, files);
+    textareaRef.current?.focus();
   };
 
   const handleCancel = async () => {
@@ -340,7 +366,7 @@ export default function ChatInput() {
                 type="button"
                 className="composer-send composer-cancel t-ui"
                 onClick={handleCancel}
-                disabled={isCancelling}
+                disabled={isCancelling || generatingMessage?.optimistic}
                 title={t('chat.cancelGeneration')}
               >
                 <Icon name="stop" size={0.9375} className="icon" />

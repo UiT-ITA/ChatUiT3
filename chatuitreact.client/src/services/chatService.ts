@@ -1,5 +1,5 @@
 import { signal, Signal, computed } from "@preact/signals-react";
-import type { ChatDto, ChatFileDto, ChatHeaderDto, ChatStreamChunk, CreateChatDto, MessageActivityDto, ActivityEntryDto, UpdateChatDto, ToolCallResponseDto, ToolCallResponseResultDto, ToolCallStatus } from "../types/chatModels";
+import type { ChatDto, ChatFileDto, ChatHeaderDto, ChatMessageDto, ChatStreamChunk, CreateChatDto, MessageActivityDto, ActivityEntryDto, UpdateChatDto, ToolCallResponseDto, ToolCallResponseResultDto, ToolCallStatus } from "../types/chatModels";
 import { getClientToolDeclarations } from "./clientTools/clientToolRegistry";
 import { runClientToolCall } from "./clientTools/clientToolRunner";
 import apiService, { ApiError } from "./apiService";
@@ -34,6 +34,9 @@ const messageActivityCache = new Map<string, Signal<LiveActivity>>();
 // Which chat a streaming message belongs to; needed to answer its tool calls.
 const messageChatIds = new Map<string, string>();
 const chatNotFoundCache = new Map<string, Signal<boolean>>();
+
+const OPTIMISTIC_USER_MESSAGE_ID = "optimistic-user";
+const OPTIMISTIC_REPLY_ID = "optimistic-reply";
 
 // Chunk throttling buffers
 const chunkBuffers = new Map<string, ChatStreamChunk[]>();
@@ -72,28 +75,66 @@ export async function invalidateChats(): Promise<void> {
   return chatListLoadingPromise;
 }
 
-export async function createChat(content: string, assistantId: string, files?: ChatFile[]): Promise<string> {
-  try {
-    const fileDtos = files ? mapToCreateChatFileDto(files) : undefined;
-    const createChatDto: CreateChatDto = {
+async function createChat(assistantId: string): Promise<ChatDto> {
+  const createChatDto: CreateChatDto = { assistantId };
+  return apiService.post<ChatDto>("/api/Chats", createChatDto);
+}
+
+function buildOptimisticMessages(content: string, files: ChatFile[], assistantId: string): ChatMessageDto[] {
+  const timestamp = new Date().toISOString();
+
+  return [
+    {
+      id: OPTIMISTIC_USER_MESSAGE_ID,
+      role: "User",
+      timestamp,
+      content,
+      status: "Success",
+      files,
+      assistantId: "",
+      assistantName: "",
+      tokenCounts: {},
+      fileTokenCounts: {},
+      optimistic: true
+    },
+    {
+      id: OPTIMISTIC_REPLY_ID,
+      role: "Assistant",
+      timestamp,
+      content: "",
+      status: "Generating",
+      files: [],
       assistantId,
-      messages: [{
-        content, 
-        files: fileDtos,
-        assistantId,
-        clientTools: getClientToolDeclarations()
-      }]
-    };
+      assistantName: getAssistant(assistantId).peek()?.name ?? "",
+      tokenCounts: {},
+      fileTokenCounts: {},
+      optimistic: true
+    }
+  ];
+}
 
-    ensurePayloadWithinLimit(createChatDto);
-
-    const response = await apiService.post<ChatDto>("/api/Chats", createChatDto);
-    return response.id;
-
-  } catch (error) {
-    console.error("Error creating chat:", error);
-    throw error;
+function removeOptimisticMessages(chatId: string): void {
+  const chatSignal = chatCache.get(chatId);
+  if (chatSignal?.value) {
+    chatSignal.value = { ...chatSignal.value, messages: chatSignal.value.messages.filter(m => !m.optimistic) };
   }
+}
+
+export async function sendNewChatMessage(
+  content: string,
+  files: ChatFile[],
+  assistantId: string,
+  onCreated: (chatId: string) => void
+): Promise<void> {
+  const created = await createChat(assistantId);
+
+  chatCache.set(created.id, signal<ChatDto | undefined>({
+    ...created,
+    messages: buildOptimisticMessages(content, files, assistantId)
+  }));
+  onCreated(created.id);
+
+  await postMessage(created.id, content, files, assistantId);
 }
 
 // The server broadcasts ChatListUpdated after each of these, which refetches the list.
@@ -170,29 +211,42 @@ export async function deleteChat(chatId: string): Promise<void> {
   }
 }
 
-export async function sendMessage(chatId: string, content: string, files?: ChatFile[]): Promise<void> {
-  try {
-    const assistantId = getCurrentAssistantId().value;
-    if (!assistantId) {
-      throw new Error("No assistant selected");
-    }
-    
-    const fileDtos = files ? mapToCreateChatFileDto(files) : undefined;
-    const messageDto: SendMessageDto = { 
-      content,
-      assistantId,
-      files: fileDtos,
-      clientTools: getClientToolDeclarations()
+export async function sendMessage(chatId: string, content: string, files: ChatFile[]): Promise<void> {
+  const assistantId = getCurrentAssistantId().value;
+  if (!assistantId) {
+    throw new Error("No assistant selected");
+  }
+
+  const chatSignal = getChat(chatId);
+  if (chatSignal.value) {
+    chatSignal.value = {
+      ...chatSignal.value,
+      messages: [...chatSignal.value.messages, ...buildOptimisticMessages(content, files, assistantId)]
     };
+  }
 
-    ensurePayloadWithinLimit(messageDto);
-
-    await apiService.post(`/api/Chats/${chatId}/messages`, messageDto);
-
+  try {
+    await postMessage(chatId, content, files, assistantId);
   } catch (error) {
-    console.error(`Error sending message to chat ${chatId}:`, error);
+    removeOptimisticMessages(chatId);
     throw error;
   }
+}
+
+async function postMessage(chatId: string, content: string, files: ChatFile[], assistantId: string): Promise<void> {
+  // Lets the optimistic messages paint before the request is serialized, which is slow with large files.
+  await new Promise(resolve => setTimeout(resolve, 0));
+
+  const messageDto: SendMessageDto = {
+    content,
+    assistantId,
+    files: mapToCreateChatFileDto(files),
+    clientTools: getClientToolDeclarations()
+  };
+
+  ensurePayloadWithinLimit(messageDto);
+
+  await apiService.post(`/api/Chats/${chatId}/messages`, messageDto);
 }
 
 /**
@@ -297,6 +351,12 @@ export async function invalidateChat(chatId: string): Promise<void> {
       });
     }
     
+    const optimisticMessages = chatSignal?.value?.messages.filter(m => m.optimistic) ?? [];
+    const messagesBeforeSend = (chatSignal?.value?.messages.length ?? 0) - optimisticMessages.length;
+    if (optimisticMessages.length > 0 && chat.messages.length <= messagesBeforeSend) {
+      chat.messages = [...chat.messages, ...optimisticMessages];
+    }
+
     if (chatSignal) {
       chatSignal.value = chat;
     } else {
