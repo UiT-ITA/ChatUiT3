@@ -142,6 +142,7 @@
     "header": "Velkommen til ChatUiT",
     "greeting": "Hei, {{name}}.",
     "subheader": "Spør om noe, lim inn en tekst, eller last opp en fil.",
+    "recentAssistants": "Nylig brukte assistenter",
     "selectAssistant": "Velg AI-assistent",
     "tips": {
       "title": "Tips:",

@@ -111,6 +111,26 @@
   margin-top: 0.1875rem;
 }
 
+.recent-assistants {
+  margin-top: 1.625rem;
+}
+
+.recent-assistants-list .assistant-option {
+  border: 1px solid var(--line);
+  border-top: 3px solid var(--accent-2);
+  border-radius: 0 0 var(--radius-md) var(--radius-md);
+}
+
+.recent-assistants-list .assistant-option-name {
+  flex: 0 0 auto;
+  max-width: 100%;
+}
+
+.recent-assistants-list .ap-row-model {
+  flex: 0 1 auto;
+  min-width: 0;
+}
+
 @media (max-width: 50rem) {
   .welcome-container {
     padding: 1.75rem 1rem 1rem;

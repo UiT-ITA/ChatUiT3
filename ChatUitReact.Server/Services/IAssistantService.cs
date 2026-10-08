@@ -20,7 +20,7 @@ public interface IAssistantService
     Task<bool> ClearDefaultAssistantAsync(string userId);
     Task<bool> ToggleAssistantFavoriteAsync(string assistantId, string userId);
     Task<string> GenerateShareLinkAsync(string assistantId, string userId);
-    Task<AssistantListDto> GetUserAssistantsDtoAsync(string userId, UserAccess access, PromptUserContext promptUser);
+    Task<AssistantListDto> GetUserAssistantsDtoAsync(UserIdentity identity, UserAccess access);
     /// <summary>The user facts prompt snippets may read, from the stored profile with claims as fallback.</summary>
     Task<PromptUserContext> GetPromptUserContextAsync(UserIdentity identity);
     Task<List<FullAssistantDto>> GetSystemAssistantsForAdminAsync();

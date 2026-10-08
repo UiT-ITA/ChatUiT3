@@ -2,6 +2,8 @@ import { useTranslation } from 'react-i18next';
 import { useAuth } from '../../hooks/useAuth';
 import { useSignals } from '@preact/signals-react/runtime';
 import { getUserProfile } from '../../services/userProfileService';
+import { getRecentAssistants, getCurrentAssistantId, setUserSelectedAssistantId } from '../../services/chatService';
+import AssistantRow from '../common/AssistantRow';
 import './NewChatWelcome.css';
 
 export default function NewChatWelcome() {
@@ -9,6 +11,8 @@ export default function NewChatWelcome() {
   const { account } = useAuth();
   useSignals();
   const profileName = getUserProfile().value?.displayName ?? '';
+  const recentAssistants = getRecentAssistants().value;
+  const currentAssistantId = getCurrentAssistantId().value;
 
   const nameParts = (profileName || account?.name || '')
     .split(/[\s,]+/)
@@ -49,6 +53,22 @@ export default function NewChatWelcome() {
             </div>
           </div>
         </div>
+
+        {recentAssistants.length > 0 && (
+          <div className="tips-section recent-assistants">
+            <div className="t-overline">{t('welcome.recentAssistants')}</div>
+            <div className="tips-container recent-assistants-list" role="listbox" aria-label={t('welcome.recentAssistants')}>
+              {recentAssistants.map(assistant => (
+                <AssistantRow
+                  key={assistant.id}
+                  assistant={assistant}
+                  selected={assistant.id === currentAssistantId}
+                  onSelect={a => setUserSelectedAssistantId(a.id)}
+                />
+              ))}
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );

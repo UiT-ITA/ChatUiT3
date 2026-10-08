@@ -3,8 +3,9 @@ import { useSignals } from '@preact/signals-react/runtime';
 import { useTranslation } from 'react-i18next';
 import { Icon, type IconName } from './Icon';
 import { getSelectableAssistants, getCurrentAssistantId, setUserSelectedAssistantId } from '../../services/chatService';
-import { toggleFavorite } from '../../services/assistantService';
 import { getModels } from '../../services/modelService';
+import AssistantRow from './AssistantRow';
+import { CAPABILITIES, capabilitiesOf, type Capability } from './assistantCapabilities';
 import type { AssistantDto } from '../../types/assistantModels';
 import type { UserModelDto } from '../../types/modelModels';
 import './AssistantDropdown.css';
@@ -16,7 +17,6 @@ interface AssistantDropdownProps {
 }
 
 type Category = 'all' | 'favorites' | 'system' | 'owned' | 'shared';
-type Capability = 'vision' | 'tools' | 'reasoning';
 
 const CATEGORIES: { key: Category; icon: IconName }[] = [
   { key: 'all', icon: 'grid' },
@@ -25,21 +25,6 @@ const CATEGORIES: { key: Category; icon: IconName }[] = [
   { key: 'owned', icon: 'user' },
   { key: 'shared', icon: 'people' },
 ];
-
-const CAPABILITIES: { key: Capability; icon: IconName }[] = [
-  { key: 'vision', icon: 'eye' },
-  { key: 'tools', icon: 'globe' },
-  { key: 'reasoning', icon: 'brain' },
-];
-
-/** Categories map onto AssistantDto.type, except 'all' and the per-user 'favorites'. */
-const ROW_ICON: Record<AssistantDto['type'], IconName> = {
-  system: 'shield',
-  owned: 'user',
-  shared: 'people',
-};
-
-const rowIcon = (type: AssistantDto['type']): IconName => ROW_ICON[type] ?? 'assistants';
 
 export default function AssistantDropdown({ isOpen, direction, onClose }: AssistantDropdownProps) {
   useSignals();
@@ -56,28 +41,11 @@ export default function AssistantDropdown({ isOpen, direction, onClose }: Assist
   const modelsSignal = getModels();
   const models: UserModelDto[] = modelsSignal.value ?? [];
 
-  const capabilitiesOf = (assistant: AssistantDto) => {
-    const model = models.find(m => m.id === assistant.modelId);
-    return {
-      vision: !!model?.capabilities.vision,
-      tools: !!model?.capabilities.tools,
-      reasoning: (model?.capabilities.supportedEfforts.length ?? 0) > 0,
-    };
-  };
-
-  const modelNameOf = (assistant: AssistantDto) =>
-    models.find(m => m.id === assistant.modelId)?.modelName;
-
   const handleSelectAssistant = (assistant: AssistantDto) => {
     setUserSelectedAssistantId(assistant.id);
     if (onClose) {
       onClose();
     }
-  };
-
-  const handleToggleFavorite = (assistant: AssistantDto) => {
-    // The server pushes AssistantsUpdated, which re-fetches the list.
-    void toggleFavorite(assistant.id);
   };
 
   const toggleCapabilityFilter = (capability: Capability) => {
@@ -103,7 +71,7 @@ export default function AssistantDropdown({ isOpen, direction, onClose }: Assist
 
   const matchesCapabilities = (assistant: AssistantDto) => {
     if (capabilityFilter.length === 0) return true;
-    const capabilities = capabilitiesOf(assistant);
+    const capabilities = capabilitiesOf(assistant, models);
     return capabilityFilter.every(capability => capabilities[capability]);
   };
 
@@ -204,73 +172,14 @@ export default function AssistantDropdown({ isOpen, direction, onClose }: Assist
             <div className="ap-empty t-ui-plain">{emptyMessage()}</div>
           )}
 
-          {visibleAssistants.map((assistant) => {
-            const capabilities = capabilitiesOf(assistant);
-            const modelName = modelNameOf(assistant);
-
-            return (
-              // A focusable div rather than a button: the favorite toggle is a
-              // button that has to sit inline with the name, and buttons cannot nest.
-              <div
-                key={assistant.id}
-                role="option"
-                tabIndex={0}
-                aria-selected={selectedAssistant?.id === assistant.id}
-                className={`assistant-option ${selectedAssistant?.id === assistant.id ? 'selected' : ''}`}
-                onClick={() => handleSelectAssistant(assistant)}
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter' || e.key === ' ') {
-                    e.preventDefault();
-                    handleSelectAssistant(assistant);
-                  }
-                }}
-              >
-                <div className="ap-row-main">
-                  <div className="ap-row-head">
-                    <Icon name={rowIcon(assistant.type)} size={1} className="ap-row-type-icon" />
-                    <span className="assistant-option-name t-body-strong">{assistant.name}</span>
-                    {modelName && <span className="ap-row-model t-meta">{modelName}</span>}
-                    <button
-                      type="button"
-                      className={`ap-row-favorite ${assistant.isFavorite ? 'active' : ''}`}
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        handleToggleFavorite(assistant);
-                      }}
-                      title={assistant.isFavorite
-                        ? t('assistants.actions.removeFavorite')
-                        : t('assistants.actions.addFavorite')}
-                    >
-                      <Icon name={assistant.isFavorite ? 'star' : 'starOutline'} size={0.9375} />
-                    </button>
-                  </div>
-                  <div className="ap-row-desc t-caption">
-                    {assistant.description || t('assistants.noDescriptionAvailable')}
-                  </div>
-                </div>
-
-                <div className="ap-row-aside">
-                  <div className="assistant-capabilities">
-                    {CAPABILITIES.map(({ key, icon }) => capabilities[key] && (
-                      <Icon
-                        key={key}
-                        name={icon}
-                        size={1}
-                        className="capability-icon"
-                        title={t(`assistants.capabilities.${key}`)}
-                      />
-                    ))}
-                  </div>
-                  <div className="info-tooltip-container">
-                    <Icon name="info" size={1} className="info-icon" />
-                    <div className="info-tooltip t-caption">
-                      {assistant.description || t('assistants.noDescriptionAvailable')}
-                    </div>
-                  </div>
-                </div>
-              </div>
-            );
-          })}
+          {visibleAssistants.map((assistant) => (
+            <AssistantRow
+              key={assistant.id}
+              assistant={assistant}
+              selected={selectedAssistant?.id === assistant.id}
+              onSelect={handleSelectAssistant}
+            />
+          ))}
         </div>
       </div>
     </div>
