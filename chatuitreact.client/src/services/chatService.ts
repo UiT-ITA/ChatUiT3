@@ -793,6 +793,18 @@ export function clearUserSelectedAssistantId(): void {
   userSelectedAssistantIdSignal.value = undefined;
 }
 
+export function getRecentAssistants(): Signal<AssistantDto[]> {
+  return computed(() => {
+    const defaultId = getResolvedDefaultAssistantId().value;
+    const chats = [...(chatListSignal.value ?? [])].sort((a, b) => Date.parse(b.createdAt) - Date.parse(a.createdAt));
+    const ids = [...new Set(chats.map(c => c.assistantId))].filter(id => id !== defaultId);
+    return ids
+      .map(id => getAssistant(id).value)
+      .filter((a): a is AssistantDto => !!a?.isVisible)
+      .slice(0, 3);
+  });
+}
+
 export function getSelectableAssistants(): Signal<AssistantDto[]> {
   return computed(() => {
     const assistantList = getAssistants().value;

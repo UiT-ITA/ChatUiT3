@@ -143,7 +143,11 @@ namespace ChatUitReact.Server.Services
 
         public async Task<PromptUserContext> GetPromptUserContextAsync(UserIdentity identity)
         {
-            var user = await _databaseService.GetUserAsync(identity.UserId);
+            return BuildPromptUserContext(await _databaseService.GetUserAsync(identity.UserId), identity);
+        }
+
+        private static PromptUserContext BuildPromptUserContext(UserInfo? user, UserIdentity identity)
+        {
             var profile = user?.Preferences.Profile ?? new UserProfile();
             var name = string.IsNullOrWhiteSpace(profile.DisplayName) ? identity.DisplayName : profile.DisplayName;
             return new PromptUserContext(name, profile.JobRole, identity.Email, profile.AnswerPreferences);
@@ -152,8 +156,11 @@ namespace ChatUitReact.Server.Services
         public async Task<UserAssistantsResult> GetUserAssistantsAsync(string userId, UserAccess access)
         {
             var user = await _databaseService.GetUserAsync(userId);
-            if (user == null) return new UserAssistantsResult();
+            return user == null ? new UserAssistantsResult() : await GetUserAssistantsAsync(userId, user, access);
+        }
 
+        private async Task<UserAssistantsResult> GetUserAssistantsAsync(string userId, UserInfo user, UserAccess access)
+        {
             var ownedAssistants = await _databaseService.GetAssistantsByOwnerAsync(userId);
             var systemAssistants = (await _databaseService.GetSystemAssistantsAsync())
                 .Where(a => a.Access == null || a.Access.Allows(access))
@@ -176,6 +183,11 @@ namespace ChatUitReact.Server.Services
                 await _hubContext.Clients.Group(userId).Notify(NotifyLevel.Warning, SharedAssistantRemovedMessage(shared, disallowed));
             }
 
+            foreach (var assistant in ownedAssistants.Concat(systemAssistants).Concat(kept))
+            {
+                await WithModelAsync(assistant);
+            }
+
             return new UserAssistantsResult
             {
                 Owned = ownedAssistants,
@@ -196,7 +208,20 @@ namespace ChatUitReact.Server.Services
 
         public async Task<Assistant?> GetAssistantByIdAsync(string assistantId, bool includeFileContent = false)
         {
-            return await _databaseService.GetAssistantByIdAsync(assistantId, includeFileContent);
+            var assistant = await _databaseService.GetAssistantByIdAsync(assistantId, includeFileContent);
+            return assistant == null ? null : await WithModelAsync(assistant);
+        }
+
+        // Assistants come from the database with only the model id; the model itself is read
+        // from ModelService, which keeps every model in memory.
+        private async Task<Assistant> WithModelAsync(Assistant assistant)
+        {
+            var model = await _modelService.GetModelByIdAsync(assistant.ChatSettings.Model.Id);
+            if (model != null)
+            {
+                assistant.ChatSettings.Model = model;
+            }
+            return assistant;
         }
 
         public async Task<AssistantFileDto?> GetAssistantFileDtoAsync(string assistantId, string fileId)
@@ -431,11 +456,14 @@ namespace ChatUitReact.Server.Services
 
         // Roles come from the caller's claims, not from the stored user document: nothing ever
         // writes claim roles into a user document, so UserInfo.Roles is empty in production.
-        public async Task<AssistantListDto> GetUserAssistantsDtoAsync(string userId, UserAccess access, PromptUserContext promptUser)
+        public async Task<AssistantListDto> GetUserAssistantsDtoAsync(UserIdentity identity, UserAccess access)
         {
             var roles = access.Roles.ToList();
-            var result = await GetUserAssistantsAsync(userId, access);
-            var user = await _databaseService.GetUserAsync(userId);
+            var user = await _databaseService.GetUserAsync(identity.UserId);
+            if (user == null) return new AssistantListDto();
+
+            var promptUser = BuildPromptUserContext(user, identity);
+            var result = await GetUserAssistantsAsync(identity.UserId, user, access);
 
             var allAssistants = result.Owned.Concat(result.System).Concat(result.Shared).ToList();
             var eligibleModelIds = await GetDefaultEligibleModelIdsAsync(allAssistants, roles);
@@ -477,6 +505,10 @@ namespace ChatUitReact.Server.Services
         public async Task<List<FullAssistantDto>> GetSystemAssistantsForAdminAsync()
         {
             var assistants = await _databaseService.GetSystemAssistantsAsync();
+            foreach (var assistant in assistants)
+            {
+                await WithModelAsync(assistant);
+            }
             var promptTokens = await GetPromptTokenCountsAsync(assistants, null);
             return assistants.Select(assistant => MapToFullAssistantDto(assistant, promptTokens[assistant.Id])).ToList();
         }
@@ -489,13 +521,14 @@ namespace ChatUitReact.Server.Services
                 return null;
             }
 
+            await WithModelAsync(assistant);
             return MapToFullAssistantDto(assistant, await GetPromptTokenCountsAsync(assistant, null));
         }
 
         public async Task<FullAssistantDto> CreateSystemAssistantAsync(CreateAssistantDto createDto)
         {
             var assistant = await BuildAssistantAsync(createDto, "System");
-            var createdAssistant = await _databaseService.CreateAssistantAsync(assistant);
+            var createdAssistant = await WithModelAsync(await _databaseService.CreateAssistantAsync(assistant));
 
             await NotifyAllUsersAssistantsUpdated();
 
@@ -525,6 +558,7 @@ namespace ChatUitReact.Server.Services
             _promptTokenCache.TryRemove(assistantId, out _);
             await NotifyAllUsersAssistantsUpdated();
 
+            await WithModelAsync(savedAssistant);
             return MapToFullAssistantDto(savedAssistant, await GetPromptTokenCountsAsync(savedAssistant, null));
         }
 

@@ -143,6 +143,7 @@
     "header": "Welcome to ChatUiT",
     "greeting": "Hello, {{name}}.",
     "subheader": "Ask a question, paste a text, or upload a file.",
+    "recentAssistants": "Recently used assistants",
     "selectAssistant": "Select AI assistant",
     "tips": {
       "title": "Tips:",

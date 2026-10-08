@@ -220,7 +220,7 @@ public partial class DatabaseService
     {
         var model = string.IsNullOrWhiteSpace(document.ChatSettings.ModelId)
             ? new Model()
-            : await GetModelByIdAsync(document.ChatSettings.ModelId) ?? new Model { Id = document.ChatSettings.ModelId };
+            : new Model { Id = document.ChatSettings.ModelId };
 
         var contentBlocksById = includeFileContent && document.Files.Count > 0
             ? await ReadAssistantContentBlockMapAsync(document.Id)
