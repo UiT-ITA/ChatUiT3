@@ -309,7 +309,10 @@ public sealed class ResponsesRequestMapper
             switch (items[i])
             {
                 case MessageItem message:
-                    if (MapRole(message.Role, param) == AiChatRole.User)
+                    var messageRole = MapRole(message.Role, param);
+                    // Parsed here so a malformed message or file is refused before anything runs.
+                    ParseContent(message.Content, messageRole, param);
+                    if (messageRole == AiChatRole.User)
                     {
                         lastUserMessage = i;
                     }
@@ -434,7 +437,8 @@ public sealed class ResponsesRequestMapper
             {
                 case MessageItem message:
                     var role = MapRole(message.Role, param);
-                    var chatMessage = new ChatMessage { Role = role, Content = TextOf(message.Content, param) };
+                    var (content, files) = ParseContent(message.Content, role, param);
+                    var chatMessage = new ChatMessage { Role = role, Content = content, Files = files };
                     if (role == AiChatRole.Assistant)
                     {
                         StartTurn(isCall: false);
@@ -622,8 +626,11 @@ public sealed class ResponsesRequestMapper
     /// <summary>At most this many images in one function_call_output.</summary>
     public const int MaxToolOutputImages = 4;
 
-    /// <summary>At most this many bytes per image, decoded.</summary>
-    public const int MaxToolOutputImageBytes = 5 * 1024 * 1024;
+    /// <summary>At most this many bytes per image, decoded, in tool output and in files.</summary>
+    public const int MaxImageBytes = 5 * 1024 * 1024;
+
+    /// <summary>At most this many files in one user message, as in ChatUiT's chat.</summary>
+    public const int MaxMessageFiles = 10;
 
     private static readonly System.Text.RegularExpressions.Regex ImageDataUrl =
         new("^data:(image/(?:png|jpeg|gif|webp));base64,([A-Za-z0-9+/=]+)$", System.Text.RegularExpressions.RegexOptions.Compiled);
@@ -658,19 +665,7 @@ public sealed class ResponsesRequestMapper
                     texts.Add(part.TryGetProperty("text", out var text) && text.ValueKind == JsonValueKind.String ? text.GetString()! : string.Empty);
                     break;
                 case "input_image":
-                    var url = part.TryGetProperty("image_url", out var u) && u.ValueKind == JsonValueKind.String ? u.GetString()! : string.Empty;
-                    var match = ImageDataUrl.Match(url);
-                    if (!match.Success)
-                    {
-                        throw ResponsesApiException.BadRequest($"{partParam}: image_url must be a base64 data URL of a png, jpeg, gif or webp image.", $"{partParam}.image_url", "invalid_value");
-                    }
-
-                    if (match.Groups[2].Value.Length / 4 * 3 > MaxToolOutputImageBytes)
-                    {
-                        throw ResponsesApiException.BadRequest($"{partParam}: the image is larger than {MaxToolOutputImageBytes / (1024 * 1024)} MB.", $"{partParam}.image_url", "invalid_value");
-                    }
-
-                    images.Add(new ImagePart(match.Groups[2].Value, match.Groups[1].Value));
+                    images.Add(ParseImage(part, partParam));
                     if (images.Count > MaxToolOutputImages)
                     {
                         throw ResponsesApiException.BadRequest($"{param}: at most {MaxToolOutputImages} images per output.", param, "invalid_value");
@@ -684,33 +679,106 @@ public sealed class ResponsesRequestMapper
         return (string.Join("\n", texts), images);
     }
 
-    private static string TextOf(JsonElement content, string param)
+    /// <summary>An <c>input_image</c> part whose <c>image_url</c> is a base64 data URL of a png, jpeg, gif or webp image.</summary>
+    private static ImagePart ParseImage(JsonElement part, string partParam)
+    {
+        var url = part.TryGetProperty("image_url", out var u) && u.ValueKind == JsonValueKind.String ? u.GetString()! : string.Empty;
+        var match = ImageDataUrl.Match(url);
+        if (!match.Success)
+        {
+            throw ResponsesApiException.BadRequest($"{partParam}: image_url must be a base64 data URL of a png, jpeg, gif or webp image.", $"{partParam}.image_url", "invalid_value");
+        }
+
+        if (match.Groups[2].Value.Length / 4 * 3 > MaxImageBytes)
+        {
+            throw ResponsesApiException.BadRequest($"{partParam}: the image is larger than {MaxImageBytes / (1024 * 1024)} MB.", $"{partParam}.image_url", "invalid_value");
+        }
+
+        return new ImagePart(match.Groups[2].Value, match.Groups[1].Value);
+    }
+
+    /// <summary>
+    /// A message's content: a string, or <c>input_text</c> / <c>output_text</c> parts, joined with newlines. A user
+    /// message may also hold <c>input_file</c> parts, which become the message's files as in ChatUiT's chat.
+    /// </summary>
+    private static (string Text, List<ChatFile> Files) ParseContent(JsonElement content, AiChatRole role, string param)
     {
         if (content.ValueKind == JsonValueKind.String)
         {
-            return content.GetString() ?? string.Empty;
+            return (content.GetString() ?? string.Empty, new List<ChatFile>());
         }
 
         if (content.ValueKind != JsonValueKind.Array)
         {
-            throw ResponsesApiException.BadRequest($"{param}: content must be a string or an array of text parts.", $"{param}.content", "invalid_value");
+            throw ResponsesApiException.BadRequest($"{param}: content must be a string or an array of parts.", $"{param}.content", "invalid_value");
         }
 
         var texts = new List<string>();
+        var files = new List<ChatFile>();
         var index = 0;
         foreach (var part in content.EnumerateArray())
         {
             var partParam = $"{param}.content[{index++}]";
             var type = part.ValueKind == JsonValueKind.Object && part.TryGetProperty("type", out var t) ? t.GetString() : null;
-            if (type is not ("input_text" or "output_text"))
+            switch (type)
             {
-                throw ResponsesApiException.BadRequest($"{partParam}: content of type '{type}' is not supported.", $"{partParam}.type", "unsupported_value");
+                case "input_text" or "output_text":
+                    texts.Add(part.TryGetProperty("text", out var text) && text.ValueKind == JsonValueKind.String ? text.GetString()! : string.Empty);
+                    break;
+                case "input_file" when role == AiChatRole.User:
+                    files.Add(ParseFile(part, partParam));
+                    if (files.Count > MaxMessageFiles)
+                    {
+                        throw ResponsesApiException.BadRequest($"{param}: at most {MaxMessageFiles} files per message.", $"{param}.content", "invalid_value");
+                    }
+                    break;
+                default:
+                    throw ResponsesApiException.BadRequest($"{partParam}: content of type '{type}' is not supported.", $"{partParam}.type", "unsupported_value");
             }
-
-            texts.Add(part.TryGetProperty("text", out var text) && text.ValueKind == JsonValueKind.String ? text.GetString()! : string.Empty);
         }
 
-        return string.Join("\n", texts);
+        return (string.Join("\n", texts), files);
+    }
+
+    /// <summary>
+    /// An <c>input_file</c> part: <c>filename</c> and <c>chunks</c> of <c>input_text</c> and <c>input_image</c>
+    /// parts, the content the client read from the file.
+    /// </summary>
+    private static ChatFile ParseFile(JsonElement part, string partParam)
+    {
+        var filename = part.TryGetProperty("filename", out var name) && name.ValueKind == JsonValueKind.String ? name.GetString()! : string.Empty;
+        if (string.IsNullOrWhiteSpace(filename))
+        {
+            throw ResponsesApiException.BadRequest($"{partParam}: input_file needs a filename.", $"{partParam}.filename", "invalid_value");
+        }
+
+        if (!part.TryGetProperty("chunks", out var chunks) || chunks.ValueKind != JsonValueKind.Array)
+        {
+            throw ResponsesApiException.BadRequest($"{partParam}: input_file needs chunks: an array of input_text and input_image parts.", $"{partParam}.chunks", "invalid_value");
+        }
+
+        var file = new ChatFile { SourceFilename = filename };
+        var index = 0;
+        foreach (var chunk in chunks.EnumerateArray())
+        {
+            var chunkParam = $"{partParam}.chunks[{index++}]";
+            var type = chunk.ValueKind == JsonValueKind.Object && chunk.TryGetProperty("type", out var t) ? t.GetString() : null;
+            switch (type)
+            {
+                case "input_text":
+                    var text = chunk.TryGetProperty("text", out var value) && value.ValueKind == JsonValueKind.String ? value.GetString()! : string.Empty;
+                    file.Chunks.Add(new ChatFileChunk { Type = "text", Text = text });
+                    break;
+                case "input_image":
+                    var image = ParseImage(chunk, chunkParam);
+                    file.Chunks.Add(new ChatFileChunk { Type = "image", Base64 = image.Base64, Format = image.MediaType });
+                    break;
+                default:
+                    throw ResponsesApiException.BadRequest($"{chunkParam}: chunk of type '{type}' is not supported.", $"{chunkParam}.type", "unsupported_value");
+            }
+        }
+
+        return file;
     }
 
     /// <summary>One model turn being rebuilt: its assistant-side items and the results of its calls.</summary>

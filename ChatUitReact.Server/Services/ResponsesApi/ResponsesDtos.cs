@@ -97,7 +97,7 @@ public sealed class MessageItem : ResponseItem
     /// <summary>user, assistant, system or developer.</summary>
     public string? Role { get; set; }
 
-    /// <summary>A string, or <c>input_text</c> / <c>output_text</c> parts.</summary>
+    /// <summary>A string, or <c>input_text</c> / <c>output_text</c> parts; a user message may also hold <c>input_file</c> parts.</summary>
     public JsonElement Content { get; set; }
 
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]

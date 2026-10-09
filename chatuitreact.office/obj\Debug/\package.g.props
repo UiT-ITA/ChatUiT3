@@ -1,0 +1,57 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project>
+  <PropertyGroup>
+    <PackageJsonName Condition="$(PackageJsonName) == ''">chatuit</PackageJsonName>
+    <PackageJsonVersion Condition="$(PackageJsonVersion) == ''">0.0.1</PackageJsonVersion>
+    <PackageJsonPrivate Condition="$(PackageJsonPrivate) == ''">true</PackageJsonPrivate>
+    <PackageJsonConfigDevServerPort Condition="$(PackageJsonConfigDevServerPort) == ''">3000</PackageJsonConfigDevServerPort>
+    <PackageJsonEnginesNode Condition="$(PackageJsonEnginesNode) == ''">22</PackageJsonEnginesNode>
+    <PackageJsonScriptsDevServer Condition="$(PackageJsonScriptsDevServer) == ''">webpack serve --mode development</PackageJsonScriptsDevServer>
+    <PackageJsonScriptsBuild Condition="$(PackageJsonScriptsBuild) == ''">webpack --mode production</PackageJsonScriptsBuild>
+    <PackageJsonScriptsBuildDev Condition="$(PackageJsonScriptsBuildDev) == ''">webpack --mode development</PackageJsonScriptsBuildDev>
+    <PackageJsonScriptsTypecheck Condition="$(PackageJsonScriptsTypecheck) == ''">tsc --noEmit -p .</PackageJsonScriptsTypecheck>
+    <PackageJsonScriptsLint Condition="$(PackageJsonScriptsLint) == ''">office-addin-lint check</PackageJsonScriptsLint>
+    <PackageJsonScriptsLintFix Condition="$(PackageJsonScriptsLintFix) == ''">office-addin-lint fix</PackageJsonScriptsLintFix>
+    <PackageJsonScriptsPrettier Condition="$(PackageJsonScriptsPrettier) == ''">office-addin-lint prettier</PackageJsonScriptsPrettier>
+    <PackageJsonScriptsTestFixtures Condition="$(PackageJsonScriptsTestFixtures) == ''">webpack --config fixtures/webpack.config.js &amp;&amp; node node_modules/.cache/chatuit-fixtures/run.js</PackageJsonScriptsTestFixtures>
+    <PackageJsonScriptsValidate Condition="$(PackageJsonScriptsValidate) == ''">office-addin-manifest validate manifests/office.xml &amp;&amp; office-addin-manifest validate manifests/outlook.xml</PackageJsonScriptsValidate>
+    <PackageJsonScriptsStartWord Condition="$(PackageJsonScriptsStartWord) == ''">office-addin-debugging start manifests/office.xml desktop --app word</PackageJsonScriptsStartWord>
+    <PackageJsonScriptsStartExcel Condition="$(PackageJsonScriptsStartExcel) == ''">office-addin-debugging start manifests/office.xml desktop --app excel</PackageJsonScriptsStartExcel>
+    <PackageJsonScriptsStartPowerpoint Condition="$(PackageJsonScriptsStartPowerpoint) == ''">office-addin-debugging start manifests/office.xml desktop --app powerpoint</PackageJsonScriptsStartPowerpoint>
+    <PackageJsonScriptsStartOutlook Condition="$(PackageJsonScriptsStartOutlook) == ''">office-addin-debugging start manifests/outlook.xml desktop --app outlook</PackageJsonScriptsStartOutlook>
+    <PackageJsonScriptsStop Condition="$(PackageJsonScriptsStop) == ''">office-addin-debugging stop manifests/office.xml &amp;&amp; office-addin-debugging stop manifests/outlook.xml</PackageJsonScriptsStop>
+    <PackageJsonDependenciesAzureMsalBrowser Condition="$(PackageJsonDependenciesAzureMsalBrowser) == ''">^3.17.0</PackageJsonDependenciesAzureMsalBrowser>
+    <PackageJsonDependenciesFluentuiReactComponents Condition="$(PackageJsonDependenciesFluentuiReactComponents) == ''">^9.74.9</PackageJsonDependenciesFluentuiReactComponents>
+    <PackageJsonDependenciesExceljs Condition="$(PackageJsonDependenciesExceljs) == ''">^4.4.0</PackageJsonDependenciesExceljs>
+    <PackageJsonDependenciesFflate Condition="$(PackageJsonDependenciesFflate) == ''">^0.8.3</PackageJsonDependenciesFflate>
+    <PackageJsonDependenciesJszip Condition="$(PackageJsonDependenciesJszip) == ''">^3.10.2</PackageJsonDependenciesJszip>
+    <PackageJsonDependenciesMarked Condition="$(PackageJsonDependenciesMarked) == ''">^18.0.14</PackageJsonDependenciesMarked>
+    <PackageJsonDependenciesOpenai Condition="$(PackageJsonDependenciesOpenai) == ''">^7.23.0</PackageJsonDependenciesOpenai>
+    <PackageJsonDependenciesPdfjsDist Condition="$(PackageJsonDependenciesPdfjsDist) == ''">^4.10.38</PackageJsonDependenciesPdfjsDist>
+    <PackageJsonDependenciesReact Condition="$(PackageJsonDependenciesReact) == ''">^19.3.0</PackageJsonDependenciesReact>
+    <PackageJsonDependenciesReactDom Condition="$(PackageJsonDependenciesReactDom) == ''">^19.3.0</PackageJsonDependenciesReactDom>
+    <PackageJsonDevdependenciesBabelCore Condition="$(PackageJsonDevdependenciesBabelCore) == ''">^7.24.0</PackageJsonDevdependenciesBabelCore>
+    <PackageJsonDevdependenciesBabelPresetReact Condition="$(PackageJsonDevdependenciesBabelPresetReact) == ''">^7.29.7</PackageJsonDevdependenciesBabelPresetReact>
+    <PackageJsonDevdependenciesBabelPresetTypescript Condition="$(PackageJsonDevdependenciesBabelPresetTypescript) == ''">^7.23.3</PackageJsonDevdependenciesBabelPresetTypescript>
+    <PackageJsonDevdependenciesTypesOfficeJs Condition="$(PackageJsonDevdependenciesTypesOfficeJs) == ''">^1.0.377</PackageJsonDevdependenciesTypesOfficeJs>
+    <PackageJsonDevdependenciesTypesReact Condition="$(PackageJsonDevdependenciesTypesReact) == ''">^19.3.0</PackageJsonDevdependenciesTypesReact>
+    <PackageJsonDevdependenciesTypesReactDom Condition="$(PackageJsonDevdependenciesTypesReactDom) == ''">^19.3.0</PackageJsonDevdependenciesTypesReactDom>
+    <PackageJsonDevdependenciesBabelLoader Condition="$(PackageJsonDevdependenciesBabelLoader) == ''">^9.1.3</PackageJsonDevdependenciesBabelLoader>
+    <PackageJsonDevdependenciesCopyWebpackPlugin Condition="$(PackageJsonDevdependenciesCopyWebpackPlugin) == ''">^14.0.0</PackageJsonDevdependenciesCopyWebpackPlugin>
+    <PackageJsonDevdependenciesEslintPluginOfficeAddins Condition="$(PackageJsonDevdependenciesEslintPluginOfficeAddins) == ''">^3.0.2</PackageJsonDevdependenciesEslintPluginOfficeAddins>
+    <PackageJsonDevdependenciesHtmlWebpackPlugin Condition="$(PackageJsonDevdependenciesHtmlWebpackPlugin) == ''">^5.6.0</PackageJsonDevdependenciesHtmlWebpackPlugin>
+    <PackageJsonDevdependenciesOfficeAddinDebugging Condition="$(PackageJsonDevdependenciesOfficeAddinDebugging) == ''">^6.0.6</PackageJsonDevdependenciesOfficeAddinDebugging>
+    <PackageJsonDevdependenciesOfficeAddinDevCerts Condition="$(PackageJsonDevdependenciesOfficeAddinDevCerts) == ''">^2.0.10</PackageJsonDevdependenciesOfficeAddinDevCerts>
+    <PackageJsonDevdependenciesOfficeAddinLint Condition="$(PackageJsonDevdependenciesOfficeAddinLint) == ''">^3.0.10</PackageJsonDevdependenciesOfficeAddinLint>
+    <PackageJsonDevdependenciesOfficeAddinManifest Condition="$(PackageJsonDevdependenciesOfficeAddinManifest) == ''">^1.13.4</PackageJsonDevdependenciesOfficeAddinManifest>
+    <PackageJsonDevdependenciesOfficeAddinPrettierConfig Condition="$(PackageJsonDevdependenciesOfficeAddinPrettierConfig) == ''">^1.2.1</PackageJsonDevdependenciesOfficeAddinPrettierConfig>
+    <PackageJsonDevdependenciesTypescript Condition="$(PackageJsonDevdependenciesTypescript) == ''">^5.4.2</PackageJsonDevdependenciesTypescript>
+    <PackageJsonDevdependenciesWebpack Condition="$(PackageJsonDevdependenciesWebpack) == ''">^5.90.3</PackageJsonDevdependenciesWebpack>
+    <PackageJsonDevdependenciesWebpackCli Condition="$(PackageJsonDevdependenciesWebpackCli) == ''">^5.1.4</PackageJsonDevdependenciesWebpackCli>
+    <PackageJsonDevdependenciesWebpackDevServer Condition="$(PackageJsonDevdependenciesWebpackDevServer) == ''">^6.0.0</PackageJsonDevdependenciesWebpackDevServer>
+    <PackageJsonPrettier Condition="$(PackageJsonPrettier) == ''">office-addin-prettier-config</PackageJsonPrettier>
+    <PackageJsonBrowserslist Condition="$(PackageJsonBrowserslist) == ''">[
+  "last 2 versions"
+]</PackageJsonBrowserslist>
+  </PropertyGroup>
+</Project>

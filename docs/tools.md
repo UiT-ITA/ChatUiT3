@@ -117,6 +117,11 @@ with the result: inside the function output for OpenAI Responses, inside the `to
 user message right after the tool messages for Chat Completions, whose tool messages carry text only. A model without
 vision gets the note that the image was omitted instead.
 
+A user message's `content` may also hold up to 10 `input_file` parts, one per attached file:
+`{ "type": "input_file", "filename": "report.pdf", "chunks": [...] }`, where `chunks` are `input_text` and `input_image`
+parts (images as for function output) that the client read from the file. They become the message's files, so the
+model gets them exactly as in a chat: between `--- ATTACHED FILE ---` and `--- END OF FILE ---` lines.
+
 ## Wire contract
 
 Stream chunk kinds added by the tool system, all on `ReceiveMessageChunk`:
