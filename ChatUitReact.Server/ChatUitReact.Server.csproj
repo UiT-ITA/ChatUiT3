@@ -35,6 +35,9 @@
     <ProjectReference Include="..\chatuitreact.client\chatuitreact.client.esproj">
       <ReferenceOutputAssembly>false</ReferenceOutputAssembly>
     </ProjectReference>
+    <ProjectReference Include="..\chatuitreact.office\chatuitreact.office.esproj">
+      <ReferenceOutputAssembly>false</ReferenceOutputAssembly>
+    </ProjectReference>
   </ItemGroup>
 
   <ItemGroup>
