@@ -369,3 +369,6 @@ sample/
 
 # macOS Finder metadata
 .DS_Store
+
+# Office add-in build output
+chatuitreact.office/dist/
