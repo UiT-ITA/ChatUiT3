@@ -40,6 +40,77 @@ public static class ModelCatalog
     private static List<CatalogModel> Build() =>
     [
         // ---- OpenAI models on Microsoft Foundry (Responses API) ---------------------
+        // GPT-6 keeps the gpt-5.x temperature rule. GPT-6 Astra and GPT-6.1 Sol reject
+        // "none" with a 400, so they cannot switch reasoning off and never get a temperature.
+        // No GPT-6 tokenizer is documented; o200k is the closest known encoding.
+        new("gpt-6.1-sol", "GPT-6.1 Sol", "Near-Astra performance for complex work at a lower cost.", EndpointType.MicrosoftFoundry, ApiProtocol.OpenAiResponses, new ModelCapabilities
+        {
+            SupportsVision = true,
+            SupportsFunctionCalling = true,
+            Temperature = TemperatureSupport.Unsupported,
+            SupportedEfforts = Efforts(ReasoningEffort.Low, ReasoningEffort.Medium, ReasoningEffort.High, ReasoningEffort.XHigh, ReasoningEffort.Max),
+            MaxContextTokens = 1_050_000,
+            MaxOutputTokens = 128_000,
+            DefaultMaxOutputTokens = 32_000,
+            KnowledgeCutoff = new DateTime(2026, 4, 30),
+            TokenCountingScheme = TokenCountingSchemes.O200kTile
+        }),
+
+        new("gpt-6-sol", "GPT-6 Sol", "Built for complex coding and agentic workflows.", EndpointType.MicrosoftFoundry, ApiProtocol.OpenAiResponses, new ModelCapabilities
+        {
+            SupportsVision = true,
+            SupportsFunctionCalling = true,
+            Temperature = TemperatureSupport.SupportedWhenReasoningDisabled,
+            SupportedEfforts = Efforts(ReasoningEffort.None, ReasoningEffort.Low, ReasoningEffort.Medium, ReasoningEffort.High, ReasoningEffort.XHigh, ReasoningEffort.Max),
+            MaxContextTokens = 1_050_000,
+            MaxOutputTokens = 128_000,
+            DefaultMaxOutputTokens = 32_000,
+            KnowledgeCutoff = new DateTime(2026, 4, 20),
+            TokenCountingScheme = TokenCountingSchemes.O200kTile
+        }),
+
+        new("gpt-6-luna", "GPT-6 Luna", "Most efficient GPT-6 model for focused, high-volume tasks.", EndpointType.MicrosoftFoundry, ApiProtocol.OpenAiResponses, new ModelCapabilities
+        {
+            SupportsVision = true,
+            SupportsFunctionCalling = true,
+            Temperature = TemperatureSupport.SupportedWhenReasoningDisabled,
+            SupportedEfforts = Efforts(ReasoningEffort.None, ReasoningEffort.Low, ReasoningEffort.Medium, ReasoningEffort.High, ReasoningEffort.XHigh, ReasoningEffort.Max),
+            MaxContextTokens = 1_050_000,
+            MaxOutputTokens = 128_000,
+            DefaultMaxOutputTokens = 32_000,
+            KnowledgeCutoff = new DateTime(2026, 5, 18),
+            TokenCountingScheme = TokenCountingSchemes.O200kTile
+        }),
+
+        new("gpt-6-astra", "GPT-6 Astra", "Most capable OpenAI model for the most demanding work.", EndpointType.MicrosoftFoundry, ApiProtocol.OpenAiResponses, new ModelCapabilities
+        {
+            SupportsVision = true,
+            SupportsFunctionCalling = true,
+            Temperature = TemperatureSupport.Unsupported,
+            SupportedEfforts = Efforts(ReasoningEffort.Low, ReasoningEffort.Medium, ReasoningEffort.High, ReasoningEffort.XHigh, ReasoningEffort.Max),
+            MaxContextTokens = 1_050_000,
+            MaxOutputTokens = 128_000,
+            DefaultMaxOutputTokens = 32_000,
+            KnowledgeCutoff = new DateTime(2026, 4, 30),
+            TokenCountingScheme = TokenCountingSchemes.O200kTile
+        }),
+
+        // A preview alias that tracks ChatGPT's Instant model. Its reasoning level is fixed
+        // and cannot be set, so it gets no effort ladder and no reasoning options are sent.
+        // Temperature support is undocumented, so none is sent.
+        new("gpt-chat-latest", "GPT Chat Latest", "Preview alias for the latest Instant model used in ChatGPT.", EndpointType.MicrosoftFoundry, ApiProtocol.OpenAiResponses, new ModelCapabilities
+        {
+            SupportsVision = true,
+            SupportsFunctionCalling = true,
+            Temperature = TemperatureSupport.Unsupported,
+            SupportedEfforts = Efforts(),
+            MaxContextTokens = 400_000,
+            MaxOutputTokens = 128_000,
+            DefaultMaxOutputTokens = 32_000,
+            KnowledgeCutoff = new DateTime(2026, 2, 1),
+            TokenCountingScheme = TokenCountingSchemes.O200kTile
+        }),
+
         // The gpt-5.x family accepts a temperature only while reasoning.effort is "none".
         // The 5.6 family adds "max" above "xhigh"; all three variants share the same
         // context window, output ceiling and cutoff, and differ only in cost and depth.
@@ -149,6 +220,73 @@ public static class ModelCatalog
 
         // ---- Anthropic --------------------------------------------------------------
         // Models after Claude Opus 4.6 reject any non-default temperature with a 400.
+        // Models after Opus 5 think adaptively by default, and a "None" request sends no
+        // thinking field, so "None" would not switch thinking off: their ladders omit it.
+        new("claude-haiku-5-5", "Claude Haiku 5.5", "For high-volume, latency-sensitive tasks such as classification, extraction, and routing.", EndpointType.Anthropic, ApiProtocol.AnthropicMessages, new ModelCapabilities
+        {
+            SupportsVision = true,
+            SupportsFunctionCalling = true,
+            Temperature = TemperatureSupport.Unsupported,
+            SupportedEfforts = Efforts(ReasoningEffort.Low, ReasoningEffort.Medium, ReasoningEffort.High, ReasoningEffort.XHigh, ReasoningEffort.Max),
+            MaxContextTokens = 1_000_000,
+            MaxOutputTokens = 128_000,
+            DefaultMaxOutputTokens = 32_000,
+            KnowledgeCutoff = new DateTime(2026, 6, 1),
+            TokenCountingScheme = TokenCountingSchemes.AnthropicEstimate
+        }),
+
+        new("claude-sonnet-5-5", "Claude Sonnet 5.5", "The best combination of speed and intelligence.", EndpointType.Anthropic, ApiProtocol.AnthropicMessages, new ModelCapabilities
+        {
+            SupportsVision = true,
+            SupportsFunctionCalling = true,
+            Temperature = TemperatureSupport.Unsupported,
+            SupportedEfforts = Efforts(ReasoningEffort.Low, ReasoningEffort.Medium, ReasoningEffort.High, ReasoningEffort.XHigh, ReasoningEffort.Max),
+            MaxContextTokens = 1_000_000,
+            MaxOutputTokens = 128_000,
+            DefaultMaxOutputTokens = 32_000,
+            KnowledgeCutoff = new DateTime(2026, 6, 1),
+            TokenCountingScheme = TokenCountingSchemes.AnthropicEstimate
+        }),
+
+        new("claude-opus-5-5", "Claude Opus 5.5", "For long-running agentic coding and knowledge work.", EndpointType.Anthropic, ApiProtocol.AnthropicMessages, new ModelCapabilities
+        {
+            SupportsVision = true,
+            SupportsFunctionCalling = true,
+            Temperature = TemperatureSupport.Unsupported,
+            SupportedEfforts = Efforts(ReasoningEffort.Low, ReasoningEffort.Medium, ReasoningEffort.High, ReasoningEffort.XHigh, ReasoningEffort.Max),
+            MaxContextTokens = 1_000_000,
+            MaxOutputTokens = 128_000,
+            DefaultMaxOutputTokens = 32_000,
+            KnowledgeCutoff = new DateTime(2026, 6, 1),
+            TokenCountingScheme = TokenCountingSchemes.AnthropicEstimate
+        }),
+
+        new("claude-fable-5-1", "Claude Fable 5.1", "For demanding reasoning and long-horizon agentic work.", EndpointType.Anthropic, ApiProtocol.AnthropicMessages, new ModelCapabilities
+        {
+            SupportsVision = true,
+            SupportsFunctionCalling = true,
+            Temperature = TemperatureSupport.Unsupported,
+            SupportedEfforts = Efforts(ReasoningEffort.Low, ReasoningEffort.Medium, ReasoningEffort.High, ReasoningEffort.XHigh, ReasoningEffort.Max),
+            MaxContextTokens = 1_000_000,
+            MaxOutputTokens = 128_000,
+            DefaultMaxOutputTokens = 32_000,
+            KnowledgeCutoff = new DateTime(2026, 6, 1),
+            TokenCountingScheme = TokenCountingSchemes.AnthropicEstimate
+        }),
+
+        new("claude-mythos-5-1", "Claude Mythos 5.1", "Same capabilities as Claude Fable 5.1. Requires Anthropic organization verification.", EndpointType.Anthropic, ApiProtocol.AnthropicMessages, new ModelCapabilities
+        {
+            SupportsVision = true,
+            SupportsFunctionCalling = true,
+            Temperature = TemperatureSupport.Unsupported,
+            SupportedEfforts = Efforts(ReasoningEffort.Low, ReasoningEffort.Medium, ReasoningEffort.High, ReasoningEffort.XHigh, ReasoningEffort.Max),
+            MaxContextTokens = 1_000_000,
+            MaxOutputTokens = 128_000,
+            DefaultMaxOutputTokens = 32_000,
+            KnowledgeCutoff = new DateTime(2026, 6, 1),
+            TokenCountingScheme = TokenCountingSchemes.AnthropicEstimate
+        }),
+
         // Fable 5 and Opus 5 always reason, so their effort ladders deliberately omit
         // "None" — asking Fable 5 not to think is a 400, not a slower answer.
         new("claude-fable-5", "Claude Fable 5", "Anthropic's most capable model; hardest reasoning and long-horizon agentic work.", EndpointType.Anthropic, ApiProtocol.AnthropicMessages, new ModelCapabilities
