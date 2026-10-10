@@ -20,7 +20,18 @@ class SignalrService {
     return SignalrService.instance;
   }
 
-  private constructor() {}
+  private constructor() {
+    // Registered up front, and waits for the connection, because the app
+    // renders before the hub has connected and a message can be sent then.
+    setStreamMessageCallback(async (messageId: string) => {
+      try {
+        await this.ensureConnection();
+      } catch {
+        return;
+      }
+      this.connection?.invoke("StreamMessage", messageId);
+    });
+  }
 
   public async ensureConnection(): Promise<void> {
     if (this.isInitialized && this.isConnected()) {
@@ -78,13 +89,6 @@ class SignalrService {
 
   private registerEventHandlers(): void {
     if (!this.connection) return;
-
-    const streamMessageCallback = async (messageId: string) => {
-      if (this.connection?.state === signalR.HubConnectionState.Connected) {
-        this.connection.invoke("StreamMessage", messageId);
-      }
-    };
-    setStreamMessageCallback(streamMessageCallback);
 
     this.connection.on("ChatUpdated", (chatId: string) => {
       invalidateChat(chatId);

@@ -1,5 +1,6 @@
 import { signal, Signal } from '@preact/signals-react';
 import { builtInTokenizer, type ParsedScheme, type TextEncoding, type Tokenizer } from '../utils/tokenCounting';
+import { whenIdle } from '../utils/whenIdle';
 
 /**
  * Lazily loads one tokenizer vocabulary per encoding. Each `import()` below is a static
@@ -29,6 +30,8 @@ export function getTokenizer(scheme: ParsedScheme): Signal<Tokenizer | undefined
 
 async function load(encoding: TextEncoding, target: Signal<Tokenizer | undefined>): Promise<void> {
     try {
+        // The vocabularies are large; wait until startup work is done.
+        await whenIdle();
         const module = await importEncoding(encoding);
         // Special-token strings in user text are counted as their special token, which is
         // what the server tokenizer does too.
