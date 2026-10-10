@@ -65,7 +65,7 @@ const IconRail = ({ isMobile }: IconRailProps) => {
       {!isMobile && (
         <img
           className="rail-seal"
-          src={darkNow ? '/uit-seal-white.png' : '/uit-seal-blue.png'}
+          src={darkNow ? '/chatuit-logo.svg' : '/chatuit-logo-darkblue.svg'}
           alt="UiT"
           title="ChatUiT"
         />

@@ -153,7 +153,7 @@
       <bt:ShortStrings>
         <bt:String id="GetStarted.Title" DefaultValue="ChatUiT is ready"/>
         <bt:String id="Group.Label" DefaultValue="ChatUiT"/>
-        <bt:String id="TaskpaneButton.Label" DefaultValue="Open ChatUiT"/>
+        <bt:String id="TaskpaneButton.Label" DefaultValue="ChatUiT"/>
       </bt:ShortStrings>
       <bt:LongStrings>
         <bt:String id="GetStarted.Description" DefaultValue="Open the ChatUiT pane from the Home tab."/>
