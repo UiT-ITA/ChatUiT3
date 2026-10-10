@@ -36,32 +36,33 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         return;
       }
 
+      const userRoles: string[] = [];
+      
+      if (account.idTokenClaims && 
+          account.idTokenClaims.roles && 
+          Array.isArray(account.idTokenClaims.roles)) {
+        userRoles.push(...account.idTokenClaims.roles);
+      }
+      
+      setRoles(userRoles);
+      
+      const hasAdminRole = userRoles.some(role => 
+        role.toLowerCase() === 'admin' || 
+        role.toLowerCase() === 'administrator'
+      );
+      setIsAdmin(hasAdminRole);
+      setIsInitializing(false);
+
+      // The app renders without waiting for the hub: data loads over REST,
+      // and streaming waits for the connection itself.
       try {
         await signalrService.ensureConnection();
         setIsSignalRConnected(signalrService.isConnected());
         setInitError(null);
-
-        const userRoles: string[] = [];
-        
-        if (account.idTokenClaims && 
-            account.idTokenClaims.roles && 
-            Array.isArray(account.idTokenClaims.roles)) {
-          userRoles.push(...account.idTokenClaims.roles);
-        }
-        
-        setRoles(userRoles);
-        
-        const hasAdminRole = userRoles.some(role => 
-          role.toLowerCase() === 'admin' || 
-          role.toLowerCase() === 'administrator'
-        );
-        setIsAdmin(hasAdminRole);
       } catch (signalrError) {
         console.warn('Failed to start SignalR connection:', signalrError);
         setIsSignalRConnected(false);
         setInitError(signalrError instanceof Error ? signalrError.message : String(signalrError));
-      } finally {
-        setIsInitializing(false);
       }
     };
 
@@ -77,7 +78,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     setInitAttempt(attempt => attempt + 1);
   };
 
-  const isAppReady = isAuthenticated && isSignalRConnected && !isInitializing;
+  const isAppReady = isAuthenticated && !isInitializing;
 
   const contextValue: AuthContextType = {
     isAuthenticated,

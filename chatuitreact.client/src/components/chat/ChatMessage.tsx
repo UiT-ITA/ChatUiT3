@@ -1,7 +1,7 @@
 import './ChatMessage.css';
 import './ChatMessageMarkdown.css';
 import { useSignals } from '@preact/signals-react/runtime';
-import { useMemo, useState, useRef, useEffect, memo, type ComponentProps } from 'react';
+import { Suspense, lazy, useMemo, useState, useRef, useEffect, memo, type ComponentProps } from 'react';
 import { useTranslation } from 'react-i18next';
 import { getActivitySignal, getStreamSignal } from '../../services/chatService';
 import type { ChatMessageDto } from '../../types/chatModels';
@@ -9,14 +9,10 @@ import ReactMarkdown, { type ExtraProps } from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import remarkMath from 'remark-math';
 import rehypeKatex from 'rehype-katex';
-import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter';
-import { atomDark, dracula, oneLight } from 'react-syntax-highlighter/dist/esm/styles/prism';
 import 'katex/dist/katex.min.css';
 import { Icon } from '../common/Icon';
 import FileThumbnail from './FileThumbnail';
 import MessageActivity from './MessageActivity';
-import { markdownToHtml } from '../../utils/markdownUtils';
-import MermaidDiagram from './MermaidDiagram';
 import { useSettings } from '../../hooks/useSettings';
 import { getCodeblockTheme } from '../../utils/themeUtils';
 
@@ -29,11 +25,17 @@ interface ChatMessageProps {
   onStreamingChunk?: () => void;
 }
 
-const styleMap = {
-  oneLight: oneLight,
-  atomDark: atomDark,
-  dracula: dracula
-};
+// Heavy renderers load on first use, so they stay out of the startup bundle.
+const MermaidDiagram = lazy(() => import('./MermaidDiagram'));
+const LazyCodeHighlighter = lazy(() => import('./CodeHighlighter'));
+
+function CodeHighlighter(props: { code: string; language: string; themeName: string }) {
+  return (
+    <Suspense fallback={<pre><code>{props.code}</code></pre>}>
+      <LazyCodeHighlighter {...props} />
+    </Suspense>
+  );
+}
 
 type CodeProps = ComponentProps<'code'> & ExtraProps;
 type AnchorProps = ComponentProps<'a'> & ExtraProps;
@@ -44,10 +46,7 @@ function ChatMessage({ chatId, message, fallbackAssistantName, onStreamingChunk 
   const { settings } = useSettings();
   const [isCopied, setIsCopied] = useState(false);
 
-  const currentCodeblockStyle = useMemo(() => {
-    const themeName = getCodeblockTheme(settings.mode);
-    return styleMap[themeName as keyof typeof styleMap] || atomDark;
-  }, [settings.mode]);
+  const codeblockTheme = getCodeblockTheme(settings.mode);
 
   const streamSignal = useMemo(() => {
     return message.status === "Generating" && !message.optimistic ? getStreamSignal(message.id, chatId) : null;
@@ -71,9 +70,12 @@ function ChatMessage({ chatId, message, fallbackAssistantName, onStreamingChunk 
     try {
       setIsCopied(true);
       
-      const htmlContent = markdownToHtml(displayContent);
+      // The converter is loaded on demand. Passing a promise keeps the
+      // clipboard write inside the click's user activation.
+      const htmlBlob = import('../../utils/markdownUtils').then(({ markdownToHtml }) =>
+        new Blob([markdownToHtml(displayContent)], { type: 'text/html' }));
       const clipboardItem = new ClipboardItem({
-        'text/html': new Blob([htmlContent], { type: 'text/html' }),
+        'text/html': htmlBlob,
         'text/plain': new Blob([displayContent], { type: 'text/plain' })
       });
       
@@ -149,11 +151,11 @@ function ChatMessage({ chatId, message, fallbackAssistantName, onStreamingChunk 
                 </button>
               </div>
               {isStreaming ? (
-                <SyntaxHighlighter style={currentCodeblockStyle} language="text">
-                  {codeText}
-                </SyntaxHighlighter>
+                <CodeHighlighter code={codeText} language="text" themeName={codeblockTheme} />
               ) : (
-                <MermaidDiagram chart={codeText} className="mermaid-in-chat" />
+                <Suspense fallback={<CodeHighlighter code={codeText} language="text" themeName={codeblockTheme} />}>
+                  <MermaidDiagram chart={codeText} className="mermaid-in-chat" />
+                </Suspense>
               )}
             </div>
           );
@@ -172,12 +174,7 @@ function ChatMessage({ chatId, message, fallbackAssistantName, onStreamingChunk 
                 <Icon name="copy" size={1} /> {t('chat.actions.copyCode')}
               </button>
             </div>
-            <SyntaxHighlighter
-              style={currentCodeblockStyle}
-              language={language}
-            >
-              {codeText}
-            </SyntaxHighlighter>
+            <CodeHighlighter code={codeText} language={language} themeName={codeblockTheme} />
           </div>
         );
       }

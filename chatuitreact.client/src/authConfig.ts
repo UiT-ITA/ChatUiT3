@@ -19,10 +19,14 @@ export const msalConfig = {
 // SPA redirect URI in the Entra app registration.
 export const silentRedirectUri = `${window.location.origin}/blank.html`;
 
-export const loginRequest = {
-    scopes: ["User.Read", "openid", "profile"]
-};
-
 export const apiRequest = {
     scopes: ["api://ec50c71e-1910-45bf-ba2a-eb463d80c024/access_as_user"]
+};
+
+// Login asks for the API scope so the token it returns is the API token and
+// the first acquireTokenSilent is served from cache. User.Read is still
+// consented, but no Graph token is issued for it here.
+export const loginRequest = {
+    scopes: [...apiRequest.scopes, "openid", "profile"],
+    extraScopesToConsent: ["User.Read"]
 };
