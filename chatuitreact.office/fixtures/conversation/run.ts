@@ -253,16 +253,16 @@ const cases: Array<[string, () => Promise<void>]> = [
     },
   ],
   [
-    "consent mcp_approval_request",
+    "confirmation mcp_approval_request without allow_edit",
     async () => {
       const request = {
         type: "mcp_approval_request",
-        id: "sealed-consent-1",
+        id: "sealed-confirm-0",
         server_label: "chatuit",
         name: "m365_reader",
         arguments: '{"task":"meetings tomorrow"}',
-        chatuit_kind: "consent",
-        chatuit_required_scopes: ["Calendars.Read"],
+        chatuit_kind: "confirmation",
+        chatuit_preview: { title: "Read meetings", fields: [], allow_edit: false },
       };
       const call = {
         type: "mcp_call",
@@ -293,17 +293,17 @@ const cases: Array<[string, () => Promise<void>]> = [
       assert.equal(approvalState(state.items, pending[0]), "pending");
 
       await assert.rejects(
-        h.conversation.answerApproval("sealed-consent-1", { approve: true, editedArguments: "{}" }),
+        h.conversation.answerApproval("sealed-confirm-0", { approve: true, editedArguments: "{}" }),
         /does not allow edited arguments/
       );
       assert.equal(h.requests.length, 1, "a refused answer sends nothing");
 
-      await h.conversation.answerApproval("sealed-consent-1", { approve: true });
+      await h.conversation.answerApproval("sealed-confirm-0", { approve: true });
       assert.equal(h.requests.length, 2);
       assert.deepEqual(h.requests[1].body.input, [
         userMessage("What meetings do I have tomorrow?"),
         request,
-        { type: "mcp_approval_response", approval_request_id: "sealed-consent-1", approve: true },
+        { type: "mcp_approval_response", approval_request_id: "sealed-confirm-0", approve: true },
       ]);
 
       state = h.conversation.getState();

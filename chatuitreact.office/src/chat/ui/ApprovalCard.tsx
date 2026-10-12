@@ -1,7 +1,6 @@
 import { Button, makeStyles, mergeClasses, shorthands, Textarea } from "@fluentui/react-components";
 import { useState } from "react";
 import type { McpApprovalRequestItem } from "../api/types";
-import { requestScopes } from "../auth/accountManager";
 import { describeError, type ApprovalDecision, type ApprovalState } from "../conversation/conversation";
 import { color, font, radius, typography } from "./tokens";
 
@@ -53,10 +52,7 @@ const useStyles = makeStyles({
   editor: { fontFamily: font.mono },
 });
 
-/**
- * An approval request from the server. Consent asks the user to grant Graph scopes through NAA;
- * confirmation shows the preview and lets the user approve, reject or edit the arguments.
- */
+/** A confirmation request from the server: shows the preview and lets the user approve, reject or edit the arguments. */
 export function ApprovalCard({ request, state, disabled, onAnswer }: ApprovalCardProps) {
   const styles = useStyles();
   const [busy, setBusy] = useState(false);
@@ -77,34 +73,17 @@ export function ApprovalCard({ request, state, disabled, onAnswer }: ApprovalCar
   };
   const locked = busy || disabled;
 
-  const consent = request.chatuit_kind === "consent";
   const preview = request.chatuit_preview;
-  const scopes = request.chatuit_required_scopes ?? [];
-  const title = consent ? `${request.name} needs your permission` : preview?.title || `Run ${request.name}?`;
+  const title = preview?.title || `Run ${request.name}?`;
 
   if (state !== "pending") {
     return (
       <div className={styles.card}>
         <span className={styles.title}>{title}</span>
-        <span className={styles.caption}>{outcome(state, consent)}</span>
+        <span className={styles.caption}>{outcome(state)}</span>
       </div>
     );
   }
-
-  const grant = async () => {
-    setBusy(true);
-    setError(null);
-    try {
-      if (scopes.length > 0) {
-        await requestScopes(scopes);
-      }
-    } catch (reason) {
-      setError(`Permission was not granted: ${describeError(reason)}`);
-      setBusy(false);
-      return;
-    }
-    await answer({ approve: true });
-  };
 
   const editedIsValid = !editing || isJsonObject(edited);
   const changed = editing && edited.trim() !== prettyJson(request.arguments).trim();
@@ -113,81 +92,59 @@ export function ApprovalCard({ request, state, disabled, onAnswer }: ApprovalCar
     <div className={mergeClasses(styles.card, styles.pending)}>
       <span className={styles.title}>{title}</span>
 
-      {consent ? (
+      {preview?.summary && <span className={styles.text}>{preview.summary}</span>}
+      {preview && preview.fields.length > 0 && (
+        <dl className={styles.fields}>
+          {preview.fields.map((field, index) => (
+            <div key={index} className={styles.field}>
+              <dt className={styles.label}>{field.label}</dt>
+              <dd className={field.multiline ? styles.multiline : styles.value}>{field.value}</dd>
+            </div>
+          ))}
+        </dl>
+      )}
+      {preview?.allow_edit && (
         <>
-          <span className={styles.text}>Grant access so ChatUiT can use {request.name} on your behalf.</span>
-          {scopes.length > 0 && <span className={styles.caption}>Permissions: {scopes.join(", ")}</span>}
-          <div className={styles.actions}>
-            <Button appearance="primary" disabled={locked} onClick={() => void grant()}>
-              Grant access
-            </Button>
-            <Button disabled={locked} onClick={() => void answer({ approve: false })}>
-              Decline
-            </Button>
-          </div>
-        </>
-      ) : (
-        <>
-          {preview?.summary && <span className={styles.text}>{preview.summary}</span>}
-          {preview && preview.fields.length > 0 && (
-            <dl className={styles.fields}>
-              {preview.fields.map((field, index) => (
-                <div key={index} className={styles.field}>
-                  <dt className={styles.label}>{field.label}</dt>
-                  <dd className={field.multiline ? styles.multiline : styles.value}>{field.value}</dd>
-                </div>
-              ))}
-            </dl>
+          <Button appearance="subtle" size="small" disabled={locked} onClick={() => setEditing((current) => !current)}>
+            {editing ? "Hide arguments" : "Edit arguments"}
+          </Button>
+          {editing && (
+            <Textarea
+              className={styles.editor}
+              value={edited}
+              onChange={(_event, data) => setEdited(data.value)}
+              rows={Math.min(16, Math.max(4, edited.split("\n").length))}
+              spellCheck={false}
+              disabled={locked}
+            />
           )}
-          {preview?.allow_edit && (
-            <>
-              <Button
-                appearance="subtle"
-                size="small"
-                disabled={locked}
-                onClick={() => setEditing((current) => !current)}
-              >
-                {editing ? "Hide arguments" : "Edit arguments"}
-              </Button>
-              {editing && (
-                <Textarea
-                  className={styles.editor}
-                  value={edited}
-                  onChange={(_event, data) => setEdited(data.value)}
-                  rows={Math.min(16, Math.max(4, edited.split("\n").length))}
-                  spellCheck={false}
-                  disabled={locked}
-                />
-              )}
-              {!editedIsValid && <span className={styles.error}>The arguments must be a JSON object.</span>}
-            </>
-          )}
-          <div className={styles.actions}>
-            <Button
-              appearance="primary"
-              disabled={locked || !editedIsValid}
-              onClick={() => void answer({ approve: true, editedArguments: changed ? edited : undefined })}
-            >
-              Approve
-            </Button>
-            <Button disabled={locked} onClick={() => void answer({ approve: false })}>
-              Reject
-            </Button>
-          </div>
+          {!editedIsValid && <span className={styles.error}>The arguments must be a JSON object.</span>}
         </>
       )}
+      <div className={styles.actions}>
+        <Button
+          appearance="primary"
+          disabled={locked || !editedIsValid}
+          onClick={() => void answer({ approve: true, editedArguments: changed ? edited : undefined })}
+        >
+          Approve
+        </Button>
+        <Button disabled={locked} onClick={() => void answer({ approve: false })}>
+          Reject
+        </Button>
+      </div>
 
       {error && <span className={styles.error}>{error}</span>}
     </div>
   );
 }
 
-function outcome(state: Exclude<ApprovalState, "pending">, consent: boolean): string {
+function outcome(state: Exclude<ApprovalState, "pending">): string {
   switch (state) {
     case "approved":
-      return consent ? "Access granted." : "Approved.";
+      return "Approved.";
     case "rejected":
-      return consent ? "Declined." : "Rejected.";
+      return "Rejected.";
     case "unanswered":
       return "Not answered. The action was not performed.";
   }

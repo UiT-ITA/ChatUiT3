@@ -3,7 +3,6 @@ import { formatDuration } from '../../utils/durationUtils';
 import type { ActivityEntryDto, ToolCallStatus } from '../../types/chatModels';
 import { isAwaitingStatus } from '../../types/chatModels';
 import ToolConfirmationCard from './ToolConfirmationCard';
-import ToolConsentCard from './ToolConsentCard';
 import "./ToolCallBlock.css";
 
 type Props = {
@@ -42,7 +41,6 @@ function truncateEnd(text: string, maxLen = 140): string {
 const STATUS_KEYS: Record<ToolCallStatus, string> = {
   running: 'chat.status.running',
   awaitingConfirmation: 'chat.status.awaitingConfirmation',
-  awaitingConsent: 'chat.status.awaitingConsent',
   awaitingClient: 'chat.status.awaitingClient',
   approved: 'chat.status.approved',
   completed: 'chat.status.done',
@@ -56,7 +54,7 @@ export default function ToolCallBlock({ entry, durationMs, isLive, chatId, messa
   const toolName = entry.toolName ?? '';
   const status: ToolCallStatus = entry.status ?? (entry.endedMs === null ? 'running' : entry.isError ? 'error' : 'completed');
   const awaiting = isAwaitingStatus(status);
-  const needsUser = isLive && entry.endedMs === null && (status === 'awaitingConfirmation' || status === 'awaitingConsent');
+  const needsUser = isLive && entry.endedMs === null && status === 'awaitingConfirmation';
   const isComplete = entry.endedMs !== null;
 
   const prettyArgs = prettyMaybeJson(entry.argumentsJson);
@@ -90,16 +88,6 @@ export default function ToolCallBlock({ entry, durationMs, isLive, chatId, messa
             toolCallId={entry.toolCallId}
             preview={entry.preview}
             argumentsJson={entry.argumentsJson}
-            remainingMs={remainingMs}
-          />
-        )}
-        {needsUser && status === 'awaitingConsent' && entry.toolCallId && (
-          <ToolConsentCard
-            chatId={chatId}
-            messageId={messageId}
-            toolCallId={entry.toolCallId}
-            toolName={toolName}
-            scopes={entry.requiredScopes ?? []}
             remainingMs={remainingMs}
           />
         )}

@@ -107,7 +107,6 @@
       "running": "Running…",
       "failed": "Failed",
       "awaitingConfirmation": "Needs your approval",
-      "awaitingConsent": "Needs access",
       "awaitingClient": "Running in your browser…",
       "approved": "Approved, running…",
       "rejected": "Declined",
@@ -450,13 +449,6 @@
     "working": "Working…",
     "confirm": {
       "title": "Confirm before running"
-    },
-    "consent": {
-      "title": "Access needed",
-      "body": "{{name}} needs permission to act on your behalf. Grant it once and the tool continues.",
-      "grant": "Grant access",
-      "decline": "Not now",
-      "failed": "Could not complete the permission prompt: {{message}}"
     }
   },
   "roles": {

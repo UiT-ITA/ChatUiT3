@@ -28,7 +28,7 @@ public sealed record InternalAgentSetup(
 
 /// <summary>
 /// Sets up every run of an <see cref="InternalAgent"/>, and runs it nested on one task. Inner
-/// function calls go through the normal <see cref="IToolExecutor"/>, so consent and confirmation
+/// function calls go through the normal <see cref="IToolExecutor"/>, so confirmation
 /// behave as for any tool; their pauses are forwarded under the outer tool call id, which is the
 /// only id the client knows. Inner calls run one at a time, so that id is never waited on twice
 /// at once.

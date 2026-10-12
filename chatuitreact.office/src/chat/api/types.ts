@@ -71,7 +71,7 @@ export interface McpCallItem {
   error?: string;
 }
 
-export type ApprovalKind = "consent" | "confirmation";
+export type ApprovalKind = "confirmation";
 
 export interface ApprovalPreviewField {
   label: string;
@@ -94,7 +94,6 @@ export interface McpApprovalRequestItem {
   name: string;
   arguments: string;
   chatuit_kind: ApprovalKind;
-  chatuit_required_scopes?: string[];
   chatuit_preview?: ApprovalPreview;
 }
 
@@ -139,11 +138,7 @@ export type OutputMcpCallItem = Omit<McpCallItem, "output" | "error"> & {
   status?: string;
 };
 
-export type OutputMcpApprovalRequestItem = Omit<
-  McpApprovalRequestItem,
-  "chatuit_required_scopes" | "chatuit_preview"
-> & {
-  chatuit_required_scopes?: string[] | null;
+export type OutputMcpApprovalRequestItem = Omit<McpApprovalRequestItem, "chatuit_preview"> & {
   chatuit_preview?: (Omit<ApprovalPreview, "summary"> & { summary?: string | null }) | null;
 };
 

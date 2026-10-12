@@ -12,8 +12,6 @@ public sealed class ToolOptions
 
     public TimeSpan ConfirmationTimeout { get; set; } = TimeSpan.FromMinutes(10);
 
-    public TimeSpan ConsentTimeout { get; set; } = TimeSpan.FromMinutes(10);
-
     public TimeSpan ClientToolTimeout { get; set; } = TimeSpan.FromSeconds(60);
 
     public int MaxClientTools { get; set; } = 64;

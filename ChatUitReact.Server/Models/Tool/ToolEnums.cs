@@ -32,7 +32,6 @@ public enum ToolCallStatus
 {
     Running,
     AwaitingConfirmation,
-    AwaitingConsent,
     AwaitingClient,
     Approved,
     Completed,
@@ -46,7 +45,6 @@ public enum ToolCallStatus
 public enum ToolCallResponseKind
 {
     Confirmation,
-    Consent,
     ClientResult
 }
 
@@ -54,8 +52,7 @@ public enum ToolCallResponseKind
 public enum ToolCallDecision
 {
     Approve,
-    Reject,
-    Retry
+    Reject
 }
 
 public static class ToolCallStatusExtensions

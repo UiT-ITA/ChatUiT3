@@ -664,9 +664,7 @@ public class ChatService : IChatService
         string chatId,
         string messageId,
         string toolCallId,
-        ToolCallResponseDto response,
-        ClaimsPrincipal user,
-        string? incomingToken)
+        ToolCallResponseDto response)
     {
         var awaiting = _pendingInteractions.GetPendingStatus(userId, messageId, toolCallId);
         if (awaiting == null)
@@ -677,7 +675,6 @@ public class ChatService : IChatService
         var expectedKind = awaiting switch
         {
             ToolCallStatus.AwaitingConfirmation => ToolCallResponseKind.Confirmation,
-            ToolCallStatus.AwaitingConsent => ToolCallResponseKind.Consent,
             _ => ToolCallResponseKind.ClientResult
         };
         if (response.Kind != expectedKind)
@@ -709,13 +706,12 @@ public class ChatService : IChatService
         }
 
         var accepted = _pendingInteractions.TryComplete(userId, messageId, toolCallId,
-            new InteractionResponse(response.Kind, response.Decision, payload, response.IsError, user, incomingToken));
+            new InteractionResponse(response.Kind, response.Decision, payload, response.IsError));
 
         var status = accepted
             ? response.Kind switch
             {
                 ToolCallResponseKind.Confirmation => response.Decision == ToolCallDecision.Approve ? ToolCallStatus.Approved : ToolCallStatus.Rejected,
-                ToolCallResponseKind.Consent => response.Decision == ToolCallDecision.Retry ? ToolCallStatus.Running : ToolCallStatus.Rejected,
                 _ => response.IsError ? ToolCallStatus.Error : ToolCallStatus.Completed
             }
             : (ToolCallStatus?)null;

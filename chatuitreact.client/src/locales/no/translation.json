@@ -107,7 +107,6 @@
       "running": "Kjører…",
       "failed": "Feilet",
       "awaitingConfirmation": "Trenger din godkjenning",
-      "awaitingConsent": "Trenger tilgang",
       "awaitingClient": "Kjører i nettleseren din…",
       "approved": "Godkjent, kjører…",
       "rejected": "Avslått",
@@ -450,13 +449,6 @@
     "working": "Arbeider…",
     "confirm": {
       "title": "Bekreft før kjøring"
-    },
-    "consent": {
-      "title": "Tilgang kreves",
-      "body": "{{name}} trenger tillatelse til å handle på dine vegne. Gi den én gang, så fortsetter verktøyet.",
-      "grant": "Gi tilgang",
-      "decline": "Ikke nå",
-      "failed": "Kunne ikke fullføre tillatelsesdialogen: {{message}}"
     }
   },
   "roles": {

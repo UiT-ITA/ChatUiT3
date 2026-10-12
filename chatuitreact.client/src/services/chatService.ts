@@ -494,7 +494,6 @@ function applyChunk(activity: LiveActivity, chunk: ChatStreamChunk): LiveActivit
         execution: "server",
         status: "running",
         preview: null,
-        requiredScopes: [],
       };
       return { ...base, entries: [...closeOpenEntries(entries, chunk.elapsedMs), entry], phase: "thinking", phaseStartedMs: chunk.elapsedMs };
     }
@@ -512,7 +511,6 @@ function applyChunk(activity: LiveActivity, chunk: ChatStreamChunk): LiveActivit
         execution: chunk.execution ?? "server",
         status: "running",
         preview: null,
-        requiredScopes: [],
       };
       return { ...base, entries: [...closeOpenEntries(entries, chunk.elapsedMs), entry], phase: "tool", phaseStartedMs: chunk.elapsedMs };
     }
@@ -520,15 +518,6 @@ function applyChunk(activity: LiveActivity, chunk: ChatStreamChunk): LiveActivit
       return {
         ...base,
         entries: updateTool({ status: "awaitingConfirmation", preview: chunk.preview, argumentsJson: chunk.argumentsJson ?? undefined }),
-        phase: "awaitingUser",
-        phaseStartedMs: chunk.elapsedMs,
-        pendingToolCallId: chunk.toolCallId,
-        pendingDeadlineMs: chunk.timeoutMs !== null ? chunk.elapsedMs + chunk.timeoutMs : null,
-      };
-    case "ToolConsentRequired":
-      return {
-        ...base,
-        entries: updateTool({ status: "awaitingConsent", requiredScopes: chunk.requiredScopes ?? [] }),
         phase: "awaitingUser",
         phaseStartedMs: chunk.elapsedMs,
         pendingToolCallId: chunk.toolCallId,

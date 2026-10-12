@@ -160,7 +160,7 @@ export interface ChatToolDto {
     description: string;
     /** The user must approve each call before it runs. */
     requiresConfirmation: boolean;
-    /** Delegated Microsoft Graph scopes the tool needs; consent is asked for on first use. */
+    /** Delegated Microsoft Graph scopes the tool needs. */
     requiredScopes: string[];
     execution: 'server' | 'client';
 }

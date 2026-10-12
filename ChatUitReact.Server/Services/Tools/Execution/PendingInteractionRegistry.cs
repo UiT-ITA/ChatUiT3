@@ -7,7 +7,7 @@ using ChatUitReact.Server.Models;
 namespace ChatUitReact.Server.Services.Tools;
 
 /// <summary>
-/// Tool calls waiting for someone outside the server: the user's approval, their consent,
+/// Tool calls waiting for someone outside the server: the user's approval,
 /// or a client's result. One entry per call, keyed by user, message and tool call id, so a
 /// response can only ever complete a call that belongs to the responding user.
 ///

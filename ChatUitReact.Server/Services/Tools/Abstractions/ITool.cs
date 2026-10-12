@@ -58,7 +58,7 @@ public interface IConfirmableTool : ITool
 
 /// <summary>
 /// A tool that drives its own run and reports through executor events: it may pause for
-/// confirmation or consent any number of times and must end with exactly one
+/// confirmation any number of times and must end with exactly one
 /// <see cref="ToolExecutionEvent.Completed"/>. Internal agents use this to surface the
 /// pauses of their inner functions under the outer tool call. <see cref="ITool.ExecuteAsync"/>
 /// is never called.

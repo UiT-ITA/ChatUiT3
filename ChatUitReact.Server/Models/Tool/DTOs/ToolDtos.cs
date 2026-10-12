@@ -63,7 +63,7 @@ public class ToolCallResponseDto
     [Required]
     public ToolCallResponseKind Kind { get; set; }
 
-    /// <summary>Confirmation: Approve or Reject. Consent: Retry or Reject.</summary>
+    /// <summary>Confirmation: Approve or Reject.</summary>
     public ToolCallDecision? Decision { get; set; }
 
     /// <summary>Confirmation only: the arguments as edited by the user, when editing is allowed.</summary>

@@ -41,7 +41,6 @@ export type ToolExecution = "server" | "client";
 export type ToolCallStatus =
   | "running"
   | "awaitingConfirmation"
-  | "awaitingConsent"
   | "awaitingClient"
   | "approved"
   | "completed"
@@ -52,7 +51,7 @@ export type ToolCallStatus =
 export const TERMINAL_TOOL_STATUSES: ReadonlySet<ToolCallStatus> = new Set(["completed", "rejected", "timeout", "error"]);
 
 export function isAwaitingStatus(status: ToolCallStatus): boolean {
-  return status === "awaitingConfirmation" || status === "awaitingConsent" || status === "awaitingClient";
+  return status === "awaitingConfirmation" || status === "awaitingClient";
 }
 
 export interface ToolPreviewFieldDto {
@@ -93,8 +92,6 @@ export interface ActivityEntryDto {
   status: ToolCallStatus;
   /** Tool: the preview shown for a confirmation, when there was one. */
   preview: ToolPreviewDto | null;
-  /** Tool: scopes the user was asked to grant, when consent was missing. */
-  requiredScopes: string[];
 }
 
 /** What happened while an assistant message was generated. Shown to the user, never sent to the model. */
@@ -116,17 +113,15 @@ export type ChatStreamChunkKind =
   | "Done"
   /** Run paused: the user must approve or reject the call. */
   | "ToolConfirmationRequested"
-  /** Run paused: the user must grant the listed scopes, then retry. */
-  | "ToolConsentRequired"
   /** Run paused: this client must run the tool and post the result. */
   | "ToolClientCallRequested"
-  /** Status-only update (approved, running again). */
+  /** Status-only update (approved). */
   | "ToolStatus";
 
 /**
  * One event on a message's live stream. `elapsedMs` is measured on the server.
- * Per kind: ToolStart carries execution; the three pause kinds carry timeoutMs (counted from
- * elapsedMs) plus preview / requiredScopes / argumentsJson; ToolStatus and ToolEnd carry status.
+ * Per kind: ToolStart carries execution; the two pause kinds carry timeoutMs (counted from
+ * elapsedMs) plus preview / argumentsJson; ToolStatus and ToolEnd carry status.
  */
 export interface ChatStreamChunk {
   kind: ChatStreamChunkKind;
@@ -141,7 +136,6 @@ export interface ChatStreamChunk {
   execution: ToolExecution | null;
   status: ToolCallStatus | null;
   preview: ToolPreviewDto | null;
-  requiredScopes: string[] | null;
   timeoutMs: number | null;
 }
 
@@ -155,7 +149,6 @@ export interface ClientToolDeclarationDto {
 
 export type ToolCallResponseDto =
   | { kind: "confirmation"; decision: "approve" | "reject"; editedArgumentsJson: string | null }
-  | { kind: "consent"; decision: "retry" | "reject" }
   | { kind: "clientResult"; result: string; isError: boolean };
 
 export interface ToolCallResponseResultDto {

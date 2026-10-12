@@ -234,8 +234,8 @@ public class ChatsController : ControllerBase
     }
 
     /// <summary>
-    /// Answers a tool call that paused the run: approve or reject a confirmation, retry or
-    /// decline after granting consent, or deliver a client tool's result. 409 when nothing is
+    /// Answers a tool call that paused the run: approve or reject a confirmation, or deliver a
+    /// client tool's result. 409 when nothing is
     /// waiting under that id any more (another tab answered, or it timed out).
     /// </summary>
     [HttpPost("{chatId}/messages/{messageId}/tool-calls/{toolCallId}/respond")]
@@ -245,7 +245,7 @@ public class ChatsController : ControllerBase
         try
         {
             var userId = GetCurrentUserId();
-            var result = await _chatService.RespondToToolCallAsync(userId, chatId, messageId, toolCallId, response, User, Request.BearerToken());
+            var result = await _chatService.RespondToToolCallAsync(userId, chatId, messageId, toolCallId, response);
 
             return result.Accepted ? Ok(result) : Conflict(result);
         }

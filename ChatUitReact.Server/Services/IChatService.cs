@@ -30,11 +30,8 @@ public interface IChatService
     /// </summary>
     Task<bool> CancelGenerationAsync(string userId, string chatId, string messageId);
 
-    /// <summary>
-    /// Answers a tool call that is waiting for the user or the client. The principal is the
-    /// responder's, so a consent retry runs on the assertion that carried the grant.
-    /// </summary>
-    Task<ToolCallResponseResultDto> RespondToToolCallAsync(string userId, string chatId, string messageId, string toolCallId, ToolCallResponseDto response, ClaimsPrincipal user, string? incomingToken);
+    /// <summary>Answers a tool call that is waiting for the user or the client.</summary>
+    Task<ToolCallResponseResultDto> RespondToToolCallAsync(string userId, string chatId, string messageId, string toolCallId, ToolCallResponseDto response);
 
     // AI Response
     Task<string> GetResponseAsync(string userId, string chatId, ChatMessage userMessage);

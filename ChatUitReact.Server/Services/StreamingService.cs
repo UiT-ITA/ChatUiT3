@@ -75,7 +75,7 @@ public class StreamingService
 
     /// <summary>
     /// Stops the generation deadline while a tool waits for the user. Time spent reading a
-    /// preview or granting consent must not count against the run; the wait has its own timeout.
+    /// preview must not count against the run; the wait has its own timeout.
     /// </summary>
     public void SuspendGenerationTimeout(string userId, string messageId)
     {

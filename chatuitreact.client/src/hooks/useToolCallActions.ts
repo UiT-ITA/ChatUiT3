@@ -1,7 +1,6 @@
 import { useCallback, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { respondToToolCall } from '../services/chatService';
-import authService from '../services/authService';
 import { ApiError } from '../services/apiService';
 
 /**
@@ -38,18 +37,5 @@ export function useToolCallActions(chatId: string | null, messageId: string, too
     await respondToToolCall(chatId!, messageId, toolCallId, { kind: 'confirmation', decision: 'reject', editedArgumentsJson: null });
   }), [run, chatId, messageId, toolCallId]);
 
-  const grantConsent = useCallback((scopes: string[]) => run(async () => {
-    const consented = await authService.requestScopes(scopes).then(() => true, (err: unknown) => {
-      setError(t('toolCall.consent.failed', { message: err instanceof Error ? err.message : String(err) }));
-      return false;
-    });
-    if (!consented) return;
-    await respondToToolCall(chatId!, messageId, toolCallId, { kind: 'consent', decision: 'retry' });
-  }), [run, chatId, messageId, toolCallId, t]);
-
-  const declineConsent = useCallback(() => run(async () => {
-    await respondToToolCall(chatId!, messageId, toolCallId, { kind: 'consent', decision: 'reject' });
-  }), [run, chatId, messageId, toolCallId]);
-
-  return { approve, reject, grantConsent, declineConsent, busy, error, canRespond: chatId !== null };
+  return { approve, reject, busy, error, canRespond: chatId !== null };
 }

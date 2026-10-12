@@ -134,8 +134,7 @@ public class ResponsesController : ControllerBase
                 ChatId = null,
                 MessageId = response.Id,
                 Access = access,
-                // The bearer token of this request is the On-Behalf-Of assertion, including the
-                // request that follows a consent grant.
+                // The bearer token of this request is the On-Behalf-Of assertion.
                 Tokens = _tokenProviders.Create(User, Request.BearerToken()),
                 UserDisplayName = identity.DisplayName,
                 UserPrincipalName = identity.Username,

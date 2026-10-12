@@ -101,9 +101,9 @@ public sealed class ResponsesRunner
             var tool = request.ServerTools.FirstOrDefault(t => t.Id == resume.State.Tool);
             var displayArguments = resume.Input is ResumeInput.Commit commit
                 ? commit.ApprovedArguments.GetRawText()
-                : resume.State.ApprovedArgumentsJson ?? resume.State.ArgumentsJson;
-            // Steps that can run for a while are announced first; the others end at once or defer.
-            var announce = resume.Input is ResumeInput.Commit or ResumeInput.AfterConsent { Phase: ConsentPhase.Run or ConsentPhase.Commit };
+                : resume.State.ArgumentsJson;
+            // A commit can run for a while and is announced first; a decline ends at once.
+            var announce = resume.Input is ResumeInput.Commit;
 
             var result = tool == null
                 ? output.CompleteWithError(call, $"Unknown tool: {call.FunctionName}")
@@ -478,9 +478,7 @@ public sealed class ResponsesRunner
             {
                 case DeferredStep.Confirmation confirmation:
                     var preview = confirmation.Preview;
-                    var confirmationState = new ApprovalState(
-                        _target.PublicId, call.Id, tool.Id, call.ArgumentsJson, ApprovalKind.Confirmation,
-                        Phase: null, ApprovedArgumentsJson: null, Attempts: 0, AllowEdit: preview.AllowEdit);
+                    var confirmationState = new ApprovalState(_target.PublicId, call.Id, tool.Id, call.ArgumentsJson, preview.AllowEdit);
                     item = new McpApprovalRequestItem
                     {
                         Id = _sealer.SealApproval(confirmationState),
@@ -494,21 +492,6 @@ public sealed class ResponsesRunner
                             AllowEdit = preview.AllowEdit,
                             Fields = preview.Fields.Select(f => new ApprovalPreviewField { Label = f.Label, Value = f.Value, Multiline = f.Multiline }).ToList()
                         }
-                    };
-                    break;
-
-                case DeferredStep.Consent consent:
-                    var approved = consent.ApprovedArguments?.GetRawText();
-                    var consentState = new ApprovalState(
-                        _target.PublicId, call.Id, tool.Id, call.ArgumentsJson, ApprovalKind.Consent,
-                        consent.Phase, approved, consent.Attempts, AllowEdit: false);
-                    item = new McpApprovalRequestItem
-                    {
-                        Id = _sealer.SealApproval(consentState),
-                        Name = tool.Id,
-                        Arguments = approved ?? call.ArgumentsJson,
-                        ChatuitKind = ResponsesJson.KindConsent,
-                        ChatuitRequiredScopes = consent.Scopes.ToList()
                     };
                     break;
 

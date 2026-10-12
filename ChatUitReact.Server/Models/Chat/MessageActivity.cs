@@ -69,7 +69,4 @@ public class ActivityEntry
 
     /// <summary>Tool only: the preview the user was shown, when the tool asked for confirmation.</summary>
     public ToolPreviewDto? Preview { get; set; }
-
-    /// <summary>Tool only: scopes the user was asked to grant, when consent was missing.</summary>
-    public List<string> RequiredScopes { get; set; } = new();
 }

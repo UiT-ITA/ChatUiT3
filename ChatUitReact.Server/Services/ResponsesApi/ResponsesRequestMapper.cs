@@ -563,50 +563,37 @@ public sealed class ResponsesRequestMapper
     private static ResumeInput ToResumeInput(ApprovalState state, McpApprovalResponseItem answer, string param)
     {
         var edited = answer.ChatuitEditedArguments;
-        if (edited != null && (state.Kind != ApprovalKind.Confirmation || !state.AllowEdit))
+        if (edited != null && !state.AllowEdit)
         {
             throw ResponsesApiException.BadRequest($"{param}: chatuit_edited_arguments is only accepted when the preview allows editing.", "chatuit_edited_arguments", "invalid_value");
         }
 
-        if (state.Kind == ApprovalKind.Confirmation)
-        {
-            if (!answer.Approve)
-            {
-                return new ResumeInput.Declined();
-            }
-
-            if (edited == null)
-            {
-                return new ResumeInput.Commit(Parse(state.ArgumentsJson));
-            }
-
-            JsonElement editedArguments;
-            try
-            {
-                editedArguments = Parse(edited);
-            }
-            catch (JsonException ex)
-            {
-                throw ResponsesApiException.BadRequest($"{param}: chatuit_edited_arguments is not valid JSON: {ex.Message}", "chatuit_edited_arguments", "invalid_value");
-            }
-
-            if (editedArguments.ValueKind != JsonValueKind.Object)
-            {
-                throw ResponsesApiException.BadRequest($"{param}: chatuit_edited_arguments must be a JSON object.", "chatuit_edited_arguments", "invalid_value");
-            }
-
-            return new ResumeInput.Commit(editedArguments);
-        }
-
         if (!answer.Approve)
         {
-            return new ResumeInput.ConsentDeclined();
+            return new ResumeInput.Declined();
         }
 
-        return new ResumeInput.AfterConsent(
-            state.Phase ?? ConsentPhase.Run,
-            state.Attempts,
-            state.ApprovedArgumentsJson == null ? null : Parse(state.ApprovedArgumentsJson));
+        if (edited == null)
+        {
+            return new ResumeInput.Commit(Parse(state.ArgumentsJson));
+        }
+
+        JsonElement editedArguments;
+        try
+        {
+            editedArguments = Parse(edited);
+        }
+        catch (JsonException ex)
+        {
+            throw ResponsesApiException.BadRequest($"{param}: chatuit_edited_arguments is not valid JSON: {ex.Message}", "chatuit_edited_arguments", "invalid_value");
+        }
+
+        if (editedArguments.ValueKind != JsonValueKind.Object)
+        {
+            throw ResponsesApiException.BadRequest($"{param}: chatuit_edited_arguments must be a JSON object.", "chatuit_edited_arguments", "invalid_value");
+        }
+
+        return new ResumeInput.Commit(editedArguments);
     }
 
     private static JsonElement Parse(string json)

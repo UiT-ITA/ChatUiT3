@@ -16,7 +16,7 @@ namespace ChatUitReact.Server.Services.Agents.M365;
 /// <summary>
 /// Thin Microsoft Graph HTTP wrapper for the M365 functions: acquires the user's delegated token
 /// through the invocation's <see cref="IUserTokenProvider"/>, sends, and turns failures into
-/// exceptions the executor already understands (401 → consent, anything else → an error result).
+/// exceptions the executor already understands (401 → missing token, anything else → an error result).
 /// </summary>
 public sealed class GraphClient
 {
@@ -141,7 +141,7 @@ public sealed class GraphClient
 
         if (response.StatusCode == HttpStatusCode.Unauthorized)
         {
-            throw new ConsentRequiredException(scopes);
+            throw new TokenUnavailableException(scopes);
         }
 
         throw new GraphRequestException(response.StatusCode, ExtractError(body));

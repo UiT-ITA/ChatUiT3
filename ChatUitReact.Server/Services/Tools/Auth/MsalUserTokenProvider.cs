@@ -22,7 +22,7 @@ public sealed class MsalUserTokenProvider : IUserTokenProvider
 {
     private readonly IServiceScopeFactory _scopeFactory;
     private readonly ILogger _logger;
-    private ClaimsPrincipal _user;
+    private readonly ClaimsPrincipal _user;
 
     public MsalUserTokenProvider(ClaimsPrincipal user, string? incomingToken, IServiceScopeFactory scopeFactory, ILogger logger)
     {
@@ -76,9 +76,8 @@ public sealed class MsalUserTokenProvider : IUserTokenProvider
     }
 
     /// <summary>
-    /// Only a real interaction requirement (no consent, conditional access) becomes a consent
-    /// prompt. <c>user_null</c> means no assertion reached MSAL, which is a server-side fault
-    /// and must surface as an error, not as a request to the user.
+    /// <c>user_null</c> means no assertion reached MSAL. Anything else (a missing grant,
+    /// conditional access) means Entra would not issue the token. Both are errors; the user is never asked.
     /// </summary>
     private Exception Classify(MsalUiRequiredException? msal, IReadOnlyList<string> scopes, Exception original)
     {
@@ -88,11 +87,9 @@ public sealed class MsalUserTokenProvider : IUserTokenProvider
             return new InvalidOperationException("Delegated access is not available: the server has no user assertion for On-Behalf-Of.", original);
         }
 
-        _logger.LogInformation("Consent required for {Scopes}: {Code} {Message}", string.Join(",", scopes), msal?.ErrorCode, original.Message);
-        return new ConsentRequiredException(scopes, msal?.Claims, original);
+        _logger.LogError("Entra issued no token for {Scopes}: {Code} {Message}", string.Join(",", scopes), msal?.ErrorCode, original.Message);
+        return new TokenUnavailableException(scopes, original);
     }
-
-    public void Refresh(ClaimsPrincipal user, string? incomingToken) => _user = WithAssertion(user, incomingToken);
 }
 
 public sealed class MsalUserTokenProviderFactory : IUserTokenProviderFactory

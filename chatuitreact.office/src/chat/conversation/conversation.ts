@@ -710,9 +710,6 @@ export function toInputItem(item: OutputItem): InputItem | null {
         arguments: item.arguments,
         chatuit_kind: item.chatuit_kind,
       };
-      if (Array.isArray(item.chatuit_required_scopes)) {
-        request.chatuit_required_scopes = [...item.chatuit_required_scopes];
-      }
       const preview = item.chatuit_preview;
       if (preview) {
         request.chatuit_preview = {

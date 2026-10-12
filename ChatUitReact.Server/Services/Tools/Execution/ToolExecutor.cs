@@ -14,8 +14,6 @@ namespace ChatUitReact.Server.Services.Tools;
 
 public sealed class ToolExecutor : IToolExecutor
 {
-    private const int MaxConsentRetries = 3;
-
     private readonly IToolAccessService _access;
     private readonly PendingInteractionRegistry _pending;
     private readonly ToolOptions _options;
@@ -156,21 +154,16 @@ public sealed class ToolExecutor : IToolExecutor
         }
     }
 
-    private async Task RunServerAsync(ITool tool, ToolInvocation invocation, ChannelWriter<ToolExecutionEvent> writer, CancellationToken cancellationToken, int attempts = 0)
+    private async Task RunServerAsync(ITool tool, ToolInvocation invocation, ChannelWriter<ToolExecutionEvent> writer, CancellationToken cancellationToken)
     {
-        var result = await WithConsentAsync(() => tool.ExecuteAsync(invocation, cancellationToken), invocation, ConsentPhase.Run, null, attempts, writer, cancellationToken);
+        var result = await RunStepAsync(() => tool.ExecuteAsync(invocation, cancellationToken), writer);
         if (result != null)
         {
             Complete(writer, result, result.IsError ? ToolCallStatus.Error : ToolCallStatus.Completed);
         }
     }
 
-    /// <param name="attempts">
-    /// Defer mode: consent requests already made for this call. A consent pause inside the tool
-    /// ends the whole call, and after consent the call runs again from the start, so the count is
-    /// kept here rather than by the inner step.
-    /// </param>
-    private async Task RunStreamingAsync(IStreamingTool tool, ToolInvocation invocation, ChannelWriter<ToolExecutionEvent> writer, CancellationToken cancellationToken, int attempts = 0)
+    private async Task RunStreamingAsync(IStreamingTool tool, ToolInvocation invocation, ChannelWriter<ToolExecutionEvent> writer, CancellationToken cancellationToken)
     {
         // The tool owns its pauses; this only forwards them and applies the usual truncation to the end result.
         var completed = false;
@@ -183,24 +176,12 @@ public sealed class ToolExecutor : IToolExecutor
                 break;
             }
 
-            if (evt is ToolExecutionEvent.Deferred deferred)
+            if (evt is ToolExecutionEvent.Deferred)
             {
+                // An inner confirmation cannot be tied to the arguments a repeated inner run
+                // would produce; the Responses API refuses to expose an agent with such a tool.
+                Complete(writer, ToolResult.Error("This tool asked for a confirmation that cannot be resumed here."), ToolCallStatus.Error);
                 completed = true;
-                if (deferred.Step is not DeferredStep.Consent consent)
-                {
-                    // An inner confirmation cannot be tied to the arguments a repeated inner run
-                    // would produce; the Responses API refuses to expose an agent with such a tool.
-                    Complete(writer, ToolResult.Error("This tool asked for a confirmation that cannot be resumed here."), ToolCallStatus.Error);
-                }
-                else if (attempts >= MaxConsentRetries)
-                {
-                    Complete(writer, ToolResult.Error($"Access was still not granted for: {string.Join(", ", consent.Scopes)}."), ToolCallStatus.Error);
-                }
-                else
-                {
-                    Emit(writer, new ToolExecutionEvent.Deferred(new DeferredStep.Consent(consent.Scopes, ConsentPhase.Run, null, attempts + 1)));
-                }
-
                 break;
             }
 
@@ -213,11 +194,9 @@ public sealed class ToolExecutor : IToolExecutor
         }
     }
 
-    private async Task RunConfirmableAsync(IConfirmableTool tool, ToolInvocation invocation, ChannelWriter<ToolExecutionEvent> writer, CancellationToken cancellationToken, int prepareAttempts = 0)
+    private async Task RunConfirmableAsync(IConfirmableTool tool, ToolInvocation invocation, ChannelWriter<ToolExecutionEvent> writer, CancellationToken cancellationToken)
     {
-        // Building the preview may itself need a delegated token (looking up a recipient, say),
-        // so it runs through the same consent handling as the commit.
-        var preview = await WithConsentAsync(() => tool.PrepareAsync(invocation, cancellationToken), invocation, ConsentPhase.Prepare, null, prepareAttempts, writer, cancellationToken);
+        var preview = await RunStepAsync(() => tool.PrepareAsync(invocation, cancellationToken), writer);
         if (preview == null)
         {
             return;
@@ -253,8 +232,7 @@ public sealed class ToolExecutor : IToolExecutor
 
         Emit(writer, new ToolExecutionEvent.StatusChanged(ToolCallStatus.Approved, approvedArguments.GetRawText()));
 
-        var result = await WithConsentAsync(
-            () => tool.CommitAsync(invocation, approvedArguments, cancellationToken), invocation, ConsentPhase.Commit, approvedArguments, 0, writer, cancellationToken);
+        var result = await RunStepAsync(() => tool.CommitAsync(invocation, approvedArguments, cancellationToken), writer);
         if (result != null)
         {
             Complete(writer, result, result.IsError ? ToolCallStatus.Error : ToolCallStatus.Completed);
@@ -274,44 +252,17 @@ public sealed class ToolExecutor : IToolExecutor
                 }
 
                 Emit(writer, new ToolExecutionEvent.StatusChanged(ToolCallStatus.Approved, commit.ApprovedArguments.GetRawText()));
-                await CommitAsync(confirmable, invocation, commit.ApprovedArguments, 0, writer, cancellationToken);
+                await CommitAsync(confirmable, invocation, commit.ApprovedArguments, writer, cancellationToken);
                 return;
-
-            case ResumeInput.AfterConsent afterConsent:
-                // The request that carried the consent also carries the new assertion; the
-                // context's token provider was built from it.
-                Emit(writer, new ToolExecutionEvent.StatusChanged(ToolCallStatus.Running));
-                switch (afterConsent.Phase)
-                {
-                    case ConsentPhase.Commit when tool is IConfirmableTool confirmableTool && afterConsent.ApprovedArguments is { } approved:
-                        await CommitAsync(confirmableTool, invocation, approved, afterConsent.Attempts, writer, cancellationToken);
-                        return;
-                    case ConsentPhase.Prepare when tool is IConfirmableTool confirmableTool:
-                        await RunConfirmableAsync(confirmableTool, invocation, writer, cancellationToken, afterConsent.Attempts);
-                        return;
-                    case ConsentPhase.Run when tool is IStreamingTool streaming:
-                        await RunStreamingAsync(streaming, invocation, writer, cancellationToken, afterConsent.Attempts);
-                        return;
-                    case ConsentPhase.Run when tool is not IConfirmableTool:
-                        await RunServerAsync(tool, invocation, writer, cancellationToken, afterConsent.Attempts);
-                        return;
-                    default:
-                        Complete(writer, ToolResult.Error($"{tool.Id} cannot continue from the {afterConsent.Phase} step."), ToolCallStatus.Error);
-                        return;
-                }
 
             case ResumeInput.Declined:
                 Complete(writer, ToolResult.Error("The user declined this action. Do not retry it."), ToolCallStatus.Rejected);
-                return;
-
-            case ResumeInput.ConsentDeclined:
-                Complete(writer, ToolResult.Error("The user declined to grant access. Do not retry."), ToolCallStatus.Rejected);
                 return;
         }
     }
 
     /// <summary>Commits approved arguments: validated as an object here, then bound to the tool's argument type.</summary>
-    private async Task CommitAsync(IConfirmableTool tool, ToolInvocation invocation, JsonElement approvedArguments, int attempts, ChannelWriter<ToolExecutionEvent> writer, CancellationToken cancellationToken)
+    private async Task CommitAsync(IConfirmableTool tool, ToolInvocation invocation, JsonElement approvedArguments, ChannelWriter<ToolExecutionEvent> writer, CancellationToken cancellationToken)
     {
         if (approvedArguments.ValueKind != JsonValueKind.Object)
         {
@@ -319,8 +270,7 @@ public sealed class ToolExecutor : IToolExecutor
             return;
         }
 
-        var result = await WithConsentAsync(
-            () => tool.CommitAsync(invocation, approvedArguments, cancellationToken), invocation, ConsentPhase.Commit, approvedArguments, attempts, writer, cancellationToken);
+        var result = await RunStepAsync(() => tool.CommitAsync(invocation, approvedArguments, cancellationToken), writer);
         if (result != null)
         {
             Complete(writer, result, result.IsError ? ToolCallStatus.Error : ToolCallStatus.Completed);
@@ -353,73 +303,29 @@ public sealed class ToolExecutor : IToolExecutor
     }
 
     /// <summary>
-    /// Runs a tool step, pausing for consent when a downstream token is missing. Returns null
-    /// when the call has ended inside this method (declined, timed out, bad arguments, or in
-    /// Defer mode handed to the client); the completion or deferral has then already been written
-    /// and the caller must stop.
+    /// Runs a tool step. Returns null when the call has ended inside this method (bad arguments,
+    /// or a delegated token the server could not get); the completion has then already been
+    /// written and the caller must stop.
     /// </summary>
-    /// <param name="phase">Defer mode: the step reported for repeating after consent.</param>
-    /// <param name="approvedArguments">Defer mode, commit only: carried so the repeat commits the same arguments.</param>
-    /// <param name="startAttempt">Consent requests already made for this step (Defer mode resumes); 0 in Wait mode.</param>
-    private async Task<T?> WithConsentAsync<T>(
-        Func<Task<T>> action,
-        ToolInvocation invocation,
-        ConsentPhase phase,
-        JsonElement? approvedArguments,
-        int startAttempt,
-        ChannelWriter<ToolExecutionEvent> writer,
-        CancellationToken cancellationToken) where T : class
+    private async Task<T?> RunStepAsync<T>(Func<Task<T>> action, ChannelWriter<ToolExecutionEvent> writer) where T : class
     {
-        for (var attempt = startAttempt; ; attempt++)
+        try
         {
-            try
-            {
-                return await action();
-            }
-            catch (ToolArgumentException ex)
-            {
-                Complete(writer, ToolResult.Error(ex.Message), ToolCallStatus.Error);
-                return null;
-            }
-            catch (ConsentRequiredException ex) when (attempt < MaxConsentRetries)
-            {
-                if (invocation.Context.Mode == InteractionMode.Defer)
-                {
-                    // The arguments document is disposed when the call ends; the step outlives it.
-                    Emit(writer, new ToolExecutionEvent.Deferred(new DeferredStep.Consent(ex.Scopes, phase, approvedArguments?.Clone(), attempt + 1)));
-                    return null;
-                }
-
-                Emit(writer, new ToolExecutionEvent.ConsentRequired(ex.Scopes, _options.ConsentTimeout));
-
-                var response = await _pending.WaitAsync(
-                    invocation.Context.UserId, invocation.Context.MessageId, invocation.ToolCallId,
-                    ToolCallStatus.AwaitingConsent, _options.ConsentTimeout, cancellationToken);
-
-                if (response == null)
-                {
-                    Complete(writer, ToolResult.Error("The user did not grant access in time."), ToolCallStatus.Timeout);
-                    return null;
-                }
-
-                if (response.Decision != ToolCallDecision.Retry)
-                {
-                    Complete(writer, ToolResult.Error("The user declined to grant access. Do not retry."), ToolCallStatus.Rejected);
-                    return null;
-                }
-
-                if (response.User != null)
-                {
-                    invocation.Context.Tokens.Refresh(response.User, response.IncomingToken);
-                }
-
-                Emit(writer, new ToolExecutionEvent.StatusChanged(ToolCallStatus.Running));
-            }
-            catch (ConsentRequiredException ex)
-            {
-                Complete(writer, ToolResult.Error($"Access was still not granted for: {string.Join(", ", ex.Scopes)}."), ToolCallStatus.Error);
-                return null;
-            }
+            return await action();
+        }
+        catch (ToolArgumentException ex)
+        {
+            Complete(writer, ToolResult.Error(ex.Message), ToolCallStatus.Error);
+            return null;
+        }
+        catch (TokenUnavailableException ex)
+        {
+            // A missing grant is a fault in the app registration; the user is never asked to fix it.
+            _logger.LogError(ex, "No delegated token for {Scopes}", string.Join(", ", ex.Scopes));
+            Complete(writer, ToolResult.Error(
+                $"The app could not get access to {string.Join(", ", ex.Scopes)}. This is a configuration error in the app registration that an administrator must fix; tell the user so and do not retry."),
+                ToolCallStatus.Error);
+            return null;
         }
     }
 

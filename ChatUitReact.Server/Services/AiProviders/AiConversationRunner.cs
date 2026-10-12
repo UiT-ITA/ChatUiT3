@@ -179,21 +179,6 @@ public sealed class AiConversationRunner
                             };
                             break;
 
-                        case ToolExecutionEvent.ConsentRequired consent:
-                            entry.Status = ToolCallStatus.AwaitingConsent;
-                            entry.RequiredScopes = consent.Scopes.ToList();
-                            yield return new ChatStreamChunk
-                            {
-                                Kind = ChatStreamChunkKind.ToolConsentRequired,
-                                ElapsedMs = elapsed,
-                                ToolCallId = call.Id,
-                                ToolName = call.FunctionName,
-                                RequiredScopes = entry.RequiredScopes,
-                                Status = entry.Status,
-                                TimeoutMs = (long)consent.Timeout.TotalMilliseconds
-                            };
-                            break;
-
                         case ToolExecutionEvent.ClientCallRequested clientCall:
                             entry.Status = ToolCallStatus.AwaitingClient;
                             yield return new ChatStreamChunk
@@ -264,7 +249,7 @@ public sealed class AiConversationRunner
             if (entry.Type == ActivityEntryType.Tool && !entry.Status.IsTerminal())
             {
                 // Nothing pending survives the run; history only holds terminal states.
-                entry.Status = entry.Status is ToolCallStatus.AwaitingConfirmation or ToolCallStatus.AwaitingConsent or ToolCallStatus.AwaitingClient
+                entry.Status = entry.Status is ToolCallStatus.AwaitingConfirmation or ToolCallStatus.AwaitingClient
                     ? ToolCallStatus.Timeout
                     : ToolCallStatus.Error;
                 entry.IsError = true;

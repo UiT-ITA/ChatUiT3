@@ -18,11 +18,9 @@ public enum ChatStreamChunkKind
     Done,
     /// <summary>The run is paused until the user approves or rejects the tool call.</summary>
     ToolConfirmationRequested,
-    /// <summary>The run is paused until the user grants the app the listed scopes, or declines.</summary>
-    ToolConsentRequired,
     /// <summary>The run is paused until the client runs the tool and posts the result.</summary>
     ToolClientCallRequested,
-    /// <summary>A tool call changed status without finishing (approved, running again).</summary>
+    /// <summary>A tool call changed status without finishing (approved).</summary>
     ToolStatus
 }
 
@@ -60,9 +58,6 @@ public class ChatStreamChunk
 
     /// <summary>ToolConfirmationRequested.</summary>
     public ToolPreviewDto? Preview { get; set; }
-
-    /// <summary>ToolConsentRequired.</summary>
-    public List<string>? RequiredScopes { get; set; }
 
     /// <summary>On the pause kinds: how long the server waits, counted from this chunk's <see cref="ElapsedMs"/>.</summary>
     public long? TimeoutMs { get; set; }

@@ -21,8 +21,7 @@ public static class ResponsesJson
     /// <summary>The <c>server_label</c> of every server tool call.</summary>
     public const string ServerLabel = "chatuit";
 
-    /// <summary>The <c>chatuit_kind</c> values of an approval request.</summary>
-    public const string KindConsent = "consent";
+    /// <summary>The <c>chatuit_kind</c> value of an approval request.</summary>
     public const string KindConfirmation = "confirmation";
 }
 
@@ -169,11 +168,8 @@ public sealed class McpApprovalRequestItem : ResponseItem
 
     public string? Arguments { get; set; }
 
-    /// <summary><see cref="ResponsesJson.KindConsent"/> or <see cref="ResponsesJson.KindConfirmation"/>.</summary>
+    /// <summary>Always <see cref="ResponsesJson.KindConfirmation"/>.</summary>
     public string? ChatuitKind { get; set; }
-
-    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
-    public List<string>? ChatuitRequiredScopes { get; set; }
 
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     public ApprovalPreview? ChatuitPreview { get; set; }

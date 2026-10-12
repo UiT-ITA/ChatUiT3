@@ -12,14 +12,8 @@ namespace ChatUitReact.Server.Services.Tools;
 /// </summary>
 public interface IUserTokenProvider
 {
-    /// <exception cref="ConsentRequiredException">The user has not consented to these scopes.</exception>
+    /// <exception cref="TokenUnavailableException">Entra would not issue a token for these scopes.</exception>
     Task<string> GetAccessTokenAsync(IReadOnlyList<string> scopes, CancellationToken cancellationToken = default);
-
-    /// <summary>
-    /// Replaces the captured principal and assertion, used after the user grants consent so the
-    /// retry runs on the token from the request that carried the grant.
-    /// </summary>
-    void Refresh(ClaimsPrincipal user, string? incomingToken);
 }
 
 public interface IUserTokenProviderFactory
@@ -28,31 +22,23 @@ public interface IUserTokenProviderFactory
     IUserTokenProvider Create(ClaimsPrincipal user, string? incomingToken);
 }
 
-/// <summary>The user must grant the app consent for the listed scopes before the tool can run.</summary>
-public sealed class ConsentRequiredException : Exception
+/// <summary>No delegated token could be obtained for the listed scopes. A configuration error: the user cannot fix it.</summary>
+public sealed class TokenUnavailableException : Exception
 {
     public IReadOnlyList<string> Scopes { get; }
 
-    /// <summary>A claims challenge from Entra, when one was returned. The client can pass it to MSAL.</summary>
-    public string? ClaimsChallenge { get; }
-
-    public ConsentRequiredException(IReadOnlyList<string> scopes, string? claimsChallenge = null, Exception? inner = null)
-        : base($"Consent is required for: {string.Join(", ", scopes)}", inner)
+    public TokenUnavailableException(IReadOnlyList<string> scopes, Exception? inner = null)
+        : base($"No delegated token for: {string.Join(", ", scopes)}", inner)
     {
         Scopes = scopes;
-        ClaimsChallenge = claimsChallenge;
     }
 }
 
-/// <summary>For entry points that carry no user assertion. Every request for a token fails as a consent problem.</summary>
+/// <summary>For entry points that carry no user assertion. Every request for a token fails.</summary>
 public sealed class NoUserTokenProvider : IUserTokenProvider
 {
     public static readonly NoUserTokenProvider Instance = new();
 
     public Task<string> GetAccessTokenAsync(IReadOnlyList<string> scopes, CancellationToken cancellationToken = default)
-        => throw new ConsentRequiredException(scopes);
-
-    public void Refresh(ClaimsPrincipal user, string? incomingToken)
-    {
-    }
+        => throw new TokenUnavailableException(scopes);
 }
