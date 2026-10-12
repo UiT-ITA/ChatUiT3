@@ -1,8 +1,6 @@
 using System;
 using System.Collections.Generic;
 using System.ComponentModel;
-using System.IO;
-using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using ChatUitReact.Server.Services.Tools;
@@ -19,8 +17,6 @@ public sealed class ReadFileFunction : Tool<ReadFileArgs>
 {
     private const long MaxBytes = 512 * 1024;
     private static readonly string[] Scopes = [M365Scopes.FilesReadWriteAll];
-    private static readonly HashSet<string> TextExtensions = new(StringComparer.OrdinalIgnoreCase)
-        { ".txt", ".md", ".markdown", ".csv", ".tsv", ".json", ".xml", ".html", ".htm", ".yaml", ".yml", ".log", ".ini", ".cs", ".ts", ".js", ".py", ".sql" };
 
     private readonly GraphClient _graph;
 
@@ -51,8 +47,7 @@ public sealed class ReadFileFunction : Tool<ReadFileArgs>
             return ToolResult.Ok(new { metadata, content = (string?)null, note = "This item is a folder." });
         }
 
-        var isText = TextExtensions.Contains(Path.GetExtension(name)) || (mimeType?.StartsWith("text/", StringComparison.OrdinalIgnoreCase) ?? false);
-        if (!isText)
+        if (!TextFiles.IsText(name, mimeType))
         {
             return ToolResult.Ok(new { metadata, content = (string?)null, note = "Content is not readable as text; share the web link instead." });
         }

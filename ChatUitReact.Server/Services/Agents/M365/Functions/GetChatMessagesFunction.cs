@@ -40,14 +40,8 @@ public sealed class GetChatMessagesFunction : Tool<GetChatMessagesArgs>
 
         var messages = response.Items()
             .Where(m => m.Str("messageType") == "message")
-            .Select(m => new
-            {
-                id = m.Str("id"),
-                from = m.Str("from", "user", "displayName") ?? m.Str("from", "application", "displayName"),
-                created = m.Str("createdDateTime"),
-                text = GraphJson.HtmlToText(m.Str("body", "content")),
-                attachments = m.Items("attachments").Select(a => a.Str("name") ?? a.Str("contentUrl")).Where(a => a != null).ToList()
-            }).ToList();
+            .Select(TeamsChatSupport.ToMessage)
+            .ToList();
 
         return ToolResult.Ok(new { chatId = args.ChatId, count = messages.Count, messages });
     }

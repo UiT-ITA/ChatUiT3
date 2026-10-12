@@ -8,9 +8,19 @@ using ChatUitReact.Server.Services.Tools;
 
 namespace ChatUitReact.Server.Services.Agents.M365.Functions;
 
-/// <summary>Shared Graph calls for the Teams write functions.</summary>
+/// <summary>Shared Graph calls and projections for the Teams functions.</summary>
 internal static class TeamsChatSupport
 {
+    /// <summary>A chat or channel message as the model sees it.</summary>
+    public static object ToMessage(JsonElement m) => new
+    {
+        id = m.Str("id"),
+        from = m.Str("from", "user", "displayName") ?? m.Str("from", "application", "displayName"),
+        created = m.Str("createdDateTime"),
+        text = GraphJson.HtmlToText(m.Str("body", "content")),
+        attachments = m.Items("attachments").Select(a => a.Str("name") ?? a.Str("contentUrl")).Where(a => a != null).ToList()
+    };
+
     public static readonly string[] SendScopes = [M365Scopes.ChatCreate, M365Scopes.ChatMessageSend, M365Scopes.UserRead, M365Scopes.UserReadBasicAll];
 
     public sealed record Person(string Id, string DisplayName, string? Email);
