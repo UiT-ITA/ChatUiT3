@@ -6,6 +6,7 @@ public static class M365Scopes
     public const string UserRead = "User.Read";
     public const string UserReadBasicAll = "User.ReadBasic.All";
     public const string PeopleRead = "People.Read";
+    public const string ContactsRead = "Contacts.Read";
     public const string PresenceReadAll = "Presence.Read.All";
     public const string CalendarsRead = "Calendars.Read";
     public const string CalendarsReadShared = "Calendars.Read.Shared";
