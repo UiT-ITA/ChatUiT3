@@ -1,3 +1,8 @@
+.activity {
+  width: 100%;
+  min-width: 0;
+}
+
 .activity-summary {
   display: inline-flex;
   align-items: center;
