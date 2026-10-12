@@ -43,7 +43,7 @@ public sealed class GetCalendarViewFunction : Tool<GetCalendarViewArgs>
         }
 
         var timeZone = string.IsNullOrWhiteSpace(args.TimeZone) ? "UTC" : args.TimeZone.Trim();
-        var owner = string.IsNullOrWhiteSpace(args.UserIdOrEmail) ? "me" : $"users/{Uri.EscapeDataString(args.UserIdOrEmail.Trim())}";
+        var owner = GraphClient.UserPath(args.UserIdOrEmail);
 
         var path = $"{owner}/calendarView?startDateTime={Uri.EscapeDataString(start.ToString("s"))}&endDateTime={Uri.EscapeDataString(end.ToString("s"))}"
                  + "&$top=100&$orderby=start/dateTime&$select=id,subject,start,end,isAllDay,location,organizer,attendees,showAs,isCancelled,webLink,onlineMeeting";

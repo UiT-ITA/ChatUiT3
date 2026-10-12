@@ -47,6 +47,9 @@ public static class ToolSchema
         }
 
         schema.Remove("$schema");
+
+        // An argument-less record exports without "properties"; match the shape of Empty().
+        schema["properties"] ??= new JsonObject();
         return schema;
     }
 
@@ -124,10 +127,15 @@ public static class ToolSchema
         }
 
         // A nullable enum lists null as a member; optionality is expressed through "required" instead.
-        if (schema["enum"] is JsonArray members && members.Any(m => m == null))
+        if (schema["enum"] is JsonArray members)
         {
-            var kept = members.Where(m => m != null).Select(m => m!.DeepClone()).ToArray();
-            schema["enum"] = new JsonArray(kept);
+            if (members.Any(m => m == null))
+            {
+                var kept = members.Where(m => m != null).Select(m => m!.DeepClone()).ToArray();
+                schema["enum"] = new JsonArray(kept);
+            }
+
+            // Enums are serialised as strings; the exporter omits the type for non-nullable ones.
             schema["type"] ??= "string";
         }
 

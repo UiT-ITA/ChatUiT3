@@ -1,8 +1,8 @@
 using System;
 using System.Collections.Generic;
 using System.ComponentModel;
-using System.Linq;
 using System.Net;
+using System.Net.Http;
 using System.Threading;
 using System.Threading.Tasks;
 using ChatUitReact.Server.Services.Tools;
@@ -31,7 +31,7 @@ public sealed class WriteTextFileFunction : ConfirmableTool<WriteTextFileArgs>
 
     protected override async Task<ToolPreview> PrepareAsync(WriteTextFileArgs args, ToolInvocation invocation, CancellationToken ct)
     {
-        var path = Normalise(args.Path);
+        var path = DriveSupport.Normalise(args.Path);
         if (args.Content.Length > MaxChars)
         {
             throw new ToolArgumentException($"content is longer than {MaxChars} characters.");
@@ -40,7 +40,7 @@ public sealed class WriteTextFileFunction : ConfirmableTool<WriteTextFileArgs>
         var exists = false;
         try
         {
-            await _graph.GetAsync(invocation.Context, $"me/drive/root:/{EscapePath(path)}?$select=id", Scopes, ct);
+            await _graph.GetAsync(invocation.Context, $"me/drive/root:/{DriveSupport.EscapePath(path)}?$select=id", Scopes, ct);
             exists = true;
         }
         catch (GraphRequestException ex) when (ex.Status == HttpStatusCode.NotFound)
@@ -57,21 +57,8 @@ public sealed class WriteTextFileFunction : ConfirmableTool<WriteTextFileArgs>
 
     protected override async Task<ToolResult> CommitAsync(WriteTextFileArgs args, ToolInvocation invocation, CancellationToken ct)
     {
-        var path = Normalise(args.Path);
-        var item = await _graph.PutTextAsync(invocation.Context, $"me/drive/root:/{EscapePath(path)}:/content", args.Content, "text/plain", Scopes, ct);
+        var path = DriveSupport.Normalise(args.Path);
+        var item = await _graph.SendTextAsync(invocation.Context, HttpMethod.Put, $"me/drive/root:/{DriveSupport.EscapePath(path)}:/content", args.Content, "text/plain", Scopes, ct);
         return ToolResult.Ok(new { written = true, path, itemId = item.Str("id"), driveId = item.Str("parentReference", "driveId"), webUrl = item.Str("webUrl") }, $"Wrote {path}.");
     }
-
-    private static string Normalise(string path)
-    {
-        var trimmed = (path ?? string.Empty).Replace('\\', '/').Trim().Trim('/');
-        if (trimmed.Length == 0 || trimmed.Contains("..", StringComparison.Ordinal))
-        {
-            throw new ToolArgumentException("path must be a relative OneDrive path without '..'.");
-        }
-
-        return trimmed;
-    }
-
-    private static string EscapePath(string path) => string.Join('/', path.Split('/', StringSplitOptions.RemoveEmptyEntries).Select(Uri.EscapeDataString));
 }

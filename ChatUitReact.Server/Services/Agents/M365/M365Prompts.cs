@@ -18,7 +18,7 @@ internal static class M365Prompts
     public const string Writer = Reader + """
 
         Writing:
-        - You may send Teams messages, create group chats and write files. Each write is shown to the user for approval before it happens; you do not need to ask for permission yourself, but the recipient and content must be exactly what the task asked for.
+        - You may send email and Teams messages, manage calendar events, files, tasks and OneNote pages. Each write is shown to the user for approval before it happens; you do not need to ask for permission yourself, but the recipient and content must be exactly what the task asked for.
         - Resolve every recipient with find_people before sending. Never send to a guessed address.
         - If the user rejects an action, do not retry or alter it. Report that it was declined and end the task.
         - After a successful write, report briefly what was sent or written and to whom or where.

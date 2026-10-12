@@ -47,12 +47,34 @@ public sealed class GraphClient
         return await ReadJsonAsync(response, ct);
     }
 
-    public async Task<JsonElement> PostAsync(ToolExecutionContext context, string path, object body, IReadOnlyList<string> scopes, CancellationToken ct)
+    public async Task<JsonElement> PostAsync(ToolExecutionContext context, string path, object body, IReadOnlyList<string> scopes, CancellationToken ct, string? preferHeader = null)
     {
         using var request = new HttpRequestMessage(HttpMethod.Post, BaseUrl + path.TrimStart('/'))
         {
             Content = new StringContent(JsonSerializer.Serialize(body, ToolJson.Options), Encoding.UTF8, "application/json")
         };
+
+        if (preferHeader != null)
+        {
+            request.Headers.Add("Prefer", preferHeader);
+        }
+
+        using var response = await SendAsync(context, request, scopes, ct);
+        return await ReadJsonAsync(response, ct);
+    }
+
+    public async Task<JsonElement> PatchAsync(ToolExecutionContext context, string path, object body, IReadOnlyList<string> scopes, CancellationToken ct, string? ifMatch = null)
+    {
+        using var request = new HttpRequestMessage(HttpMethod.Patch, BaseUrl + path.TrimStart('/'))
+        {
+            Content = new StringContent(JsonSerializer.Serialize(body, ToolJson.Options), Encoding.UTF8, "application/json")
+        };
+
+        if (ifMatch != null)
+        {
+            // Planner rejects updates without the item's current etag.
+            request.Headers.TryAddWithoutValidation("If-Match", ifMatch);
+        }
 
         using var response = await SendAsync(context, request, scopes, ct);
         return await ReadJsonAsync(response, ct);
@@ -60,6 +82,10 @@ public sealed class GraphClient
 
     /// <summary>Downloads a file's content as text, capped at <paramref name="maxBytes"/>.</summary>
     public async Task<string> GetTextAsync(ToolExecutionContext context, string path, IReadOnlyList<string> scopes, long maxBytes, CancellationToken ct)
+        => Encoding.UTF8.GetString(await GetBytesAsync(context, path, scopes, maxBytes, ct));
+
+    /// <summary>Downloads a file's content, capped at <paramref name="maxBytes"/>.</summary>
+    public async Task<byte[]> GetBytesAsync(ToolExecutionContext context, string path, IReadOnlyList<string> scopes, long maxBytes, CancellationToken ct)
     {
         using var request = new HttpRequestMessage(HttpMethod.Get, BaseUrl + path.TrimStart('/'));
         using var response = await SendAsync(context, request, scopes, ct);
@@ -79,12 +105,12 @@ public sealed class GraphClient
             buffer.Write(chunk, 0, (int)Math.Min(read, remaining));
         }
 
-        return Encoding.UTF8.GetString(buffer.ToArray());
+        return buffer.ToArray();
     }
 
-    public async Task<JsonElement> PutTextAsync(ToolExecutionContext context, string path, string content, string mediaType, IReadOnlyList<string> scopes, CancellationToken ct)
+    public async Task<JsonElement> SendTextAsync(ToolExecutionContext context, HttpMethod method, string path, string content, string mediaType, IReadOnlyList<string> scopes, CancellationToken ct)
     {
-        using var request = new HttpRequestMessage(HttpMethod.Put, BaseUrl + path.TrimStart('/'))
+        using var request = new HttpRequestMessage(method, BaseUrl + path.TrimStart('/'))
         {
             Content = new StringContent(content, Encoding.UTF8, mediaType)
         };
@@ -92,6 +118,10 @@ public sealed class GraphClient
         using var response = await SendAsync(context, request, scopes, ct);
         return await ReadJsonAsync(response, ct);
     }
+
+    /// <summary>"me" when <paramref name="idOrEmail"/> is empty, otherwise "users/{idOrEmail}".</summary>
+    public static string UserPath(string? idOrEmail)
+        => string.IsNullOrWhiteSpace(idOrEmail) ? "me" : $"users/{Uri.EscapeDataString(idOrEmail.Trim())}";
 
     private async Task<HttpResponseMessage> SendAsync(ToolExecutionContext context, HttpRequestMessage request, IReadOnlyList<string> scopes, CancellationToken ct)
     {
@@ -119,7 +149,7 @@ public sealed class GraphClient
 
     private static async Task<JsonElement> ReadJsonAsync(HttpResponseMessage response, CancellationToken ct)
     {
-        if (response.StatusCode == HttpStatusCode.NoContent || response.Content.Headers.ContentLength == 0)
+        if (response.StatusCode is HttpStatusCode.NoContent or HttpStatusCode.Accepted || response.Content.Headers.ContentLength == 0)
         {
             return default;
         }
