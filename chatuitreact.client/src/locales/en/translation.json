@@ -272,6 +272,12 @@
           "title": "RAG loaded files",
           "description": "Files that will be searched through retrieval."
         }
+      },
+      "sources": {
+        "title": "Live sources",
+        "description": "Data fetched for the person chatting each time a message is sent, and placed at the start of the conversation.",
+        "none": "No live sources are available to you.",
+        "unavailable": "No longer available"
       }
     },
     "createdBy": "Created by",

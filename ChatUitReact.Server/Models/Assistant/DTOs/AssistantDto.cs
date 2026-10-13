@@ -52,6 +52,8 @@ public class FullAssistantDto
 
     public List<AssistantFileDto> Files { get; set; } = new List<AssistantFileDto>();
 
+    public List<string> KnowledgeSourceIds { get; set; } = new List<string>();
+
     /// <summary>
     /// Per token counting scheme: the fixed cost every request through this assistant pays —
     /// system prompt with knowledge files appended, tool definitions, and reply priming.
@@ -114,6 +116,7 @@ public class CreateAssistantDto
     public List<string> AvailableToolIds { get; set; } = new List<string>();
     public List<string> PromptSnippets { get; set; } = new List<string>();
     public List<AssistantFileDto> Files { get; set; } = new List<AssistantFileDto>();
+    public List<string> KnowledgeSourceIds { get; set; } = new List<string>();
 }
 
 public class UpdateAssistantDto
@@ -134,4 +137,5 @@ public class UpdateAssistantDto
     public List<string> AvailableToolIds { get; set; } = new List<string>();
     public List<string> PromptSnippets { get; set; } = new List<string>();
     public List<AssistantFileDto> Files { get; set; } = new List<AssistantFileDto>();
+    public List<string> KnowledgeSourceIds { get; set; } = new List<string>();
 }

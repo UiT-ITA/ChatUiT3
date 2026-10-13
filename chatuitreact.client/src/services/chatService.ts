@@ -241,7 +241,8 @@ async function postMessage(chatId: string, content: string, files: ChatFile[], a
     content,
     assistantId,
     files: mapToCreateChatFileDto(files),
-    clientTools: getClientToolDeclarations()
+    clientTools: getClientToolDeclarations(),
+    timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone
   };
 
   ensurePayloadWithinLimit(messageDto);

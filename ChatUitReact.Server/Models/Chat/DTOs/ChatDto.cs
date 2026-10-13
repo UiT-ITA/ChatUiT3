@@ -84,5 +84,8 @@ public class SendMessageDto
 
     /// <summary>Tools the client offers to run itself for this message. Not stored.</summary>
     public List<ClientToolDeclarationDto>? ClientTools { get; set; }
+
+    /// <summary>The client's IANA time zone, for knowledge sources that depend on "today". Not stored.</summary>
+    public string? TimeZone { get; set; }
 }
 

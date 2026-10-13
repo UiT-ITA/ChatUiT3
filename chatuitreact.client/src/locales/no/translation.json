@@ -272,6 +272,12 @@
           "title": "RAG-lastede filer",
           "description": "Filer som senere skal søkes i med retrieval."
         }
+      },
+      "sources": {
+        "title": "Levende kilder",
+        "description": "Data som hentes for den som chatter hver gang en melding sendes, og legges i starten av samtalen.",
+        "none": "Ingen levende kilder er tilgjengelige for deg.",
+        "unavailable": "Ikke lenger tilgjengelig"
       }
     },
     "createdBy": "Opprettet av",

@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Authorization;
 using ChatUitReact.Server.Services;
 using ChatUitReact.Server.Models;
 using ChatUitReact.Server.Services.Tools;
+using ChatUitReact.Server.Services.Knowledge;
 using Microsoft.AspNetCore.SignalR;
 using ChatUitReact.Server.Hubs;
 
@@ -19,6 +20,7 @@ public class AssistantsController : ControllerBase
     private readonly IModelService _modelService;
     private readonly IToolRegistry _toolRegistry;
     private readonly IToolAccessService _toolAccess;
+    private readonly IKnowledgeSourceRegistry _knowledgeSources;
     private readonly IHubContext<ChatHub, IChatHubClient> _hubContext;
 
     public AssistantsController(
@@ -28,6 +30,7 @@ public class AssistantsController : ControllerBase
         IModelService modelService,
         IToolRegistry toolRegistry,
         IToolAccessService toolAccess,
+        IKnowledgeSourceRegistry knowledgeSources,
         IHubContext<ChatHub, IChatHubClient> hubContext)
     {
         _assistantService = assistantService;
@@ -36,6 +39,7 @@ public class AssistantsController : ControllerBase
         _modelService = modelService;
         _toolRegistry = toolRegistry;
         _toolAccess = toolAccess;
+        _knowledgeSources = knowledgeSources;
         _hubContext = hubContext;
     }
 
@@ -63,6 +67,28 @@ public class AssistantsController : ControllerBase
             error = "tools_not_allowed",
             unknownToolIds = check.Unknown,
             disallowedToolIds = check.Disallowed
+        });
+    }
+
+    /// <summary>Same reasoning as <see cref="RejectDisallowedToolsAsync"/>, for knowledge sources.</summary>
+    private ActionResult? RejectDisallowedKnowledgeSources(List<string>? sourceIds)
+    {
+        if (sourceIds == null || sourceIds.Count == 0)
+        {
+            return null;
+        }
+
+        var check = _knowledgeSources.Check(sourceIds, _userService.GetUserAccess(User));
+        if (check.Ok)
+        {
+            return null;
+        }
+
+        return BadRequest(new
+        {
+            error = "knowledge_sources_not_allowed",
+            unknownKnowledgeSourceIds = check.Unknown,
+            disallowedKnowledgeSourceIds = check.Disallowed
         });
     }
 
@@ -118,6 +144,11 @@ public class AssistantsController : ControllerBase
                 return rejected;
             }
 
+            if (RejectDisallowedKnowledgeSources(createDto.KnowledgeSourceIds) is { } rejectedSources)
+            {
+                return rejectedSources;
+            }
+
             await _assistantService.CreateAssistantAsync(createDto, userId);
 
             // Notify all clients that assistant data has changed
@@ -145,6 +176,11 @@ public class AssistantsController : ControllerBase
             if (await RejectDisallowedToolsAsync(updateDto.AvailableToolIds) is { } rejected)
             {
                 return rejected;
+            }
+
+            if (RejectDisallowedKnowledgeSources(updateDto.KnowledgeSourceIds) is { } rejectedSources)
+            {
+                return rejectedSources;
             }
 
             await _assistantService.UpdateAssistantAsync(updateDto, userId);

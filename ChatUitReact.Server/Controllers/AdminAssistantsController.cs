@@ -3,6 +3,7 @@ using ChatUitReact.Server.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using ChatUitReact.Server.Services.Tools;
+using ChatUitReact.Server.Services.Knowledge;
 
 namespace ChatUitReact.Server.Controllers;
 
@@ -14,13 +15,16 @@ public class AdminAssistantsController : ControllerBase
     private readonly IAssistantService _assistantService;
     private readonly ILogger<AdminAssistantsController> _logger;
     private readonly IToolRegistry _toolRegistry;
+    private readonly IKnowledgeSourceRegistry _knowledgeSources;
 
     public AdminAssistantsController(
         IAssistantService assistantService,
         IToolRegistry toolRegistry,
+        IKnowledgeSourceRegistry knowledgeSources,
         ILogger<AdminAssistantsController> logger)
     {
         _toolRegistry = toolRegistry;
+        _knowledgeSources = knowledgeSources;
         _assistantService = assistantService;
         _logger = logger;
     }
@@ -70,6 +74,11 @@ public class AdminAssistantsController : ControllerBase
                 return BadRequest(new { error = "unknown_tools", unknownToolIds = unknown });
             }
 
+            if (UnknownKnowledgeSourceIds(createDto.KnowledgeSourceIds) is { Count: > 0 } unknownSources)
+            {
+                return BadRequest(new { error = "unknown_knowledge_sources", unknownKnowledgeSourceIds = unknownSources });
+            }
+
             if (InvalidGroupIds(createDto.Access) is { Count: > 0 } invalidGroups)
             {
                 return BadRequest(new { error = "invalid_group_ids", groupIds = invalidGroups });
@@ -106,6 +115,11 @@ public class AdminAssistantsController : ControllerBase
             if (UnknownToolIds(updateDto.AvailableToolIds) is { Count: > 0 } unknown)
             {
                 return BadRequest(new { error = "unknown_tools", unknownToolIds = unknown });
+            }
+
+            if (UnknownKnowledgeSourceIds(updateDto.KnowledgeSourceIds) is { Count: > 0 } unknownSources)
+            {
+                return BadRequest(new { error = "unknown_knowledge_sources", unknownKnowledgeSourceIds = unknownSources });
             }
 
             if (InvalidGroupIds(updateDto.Access) is { Count: > 0 } invalidGroups)
@@ -158,4 +172,7 @@ public class AdminAssistantsController : ControllerBase
 
     private List<string> UnknownToolIds(List<string>? toolIds)
         => (toolIds ?? []).Where(id => _toolRegistry.Find(id) == null).Distinct().ToList();
+
+    private List<string> UnknownKnowledgeSourceIds(List<string>? sourceIds)
+        => (sourceIds ?? []).Where(id => _knowledgeSources.Find(id) == null).Distinct().ToList();
 }

@@ -21,6 +21,9 @@ public sealed class ToolSessionInput
 
     public string? UserPrincipalName { get; init; }
 
+    /// <summary>The client's IANA time zone, when it sent one.</summary>
+    public string? TimeZone { get; init; }
+
     /// <summary>For callers without a principal: baseline role, no groups, no delegated tokens.</summary>
     public static readonly ToolSessionInput Anonymous = new()
     {

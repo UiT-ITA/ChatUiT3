@@ -1,4 +1,6 @@
 using System.Linq;
+using ChatUitReact.Server.Services.Agents.M365.Knowledge;
+using ChatUitReact.Server.Services.Knowledge;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace ChatUitReact.Server.Services.Agents.M365;
@@ -18,6 +20,12 @@ public static class M365ServiceCollectionExtensions
         services.AddInternalAgentTool<M365ReaderAgent>();
         services.AddInternalAgent<M365WriterAgent>();
         services.AddInternalAgentTool<M365WriterAgent>();
+
+        services.AddSingleton<IKnowledgeSource, RecentMailKnowledgeSource>();
+        services.AddSingleton<IKnowledgeSource, UnreadChatsKnowledgeSource>();
+        services.AddSingleton<IKnowledgeSource, TodayScheduleKnowledgeSource>();
+        services.AddSingleton<IKnowledgeSource, PlannerTasksKnowledgeSource>();
+        services.AddSingleton<IKnowledgeSource, TodoTasksKnowledgeSource>();
 
         return services;
     }

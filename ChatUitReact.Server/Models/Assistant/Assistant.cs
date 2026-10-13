@@ -12,6 +12,9 @@ public class Assistant
     public List<string> Tags { get; set; } = new List<string>();
     public ChatSettings ChatSettings { get; set; } = new ChatSettings();
     public List<AssistantFile> Files { get; set; } = new List<AssistantFile>();
+
+    /// <summary>Knowledge sources loaded at send time and carried like knowledge files. See <c>IKnowledgeSource</c>.</summary>
+    public List<string> KnowledgeSourceIds { get; set; } = new List<string>();
     internal string OwnerId { get; set; } = string.Empty;
     /// <summary>Last write. Cache key for derived per-assistant values such as prompt token counts.</summary>
     public DateTime UpdatedAt { get; set; }

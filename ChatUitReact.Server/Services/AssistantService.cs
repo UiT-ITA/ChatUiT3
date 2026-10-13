@@ -613,6 +613,7 @@ namespace ChatUitReact.Server.Services
                     createDto.AvailableToolIds,
                     createDto.PromptSnippets),
                 Files = MapAssistantFiles(createDto.Files),
+                KnowledgeSourceIds = NormalizeIds(createDto.KnowledgeSourceIds),
                 OwnerId = ownerId,
                 Access = ownerId == Assistant.SystemOwnerId ? MapAccess(createDto.Access) : null
             };
@@ -667,6 +668,7 @@ namespace ChatUitReact.Server.Services
                 updateDto.AvailableToolIds,
                 updateDto.PromptSnippets);
             assistant.Files = MapAssistantFiles(updateDto.Files);
+            assistant.KnowledgeSourceIds = NormalizeIds(updateDto.KnowledgeSourceIds);
             if (assistant.IsSystem)
             {
                 assistant.Access = MapAccess(updateDto.Access);
@@ -712,9 +714,13 @@ namespace ChatUitReact.Server.Services
                 IsFavorite = user?.Preferences.FavoritedAssistantIds.Contains(assistant.Id) ?? false,
                 CanBeDefault = eligibleModelIds?.Contains(assistant.ChatSettings.Model.Id) ?? false,
                 Access = MapAccess(assistant.Access),
-                Files = assistant.Files.Select(MapAssistantFileDto).ToList()
+                Files = assistant.Files.Select(MapAssistantFileDto).ToList(),
+                KnowledgeSourceIds = assistant.KnowledgeSourceIds
             };
         }
+
+        private static List<string> NormalizeIds(List<string>? ids)
+            => (ids ?? new List<string>()).Where(id => !string.IsNullOrWhiteSpace(id)).Select(id => id.Trim()).Distinct().ToList();
 
         private static List<AssistantFile> MapAssistantFiles(List<AssistantFileDto>? fileDtos)
         {

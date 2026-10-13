@@ -214,6 +214,8 @@ export interface SendMessageDto {
   assistantId: string;
   /** Client tools available for this message. Not stored. */
   clientTools?: ClientToolDeclarationDto[] | null;
+  /** The browser's IANA time zone, for knowledge sources that depend on "today". Not stored. */
+  timeZone?: string;
 }
 
 

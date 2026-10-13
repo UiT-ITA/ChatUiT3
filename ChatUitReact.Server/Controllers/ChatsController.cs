@@ -72,9 +72,10 @@ public class ChatsController : ControllerBase
 
     /// <summary>
     /// What the background generation needs from this request for tools: the caller's roles and
-    /// groups, a token provider bound to their assertion, and the client tools they declared.
+    /// groups, a token provider bound to their assertion, the client tools they declared, and
+    /// their time zone.
     /// </summary>
-    private ToolSessionInput BuildToolSession(List<ClientToolDeclarationDto>? clientTools)
+    private ToolSessionInput BuildToolSession(List<ClientToolDeclarationDto>? clientTools, string? timeZone)
     {
         var identity = _userService.GetUserIdentity(User);
         return new ToolSessionInput
@@ -83,7 +84,8 @@ public class ChatsController : ControllerBase
             Tokens = _tokenProviders.Create(User, Request.BearerToken()),
             ClientTools = clientTools ?? [],
             UserDisplayName = identity.DisplayName,
-            UserPrincipalName = identity.Username
+            UserPrincipalName = identity.Username,
+            TimeZone = timeZone
         };
     }
 
@@ -196,7 +198,7 @@ public class ChatsController : ControllerBase
             var promptUser = await _assistantService.GetPromptUserContextAsync(_userService.GetUserIdentity(User));
 
             // Uses the same streaming path as the SignalR hub, so both entry points behave alike.
-            await _chatService.SendStreamingMessageAsync(userId, chatId, message, request.AssistantId, promptUser, BuildToolSession(request.ClientTools));
+            await _chatService.SendStreamingMessageAsync(userId, chatId, message, request.AssistantId, promptUser, BuildToolSession(request.ClientTools, request.TimeZone));
 
             await _hubContext.Clients.Group(userId).ChatUpdated(chatId);
 

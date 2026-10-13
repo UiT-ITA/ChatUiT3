@@ -6,6 +6,7 @@ import { PROMPT_SNIPPET_IDS, type AssistantAccessPolicyDto, type AssistantFileDt
 import { getModels } from '../../services/modelService';
 import { getAppDefaults } from '../../services/appSettingsService';
 import { getTools } from '../../services/toolService';
+import { getKnowledgeSources } from '../../services/knowledgeSourceService';
 import { adminToolsSignal } from '../../services/adminDataService';
 import { clampEffort, type AdminToolDto, type ToolAccessPolicyDto } from '../../types/admin';
 import GroupPicker from '../common/GroupPicker';
@@ -13,6 +14,7 @@ import type { UserModelDto } from '../../types/modelModels';
 import { createAssistant, updateAssistant, fetchAssistantFile, getAssistants } from '../../services/assistantService';
 import TagField from '../common/TagField';
 import KnowledgeFileList, { type KnowledgeFileCategory, type KnowledgeFileItemData } from './KnowledgeFileList';
+import KnowledgeSourceList from './KnowledgeSourceList';
 import type { ChatFile } from '../../types/fileModels';
 import './AssistantForm.css';
 
@@ -53,7 +55,8 @@ const emptyFormData = (): CreateAssistantDto => ({
   temperature: 0.7,
   reasoningEffort: 'None',
   availableToolIds: [],
-  promptSnippets: []
+  promptSnippets: [],
+  knowledgeSourceIds: []
 });
 
 /** The form's values for the assistant being edited, or the defaults for a new one. */
@@ -83,7 +86,8 @@ const formStateFor = (editingAssistant: FullAssistantDto | null) => {
       temperature: editingAssistant.temperature,
       reasoningEffort: editingAssistant.reasoningEffort,
       availableToolIds: editingAssistant.availableToolIds || [],
-      promptSnippets: editingAssistant.promptSnippets ?? []
+      promptSnippets: editingAssistant.promptSnippets ?? [],
+      knowledgeSourceIds: editingAssistant.knowledgeSourceIds ?? []
     } satisfies CreateAssistantDto,
     knowledgeFiles,
     selectedToolIds: editingAssistant.availableToolIds || [],
@@ -120,6 +124,7 @@ const AssistantForm: React.FC<AssistantFormProps> = ({
   const modelsSignal = getModels();
   const appDefaultsSignal = getAppDefaults();
   const toolsSignal = getTools();
+  const knowledgeSourcesSignal = getKnowledgeSources();
   const [isModelDropdownOpen, setIsModelDropdownOpen] = useState(false);
   const [loading, setLoading] = useState(false);
   const [initialState] = useState(() => formStateFor(editingAssistant));
@@ -263,6 +268,14 @@ const AssistantForm: React.FC<AssistantFormProps> = ({
       ? [...selectedSnippets.filter((s) => s !== id), id]
       : selectedSnippets.filter((s) => s !== id);
     handleChange('promptSnippets', next);
+  };
+
+  const selectedKnowledgeSourceIds = formData.knowledgeSourceIds ?? [];
+  const toggleKnowledgeSource = (id: string, enabled: boolean) => {
+    const next = enabled
+      ? [...selectedKnowledgeSourceIds.filter((s) => s !== id), id]
+      : selectedKnowledgeSourceIds.filter((s) => s !== id);
+    handleChange('knowledgeSourceIds', next);
   };
 
   const handleKnowledgeFilesSelected = (category: KnowledgeFileCategory, files: ChatFile[]) => {
@@ -541,6 +554,12 @@ const AssistantForm: React.FC<AssistantFormProps> = ({
               {t('assistants.knowledge.descriptionRequired')}
             </p>
           )}
+          <KnowledgeSourceList
+            sources={knowledgeSourcesSignal.value ?? []}
+            selectedIds={selectedKnowledgeSourceIds}
+            onToggle={toggleKnowledgeSource}
+            disabled={loading}
+          />
         </div>
       </div>
 

@@ -242,6 +242,7 @@ public partial class DatabaseService
                 PromptSnippets = document.ChatSettings.PromptSnippets
             },
             Files = ReadAssistantFiles(document.Files, contentBlocksById, includeFileContent),
+            KnowledgeSourceIds = document.KnowledgeSourceIds ?? new List<string>(),
             OwnerId = document.OwnerId,
             UpdatedAt = document.UpdatedAt,
             Access = document.Access == null
@@ -268,6 +269,7 @@ public partial class DatabaseService
                 AvailableToolIds = assistant.ChatSettings.AvailableToolIds,
                 PromptSnippets = assistant.ChatSettings.PromptSnippets
             },
+            KnowledgeSourceIds = assistant.KnowledgeSourceIds,
             OwnerId = assistant.OwnerId,
             UpdatedAt = DateTime.UtcNow,
             Access = assistant.Access == null

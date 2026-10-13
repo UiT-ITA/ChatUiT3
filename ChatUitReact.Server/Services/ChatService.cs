@@ -5,6 +5,7 @@ using ChatUitReact.Server.Services.AiProviders;
 using System.Diagnostics;
 using ChatUitReact.Server.Services.TokenCounting;
 using ChatUitReact.Server.Services.Tools;
+using ChatUitReact.Server.Services.Knowledge;
 using System.Text;
 using System.Text.Json;
 using System.Security.Claims;
@@ -37,6 +38,7 @@ public class ChatService : IChatService
     private readonly ISettingsService _settingsService;
     private readonly ITokenCountingService _tokenCounting;
     private readonly ToolOptions _toolOptions;
+    private readonly IKnowledgeSourceRegistry _knowledgeSources;
 
     public ChatService(
         AiConversationRunner conversationRunner,
@@ -52,7 +54,8 @@ public class ChatService : IChatService
         PendingInteractionRegistry pendingInteractions,
         ISettingsService settingsService,
         ITokenCountingService tokenCounting,
-        IOptions<ToolOptions> toolOptions)
+        IOptions<ToolOptions> toolOptions,
+        IKnowledgeSourceRegistry knowledgeSources)
     {
         _conversationRunner = conversationRunner;
         _providers = providers;
@@ -68,6 +71,7 @@ public class ChatService : IChatService
         _settingsService = settingsService;
         _tokenCounting = tokenCounting;
         _toolOptions = toolOptions.Value;
+        _knowledgeSources = knowledgeSources;
     }
 
     #region Chat management
@@ -345,7 +349,6 @@ public class ChatService : IChatService
             throw new NotSupportedException($"No AI provider is registered for endpoint type {endpoint.EndpointType}.");
         }
 
-        var request = await BuildAiRequestAsync(model, endpoint, resolved, messages, tools);
         var toolContext = new ToolExecutionContext
         {
             UserId = userId,
@@ -358,6 +361,7 @@ public class ChatService : IChatService
             Model = model,
             Endpoint = endpoint
         };
+        var request = await BuildAiRequestAsync(model, endpoint, resolved, messages, tools, toolContext);
 
         _ = Task.Run(async () =>
         {
@@ -596,13 +600,14 @@ public class ChatService : IChatService
     // will accept and the prompt never names a tool the model was not given. Tools are the
     // assistant's list cut down to what this user may use, the loader for the on-demand files
     // still loadable, plus the client's own tools. Knowledge files (always-loaded and pinned)
-    // lead the history as synthetic user messages.
+    // lead the history as synthetic user messages, followed by one message per knowledge source.
     private async Task<AiRequest> BuildAiRequestAsync(
         Model model,
         ModelEndpoint endpoint,
         ResolvedAssistant resolved,
         List<Models.ChatMessage> messages,
-        ToolSessionInput tools)
+        ToolSessionInput tools,
+        ToolExecutionContext toolContext)
     {
         var assistant = resolved.Assistant;
         var canLoadOnDemand = model.Capabilities.SupportsFunctionCalling;
@@ -648,15 +653,44 @@ public class ChatService : IChatService
             onDemandFiles.Count,
             string.Join(",", onDemandFiles.Select(f => f.Id)));
 
+        var sourceMessages = await BuildKnowledgeSourceMessagesAsync(resolved, tools, toolContext);
+
         return new AiRequest
         {
             Model = model,
             Endpoint = endpoint,
             SystemPrompt = settings.SystemPrompt,
-            Messages = AiInputItem.From([.. KnowledgeFileMessages.Build(assistant.Files, resolved.PinnedFileIds), .. messages]),
+            Messages = AiInputItem.From([.. KnowledgeFileMessages.Build(assistant.Files, resolved.PinnedFileIds), .. sourceMessages, .. messages]),
             Parameters = parameters,
             Tools = resolvedTools
         };
+    }
+
+    // Sources act on the user's behalf, so a caller without a delegated token gets none. Like
+    // tools, system assistants are not filtered by policy: their own access decides who uses them.
+    private async Task<List<Models.ChatMessage>> BuildKnowledgeSourceMessagesAsync(
+        ResolvedAssistant resolved,
+        ToolSessionInput tools,
+        ToolExecutionContext toolContext)
+    {
+        var ids = resolved.Assistant.KnowledgeSourceIds;
+        if (ids.Count == 0 || tools.Tokens is NoUserTokenProvider)
+        {
+            return [];
+        }
+
+        var sources = resolved.EnforceToolAccess
+            ? _knowledgeSources.ResolveAllowed(ids, tools.Access)
+            : _knowledgeSources.Resolve(ids);
+
+        var context = new KnowledgeSourceContext
+        {
+            Run = toolContext,
+            TimeZone = KnowledgeSourceMessages.ResolveTimeZone(tools.TimeZone),
+            Now = DateTimeOffset.UtcNow
+        };
+
+        return await KnowledgeSourceMessages.BuildAsync(sources, context, _logger, CancellationToken.None);
     }
 
     public Task<ToolCallResponseResultDto> RespondToToolCallAsync(

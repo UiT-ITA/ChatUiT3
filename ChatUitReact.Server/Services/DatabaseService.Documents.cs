@@ -371,6 +371,10 @@ public partial class DatabaseService
         [JsonProperty("files")]
         public List<StoredAssistantFileDocument> Files { get; set; } = new();
 
+        // Absent on rows written before knowledge sources existed.
+        [JsonProperty("knowledgeSourceIds")]
+        public List<string> KnowledgeSourceIds { get; set; } = new();
+
         [JsonProperty("ownerId")]
         public string OwnerId { get; set; } = string.Empty;
 

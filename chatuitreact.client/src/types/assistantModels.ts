@@ -49,6 +49,8 @@ export interface FullAssistantDto {
     /** System assistants only. Null means everyone. */
     access?: AssistantAccessPolicyDto | null;
     files: AssistantFileDto[];
+    /** Knowledge sources loaded each time a message is sent. Ids match the server registry. */
+    knowledgeSourceIds: string[];
     /**
      * Per token counting scheme: the fixed cost every request through this assistant pays
      * (system prompt with knowledge files, tool definitions, reply priming).
@@ -124,6 +126,7 @@ export interface CreateAssistantDto {
     availableToolIds?: string[];
     promptSnippets?: PromptSnippetId[];
     files?: AssistantFileDto[];
+    knowledgeSourceIds?: string[];
     /** System assistants only; ignored on user endpoints. Null means everyone. */
     access?: AssistantAccessPolicyDto | null;
 }
@@ -140,6 +143,7 @@ export interface UpdateAssistantDto {
     availableToolIds?: string[];
     promptSnippets?: PromptSnippetId[];
     files?: AssistantFileDto[];
+    knowledgeSourceIds?: string[];
     /** System assistants only; ignored on user endpoints. Null means everyone. */
     access?: AssistantAccessPolicyDto | null;
 }
@@ -152,6 +156,15 @@ export type ReasoningEffort =
     | "High"
     | "XHigh"
     | "Max";
+
+/** Background knowledge the server loads at send time, which the current user may give to an assistant. */
+export interface KnowledgeSourceDto {
+    id: string;
+    displayName: string;
+    description: string;
+    /** Heading the editor groups sources under. */
+    group: string;
+}
 
 /** A server tool the current user may give to an assistant. */
 export interface ChatToolDto {
