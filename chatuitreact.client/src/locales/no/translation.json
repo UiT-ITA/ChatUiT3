@@ -259,6 +259,19 @@
       "notAvailableYet": "Ikke tilgjengelig ennå",
       "shortDescriptionPlaceholder": "Legg til kort beskrivelse",
       "descriptionRequired": "Hver selektivt lastede fil trenger en kort beskrivelse.",
+      "budget": {
+        "counting": "Teller tokens …",
+        "unavailable": "Tokentallene for denne modellen er ikke klare. Last inn siden på nytt for å oppdatere dem.",
+        "used": "{{used}} av {{limit}} tokens brukt",
+        "explanation": "Tokens måler hvor mye tekst assistenten leser. Alltid lastede filer leses i starten av hver samtale, så de tar plass som samtalen ellers kunne brukt. Med denne modellen kan de til sammen bruke opptil {{limit}} tokens.",
+        "estimate": "Tallene er anslag for denne modellen.",
+        "fileTokens": "{{tokens}} tokens",
+        "rejectedTitle": "«{{name}}» ble ikke lagt til",
+        "rejected": "Denne filen er {{tokens}} tokens, men det er bare {{remaining}} tokens igjen til alltid lastede filer. Legg den heller til under selektivt lastede filer. Da leser assistenten den bare når et spørsmål trenger den, slik at samtalene går raskt og det blir plass til samtalen.",
+        "overBlocked": "De alltid lastede filene bruker {{used}} tokens, men denne modellen tillater {{limit}}. Fjern filer fra alltid lastede filer og legg dem heller til under selektivt lastede filer. Du kan lagre når de får plass.",
+        "overAllowed": "De alltid lastede filene bruker {{used}} tokens, mer enn de {{limit}} denne modellen tillater. Du kan fortsatt lagre andre endringer, men du kan ikke legge til flere alltid lastede filer før de får plass.",
+        "modelTooSmall": "De alltid lastede filene dine er for store for denne modellen ({{used}} av {{limit}} tokens)."
+      },
       "categories": {
         "alwaysLoaded": {
           "title": "Alltid lastede filer",

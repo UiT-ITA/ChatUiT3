@@ -4,6 +4,7 @@ using ChatUitReact.Server.Services;
 using ChatUitReact.Server.Models;
 using ChatUitReact.Server.Services.Tools;
 using ChatUitReact.Server.Services.Knowledge;
+using ChatUitReact.Server.Services.TokenCounting;
 using Microsoft.AspNetCore.SignalR;
 using ChatUitReact.Server.Hubs;
 
@@ -390,7 +391,7 @@ public class AssistantsController : ControllerBase
                     ContextSize = m.Capabilities.MaxContextTokens,
                     MaxOutputTokens = m.Capabilities.MaxOutputTokens,
                     KnowledgeCutoff = m.Capabilities.KnowledgeCutoff?.ToString("yyyy-MM"),
-                    TokenCountingScheme = m.Capabilities.TokenCountingScheme
+                    TokenCountingScheme = TokenCountingSchemes.IdFor(m.Capabilities)
                 }
             }).ToArray();
             return Ok(modelDtos);

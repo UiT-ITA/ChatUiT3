@@ -16,6 +16,10 @@ import TagField from '../common/TagField';
 import KnowledgeFileList, { type KnowledgeFileCategory, type KnowledgeFileItemData } from './KnowledgeFileList';
 import KnowledgeSourceList from './KnowledgeSourceList';
 import type { ChatFile } from '../../types/fileModels';
+import { getTokenizer, loadTokenizer } from '../../services/tokenizerService';
+import { alwaysLoadedLimit, formatTokens, parseScheme, type ParsedScheme, type Tokenizer } from '../../utils/tokenCounting';
+import AlwaysLoadedBudget, { type RejectedKnowledgeFile } from './AlwaysLoadedBudget';
+import { knowledgeFileTokens, knowledgeFilesTokens } from './knowledgeTokens';
 import './AssistantForm.css';
 
 const createEmptyKnowledgeFiles = (): Record<KnowledgeFileCategory, KnowledgeFileItemData[]> => ({
@@ -72,7 +76,8 @@ const formStateFor = (editingAssistant: FullAssistantDto | null) => {
       id: crypto.randomUUID(),
       name: file.sourceFilename,
       description: file.description,
-      fileId: file.id
+      fileId: file.id,
+      tokenCounts: file.tokenCounts
     });
   });
 
@@ -120,7 +125,7 @@ const AssistantForm: React.FC<AssistantFormProps> = ({
   systemAssistant = false
 }) => {
   useSignals();
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const modelsSignal = getModels();
   const appDefaultsSignal = getAppDefaults();
   const toolsSignal = getTools();
@@ -132,6 +137,7 @@ const AssistantForm: React.FC<AssistantFormProps> = ({
   const [access, setAccess] = useState<AssistantAccessPolicyDto | null>(initialState.access);
 
   const [knowledgeFiles, setKnowledgeFiles] = useState<Record<KnowledgeFileCategory, KnowledgeFileItemData[]>>(initialState.knowledgeFiles);
+  const [rejectedFiles, setRejectedFiles] = useState<RejectedKnowledgeFile[]>([]);
   const modelDropdownRef = useRef<HTMLDivElement>(null);
 
   const [formData, setFormData] = useState<CreateAssistantDto>(initialState.formData);
@@ -144,12 +150,50 @@ const AssistantForm: React.FC<AssistantFormProps> = ({
     setFormData(next.formData);
     setSelectedToolIds(next.selectedToolIds);
     setAccess(next.access);
+    setRejectedFiles([]);
   }
 
   const models: UserModelDto[] = modelsSignal.value ?? [];
   const selectedModel = models.find(m => m.id === formData.modelId);
   const supportedEfforts = selectedModel?.capabilities.supportedEfforts ?? [];
   const currentEffort = clampEffort(formData.reasoningEffort, supportedEfforts);
+
+  // Token budget for always-loaded files. A model without a counter has no budget.
+  const scheme = parseScheme(selectedModel?.capabilities.tokenCountingScheme);
+  const tokenizer = scheme ? getTokenizer(scheme).value : undefined;
+  const alwaysLoadedBudget = (model: UserModelDto, modelScheme: ParsedScheme, modelTokenizer: Tokenizer | undefined) => ({
+    used: knowledgeFilesTokens(knowledgeFiles.alwaysLoaded, modelScheme, modelTokenizer),
+    limit: alwaysLoadedLimit(model.capabilities.contextSize)
+  });
+  const budget = selectedModel && scheme ? alwaysLoadedBudget(selectedModel, scheme, tokenizer) : undefined;
+  const isBudgetUnavailable = scheme !== null &&
+    knowledgeFiles.alwaysLoaded.some((item) => !item.ChatFile && item.tokenCounts?.[scheme.id] === undefined);
+  // Over the limit blocks saving, except while the model is unchanged and the always-loaded
+  // files cost no more than when saved.
+  const savedAlwaysLoadedTokens = scheme && editingAssistant
+    ? (editingAssistant.files ?? [])
+        .filter((file) => file.category === 'alwaysLoaded')
+        .reduce((sum, file) => sum + (file.tokenCounts?.[scheme.id] ?? 0), 0)
+    : 0;
+  const isOverBudget = budget?.used !== undefined && budget.used > budget.limit;
+  const isBudgetBlocking = isOverBudget && (
+    !editingAssistant ||
+    formData.modelId !== editingAssistant.modelId ||
+    budget.used! > savedAlwaysLoadedTokens
+  );
+  // The files and model as of the latest render, for the upload handler.
+  const latestRef = useRef({ knowledgeFiles, model: selectedModel });
+  useEffect(() => {
+    latestRef.current = { knowledgeFiles, model: selectedModel };
+  }, [knowledgeFiles, selectedModel]);
+
+  const tokenLabel = (item: KnowledgeFileItemData) => {
+    if (!scheme) return undefined;
+    const tokens = knowledgeFileTokens(item, scheme, tokenizer);
+    return tokens === undefined
+      ? undefined
+      : `${scheme.isEstimate ? '≈ ' : ''}${t('assistants.knowledge.budget.fileTokens', { tokens: formatTokens(tokens, i18n.language) })}`;
+  };
 
   // The admin-configured default model, only once it is known to be selectable
   const defaultModelId = appDefaultsSignal.value?.defaultModelId ?? '';
@@ -250,6 +294,7 @@ const AssistantForm: React.FC<AssistantFormProps> = ({
     } else {
       handleChange('modelId', modelId);
     }
+    setRejectedFiles([]);
     setIsModelDropdownOpen(false);
   };
 
@@ -278,16 +323,49 @@ const AssistantForm: React.FC<AssistantFormProps> = ({
     handleChange('knowledgeSourceIds', next);
   };
 
-  const handleKnowledgeFilesSelected = (category: KnowledgeFileCategory, files: ChatFile[]) => {
+  // Adds always-loaded files in order while they fit the budget and refuses the rest with a
+  // notice. Adds all files when there is no counter or the files cannot be counted.
+  const handleKnowledgeFilesSelected = async (category: KnowledgeFileCategory, files: ChatFile[]) => {
     if (files.length === 0) {
       return;
     }
 
-    const newItems = files.map((file) => ({
+    let newItems: KnowledgeFileItemData[] = files.map((file) => ({
       id: crypto.randomUUID(),
       name: file.sourceFilename,
       ChatFile: file
     }));
+
+    const model = latestRef.current.model;
+    const modelScheme = parseScheme(model?.capabilities.tokenCountingScheme);
+    if (category === 'alwaysLoaded' && model && modelScheme) {
+      const loadedTokenizer = await loadTokenizer(modelScheme);
+      const used = loadedTokenizer
+        ? knowledgeFilesTokens(latestRef.current.knowledgeFiles.alwaysLoaded, modelScheme, loadedTokenizer)
+        : undefined;
+
+      if (loadedTokenizer && used !== undefined) {
+        const limit = alwaysLoadedLimit(model.capabilities.contextSize);
+        const accepted: KnowledgeFileItemData[] = [];
+        const rejected: RejectedKnowledgeFile[] = [];
+        let total = used;
+        for (const item of newItems) {
+          const tokens = knowledgeFileTokens(item, modelScheme, loadedTokenizer) ?? 0;
+          if (total + tokens > limit) {
+            rejected.push({ id: item.id, name: item.name, tokens, remaining: limit - total });
+          } else {
+            accepted.push(item);
+            total += tokens;
+          }
+        }
+        newItems = accepted;
+        setRejectedFiles(rejected);
+      }
+    }
+
+    if (newItems.length === 0) {
+      return;
+    }
 
     setKnowledgeFiles((prev) => ({
       ...prev,
@@ -365,7 +443,7 @@ const AssistantForm: React.FC<AssistantFormProps> = ({
   const hasMissingDescriptions = knowledgeFiles.selectiveLoaded.some((item) => !item.description?.trim());
 
   const handleSubmit = async () => {
-    if (!formData.name.trim() || !formData.modelId || loading || hasMissingDescriptions) return;
+    if (!formData.name.trim() || !formData.modelId || loading || hasMissingDescriptions || isBudgetBlocking) return;
 
     // Normalize unsupported params on submit
     const normalized: CreateAssistantDto = { ...formData, files: buildFileDtos() };
@@ -445,7 +523,14 @@ const AssistantForm: React.FC<AssistantFormProps> = ({
 
             {isModelDropdownOpen && (
               <div className="af-model-list">
-                {models.map(model => (
+                {models.map(model => {
+                  const modelScheme = knowledgeFiles.alwaysLoaded.length > 0
+                    ? parseScheme(model.capabilities.tokenCountingScheme)
+                    : null;
+                  const modelBudget = modelScheme
+                    ? alwaysLoadedBudget(model, modelScheme, getTokenizer(modelScheme).value)
+                    : undefined;
+                  return (
                   <div
                     key={model.id}
                     className={`af-model-option ${formData.modelId === model.id ? 'selected' : ''}`}
@@ -467,8 +552,17 @@ const AssistantForm: React.FC<AssistantFormProps> = ({
                         <span>Knowledge: {model.capabilities.knowledgeCutoff}</span>
                       )}
                     </div>
+                    {modelBudget?.used !== undefined && modelBudget.used > modelBudget.limit && (
+                      <div className="af-model-budget t-meta">
+                        {t('assistants.knowledge.budget.modelTooSmall', {
+                          used: `${modelScheme!.isEstimate ? '≈ ' : ''}${formatTokens(modelBudget.used, i18n.language)}`,
+                          limit: formatTokens(modelBudget.limit, i18n.language)
+                        })}
+                      </div>
+                    )}
                   </div>
-                ))}
+                  );
+                })}
               </div>
             )}
           </div>
@@ -539,7 +633,7 @@ const AssistantForm: React.FC<AssistantFormProps> = ({
               description={section.description}
               emptyLabel={t('assistants.knowledge.noFilesAdded')}
               items={knowledgeFiles[section.category]}
-              onFilesSelected={(files) => handleKnowledgeFilesSelected(section.category, files)}
+              onFilesSelected={(files) => void handleKnowledgeFilesSelected(section.category, files)}
               onLoadFile={loadKnowledgeFileContent}
               disabled={loading}
               unavailable={section.unavailable}
@@ -547,6 +641,18 @@ const AssistantForm: React.FC<AssistantFormProps> = ({
               itemDescriptionPlaceholder={t('assistants.knowledge.shortDescriptionPlaceholder')}
               onItemDescriptionChange={(itemId, description) => handleKnowledgeFileDescriptionChange(section.category, itemId, description)}
               onItemRemove={(itemId) => handleKnowledgeFileRemove(section.category, itemId)}
+              itemTokenLabel={tokenLabel}
+              status={section.category === 'alwaysLoaded' && budget && scheme && (
+                <AlwaysLoadedBudget
+                  used={budget.used}
+                  unavailable={isBudgetUnavailable}
+                  limit={budget.limit}
+                  isEstimate={scheme.isEstimate}
+                  blocked={isBudgetBlocking}
+                  rejected={rejectedFiles}
+                  onDismissRejected={() => setRejectedFiles([])}
+                />
+              )}
             />
           ))}
           {hasMissingDescriptions && (
@@ -712,7 +818,7 @@ const AssistantForm: React.FC<AssistantFormProps> = ({
           type="button"
           className="af-save-button t-ui"
           onClick={handleSubmit}
-          disabled={!formData.name.trim() || !formData.modelId || loading || hasMissingDescriptions}
+          disabled={!formData.name.trim() || !formData.modelId || loading || hasMissingDescriptions || isBudgetBlocking}
         >
           {loading
             ? t('assistants.saving')

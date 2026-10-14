@@ -259,6 +259,19 @@
       "notAvailableYet": "Not available yet",
       "shortDescriptionPlaceholder": "Add short description",
       "descriptionRequired": "Every selective loaded file needs a short description.",
+      "budget": {
+        "counting": "Counting tokens…",
+        "unavailable": "Token counts for this model are not ready. Reload the page to update them.",
+        "used": "{{used}} of {{limit}} tokens used",
+        "explanation": "Tokens measure how much text the assistant reads. Always loaded files are read at the start of every chat, so they take up room the conversation could use. With this model they can use up to {{limit}} tokens together.",
+        "estimate": "The counts are estimates for this model.",
+        "fileTokens": "{{tokens}} tokens",
+        "rejectedTitle": "“{{name}}” was not added",
+        "rejected": "This file is {{tokens}} tokens, but only {{remaining}} tokens are left for always loaded files. Add it under selective loaded files instead. The assistant then reads it only when a question needs it, which keeps chats fast and leaves room for the conversation.",
+        "overBlocked": "The always loaded files use {{used}} tokens, but this model allows {{limit}}. Remove files from always loaded files and add them under selective loaded files instead. You can save once they fit.",
+        "overAllowed": "The always loaded files use {{used}} tokens, more than the {{limit}} this model allows. You can still save other changes, but you cannot add more always loaded files until they fit.",
+        "modelTooSmall": "Your always loaded files are too large for this model ({{used}} of {{limit}} tokens)."
+      },
       "categories": {
         "alwaysLoaded": {
           "title": "Always loaded files",

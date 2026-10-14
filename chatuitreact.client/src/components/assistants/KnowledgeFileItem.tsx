@@ -13,6 +13,8 @@ export interface KnowledgeFileItemData {
   // Set for files that are already stored on the server; their content is
   // fetched on demand.
   fileId?: string;
+  // Per scheme, for stored files. New files are counted on the client.
+  tokenCounts?: Record<string, number>;
 }
 
 interface KnowledgeFileItemProps {
@@ -24,6 +26,7 @@ interface KnowledgeFileItemProps {
   descriptionPlaceholder?: string;
   onDescriptionChange?: (description: string) => void;
   disabled?: boolean;
+  tokenLabel?: string;
 }
 
 const KnowledgeFileItem = ({
@@ -34,7 +37,8 @@ const KnowledgeFileItem = ({
   allowDescription = false,
   descriptionPlaceholder = '',
   onDescriptionChange,
-  disabled = false
+  disabled = false,
+  tokenLabel
 }: KnowledgeFileItemProps) => {
   const isDescriptionMissing = allowDescription && !item.description?.trim();
 
@@ -57,6 +61,10 @@ const KnowledgeFileItem = ({
           <div className="knowledge-file-item__name t-body-strong">
             {item.name}
           </div>
+
+          {tokenLabel && (
+            <span className="knowledge-file-item__tokens t-meta">{tokenLabel}</span>
+          )}
         </button>
 
         {allowDescription && (

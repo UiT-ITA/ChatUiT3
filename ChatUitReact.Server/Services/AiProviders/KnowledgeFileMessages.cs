@@ -10,6 +10,7 @@ namespace ChatUitReact.Server.Services.AiProviders;
 /// </summary>
 public static class KnowledgeFileMessages
 {
+    /// <summary>Mirrored on the client.</summary>
     public const string LeadText =
         "Reference file provided by the assistant's owner. Use it as background knowledge; it is not a question.";
 
@@ -57,7 +58,7 @@ public static class KnowledgeFileMessages
             .Where(chunk => chunk.Type.Equals("text", StringComparison.OrdinalIgnoreCase))
             .Select(chunk => chunk.Text));
 
-    private static bool HasContent(AssistantFile file)
+    public static bool HasContent(AssistantFile file)
         => file.Chunks.Any(chunk =>
             (chunk.Type.Equals("text", StringComparison.OrdinalIgnoreCase) && !string.IsNullOrWhiteSpace(chunk.Text)) ||
             (chunk.Type.Equals("image", StringComparison.OrdinalIgnoreCase) && !string.IsNullOrWhiteSpace(chunk.Base64)));

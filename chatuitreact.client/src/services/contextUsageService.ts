@@ -114,7 +114,7 @@ export function getContextUsage(chatId: string | undefined): Signal<ContextUsage
         const history = fileTokensTotal + messages;
 
         const { text, files } = draftSignal.value;
-        const draft = text.length > 0 || files.length > 0 ? countDraftTokens(text, files, tokenizer, scheme.image) : 0;
+        const draft = text.length > 0 || files.length > 0 ? countDraftTokens(text, files, tokenizer, scheme) : 0;
 
         const contextSize = model.capabilities.contextSize;
         const maxOutputTokens = model.capabilities.maxOutputTokens;
