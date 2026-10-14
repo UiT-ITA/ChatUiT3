@@ -76,9 +76,7 @@ function buildWorksheetRowBlocks(worksheet: ExcelJS.Worksheet): Array<{ rowNumbe
 
     worksheet.eachRow({ includeEmpty: false }, (row, rowNumber) => {
         const rowValues = Array.isArray(row.values) ? row.values.slice(1) : [];
-        const cells = rowValues
-            .map((value: ExcelJS.CellValue | undefined) => stringifyCellValue(value))
-            .map((value: string) => value.trim());
+        const cells = Array.from(rowValues, (value: ExcelJS.CellValue | undefined) => stringifyCellValue(value).trim());
 
         while (cells.length > 0 && cells[cells.length - 1] === '') {
             cells.pop();
