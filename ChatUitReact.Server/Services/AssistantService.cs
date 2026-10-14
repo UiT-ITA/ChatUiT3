@@ -26,8 +26,18 @@ namespace ChatUitReact.Server.Services
 
         private sealed record PromptTokenCacheEntry(DateTime UpdatedAt, string SchemeKey, string UserKey, PromptTokenCounts Counts);
 
+        // Keyed by assistant id, invalidated like the prompt cache. Per file id, per scheme:
+        // what each file costs as the message that carries it. Zero for a file with no content.
+        private readonly ConcurrentDictionary<string, FileTokenCacheEntry> _fileTokenCache = new();
+
+        private sealed record FileTokenCacheEntry(DateTime UpdatedAt, string SchemeKey, Dictionary<string, Dictionary<string, int>> Counts);
+
         // Per scheme: the whole fixed cost, and the part of it the knowledge-files section adds.
-        private sealed record PromptTokenCounts(Dictionary<string, int> Prompt, Dictionary<string, int> Knowledge);
+        // Files holds the file counts from the file cache.
+        private sealed record PromptTokenCounts(
+            Dictionary<string, int> Prompt,
+            Dictionary<string, int> Knowledge,
+            Dictionary<string, Dictionary<string, int>> Files);
 
         public AssistantService(
             IDatabaseService databaseService,
@@ -68,22 +78,12 @@ namespace ChatUitReact.Server.Services
             }
 
             var files = assistant.Files;
-            var needsContent = files.Any(f =>
-                f.Category == AssistantFileCategories.AlwaysLoaded &&
-                f.Chunks.Any(c =>
-                    (c.Type.Equals("text", StringComparison.OrdinalIgnoreCase) && c.Text == null) ||
-                    (c.Type.Equals("image", StringComparison.OrdinalIgnoreCase) && c.Base64 == null)));
-            if (needsContent)
-            {
-                var loaded = await _databaseService.GetAssistantByIdAsync(assistant.Id, includeFileContent: true);
-                files = loaded?.Files ?? files;
-            }
+            var fileCounts = await GetFileTokenCountsAsync(assistant, schemes, schemeKey);
 
             // Pinned files are per chat and are counted by the client from the chat itself, so
             // the assistant's fixed cost is built with nothing pinned. The always-loaded files
             // are counted as the messages that carry them.
             var noLoadedFiles = new HashSet<string>();
-            var knowledgeMessages = KnowledgeFileMessages.Build(files, []);
             var canLoadOnDemand = assistant.ChatSettings.Model.Capabilities.SupportsFunctionCalling;
             var prompt = SystemPromptAssembler.Build(assistant.ChatSettings.SystemPrompt, snippets, user, files, noLoadedFiles, canLoadOnDemand);
             // Resolved against the model row rather than the stored tool ids, so a model that
@@ -96,18 +96,62 @@ namespace ChatUitReact.Server.Services
                 tools.Add(new LoadKnowledgeFileTool(assistant.Id, onDemandFiles, _databaseService, _tokenCounting, _toolOptions, _logger));
             }
 
+            var alwaysLoaded = files
+                .Where(f => f.Category == AssistantFileCategories.AlwaysLoaded && fileCounts.ContainsKey(f.Id))
+                .ToList();
+
             var promptCounts = new Dictionary<string, int>();
             var knowledgeCounts = new Dictionary<string, int>();
             foreach (var scheme in schemes)
             {
-                var knowledge = knowledgeMessages.Sum(message => _tokenCounting.CountMessage(message, scheme));
+                var knowledge = alwaysLoaded.Sum(f => fileCounts[f.Id][scheme]);
                 promptCounts[scheme] = _tokenCounting.CountSystemPrompt(prompt, tools, scheme) + knowledge;
                 knowledgeCounts[scheme] = knowledge;
             }
 
-            var counts = new PromptTokenCounts(promptCounts, knowledgeCounts);
+            var counts = new PromptTokenCounts(promptCounts, knowledgeCounts, fileCounts);
             _promptTokenCache[assistant.Id] = new PromptTokenCacheEntry(assistant.UpdatedAt, schemeKey, userKey, counts);
             return counts;
+        }
+
+        // Per file id, per scheme. File content is read from the database only on a cache miss.
+        private async Task<Dictionary<string, Dictionary<string, int>>> GetFileTokenCountsAsync(
+            Assistant assistant,
+            IReadOnlyList<string> schemes,
+            string schemeKey)
+        {
+            if (_fileTokenCache.TryGetValue(assistant.Id, out var cached) &&
+                cached.UpdatedAt == assistant.UpdatedAt &&
+                cached.SchemeKey == schemeKey)
+            {
+                return cached.Counts;
+            }
+
+            var files = assistant.Files;
+            var needsContent = files.Any(f =>
+                f.Chunks.Any(c =>
+                    (c.Type.Equals("text", StringComparison.OrdinalIgnoreCase) && c.Text == null) ||
+                    (c.Type.Equals("image", StringComparison.OrdinalIgnoreCase) && c.Base64 == null)));
+            if (needsContent)
+            {
+                var loaded = await _databaseService.GetAssistantByIdAsync(assistant.Id, includeFileContent: true);
+                files = loaded?.Files ?? files;
+            }
+
+            var counts = files.ToDictionary(
+                f => f.Id,
+                f => KnowledgeFileMessages.HasContent(f)
+                    ? _tokenCounting.CountMessage(KnowledgeFileMessages.For(f), schemes).Total
+                    : schemes.ToDictionary(scheme => scheme, _ => 0));
+
+            _fileTokenCache[assistant.Id] = new FileTokenCacheEntry(assistant.UpdatedAt, schemeKey, counts);
+            return counts;
+        }
+
+        private async Task<Dictionary<string, Dictionary<string, int>>> GetFileTokenCountsAsync(Assistant assistant)
+        {
+            var schemes = await _tokenCounting.GetActiveSchemeIdsAsync();
+            return await GetFileTokenCountsAsync(assistant, schemes, string.Join(",", schemes));
         }
 
         // Only the user fields the enabled snippets actually render take part, so assistants
@@ -233,6 +277,7 @@ namespace ChatUitReact.Server.Services
         public async Task<bool> CreateAssistantAsync(CreateAssistantDto createDto, string userId)
         {
             var assistant = await BuildAssistantAsync(createDto, userId);
+            EnsureAlwaysLoadedFits(assistant, [], [], modelChanged: true);
             await _databaseService.CreateAssistantAsync(assistant);
 
             await NotifyAssistantsUpdated(userId);
@@ -246,13 +291,17 @@ namespace ChatUitReact.Server.Services
             if (assistant == null || assistant.OwnerId != userId) return false;
 
             var previousModelId = assistant.ChatSettings.Model.Id;
+            var previousFiles = assistant.Files;
+            var storedCounts = await GetFileTokenCountsAsync(assistant);
 
             var updated = await ApplyAssistantUpdateAsync(assistant, updateDto);
             if (!updated) return false;
+            EnsureAlwaysLoadedFits(assistant, previousFiles, storedCounts, assistant.ChatSettings.Model.Id != previousModelId);
 
             var updatedAssistant = await _databaseService.UpdateAssistantAsync(assistant);
             if (updatedAssistant == null) return false;
             _promptTokenCache.TryRemove(assistant.Id, out _);
+            _fileTokenCache.TryRemove(assistant.Id, out _);
 
             // A model change can invalidate a pin held by someone this assistant was shared
             // with, so notify everyone rather than just the owner's group. Otherwise their open
@@ -285,6 +334,7 @@ namespace ChatUitReact.Server.Services
             if (success)
             {
                 _promptTokenCache.TryRemove(assistantId, out _);
+                _fileTokenCache.TryRemove(assistantId, out _);
                 await NotifyAssistantsUpdated(userId);
             }
 
@@ -528,6 +578,7 @@ namespace ChatUitReact.Server.Services
         public async Task<FullAssistantDto> CreateSystemAssistantAsync(CreateAssistantDto createDto)
         {
             var assistant = await BuildAssistantAsync(createDto, "System");
+            EnsureAlwaysLoadedFits(assistant, [], [], modelChanged: true);
             var createdAssistant = await WithModelAsync(await _databaseService.CreateAssistantAsync(assistant));
 
             await NotifyAllUsersAssistantsUpdated();
@@ -543,11 +594,16 @@ namespace ChatUitReact.Server.Services
                 return null;
             }
 
+            var previousModelId = assistant.ChatSettings.Model.Id;
+            var previousFiles = assistant.Files;
+            var storedCounts = await GetFileTokenCountsAsync(assistant);
+
             var updated = await ApplyAssistantUpdateAsync(assistant, updateDto);
             if (!updated)
             {
                 return null;
             }
+            EnsureAlwaysLoadedFits(assistant, previousFiles, storedCounts, assistant.ChatSettings.Model.Id != previousModelId);
 
             var savedAssistant = await _databaseService.UpdateAssistantAsync(assistant);
             if (savedAssistant == null)
@@ -556,6 +612,7 @@ namespace ChatUitReact.Server.Services
             }
 
             _promptTokenCache.TryRemove(assistantId, out _);
+            _fileTokenCache.TryRemove(assistantId, out _);
             await NotifyAllUsersAssistantsUpdated();
 
             await WithModelAsync(savedAssistant);
@@ -574,6 +631,7 @@ namespace ChatUitReact.Server.Services
             if (deleted)
             {
                 _promptTokenCache.TryRemove(assistantId, out _);
+                _fileTokenCache.TryRemove(assistantId, out _);
                 await NotifyAllUsersAssistantsUpdated();
             }
 
@@ -617,6 +675,48 @@ namespace ChatUitReact.Server.Services
                 OwnerId = ownerId,
                 Access = ownerId == Assistant.SystemOwnerId ? MapAccess(createDto.Access) : null
             };
+        }
+
+        // Rejects a save that leaves the always-loaded files over the model's limit, unless the
+        // model is unchanged and the always-loaded files cost no more than before. Files sent
+        // without content are priced from storedCounts.
+        private void EnsureAlwaysLoadedFits(
+            Assistant assistant,
+            IReadOnlyList<AssistantFile> previousFiles,
+            Dictionary<string, Dictionary<string, int>> storedCounts,
+            bool modelChanged)
+        {
+            var capabilities = assistant.ChatSettings.Model.Capabilities;
+            var schemeId = TokenCountingSchemes.IdFor(capabilities);
+            if (schemeId == null)
+            {
+                return;
+            }
+
+            int Tokens(AssistantFile file)
+            {
+                if (file.Chunks.Any(c => c.Text != null || c.Base64 != null))
+                {
+                    return KnowledgeFileMessages.HasContent(file)
+                        ? _tokenCounting.CountMessage(KnowledgeFileMessages.For(file), schemeId)
+                        : 0;
+                }
+
+                return storedCounts.GetValueOrDefault(file.Id)?.GetValueOrDefault(schemeId) ?? 0;
+            }
+
+            int AlwaysLoadedTokens(IEnumerable<AssistantFile> files)
+                => files.Where(f => f.Category == AssistantFileCategories.AlwaysLoaded).Sum(Tokens);
+
+            var limit = AlwaysLoadedFileLimit.For(capabilities);
+            var total = AlwaysLoadedTokens(assistant.Files);
+            if (total <= limit || (!modelChanged && total <= AlwaysLoadedTokens(previousFiles)))
+            {
+                return;
+            }
+
+            throw new AssistantValidationException(
+                $"The always loaded files use {total:N0} tokens, more than the {limit:N0} this model allows. Add the largest files as selective loaded files instead.");
         }
 
         // Stores only settings the model can actually honour, so an assistant configured
@@ -714,7 +814,7 @@ namespace ChatUitReact.Server.Services
                 IsFavorite = user?.Preferences.FavoritedAssistantIds.Contains(assistant.Id) ?? false,
                 CanBeDefault = eligibleModelIds?.Contains(assistant.ChatSettings.Model.Id) ?? false,
                 Access = MapAccess(assistant.Access),
-                Files = assistant.Files.Select(MapAssistantFileDto).ToList(),
+                Files = assistant.Files.Select(file => MapAssistantFileDto(file, promptTokenCounts.Files.GetValueOrDefault(file.Id))).ToList(),
                 KnowledgeSourceIds = assistant.KnowledgeSourceIds
             };
         }
@@ -753,10 +853,11 @@ namespace ChatUitReact.Server.Services
             }).ToList();
         }
 
-        private static AssistantFileDto MapAssistantFileDto(AssistantFile file)
+        private static AssistantFileDto MapAssistantFileDto(AssistantFile file, Dictionary<string, int>? tokenCounts = null)
         {
             return new AssistantFileDto
             {
+                TokenCounts = tokenCounts ?? new Dictionary<string, int>(),
                 Id = file.Id,
                 SourceFilename = file.SourceFilename,
                 Category = file.Category,

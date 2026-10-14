@@ -285,6 +285,11 @@
   color: var(--warn);
 }
 
+.af-model-budget {
+  margin-top: 0.25rem;
+  color: var(--danger);
+}
+
 .af-note-warn {
   color: var(--warn);
 }

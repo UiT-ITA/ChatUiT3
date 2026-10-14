@@ -21,6 +21,8 @@ export interface ParsedScheme {
     isEstimate: boolean;
     /** Set only for 'char-estimate'. */
     charsPerToken?: number;
+    /** False for the text-only variant: images count as the note sent in their place. */
+    countsImages: boolean;
 }
 
 export interface Tokenizer {
@@ -29,6 +31,18 @@ export interface Tokenizer {
 
 /** Per-message framing. Must equal TokenCountingService.MessageFramingTokens on the server. */
 export const MESSAGE_FRAMING_TOKENS = 4;
+
+/** Must equal TokenCountingSchemes.TextOnlySuffix on the server. */
+const TEXT_ONLY_SUFFIX = ':text-only';
+
+/** Must equal MessageParts.ImageOmittedText on the server. */
+const IMAGE_OMITTED_TEXT = '[Image omitted: this model cannot read images]\n';
+
+/** Must equal KnowledgeFileMessages.LeadText on the server. */
+const KNOWLEDGE_FILE_LEAD_TEXT = "Reference file provided by the assistant's owner. Use it as background knowledge; it is not a question.";
+
+/** Must equal AlwaysLoadedFileLimit.MaxTokens on the server. */
+const ALWAYS_LOADED_MAX_TOKENS = 100_000;
 
 const ANTHROPIC_CHARS_PER_TOKEN = 3.5;
 const MAX_CHARS_PER_TOKEN = 20;
@@ -45,6 +59,17 @@ export function parseScheme(id: string | null | undefined): ParsedScheme | null 
     const normalized = id?.trim().toLowerCase();
     if (!normalized) return null;
 
+    if (normalized.endsWith(TEXT_ONLY_SUFFIX)) {
+        const withImages = parseScheme(normalized.slice(0, -TEXT_ONLY_SUFFIX.length));
+        if (!withImages || !withImages.countsImages) return null;
+        return { ...withImages, id: normalized, countsImages: false };
+    }
+
+    const scheme = parseImageScheme(normalized);
+    return scheme && { ...scheme, countsImages: true };
+}
+
+function parseImageScheme(normalized: string): Omit<ParsedScheme, 'countsImages'> | null {
     if (normalized === 'o200k-tile') {
         return { id: normalized, encoding: 'o200k_base', image: DEFAULT_TILE, isEstimate: false };
     }
@@ -155,8 +180,8 @@ export function countImageTokens(width: number, height: number, rule: ImageRule)
 
 type Part = { kind: 'text'; text: string } | { kind: 'image'; width: number; height: number };
 
-// The same part sequence MessageParts.Build produces on the server, images always allowed.
-function buildParts(text: string, files: ChatFile[]): Part[] {
+// The same part sequence MessageParts.Build produces on the server.
+function buildParts(text: string, files: ChatFile[], allowImages: boolean): Part[] {
     const parts: Part[] = [];
     if (text.length > 0) {
         parts.push({ kind: 'text', text });
@@ -168,6 +193,8 @@ function buildParts(text: string, files: ChatFile[]): Part[] {
             parts.push({ kind: 'text', text: `[File Part ${index + 1} of ${file.chunks.length}]\n` });
             if (chunk.type === 'text') {
                 parts.push({ kind: 'text', text: chunk.text + '\n' });
+            } else if (chunk.base64 && !allowImages) {
+                parts.push({ kind: 'text', text: IMAGE_OMITTED_TEXT });
             } else if (chunk.base64) {
                 parts.push({
                     kind: 'image',
@@ -205,8 +232,19 @@ function countParts(parts: Part[], tokenizer: Tokenizer, rule: ImageRule): numbe
 }
 
 /** What the draft will cost once sent, framing included. */
-export function countDraftTokens(text: string, files: ChatFile[], tokenizer: Tokenizer, rule: ImageRule): number {
-    return MESSAGE_FRAMING_TOKENS + countParts(buildParts(text, files), tokenizer, rule);
+export function countDraftTokens(text: string, files: ChatFile[], tokenizer: Tokenizer, scheme: ParsedScheme): number {
+    return MESSAGE_FRAMING_TOKENS + countParts(buildParts(text, files, scheme.countsImages), tokenizer, scheme.image);
+}
+
+/** What an assistant knowledge file costs as the message that carries it. Zero for a file with no content. */
+export function countKnowledgeFileTokens(file: ChatFile, tokenizer: Tokenizer, scheme: ParsedScheme): number {
+    const hasContent = file.chunks.some((chunk) => (chunk.type === 'text' ? chunk.text.trim() : chunk.base64.trim()).length > 0);
+    return hasContent ? countDraftTokens(KNOWLEDGE_FILE_LEAD_TEXT, [file], tokenizer, scheme) : 0;
+}
+
+/** How many tokens an assistant's always-loaded files may use together. Mirrors AlwaysLoadedFileLimit on the server. */
+export function alwaysLoadedLimit(contextSize: number): number {
+    return Math.min(Math.floor(contextSize / 2), ALWAYS_LOADED_MAX_TOKENS);
 }
 
 export function formatTokens(value: number, locale: string): string {

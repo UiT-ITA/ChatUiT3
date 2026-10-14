@@ -28,6 +28,10 @@ interface KnowledgeFileListProps {
   itemDescriptionPlaceholder?: string;
   onItemDescriptionChange?: (itemId: string, description: string) => void;
   onItemRemove?: (itemId: string) => void;
+  /** The token count shown on each file, or undefined to show none. */
+  itemTokenLabel?: (item: KnowledgeFileItemData) => string | undefined;
+  /** Shown between the header and the files. */
+  status?: React.ReactNode;
 }
 
 const KnowledgeFileList = ({
@@ -43,7 +47,9 @@ const KnowledgeFileList = ({
   allowItemDescription = false,
   itemDescriptionPlaceholder = '',
   onItemDescriptionChange,
-  onItemRemove
+  onItemRemove,
+  itemTokenLabel,
+  status
 }: KnowledgeFileListProps) => {
   const { t } = useTranslation();
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -141,6 +147,8 @@ const KnowledgeFileList = ({
           </button>
         </div>
 
+        {status}
+
         <input
           ref={fileInputRef}
           type="file"
@@ -163,6 +171,7 @@ const KnowledgeFileList = ({
               descriptionPlaceholder={itemDescriptionPlaceholder}
               onDescriptionChange={(value) => onItemDescriptionChange?.(item.id, value)}
               disabled={isDisabled}
+              tokenLabel={itemTokenLabel?.(item)}
             />
           )) : (
             <div className="knowledge-file-list__empty t-ui-plain">{emptyLabel}</div>

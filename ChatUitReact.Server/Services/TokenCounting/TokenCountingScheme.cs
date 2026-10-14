@@ -1,5 +1,6 @@
 using System.Diagnostics.CodeAnalysis;
 using System.Globalization;
+using ChatUitReact.Server.Models;
 
 namespace ChatUitReact.Server.Services.TokenCounting;
 
@@ -37,9 +38,10 @@ public sealed record AreaImageCost(int PixelsPerToken) : ImageCostRule;
 /// <summary>
 /// A named way of counting tokens. The id is what gets stored on messages and models, so
 /// it must stay stable once in use. <paramref name="CharsPerToken"/> is set only for
-/// <see cref="TextEncoding.CharEstimate"/>.
+/// <see cref="TextEncoding.CharEstimate"/>. <paramref name="CountsImages"/> is false for the
+/// text-only variant, which counts images as the note sent in their place.
 /// </summary>
-public sealed record TokenCountingScheme(string Id, TextEncoding Encoding, ImageCostRule ImageCost, bool IsEstimate, double? CharsPerToken = null)
+public sealed record TokenCountingScheme(string Id, TextEncoding Encoding, ImageCostRule ImageCost, bool IsEstimate, double? CharsPerToken = null, bool CountsImages = true)
 {
     /// <summary>What decides a text count. Schemes sharing this share their text tokens.</summary>
     public (TextEncoding Encoding, double? CharsPerToken) TextRule => (Encoding, CharsPerToken);
@@ -55,6 +57,9 @@ public static class TokenCountingSchemes
     public const string Cl100kTile = "cl100k-tile";
     public const string AnthropicEstimate = "anthropic-estimate";
     public const string WordCount = "word-count";
+
+    /// <summary>Appended to a scheme id for models without vision. Never stored on a model.</summary>
+    public const string TextOnlySuffix = ":text-only";
 
     private const string O200kTilePrefix = "o200k-tile-";
     private const string Cl100kTilePrefix = "cl100k-tile-";
@@ -84,6 +89,20 @@ public static class TokenCountingSchemes
 
     public static bool IsKnown(string? id) => TryParse(id, out _);
 
+    /// <summary>
+    /// The id a model's counts are stored and read under: its scheme, made text-only when the
+    /// model cannot read images. Null when the model has no counter.
+    /// </summary>
+    public static string? IdFor(ModelCapabilities capabilities)
+    {
+        if (!TryParse(capabilities.TokenCountingScheme, out var scheme))
+        {
+            return null;
+        }
+
+        return capabilities.SupportsVision || !scheme.CountsImages ? scheme.Id : scheme.Id + TextOnlySuffix;
+    }
+
     public static bool TryParse(string? id, [NotNullWhen(true)] out TokenCountingScheme? scheme)
     {
         scheme = null;
@@ -91,6 +110,17 @@ public static class TokenCountingSchemes
         if (normalized == null)
         {
             return false;
+        }
+
+        if (normalized.EndsWith(TextOnlySuffix, StringComparison.Ordinal))
+        {
+            if (!TryParse(normalized[..^TextOnlySuffix.Length], out var withImages) || !withImages.CountsImages)
+            {
+                return false;
+            }
+
+            scheme = withImages with { Id = normalized, CountsImages = false };
+            return true;
         }
 
         switch (normalized)

@@ -76,6 +76,12 @@ public class AssistantFileDto
     // fetched separately. An already-stored file is kept as-is when its chunks
     // arrive without content.
     public List<ChatFileChunkDto> Chunks { get; set; } = new List<ChatFileChunkDto>();
+
+    /// <summary>
+    /// Per scheme: what the file costs as the message that carries it. Set when reading an
+    /// assistant; ignored in create/update requests.
+    /// </summary>
+    public Dictionary<string, int> TokenCounts { get; set; } = new();
 }
 
 public class AssistantSummaryDto

@@ -49,6 +49,15 @@ public static class AssistantFileCategories
     public const string RagLoaded = "ragLoaded";
 }
 
+/// <summary>How many tokens the always-loaded files of an assistant may use together. Mirrored on the client.</summary>
+public static class AlwaysLoadedFileLimit
+{
+    public const int MaxTokens = 100_000;
+
+    /// <summary>Half the model's context window, never more than <see cref="MaxTokens"/>.</summary>
+    public static int For(ModelCapabilities capabilities) => Math.Min(capabilities.MaxContextTokens / 2, MaxTokens);
+}
+
 public class AssistantFile : ChatFile
 {
     public string Category { get; set; } = AssistantFileCategories.AlwaysLoaded;

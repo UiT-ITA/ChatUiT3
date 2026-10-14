@@ -210,8 +210,10 @@ public class AdminModelsController : ControllerBase
         TokenCountingScheme = TokenCountingSchemes.Normalize(dto.TokenCountingScheme)
     };
 
+    // No scheme, or a known scheme that is not the text-only variant.
     private static bool IsValidScheme(string? scheme) =>
-        TokenCountingSchemes.Normalize(scheme) == null || TokenCountingSchemes.IsKnown(scheme);
+        TokenCountingSchemes.Normalize(scheme) == null ||
+        (TokenCountingSchemes.TryParse(scheme, out var parsed) && parsed.CountsImages);
 
     // Stored ascending and deduplicated so LowestEffort and the client's slider can both
     // rely on the order without re-sorting.

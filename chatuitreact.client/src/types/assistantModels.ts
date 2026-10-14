@@ -17,6 +17,8 @@ export interface AssistantFileDto {
     // reading an assistant — content is fetched via fetchAssistantFile. A stored
     // file sent back without content is kept as-is on the server.
     chunks: ChatFileChunkDto[];
+    /** Per scheme: what the file costs as the message that carries it. Set when reading an assistant. */
+    tokenCounts?: Record<string, number>;
 }
 
 export type UserRole = 'User' | 'Admin' | 'Beta' | 'Super' | 'External';

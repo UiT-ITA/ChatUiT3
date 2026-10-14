@@ -46,9 +46,8 @@ public sealed class TokenCountingService : ITokenCountingService
     {
         var models = await _modelService.GetAllModelsAsync();
         return models
-            .Select(m => TokenCountingSchemes.Normalize(m.Capabilities.TokenCountingScheme))
-            .Where(id => id != null && TokenCountingSchemes.IsKnown(id))
-            .Select(id => id!)
+            .Select(m => TokenCountingSchemes.IdFor(m.Capabilities))
+            .OfType<string>()
             .Distinct()
             .OrderBy(id => id, StringComparer.Ordinal)
             .ToList();
@@ -66,30 +65,38 @@ public sealed class TokenCountingService : ITokenCountingService
     {
         var hasFiles = message.Files is { Count: > 0 };
         var schemes = schemeIds.Select(Parse).ToList();
-        var parts = MessageParts.Build(message, allowImages: true);
+        // The parts a model with vision receives, and the parts one without receives.
+        var partsByImages = schemes
+            .Select(s => s.CountsImages)
+            .Distinct()
+            .ToDictionary(countsImages => countsImages, countsImages => MessageParts.Build(message, allowImages: countsImages));
 
         // Text is counted once per text rule and shared by every scheme using it; only the
         // image term differs between, say, o200k-tile and o200k-patch-1.62.
-        var textRuns = ConcatenateTextRuns(parts);
-        var textTokensByRule = new Dictionary<(TextEncoding, double?), int>();
+        var textTokensByRule = new Dictionary<((TextEncoding, double?), bool), int>();
         var contentTokensByRule = new Dictionary<(TextEncoding, double?), int>();
-        foreach (var scheme in schemes.DistinctBy(s => s.TextRule))
+        foreach (var scheme in schemes.DistinctBy(s => (s.TextRule, s.CountsImages)))
         {
-            textTokensByRule[scheme.TextRule] = textRuns.Sum(run => CountText(run, scheme));
+            var textRuns = ConcatenateTextRuns(partsByImages[scheme.CountsImages]);
+            textTokensByRule[(scheme.TextRule, scheme.CountsImages)] = textRuns.Sum(run => CountText(run, scheme));
             if (hasFiles)
             {
                 contentTokensByRule[scheme.TextRule] = CountText(message.Content ?? string.Empty, scheme);
             }
         }
 
-        var imageDimensions = parts.OfType<ImagePart>().Select(ReadDimensions).ToList();
+        var imageDimensions = partsByImages.TryGetValue(true, out var partsWithImages)
+            ? partsWithImages.OfType<ImagePart>().Select(ReadDimensions).ToList()
+            : [];
 
         var total = new Dictionary<string, int>();
         var files = new Dictionary<string, int>();
         foreach (var scheme in schemes)
         {
-            var imageTokens = imageDimensions.Sum(d => ImageTokenMath.Tokens(d.Width, d.Height, scheme.ImageCost));
-            var tokens = MessageFramingTokens + textTokensByRule[scheme.TextRule] + imageTokens;
+            var imageTokens = scheme.CountsImages
+                ? imageDimensions.Sum(d => ImageTokenMath.Tokens(d.Width, d.Height, scheme.ImageCost))
+                : 0;
+            var tokens = MessageFramingTokens + textTokensByRule[(scheme.TextRule, scheme.CountsImages)] + imageTokens;
             total[scheme.Id] = tokens;
 
             // The attachment share is derived by subtraction, leaving the total (and the wire

@@ -28,6 +28,13 @@ export function getTokenizer(scheme: ParsedScheme): Signal<Tokenizer | undefined
     return tokenizerSignal;
 }
 
+/** The tokenizer for a scheme once its vocabulary has loaded; undefined when loading failed. */
+export async function loadTokenizer(scheme: ParsedScheme): Promise<Tokenizer | undefined> {
+    const tokenizerSignal = getTokenizer(scheme);
+    await loading.get(scheme.encoding);
+    return tokenizerSignal.value;
+}
+
 async function load(encoding: TextEncoding, target: Signal<Tokenizer | undefined>): Promise<void> {
     try {
         // The vocabularies are large; wait until startup work is done.
