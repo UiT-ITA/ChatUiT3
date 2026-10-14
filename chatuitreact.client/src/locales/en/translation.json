@@ -399,6 +399,7 @@
     "unknownFile": "Unknown file",
     "removeFile": "Remove file",
     "typeNotSupported": "File type not supported",
+    "appUpdated": "A new version of ChatUiT is available. Reload the page and try again.",
     "types": {
       "image": "Image",
       "text": "Text"

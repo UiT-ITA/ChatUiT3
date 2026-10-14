@@ -399,6 +399,7 @@
     "unknownFile": "Ukjent fil",
     "removeFile": "Fjern fil",
     "typeNotSupported": "Filtype ikke støttet",
+    "appUpdated": "En ny versjon av ChatUiT er tilgjengelig. Last inn siden på nytt og prøv igjen.",
     "types": {
       "image": "Bilde",
       "text": "Tekst"
