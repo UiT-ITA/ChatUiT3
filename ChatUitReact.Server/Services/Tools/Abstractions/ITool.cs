@@ -103,6 +103,9 @@ public sealed class ToolExecutionContext
 
     public ModelEndpoint? Endpoint { get; init; }
 
+    /// <summary>Whether tool calls are checked against the user's tool policies. False for chats on system assistants.</summary>
+    public bool EnforceToolAccess { get; init; } = true;
+
     /// <summary>How a pause for the user is handled. Chats wait; the Responses API defers.</summary>
     public InteractionMode Mode { get; init; } = InteractionMode.Wait;
 

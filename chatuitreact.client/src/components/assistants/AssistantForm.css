@@ -202,6 +202,13 @@
 .af-tool-name {
 }
 
+.af-tool-children {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4375rem;
+  margin-left: 1.9375rem;
+}
+
 .af-tool-description {
   color: var(--text-3);
 }

@@ -366,7 +366,8 @@ public class ChatService : IChatService
                 UserDisplayName = tools.UserDisplayName,
                 UserPrincipalName = tools.UserPrincipalName,
                 Model = model,
-                Endpoint = endpoint
+                Endpoint = endpoint,
+                EnforceToolAccess = resolved.EnforceToolAccess
             };
 
             // Knowledge sources are read once, for the first message, and saved in the chat ahead of it.
@@ -706,7 +707,7 @@ public class ChatService : IChatService
             string.Join(",", pinnedFileIds),
             onDemandFiles.Count,
             string.Join(",", onDemandFiles.Select(f => f.Id)),
-            string.Join(",", toolboxes.Select(t => t.Id)),
+            string.Join(",", toolboxes.Select(t => t.Toolbox.Id)),
             loadedToolIds.Count);
 
         // A model that cannot call tools gets earlier messages as text.
@@ -731,7 +732,7 @@ public class ChatService : IChatService
     /// Every tool of the toolboxes on offer, plus every tool a load in the history named, also when
     /// its toolbox is no longer on offer. Sorted by id.
     /// </summary>
-    private List<ITool> LoadableTools(IReadOnlyList<IToolbox> toolboxes, IReadOnlyCollection<string> loadedToolIds)
+    private List<ITool> LoadableTools(IReadOnlyList<ResolvedToolbox> toolboxes, IReadOnlyCollection<string> loadedToolIds)
     {
         var loadable = new Dictionary<string, ITool>(StringComparer.Ordinal);
         foreach (var tool in toolboxes.SelectMany(t => t.Tools))

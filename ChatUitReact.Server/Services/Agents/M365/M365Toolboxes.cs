@@ -4,47 +4,41 @@ using System.Linq;
 using ChatUitReact.Server.Models;
 using ChatUitReact.Server.Services.Agents.M365.Functions;
 using ChatUitReact.Server.Services.Tools;
+using Microsoft.Extensions.DependencyInjection;
 
 namespace ChatUitReact.Server.Services.Agents.M365;
 
 /// <summary>
-/// The Microsoft 365 toolboxes, in the order the model sees their functions. Read and write are
-/// separate toolboxes, and write toolboxes default to admins. The write toolboxes that address
-/// people also hold find_people.
-///
-/// Assistants saved with the former agent tools map onto these: m365_reader onto every read
-/// toolbox, m365_writer onto every read and write toolbox.
+/// The Microsoft 365 toolboxes. Each one reads, and each one that can write has a Write child
+/// toolbox with the write functions, which defaults to admins. The write functions that address
+/// people come with find_people.
 /// </summary>
 internal static class M365Toolboxes
 {
-    private const string ReaderLegacyId = "m365_reader";
-    private const string WriterLegacyId = "m365_writer";
-
     internal sealed record Definition(
         string Id,
         string DisplayName,
         string Description,
-        bool Writes,
-        Type[] Functions);
+        Type[] ReadFunctions,
+        Type[] WriteFunctions);
 
     public static readonly Definition[] All =
     [
-        new("m365_people", "People", "Look up people in the organisation and the user's contacts, user profiles and Teams presence.", false,
+        new("m365_people", "People", "Look up people in the organisation and the user's contacts, user profiles and Teams presence.",
         [
             typeof(FindPeopleFunction),
             typeof(GetUserFunction),
             typeof(GetPresenceFunction)
-        ]),
+        ],
+        []),
 
-        new("outlook_mail_read", "Outlook mail (read)", "Search and read the user's email, mail folders and text attachments.", false,
+        new("outlook_mail", "Outlook mail", "Search and read the user's email, mail folders and text attachments.",
         [
             typeof(ListMailFoldersFunction),
             typeof(SearchMailFunction),
             typeof(GetMailFunction),
             typeof(ReadMailAttachmentFunction)
-        ]),
-
-        new("outlook_mail_write", "Outlook mail (write)", "Send, reply to, forward and draft email, and move, flag or mark email. Load outlook_mail_read with it to find the email to act on.", true,
+        ],
         [
             typeof(FindPeopleFunction),
             typeof(SendMailFunction),
@@ -53,7 +47,7 @@ internal static class M365Toolboxes
             typeof(UpdateMailFunction)
         ]),
 
-        new("outlook_calendar_read", "Outlook calendar (read)", "Read calendars and events, free/busy for several people, suggested meeting times, and Teams meeting transcripts and attendance.", false,
+        new("outlook_calendar", "Outlook calendar", "Read calendars and events, free/busy for several people, suggested meeting times, and Teams meeting transcripts and attendance.",
         [
             typeof(GetCalendarViewFunction),
             typeof(GetScheduleFunction),
@@ -61,9 +55,7 @@ internal static class M365Toolboxes
             typeof(FindMeetingTimesFunction),
             typeof(GetMeetingTranscriptFunction),
             typeof(GetMeetingAttendanceFunction)
-        ]),
-
-        new("outlook_calendar_write", "Outlook calendar (write)", "Create, change and cancel calendar events and answer meeting invitations. Load outlook_calendar_read with it to find events and free time.", true,
+        ],
         [
             typeof(FindPeopleFunction),
             typeof(CreateEventFunction),
@@ -72,16 +64,14 @@ internal static class M365Toolboxes
             typeof(RespondToEventFunction)
         ]),
 
-        new("teams_read", "Teams (read)", "List and read the user's Teams chats, teams, channels and channel posts.", false,
+        new("teams", "Teams", "List and read the user's Teams chats, teams, channels and channel posts.",
         [
             typeof(ListChatsFunction),
             typeof(GetChatMessagesFunction),
             typeof(ListTeamsFunction),
             typeof(ListChannelsFunction),
             typeof(GetChannelMessagesFunction)
-        ]),
-
-        new("teams_write", "Teams (write)", "Send Teams chat messages, create group chats and post in channels. Load teams_read with it to find chat, team and channel ids.", true,
+        ],
         [
             typeof(FindPeopleFunction),
             typeof(SendChatMessageFunction),
@@ -89,7 +79,7 @@ internal static class M365Toolboxes
             typeof(SendChannelMessageFunction)
         ]),
 
-        new("files_read", "Files (read)", "Search, list and read files in OneDrive and SharePoint, SharePoint sites, lists and list items.", false,
+        new("files", "Files", "Search, list and read files in OneDrive and SharePoint, SharePoint sites, lists and list items.",
         [
             typeof(SearchFilesFunction),
             typeof(ReadFileFunction),
@@ -97,9 +87,7 @@ internal static class M365Toolboxes
             typeof(SearchSitesFunction),
             typeof(ListSiteListsFunction),
             typeof(GetListItemsFunction)
-        ]),
-
-        new("files_write", "Files (write)", "Write text files, create folders, move, rename, copy and share files in OneDrive and SharePoint. Load files_read with it to find the files to act on.", true,
+        ],
         [
             typeof(FindPeopleFunction),
             typeof(WriteTextFileFunction),
@@ -109,16 +97,14 @@ internal static class M365Toolboxes
             typeof(CreateSharingLinkFunction)
         ]),
 
-        new("tasks_read", "Tasks (read)", "Read Microsoft To Do lists and tasks, and Planner plans, buckets and tasks.", false,
+        new("tasks", "Tasks", "Read Microsoft To Do lists and tasks, and Planner plans, buckets and tasks.",
         [
             typeof(ListTodoListsFunction),
             typeof(ListTodoTasksFunction),
             typeof(ListPlannerPlansFunction),
             typeof(ListPlannerBucketsFunction),
             typeof(ListPlannerTasksFunction)
-        ]),
-
-        new("tasks_write", "Tasks (write)", "Create, change and complete To Do and Planner tasks. Load tasks_read with it to find lists, plans and tasks.", true,
+        ],
         [
             typeof(FindPeopleFunction),
             typeof(CreateTodoTaskFunction),
@@ -127,15 +113,13 @@ internal static class M365Toolboxes
             typeof(UpdatePlannerTaskFunction)
         ]),
 
-        new("onenote_read", "OneNote (read)", "List OneNote notebooks, sections and pages, and read pages.", false,
+        new("onenote", "OneNote", "List OneNote notebooks, sections and pages, and read pages.",
         [
             typeof(ListOneNoteNotebooksFunction),
             typeof(ListOneNoteSectionsFunction),
             typeof(ListOneNotePagesFunction),
             typeof(ReadOneNotePageFunction)
-        ]),
-
-        new("onenote_write", "OneNote (write)", "Create OneNote sections and pages and edit pages. Load onenote_read with it to find notebooks, sections and pages.", true,
+        ],
         [
             typeof(CreateOneNoteSectionFunction),
             typeof(CreateOneNotePageFunction),
@@ -144,18 +128,30 @@ internal static class M365Toolboxes
     ];
 
     /// <summary>Every function type, each once.</summary>
-    public static IEnumerable<Type> FunctionTypes => All.SelectMany(d => d.Functions).Distinct();
+    public static IEnumerable<Type> FunctionTypes => All.SelectMany(d => d.ReadFunctions.Concat(d.WriteFunctions)).Distinct();
 
-    /// <summary>The functions of the read toolboxes, in toolbox order.</summary>
-    public static IEnumerable<Type> ReadFunctionTypes => All.Where(d => !d.Writes).SelectMany(d => d.Functions).Distinct();
+    /// <summary>The read functions, in toolbox order.</summary>
+    public static IEnumerable<Type> ReadFunctionTypes => All.SelectMany(d => d.ReadFunctions).Distinct();
 
     public static IToolbox Build(Definition definition, IServiceProvider services) => new Toolbox
     {
         Id = definition.Id,
         DisplayName = definition.DisplayName,
         Description = definition.Description,
-        DefaultPolicy = definition.Writes ? ToolAccessPolicy.ForRoles(UserRole.Admin) : ToolAccessPolicy.Everyone,
-        Tools = definition.Functions.Select(t => (ITool)services.GetService(t)!).ToList(),
-        LegacyIds = definition.Writes ? [WriterLegacyId] : [ReaderLegacyId, WriterLegacyId]
+        Tools = Resolve(definition.ReadFunctions, services),
+        Children = definition.WriteFunctions.Length == 0 ? [] :
+        [
+            new Toolbox
+            {
+                Id = $"{definition.Id}_write",
+                DisplayName = "Write",
+                Description = "Allows the agent to perform write operations.",
+                DefaultPolicy = ToolAccessPolicy.ForRoles(UserRole.Admin),
+                Tools = Resolve(definition.WriteFunctions, services)
+            }
+        ]
     };
+
+    private static List<ITool> Resolve(Type[] functions, IServiceProvider services)
+        => functions.Select(t => (ITool)services.GetRequiredService(t)).ToList();
 }

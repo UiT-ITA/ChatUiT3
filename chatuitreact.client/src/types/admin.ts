@@ -83,7 +83,15 @@ export interface AdminToolDto {
   updatedAt: string | null;
   /** Internal agents only: the functions the agent can call. */
   functions: AdminToolFunctionDto[] | null;
+  /** The toolbox that holds this one as a child. Null for a top-level toolbox. */
+  parentId: string | null;
 }
+
+/** A toolbox's name, after its parents' names for a child toolbox. */
+export const toolboxLabel = (tool: AdminToolDto, tools: AdminToolDto[]): string => {
+  const parent = tool.parentId ? tools.find(candidate => candidate.id === tool.parentId) : undefined;
+  return parent ? `${toolboxLabel(parent, tools)} › ${tool.name}` : tool.name;
+};
 
 /** An internal agent definition (code) and the model an admin set for it. */
 export interface InternalAgentDto {

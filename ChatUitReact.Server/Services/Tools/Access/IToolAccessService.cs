@@ -6,8 +6,8 @@ namespace ChatUitReact.Server.Services.Tools;
 
 /// <summary>
 /// Decides who may use which toolbox. The effective policy is the stored admin override when
-/// one exists, else the toolbox's code default. A tool is usable when any toolbox that holds it
-/// is. Client tools are gated as a group through the <see cref="ToolRegistry.ClientToolsPolicyId"/>
+/// one exists, else the toolbox's code default. A child toolbox is usable when its own policy and
+/// its parent's allow the user. A tool is usable when any toolbox that holds it is. Client tools are gated as a group through the <see cref="ToolRegistry.ClientToolsPolicyId"/>
 /// pseudo id.
 /// </summary>
 public interface IToolAccessService
@@ -16,7 +16,7 @@ public interface IToolAccessService
 
     Task<ToolPolicy?> GetStoredPolicyAsync(string toolboxId);
 
-    /// <summary>Toolboxes this user may pick in the assistant editor.</summary>
+    /// <summary>Top-level toolboxes this user may pick in the assistant editor.</summary>
     Task<IReadOnlyList<IToolbox>> GetToolboxesForUserAsync(UserAccess access);
 
     Task<bool> CanUseAsync(IToolbox toolbox, UserAccess access);
@@ -27,11 +27,11 @@ public interface IToolAccessService
     /// </summary>
     Task<bool> CanUseAsync(ITool tool, UserAccess access);
 
-    /// <summary>Toolbox ids (legacy ids expanded) the user may not use, plus ids no toolbox answers to. For rejecting an assistant save.</summary>
+    /// <summary>Toolbox ids the user may not use, plus invalid ids (see <see cref="IToolboxRegistry.Invalid"/>). For rejecting an assistant save.</summary>
     Task<ToolIdCheck> CheckToolIdsAsync(IEnumerable<string> toolboxIds, UserAccess access);
 
-    /// <summary>The stored ids the user may use right now, resolved to toolboxes. For generation.</summary>
-    Task<IReadOnlyList<IToolbox>> FilterAllowedAsync(IEnumerable<string> toolboxIds, UserAccess access);
+    /// <summary>The stored ids the user may use right now, resolved to top-level toolboxes. For generation.</summary>
+    Task<IReadOnlyList<ResolvedToolbox>> FilterAllowedAsync(IEnumerable<string> toolboxIds, UserAccess access);
 
     Task<bool> MayUseClientToolsAsync(UserAccess access);
 
@@ -42,7 +42,7 @@ public interface IToolAccessService
     Task<bool> ClearOverrideAsync(string toolboxId);
 }
 
-public sealed record ToolIdCheck(IReadOnlyList<string> Unknown, IReadOnlyList<string> Disallowed)
+public sealed record ToolIdCheck(IReadOnlyList<string> Invalid, IReadOnlyList<string> Disallowed)
 {
-    public bool Ok => Unknown.Count == 0 && Disallowed.Count == 0;
+    public bool Ok => Invalid.Count == 0 && Disallowed.Count == 0;
 }

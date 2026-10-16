@@ -251,7 +251,10 @@ namespace ChatUitReact.Server.Services
         public async Task<IReadOnlyList<string>> DisallowedToolNamesAsync(Assistant assistant, UserAccess access)
         {
             var check = await _toolAccess.CheckToolIdsAsync(assistant.ChatSettings.AvailableToolIds, access);
-            return check.Disallowed.Select(id => _toolboxes.Find(id)?.DisplayName ?? id).ToList();
+            return check.Disallowed.Select(id => _toolboxes.Find(id) is { } toolbox ? Label(toolbox) : id).ToList();
+
+            string Label(IToolbox toolbox)
+                => _toolboxes.ParentOf(toolbox.Id) is { } parent ? $"{Label(parent)} › {toolbox.DisplayName}" : toolbox.DisplayName;
         }
 
         public static string SharedAssistantRemovedMessage(Assistant assistant, IReadOnlyList<string> disallowedToolNames)
@@ -265,7 +268,6 @@ namespace ChatUitReact.Server.Services
 
         // Assistants come from the database with only the model id; the model itself is read
         // from ModelService, which keeps every model in memory.
-        // Also maps toolbox ids stored under legacy ids to the current ones.
         private async Task<Assistant> WithModelAsync(Assistant assistant)
         {
             var model = await _modelService.GetModelByIdAsync(assistant.ChatSettings.Model.Id);
@@ -273,7 +275,6 @@ namespace ChatUitReact.Server.Services
             {
                 assistant.ChatSettings.Model = model;
             }
-            assistant.ChatSettings.AvailableToolIds = assistant.ChatSettings.AvailableToolIds.SelectMany(_toolboxes.Expand).Distinct().ToList();
             return assistant;
         }
 
@@ -750,9 +751,8 @@ namespace ChatUitReact.Server.Services
                 Temperature = capabilities.Temperature == TemperatureSupport.Unsupported ? 1f : temperature,
                 ReasoningEffort = effort,
                 Model = model,
-                // Stored under current ids: an assistant saved with a legacy id is rewritten on save.
                 AvailableToolIds = capabilities.SupportsFunctionCalling
-                    ? (requestedToolIds ?? new List<string>()).SelectMany(_toolboxes.Expand).Distinct().ToList()
+                    ? (requestedToolIds ?? new List<string>()).Distinct().ToList()
                     : new List<string>(),
                 PromptSnippets = PromptSnippets.Normalize(requestedSnippets)
             };

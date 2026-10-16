@@ -5,8 +5,8 @@ using System.Text.Json;
 
 namespace ChatUitReact.Server.Models;
 
-/// <summary>A tool as the assistant editor sees it: only tools the caller may use are listed.</summary>
-public class ToolDto
+/// <summary>What the assistant editor and the admin panel both show of a toolbox.</summary>
+public abstract class ToolSummaryDto
 {
     public string Id { get; set; } = string.Empty;
     public string Name { get; set; } = string.Empty;
@@ -14,6 +14,12 @@ public class ToolDto
     public bool RequiresConfirmation { get; set; }
     public List<string> RequiredScopes { get; set; } = new();
     public ToolExecution Execution { get; set; } = ToolExecution.Server;
+}
+
+/// <summary>A tool as the assistant editor sees it: only tools and child toolboxes the caller may use are listed.</summary>
+public class ToolDto : ToolSummaryDto
+{
+    public List<ToolDto> Children { get; set; } = new();
 }
 
 public class ToolAccessPolicyDto
@@ -24,8 +30,10 @@ public class ToolAccessPolicyDto
 }
 
 /// <summary>A tool as the admin panel sees it, with its code default and the effective policy.</summary>
-public class ToolAdminDto : ToolDto
+public class ToolAdminDto : ToolSummaryDto
 {
+    /// <summary>The toolbox that holds this one as a child. Null for a top-level toolbox.</summary>
+    public string? ParentId { get; set; }
     public JsonElement? ParametersSchema { get; set; }
     public ToolAccessPolicyDto DefaultPolicy { get; set; } = new();
     public ToolAccessPolicyDto Policy { get; set; } = new();

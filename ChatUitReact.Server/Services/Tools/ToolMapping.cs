@@ -7,14 +7,15 @@ namespace ChatUitReact.Server.Services.Tools;
 
 public static class ToolMapping
 {
-    public static ToolDto ToDto(IToolbox toolbox) => new()
+    public static ToolDto ToDto(IToolbox toolbox, List<ToolDto> children) => new()
     {
         Id = toolbox.Id,
         Name = toolbox.DisplayName,
         Description = toolbox.Description,
         RequiresConfirmation = toolbox.Tools.Any(t => t is IConfirmableTool),
         RequiredScopes = RequiredScopes(toolbox),
-        Execution = ToolExecution.Server
+        Execution = ToolExecution.Server,
+        Children = children
     };
 
     public static ToolAccessPolicyDto ToDto(ToolAccessPolicy policy) => new()
@@ -32,9 +33,10 @@ public static class ToolMapping
     };
 
     /// <summary>A toolbox of one tool shows that tool's schema; a larger toolbox lists its functions.</summary>
-    public static ToolAdminDto ToAdminDto(IToolbox toolbox, ToolAccessPolicy effective, ToolPolicy? stored) => new()
+    public static ToolAdminDto ToAdminDto(IToolbox toolbox, IToolbox? parent, ToolAccessPolicy effective, ToolPolicy? stored) => new()
     {
         Id = toolbox.Id,
+        ParentId = parent?.Id,
         Name = toolbox.DisplayName,
         Description = toolbox.Description,
         RequiresConfirmation = toolbox.Tools.Any(t => t is IConfirmableTool),

@@ -66,7 +66,7 @@ public class AssistantsController : ControllerBase
         return BadRequest(new
         {
             error = "tools_not_allowed",
-            unknownToolIds = check.Unknown,
+            invalidToolIds = check.Invalid,
             disallowedToolIds = check.Disallowed
         });
     }
@@ -408,13 +408,34 @@ public class AssistantsController : ControllerBase
     {
         try
         {
-            var toolboxes = await _toolAccess.GetToolboxesForUserAsync(_userService.GetUserAccess(User));
-            return Ok(toolboxes.Select(ToolMapping.ToDto).ToArray());
+            var access = _userService.GetUserAccess(User);
+            var result = new List<ToolDto>();
+            foreach (var toolbox in await _toolAccess.GetToolboxesForUserAsync(access))
+            {
+                result.Add(await ToToolDtoAsync(toolbox, access));
+            }
+
+            return Ok(result);
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error getting available tools");
             return StatusCode(500, "Internal server error");
         }
+    }
+
+    /// <summary>A toolbox with the child toolboxes this user may use.</summary>
+    private async Task<ToolDto> ToToolDtoAsync(IToolbox toolbox, UserAccess access)
+    {
+        var children = new List<ToolDto>();
+        foreach (var child in toolbox.Children)
+        {
+            if (await _toolAccess.CanUseAsync(child, access))
+            {
+                children.Add(await ToToolDtoAsync(child, access));
+            }
+        }
+
+        return ToolMapping.ToDto(toolbox, children);
     }
 }

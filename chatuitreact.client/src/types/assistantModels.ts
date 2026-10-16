@@ -178,4 +178,6 @@ export interface ChatToolDto {
     /** Delegated Microsoft Graph scopes the tool needs. */
     requiredScopes: string[];
     execution: 'server' | 'client';
+    /** Child toolboxes, shown as options under this one. Only those the caller may use. */
+    children: ChatToolDto[];
 }

@@ -9,6 +9,7 @@ import { getChats } from '../../services/chatService';
 import { getAssistants } from '../../services/assistantService';
 import { adminEndpointsSignal, adminModelsSignal, adminAssistantsSignal, adminToolsSignal, adminInternalAgentsSignal, loadAdminData } from '../../services/adminDataService';
 import { useAuth } from '../../hooks/useAuth';
+import { toolboxLabel } from '../../types/admin';
 import type { SettingsCategory } from '../../types/settingsModels';
 import { HELP_SECTIONS, isHelpSection } from '../help/helpSections';
 import HelpSectionNav from '../help/HelpSectionNav';
@@ -245,7 +246,7 @@ const ContextColumn = ({ isMobile }: ContextColumnProps) => {
                 className={`context-nav-row context-list-row t-ui ${activeAdminTab === 'tools' && activeAdminId === tool.id ? 'active' : ''}`}
                 onClick={() => adminNav(`/admin/tools/${tool.id}`)}
               >
-                <span className="context-list-row-title">{tool.name}</span>
+                <span className="context-list-row-title">{toolboxLabel(tool, adminTools)}</span>
                 <span className="context-list-row-meta t-meta">{tool.policy.enabled ? tool.id : t('admin.tools.meta.disabled')}</span>
               </button>
             ))
