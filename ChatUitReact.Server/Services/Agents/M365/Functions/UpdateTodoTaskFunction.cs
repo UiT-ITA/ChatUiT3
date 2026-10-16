@@ -30,7 +30,7 @@ public sealed class UpdateTodoTaskFunction : ConfirmableTool<UpdateTodoTaskArgs>
 
     public override string Id => "update_todo_task";
     public override string DisplayName => "Update To Do task";
-    public override string Description => "Change or complete a To Do task. Only given fields change. The user must approve it first.";
+    public override string Description => "Change or complete a To Do task. Only given fields change. The user must approve it first. If they reject it, do not retry or change it.";
     public override IReadOnlyList<string> RequiredScopes => TaskSupport.Scopes;
 
     protected override async Task<ToolPreview> PrepareAsync(UpdateTodoTaskArgs args, ToolInvocation invocation, CancellationToken ct)

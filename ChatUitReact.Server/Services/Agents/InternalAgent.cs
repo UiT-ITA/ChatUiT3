@@ -29,7 +29,10 @@ public abstract class InternalAgent
 
     public abstract string SystemPrompt { get; }
 
-    /// <summary>Private functions. They are not in the tool registry and have no policies of their own.</summary>
+    /// <summary>
+    /// The functions the agent may call. A function that is in toolboxes follows their policies;
+    /// any other answers with its own default.
+    /// </summary>
     public abstract IReadOnlyList<ITool> Functions { get; }
 
     /// <summary>

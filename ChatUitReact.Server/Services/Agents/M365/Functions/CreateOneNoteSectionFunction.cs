@@ -21,7 +21,7 @@ public sealed class CreateOneNoteSectionFunction : ConfirmableTool<CreateOneNote
 
     public override string Id => "create_onenote_section";
     public override string DisplayName => "Create OneNote section";
-    public override string Description => "Create a section in a OneNote notebook. The user must approve it first.";
+    public override string Description => "Create a section in a OneNote notebook. The user must approve it first. If they reject it, do not retry or change it.";
     public override IReadOnlyList<string> RequiredScopes => OneNoteSupport.WriteScopes;
 
     protected override async Task<ToolPreview> PrepareAsync(CreateOneNoteSectionArgs args, ToolInvocation invocation, CancellationToken ct)

@@ -33,7 +33,7 @@ public sealed class ReplyToMailFunction : ConfirmableTool<ReplyToMailArgs>
 
     public override string Id => "reply_to_mail";
     public override string DisplayName => "Reply to email";
-    public override string Description => "Reply, reply all or forward an email from the user's mailbox. The user must approve it first.";
+    public override string Description => "Reply, reply all or forward an email from the user's mailbox. The user must approve it first. If they reject it, do not retry or change it. Get people's email addresses and ids from find_people; never build an email address from a name.";
     public override IReadOnlyList<string> RequiredScopes => MailSupport.SendScopes;
 
     protected override async Task<ToolPreview> PrepareAsync(ReplyToMailArgs args, ToolInvocation invocation, CancellationToken ct)

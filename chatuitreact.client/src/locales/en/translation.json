@@ -195,8 +195,8 @@
       "systemPrompt": "Instructions",
       "systemPromptPlaceholder": "Describe how the assistant should behave (optional)",
       "characters": "characters",
-      "tools": "Tools the assistant may use",
-      "noTools": "No tools available",
+      "tools": "Toolboxes the assistant may load",
+      "noTools": "No toolboxes available",
       "modelNoTools": "This model does not support tools",
       "snippets": {
         "formatMarkdown": "Format text",
@@ -219,13 +219,13 @@
       "modelNotDefaultEligible": "This is your default assistant. This model cannot be used as a default, so saving will stop new chats from starting here.",
       "toolHints": {
         "requiresConfirmation": "Asks before running",
-        "widerAccess": "Some users admitted to this assistant may not use this tool on their own"
+        "widerAccess": "Some users admitted to this assistant may not use this toolbox on their own"
       },
-      "toolsSharingNote": "Others can only add this assistant if they are allowed to use all of its tools.",
+      "toolsSharingNote": "Others can only add this assistant if they are allowed to use all of its toolboxes.",
       "toolUnavailable": "No longer available to you. Untick it to save.",
       "access": {
         "title": "Who may use this assistant",
-        "help": "Tool policies are not enforced on system assistants. Whoever is admitted here gets every tool on it.",
+        "help": "Tool policies are not enforced on system assistants. Whoever is admitted here gets every toolbox on it.",
         "everyone": "Everyone",
         "roles": "Roles",
         "groups": "Entra groups",
@@ -288,7 +288,7 @@
       },
       "sources": {
         "title": "Live sources",
-        "description": "Data fetched for the person chatting each time a message is sent, and placed at the start of the conversation.",
+        "description": "Data fetched for the person chatting when the conversation starts, and placed at the start of the conversation.",
         "none": "No live sources are available to you.",
         "unavailable": "No longer available"
       }
@@ -485,7 +485,7 @@
       "models": "Models",
       "assistants": "Assistants",
       "settings": "Settings",
-      "tools": "Tools",
+      "tools": "Toolboxes",
       "agents": "Internal agents"
     },
     "endpoints": {
@@ -654,9 +654,9 @@
       }
     },
     "tools": {
-      "title": "Tools",
+      "title": "Toolboxes",
       "list": {
-        "empty": "No tools registered."
+        "empty": "No toolboxes registered."
       },
       "meta": {
         "disabled": "Disabled",
@@ -664,25 +664,25 @@
         "default": "Default access"
       },
       "edit": {
-        "title": "Tool access"
+        "title": "Toolbox access"
       },
       "fields": {
-        "id": "Tool id",
+        "id": "Toolbox id",
         "description": "Description shown to the model",
         "requiresConfirmation": "Asks the user before running",
         "requiredScopes": "Delegated permissions",
         "schema": "Argument schema",
         "enabled": "Enabled",
-        "enabledHelp": "Off switches the tool off for everyone, whatever the roles and groups say.",
+        "enabledHelp": "Off switches the toolbox off for everyone, whatever the roles and groups say.",
         "allowedRoles": "Allowed roles",
         "allowedGroups": "Allowed Entra groups",
-        "allowedGroupsHelp": "A user in any listed Entra group may use the tool, in addition to the roles above.",
-        "nobodyWarning": "No roles and no groups: nobody can use this tool.",
+        "allowedGroupsHelp": "A user in any listed Entra group may use the toolbox, in addition to the roles above.",
+        "nobodyWarning": "No roles and no groups: nobody can use this toolbox.",
         "defaultPolicy": "Code default",
-        "overridden": "This tool uses a custom policy saved {{date}}.",
-        "usingDefault": "This tool uses its code default.",
+        "overridden": "This toolbox uses a custom policy saved {{date}}.",
+        "usingDefault": "This toolbox uses its code default.",
         "functions": "Functions",
-        "functionsHelp": "This tool is an internal agent. These are the functions it may call on the user's behalf; they have no separate access policies."
+        "functionsHelp": "The functions the model gets when it loads this toolbox. Access is set on the toolbox."
       },
       "actions": {
         "reset": "Reset to default",
@@ -691,7 +691,7 @@
     },
     "agents": {
       "title": "Internal agents",
-      "intro": "Agents defined in code. Each runs on the model set here, in chats through its tool and in the API.",
+      "intro": "Agents defined in code. Each runs on the model set here and is served through the API.",
       "meta": {
         "notSet": "No model set"
       },
@@ -699,11 +699,11 @@
         "id": "Id",
         "description": "Description",
         "functions": "Functions",
-        "functionsHelp": "The functions the agent may call on the user's behalf. They have no separate access policies.",
+        "functionsHelp": "The functions the agent may call on the user's behalf. Functions in toolboxes follow the toolboxes' access policies.",
         "model": "Runs on model",
         "chooseModel": "Choose a model",
-        "modelHelp": "Only models that support function calling are listed. Applies to every run of the agent, in chats and in the API.",
-        "notSetHelp": "No model is set. In chats the agent runs on the chat's model. The API cannot use it.",
+        "modelHelp": "Only models that support function calling are listed. Applies to every run of the agent.",
+        "notSetHelp": "No model is set. The API cannot use it.",
         "reasoningEffort": "Reasoning effort",
         "reasoningEffortHelp": "Only the levels the selected model accepts are offered.",
         "exposedInApi": "Exposed in the API",

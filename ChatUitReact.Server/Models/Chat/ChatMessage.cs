@@ -19,6 +19,11 @@ public class ChatMessage
     /// and on assistant messages that have no recorded activity.
     /// </summary>
     public MessageActivity? Activity { get; set; }
+    /// <summary>
+    /// Assistant messages only: what the model produced and received while generating this
+    /// message, replayed on later turns. Null on messages saved before transcripts existed.
+    /// </summary>
+    public List<TranscriptItem>? Transcript { get; set; }
     // Scheme id → tokens this message costs on the wire, as the OpenAI provider would send it.
     // A missing key means "not yet counted", never zero.
     public Dictionary<string, int> TokenCounts { get; set; } = new();

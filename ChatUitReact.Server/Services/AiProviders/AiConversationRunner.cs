@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
@@ -22,8 +23,12 @@ using ChatUitReact.Server.Services.Tools;
 /// re-implemented per provider.
 ///
 /// It also records the generation's <see cref="MessageActivity"/>: thinking summaries, tool
-/// calls, and timings. The caller owns the activity object so a run that fails midway still
-/// leaves the partial record behind.
+/// calls, and timings; and its transcript: what the model produced and received, replayed on
+/// later turns. The caller owns both so a run that fails midway still leaves the partial record
+/// behind.
+///
+/// Tools of <see cref="AiRequest.LoadableTools"/> are callable once a toolbox load (in the
+/// history or in this run) has named them.
 /// </summary>
 public sealed class AiConversationRunner
 {
@@ -31,7 +36,7 @@ public sealed class AiConversationRunner
     /// How many times the model may call tools and be given the results before the run stops.
     /// Without a cap a model that keeps requesting tools would loop indefinitely.
     /// </summary>
-    private const int MaxToolRounds = 8;
+    private const int MaxToolRounds = 20;
 
     private readonly IAiProviderRegistry _providers;
     private readonly IToolExecutor _toolExecutor;
@@ -51,9 +56,11 @@ public sealed class AiConversationRunner
         AiRequest request,
         ToolExecutionContext context,
         MessageActivity activity,
+        List<TranscriptItem> transcript,
         [EnumeratorCancellation] CancellationToken cancellationToken = default)
     {
         var chatId = context.ChatId;
+        var loaded = new HashSet<string>(request.LoadedToolIds, StringComparer.Ordinal);
         var stopwatch = Stopwatch.StartNew();
         activity.Model = request.Model.ModelId;
         activity.Effort = request.Parameters.Effort;
@@ -66,6 +73,8 @@ public sealed class AiConversationRunner
             var toolCalls = new List<AiStreamEvent.ToolCall>();
             ActivityEntry? thinking = null;
             var thinkingText = new StringBuilder();
+            var roundText = new StringBuilder();
+            JsonElement? reasoningState = null;
 
             await foreach (var streamEvent in conversation.StreamTurnAsync(cancellationToken: cancellationToken))
             {
@@ -73,6 +82,7 @@ public sealed class AiConversationRunner
                 {
                     case AiStreamEvent.Text text when !string.IsNullOrEmpty(text.Delta):
                         CloseThinking();
+                        roundText.Append(text.Delta);
                         yield return new ChatStreamChunk { Kind = ChatStreamChunkKind.Text, Text = text.Delta, ElapsedMs = stopwatch.ElapsedMilliseconds };
                         break;
                     case AiStreamEvent.Thinking delta when !string.IsNullOrEmpty(delta.Delta):
@@ -99,10 +109,14 @@ public sealed class AiConversationRunner
                     case AiStreamEvent.ToolCall call:
                         toolCalls.Add(call);
                         break;
+                    case AiStreamEvent.ReasoningState state:
+                        reasoningState = state.Payload;
+                        break;
                 }
             }
 
             CloseThinking();
+            RecordTurn(transcript, request, reasoningState, roundText.ToString(), toolCalls);
 
             if (toolCalls.Count == 0)
             {
@@ -125,7 +139,7 @@ public sealed class AiConversationRunner
             {
                 cancellationToken.ThrowIfCancellationRequested();
 
-                var tool = request.Tools.FirstOrDefault(t => t.Id == call.FunctionName);
+                var (tool, notLoaded) = FindTool(request, loaded, call.FunctionName);
 
                 var entry = new ActivityEntry
                 {
@@ -153,7 +167,9 @@ public sealed class AiConversationRunner
                 if (tool == null)
                 {
                     _logger.LogWarning("Model called unknown tool {ToolName} in chat {ChatId}", call.FunctionName, chatId);
-                    var unknown = ToolResult.Error($"Unknown tool: {call.FunctionName}");
+                    var unknown = ToolResult.Error(notLoaded
+                        ? $"{call.FunctionName} is not loaded. Load its toolbox with {LoadToolsTool.ToolId} first."
+                        : $"Unknown tool: {call.FunctionName}");
                     yield return CompleteEntry(entry, unknown, ToolCallStatus.Error, results, call.Id, stopwatch.ElapsedMilliseconds);
                     continue;
                 }
@@ -218,6 +234,19 @@ public sealed class AiConversationRunner
                 }
             }
 
+            foreach (var result in results)
+            {
+                loaded.UnionWith(result.LoadedToolIds ?? []);
+                transcript.Add(new TranscriptItem
+                {
+                    Kind = TranscriptItemKind.ToolResult,
+                    ToolCallId = result.ToolCallId,
+                    Content = result.Content,
+                    IsError = result.IsError,
+                    LoadedToolIds = result.LoadedToolIds is { Count: > 0 } ids ? ids.ToList() : null
+                });
+            }
+
             conversation.AppendToolResults(results);
 
             void CloseThinking()
@@ -235,6 +264,52 @@ public sealed class AiConversationRunner
 
         Finish(activity, stopwatch.ElapsedMilliseconds);
         yield return new ChatStreamChunk { Kind = ChatStreamChunkKind.Done, ElapsedMs = activity.TotalMs, Activity = activity };
+    }
+
+    /// <summary>
+    /// The tool the model called: one of the request's tools, or a loadable tool a load named.
+    /// <c>NotLoaded</c> is true for a loadable tool no load has named yet.
+    /// </summary>
+    private static (ITool? Tool, bool NotLoaded) FindTool(AiRequest request, HashSet<string> loaded, string name)
+    {
+        if (request.Tools.FirstOrDefault(t => t.Id == name) is { } tool)
+        {
+            return (tool, false);
+        }
+
+        var loadable = request.LoadableTools.FirstOrDefault(t => t.Id == name);
+        return loadable != null && loaded.Contains(name) ? (loadable, false) : (null, loadable != null);
+    }
+
+    /// <summary>One round as the model produced it: reasoning state first, then its text, then its tool calls.</summary>
+    private static void RecordTurn(List<TranscriptItem> transcript, AiRequest request, JsonElement? reasoningState, string text, List<AiStreamEvent.ToolCall> toolCalls)
+    {
+        if (reasoningState is { } payload)
+        {
+            transcript.Add(new TranscriptItem
+            {
+                Kind = TranscriptItemKind.Reasoning,
+                Protocol = request.Model.ApiProtocol,
+                ModelId = request.Model.Id,
+                Payload = payload
+            });
+        }
+
+        if (text.Length > 0)
+        {
+            transcript.Add(new TranscriptItem { Kind = TranscriptItemKind.Text, Text = text });
+        }
+
+        foreach (var call in toolCalls)
+        {
+            transcript.Add(new TranscriptItem
+            {
+                Kind = TranscriptItemKind.ToolCall,
+                ToolCallId = call.Id,
+                Name = call.FunctionName,
+                ArgumentsJson = call.ArgumentsJson
+            });
+        }
     }
 
     /// <summary>
@@ -278,7 +353,7 @@ public sealed class AiConversationRunner
         entry.IsError = result.IsError;
         entry.Status = status;
 
-        results.Add(new AiToolResult(toolCallId, result.Content, result.IsError));
+        results.Add(new AiToolResult(toolCallId, result.Content, result.IsError, result.LoadedToolIds));
 
         return new ChatStreamChunk
         {

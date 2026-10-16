@@ -1,4 +1,6 @@
+using System;
 using System.Collections.Generic;
+using System.Linq;
 using ChatUitReact.Server.Services.Agents.M365;
 using ChatUitReact.Server.Services.Tools;
 using Microsoft.Extensions.DependencyInjection;
@@ -8,21 +10,21 @@ namespace ChatUitReact.Server.Services.Agents.Office;
 /// <summary>
 /// The assistant of the Office add-ins (Word, Excel, PowerPoint, Outlook). The add-in declares the
 /// app's tools with each request and sends the app's own rules as the request's instructions,
-/// which are appended to this prompt; this agent adds only the read-only Microsoft 365 agent on
-/// the server.
+/// which are appended to this prompt; this agent adds only the functions of the Microsoft 365
+/// read toolboxes on the server.
 /// </summary>
 public sealed class OfficeAgent : InternalAgent
 {
-    public OfficeAgent([FromKeyedServices(typeof(M365ReaderAgent))] InternalAgentTool m365Reader)
+    public OfficeAgent(IServiceProvider services)
     {
-        Functions = [m365Reader];
+        Functions = M365Toolboxes.ReadFunctionTypes.Select(t => (ITool)services.GetRequiredService(t)).ToList();
     }
 
     public override string Id => "office";
 
     public override string DisplayName => "Office";
 
-    public override string Description => "Assistant for the Office add-ins (Word, Excel, PowerPoint, Outlook): reads and edits the open file or item with the add-in's tools, and reads the user's Microsoft 365 through m365_reader.";
+    public override string Description => "Assistant for the Office add-ins (Word, Excel, PowerPoint, Outlook): reads and edits the open file or item with the add-in's tools, and reads the user's Microsoft 365.";
 
     public override string SystemPrompt => Prompt;
 
@@ -46,8 +48,8 @@ public sealed class OfficeAgent : InternalAgent
         - Some functions are missing when the user's version of the app lacks them. Use the ones you have.
 
         Microsoft 365:
-        - For the user's calendar, meetings, free/busy, people, presence, Teams chats or OneDrive/SharePoint files, delegate to m365_reader. It cannot see this chat or the file: give it every name, date, time range, time zone and detail it needs, and the form of the answer. Report only what it returns.
-        - m365_reader only reads. You cannot send messages, create meetings or change anything outside the open file or item.
+        - Read the user's calendar, meetings, free/busy, people, presence, mail, Teams chats, OneDrive/SharePoint files, tasks and OneNote with the Microsoft 365 functions. Report only what they return.
+        - These functions only read. You cannot send messages, create meetings or change anything outside the open file or item.
 
         Answer in the language the user writes in.
         """;

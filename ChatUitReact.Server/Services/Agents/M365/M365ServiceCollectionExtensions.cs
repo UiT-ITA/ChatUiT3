@@ -1,25 +1,26 @@
-using System.Linq;
 using ChatUitReact.Server.Services.Agents.M365.Knowledge;
 using ChatUitReact.Server.Services.Knowledge;
+using ChatUitReact.Server.Services.Tools;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace ChatUitReact.Server.Services.Agents.M365;
 
 public static class M365ServiceCollectionExtensions
 {
-    public static IServiceCollection AddM365Agents(this IServiceCollection services)
+    public static IServiceCollection AddM365Toolboxes(this IServiceCollection services)
     {
         services.AddSingleton<GraphClient>();
 
-        foreach (var function in M365Functions.Reader.Concat(M365Functions.Writer))
+        foreach (var function in M365Toolboxes.FunctionTypes)
         {
             services.AddSingleton(function);
+            services.AddSingleton<ITool>(sp => (ITool)sp.GetRequiredService(function));
         }
 
-        services.AddInternalAgent<M365ReaderAgent>();
-        services.AddInternalAgentTool<M365ReaderAgent>();
-        services.AddInternalAgent<M365WriterAgent>();
-        services.AddInternalAgentTool<M365WriterAgent>();
+        foreach (var definition in M365Toolboxes.All)
+        {
+            services.AddSingleton<IToolbox>(sp => M365Toolboxes.Build(definition, sp));
+        }
 
         services.AddSingleton<IKnowledgeSource, RecentMailKnowledgeSource>();
         services.AddSingleton<IKnowledgeSource, UnreadChatsKnowledgeSource>();

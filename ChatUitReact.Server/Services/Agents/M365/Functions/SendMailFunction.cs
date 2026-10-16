@@ -37,7 +37,7 @@ public sealed class SendMailFunction : ConfirmableTool<SendMailArgs>
 
     public override string Id => "send_mail";
     public override string DisplayName => "Send email";
-    public override string Description => "Send a new email from the user's mailbox, optionally with OneDrive or SharePoint files attached. The user must approve it first.";
+    public override string Description => "Send a new email from the user's mailbox, optionally with OneDrive or SharePoint files attached. The user must approve it first. If they reject it, do not retry or change it. Get people's email addresses and ids from find_people; never build an email address from a name.";
     public override IReadOnlyList<string> RequiredScopes => Scopes;
 
     protected override async Task<ToolPreview> PrepareAsync(SendMailArgs args, ToolInvocation invocation, CancellationToken ct)

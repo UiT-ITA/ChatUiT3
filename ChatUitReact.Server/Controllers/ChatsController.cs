@@ -352,7 +352,8 @@ public class ChatsController : ControllerBase
             IsFavorite = chat.IsFavorite,
             AssistantId = chat.AssistantId,
             LoadedFiles = MapLoadedFiles(chat.LoadedFiles),
-            Messages = chat.Messages.Select(MapMessageToDto).ToList()
+            // System messages (the knowledge sources read at the start of the chat) are for the model only.
+            Messages = chat.Messages.Where(m => m.Role != AiChatRole.System).Select(MapMessageToDto).ToList()
         };
     }
 

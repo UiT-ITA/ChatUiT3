@@ -11,7 +11,7 @@ namespace ChatUitReact.Server.Services.Agents.M365.Functions;
 public sealed record GetEventArgs(
     [property: Description("Event id from get_calendar_view.")]
     string EventId,
-    [property: Description("Time zone for the returned times, IANA or Windows name. Defaults to UTC.")]
+    [property: Description("Time zone for the returned times, IANA or Windows name. Defaults to UTC. Use the time zone the user gave; when they gave none, use Europe/Oslo and say so.")]
     string? TimeZone,
     [property: Description("Id or email of the colleague whose shared calendar holds the event. Omit for the user's own.")]
     string? UserIdOrEmail);

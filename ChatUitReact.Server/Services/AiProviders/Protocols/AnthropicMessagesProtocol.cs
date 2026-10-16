@@ -124,12 +124,19 @@ public sealed class AnthropicMessagesProtocol : IApiProtocol
             Thinking = request.Parameters.ReasoningActive && allowThinking
                 ? (ThinkingConfigParam)new ThinkingConfigAdaptive { Display = Display.Summarized }
                 : null,
+            // Loadable tools are declared deferred; a load result's tool_reference blocks bring
+            // each one in where it was loaded.
             Tools = includeTools && request.Tools.Count > 0
-                ? request.Tools.Select(tool => new ToolUnion(ToAnthropicTool(tool))).ToList()
+                ? request.Tools.Select(tool => new ToolUnion(ToAnthropicTool(tool)))
+                    .Concat(request.LoadableTools.Select(tool => new ToolUnion(ToAnthropicTool(tool, deferred: true))))
+                    .ToList()
                 : null,
             ToolChoice = includeTools && request.Tools.Count > 0 && !allowToolCalls
                 ? (ToolChoice)new ToolChoiceNone()
-                : null
+                : null,
+            // Automatic caching: the breakpoint goes on the last cacheable block and moves
+            // forward as the conversation grows.
+            CacheControl = new CacheControlEphemeral()
         };
 #pragma warning restore CS0618
     }
@@ -150,7 +157,7 @@ public sealed class AnthropicMessagesProtocol : IApiProtocol
         _ => null
     };
 
-    private static Tool ToAnthropicTool(ITool tool)
+    private static Tool ToAnthropicTool(ITool tool, bool deferred = false)
     {
         // The schema is shared with the OpenAI adapters; only the container type differs.
         var schema = JsonSerializer.SerializeToElement(tool.ParametersSchema);
@@ -160,7 +167,8 @@ public sealed class AnthropicMessagesProtocol : IApiProtocol
         {
             Name = tool.Id,
             Description = tool.Description,
-            InputSchema = InputSchema.FromRawUnchecked(raw)
+            InputSchema = InputSchema.FromRawUnchecked(raw),
+            DeferLoading = deferred ? true : null
         };
     }
 
@@ -380,10 +388,16 @@ public sealed class AnthropicMessagesProtocol : IApiProtocol
 
     /// <summary>
     /// A tool result block. Images a tool returned go into its content next to the text; a model
-    /// that cannot read images gets the note instead.
+    /// that cannot read images gets the note instead. A toolbox load's result names the tools it
+    /// loaded as tool_reference blocks, which the API expands into their definitions.
     /// </summary>
     private static ToolResultBlockParam BuildToolResult(AiInputItem.ToolResult result, bool allowImages)
     {
+        if (result.LoadedToolIds is { Count: > 0 } loaded)
+        {
+            return BuildLoadResult(result.ToolCallId, loaded);
+        }
+
         if (result.Images is not { Count: > 0 } images)
         {
             return new ToolResultBlockParam { ToolUseID = result.ToolCallId, Content = result.Content, IsError = result.IsError };
@@ -400,6 +414,13 @@ public sealed class AnthropicMessagesProtocol : IApiProtocol
             Source = new Base64ImageSource { Data = image.Base64, MediaType = ResolveToolImageMediaType(image.MediaType) }
         }));
         return new ToolResultBlockParam { ToolUseID = result.ToolCallId, Content = blocks, IsError = result.IsError };
+    }
+
+    /// <summary>A toolbox load's result: only tool_reference blocks, as the API refuses them next to text.</summary>
+    private static ToolResultBlockParam BuildLoadResult(string toolCallId, IReadOnlyList<string> loadedToolIds)
+    {
+        var blocks = loadedToolIds.Select(id => (Block)new ToolReferenceBlockParam { ToolName = id }).ToList();
+        return new ToolResultBlockParam { ToolUseID = toolCallId, Content = blocks };
     }
 
     /// <summary>The media types the Responses API accepts in tool output (png, jpeg, gif, webp).</summary>
@@ -466,6 +487,14 @@ public sealed class AnthropicMessagesProtocol : IApiProtocol
 
             await foreach (var streamEvent in client.Messages.CreateStreaming(parameters, cancellationToken))
             {
+                if (streamEvent.TryPickStart(out var messageStart) && messageStart?.Message.Usage is { } usage)
+                {
+                    _logger.LogInformation(
+                        "Anthropic turn on {Model}: {InputTokens} uncached input tokens, {CacheReadTokens} read from cache, {CacheWriteTokens} written to cache",
+                        _request.Model.ModelId, usage.InputTokens, usage.CacheReadInputTokens ?? 0, usage.CacheCreationInputTokens ?? 0);
+                    continue;
+                }
+
                 // Fails the turn when the model refused it, with the refusal's category and explanation.
                 if (streamEvent.TryPickDelta(out var messageDelta) && messageDelta != null)
                 {
@@ -596,12 +625,14 @@ public sealed class AnthropicMessagesProtocol : IApiProtocol
 
             foreach (var result in results)
             {
-                blocks.Add(new ToolResultBlockParam
-                {
-                    ToolUseID = result.ToolCallId,
-                    Content = result.Content,
-                    IsError = result.IsError
-                });
+                blocks.Add(result.LoadedToolIds is { Count: > 0 } loaded
+                    ? BuildLoadResult(result.ToolCallId, loaded)
+                    : new ToolResultBlockParam
+                    {
+                        ToolUseID = result.ToolCallId,
+                        Content = result.Content,
+                        IsError = result.IsError
+                    });
             }
 
             // Unlike OpenAI's per-result tool messages, Anthropic wants every result for a

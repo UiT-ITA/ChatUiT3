@@ -22,7 +22,7 @@ public sealed class CancelEventFunction : ConfirmableTool<CancelEventArgs>
 
     public override string Id => "cancel_event";
     public override string DisplayName => "Cancel calendar event";
-    public override string Description => "Cancel an event the user organizes and notify the attendees. For invitations from others, use respond_to_event with decline. The user must approve it first.";
+    public override string Description => "Cancel an event the user organizes and notify the attendees. For invitations from others, use respond_to_event with decline. The user must approve it first. If they reject it, do not retry or change it.";
     public override IReadOnlyList<string> RequiredScopes => EventSupport.Scopes;
 
     protected override async Task<ToolPreview> PrepareAsync(CancelEventArgs args, ToolInvocation invocation, CancellationToken ct)

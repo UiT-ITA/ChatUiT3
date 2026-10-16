@@ -27,7 +27,7 @@ public sealed class SendChannelMessageFunction : ConfirmableTool<SendChannelMess
 
     public override string Id => "send_channel_message";
     public override string DisplayName => "Post in Teams channel";
-    public override string Description => "Post a new message in a Teams channel, or reply to a post. The user must approve it first.";
+    public override string Description => "Post a new message in a Teams channel, or reply to a post. The user must approve it first. If they reject it, do not retry or change it.";
     public override IReadOnlyList<string> RequiredScopes => Scopes;
 
     protected override async Task<ToolPreview> PrepareAsync(SendChannelMessageArgs args, ToolInvocation invocation, CancellationToken ct)

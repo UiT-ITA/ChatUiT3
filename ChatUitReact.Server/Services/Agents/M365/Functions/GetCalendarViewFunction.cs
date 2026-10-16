@@ -13,7 +13,7 @@ public sealed record GetCalendarViewArgs(
     string Start,
     [property: Description("End of the window, ISO 8601. At most 31 days after start.")]
     string End,
-    [property: Description("Time zone for both the window and the returned times, IANA or Windows name (e.g. Europe/Oslo). Defaults to UTC.")]
+    [property: Description("Time zone for both the window and the returned times, IANA or Windows name (e.g. Europe/Oslo). Defaults to UTC. Use the time zone the user gave; when they gave none, use Europe/Oslo and say so.")]
     string? TimeZone,
     [property: Description("Another user's id or email to read their calendar instead of the signed-in user's. Only works when that calendar is shared with the user.")]
     string? UserIdOrEmail);
@@ -27,7 +27,7 @@ public sealed class GetCalendarViewFunction : Tool<GetCalendarViewArgs>
 
     public override string Id => "get_calendar_view";
     public override string DisplayName => "Get calendar";
-    public override string Description => "List calendar events in a time window for the signed-in user, or for a colleague whose calendar is shared with them. Returns subject, start, end, location, organizer, attendees and free/busy status.";
+    public override string Description => "List calendar events in a time window for the signed-in user, or for a colleague whose calendar is shared with them. Returns subject, start, end, location, organizer, attendees and free/busy status. For availability use get_schedule instead.";
     public override IReadOnlyList<string> RequiredScopes => Scopes;
 
     protected override async Task<ToolResult> ExecuteAsync(GetCalendarViewArgs args, ToolInvocation invocation, CancellationToken ct)

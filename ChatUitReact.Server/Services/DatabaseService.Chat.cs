@@ -242,6 +242,7 @@ public partial class DatabaseService
                 Status = message.Status,
                 ContentBlockIds = await WriteTextContentAsync(userId, chatId, messageId, message.Content, writtenBlockIds),
                 ActivityBlockIds = await WriteTextContentAsync(userId, chatId, messageId, SerializeActivity(message.Activity), writtenBlockIds),
+                TranscriptBlockIds = await WriteTextContentAsync(userId, chatId, messageId, SerializeTranscript(message.Transcript), writtenBlockIds),
                 Files = await WriteFilesAsync(userId, chatId, message.Files, writtenBlockIds),
                 AssistantId = message.AssistantId,
                 AssistantName = message.AssistantName,
@@ -287,6 +288,7 @@ public partial class DatabaseService
         {
             var contentBlockIds = await WriteTextContentAsync(userId, chatId, message.Id, message.Content, writtenBlockIds);
             var activityBlockIds = await WriteTextContentAsync(userId, chatId, message.Id, SerializeActivity(message.Activity), writtenBlockIds);
+            var transcriptBlockIds = await WriteTextContentAsync(userId, chatId, message.Id, SerializeTranscript(message.Transcript), writtenBlockIds);
 
             var files = existingMessage.Files;
             if (replaceFiles)
@@ -304,6 +306,7 @@ public partial class DatabaseService
                 Status = status,
                 ContentBlockIds = contentBlockIds,
                 ActivityBlockIds = activityBlockIds,
+                TranscriptBlockIds = transcriptBlockIds,
                 Files = files,
                 // A full replace, so anything not carried here is wiped. Callers that build a
                 // partial message (the stale-generation fixup, for one) leave these blank.
@@ -331,6 +334,7 @@ public partial class DatabaseService
 
         await DeleteContentBlocksAsync(userId, existingMessage.ContentBlockIds);
         await DeleteContentBlocksAsync(userId, existingMessage.ActivityBlockIds);
+        await DeleteContentBlocksAsync(userId, existingMessage.TranscriptBlockIds);
         if (replaceFiles)
         {
             await DeleteContentBlocksAsync(userId, CollectFileContentBlockIds(existingMessage.Files));
@@ -457,6 +461,7 @@ public partial class DatabaseService
             Timestamp = messageDocument.Timestamp,
             Content = ReadTextContent(messageDocument.ContentBlockIds, contentBlocksById),
             Activity = DeserializeActivity(ReadTextContent(messageDocument.ActivityBlockIds, contentBlocksById)),
+            Transcript = DeserializeTranscript(ReadTextContent(messageDocument.TranscriptBlockIds, contentBlocksById)),
             Status = messageDocument.Status,
             Files = ReadFiles(messageDocument.Files, contentBlocksById, includeFileContent),
             AssistantId = messageDocument.AssistantId,
@@ -488,6 +493,29 @@ public partial class DatabaseService
         catch (System.Text.Json.JsonException)
         {
             // A corrupt record costs the user the activity panel, not the message.
+            return null;
+        }
+    }
+
+    private static string? SerializeTranscript(List<TranscriptItem>? transcript)
+    {
+        return transcript is not { Count: > 0 } ? null : System.Text.Json.JsonSerializer.Serialize(transcript, ActivityJsonOptions);
+    }
+
+    private static List<TranscriptItem>? DeserializeTranscript(string json)
+    {
+        if (string.IsNullOrWhiteSpace(json))
+        {
+            return null;
+        }
+
+        try
+        {
+            return System.Text.Json.JsonSerializer.Deserialize<List<TranscriptItem>>(json, ActivityJsonOptions);
+        }
+        catch (System.Text.Json.JsonException)
+        {
+            // A corrupt record replays the message as text, as messages without a transcript do.
             return null;
         }
     }

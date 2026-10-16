@@ -161,6 +161,12 @@ public partial class DatabaseService
         [JsonProperty("activityBlockIds")]
         public List<string> ActivityBlockIds { get; set; } = new();
 
+        // The model transcript (reasoning state, text, tool calls and results) as JSON, stored
+        // like message text and replayed on later turns. Empty on user messages and on messages
+        // saved before transcripts existed.
+        [JsonProperty("transcriptBlockIds")]
+        public List<string> TranscriptBlockIds { get; set; } = new();
+
         [JsonProperty("files")]
         public List<StoredFileDocument> Files { get; set; } = new();
 

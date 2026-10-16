@@ -15,7 +15,7 @@ public sealed record UpdateEventArgs(
     string? Start,
     [property: Description("New end, ISO 8601 without offset.")]
     string? End,
-    [property: Description("Time zone of start and end. Required when either is given.")]
+    [property: Description("Time zone of start and end. Required when either is given. Use the time zone the user gave; when they gave none, use Europe/Oslo and say so.")]
     string? TimeZone,
     [property: Description("Email addresses of all attendees. Replaces the current list.")]
     List<string>? Attendees,
@@ -33,7 +33,7 @@ public sealed class UpdateEventFunction : ConfirmableTool<UpdateEventArgs>
 
     public override string Id => "update_event";
     public override string DisplayName => "Update calendar event";
-    public override string Description => "Change an event in the user's calendar. Only given fields change. Attendees get an update. The user must approve it first.";
+    public override string Description => "Change an event in the user's calendar. Only given fields change. Attendees get an update. The user must approve it first. If they reject it, do not retry or change it. Get people's email addresses and ids from find_people; never build an email address from a name.";
     public override IReadOnlyList<string> RequiredScopes => EventSupport.Scopes;
 
     protected override async Task<ToolPreview> PrepareAsync(UpdateEventArgs args, ToolInvocation invocation, CancellationToken ct)

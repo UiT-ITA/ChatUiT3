@@ -101,7 +101,7 @@ public class AdminInternalAgentsController : ControllerBase
             Id = agent.Id,
             Name = agent.DisplayName,
             Description = agent.Description,
-            Functions = ToolMapping.ToFunctionDtos(agent),
+            Functions = ToolMapping.ToFunctionDtos(agent.Functions),
             ModelId = setting?.ModelId,
             ReasoningEffort = setting?.ReasoningEffort,
             ExposedInApi = setting?.ExposedInApi ?? false,
