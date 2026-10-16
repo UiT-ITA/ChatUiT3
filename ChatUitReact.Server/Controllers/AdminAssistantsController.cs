@@ -69,9 +69,9 @@ public class AdminAssistantsController : ControllerBase
     {
         try
         {
-            if (UnknownToolIds(createDto.AvailableToolIds) is { Count: > 0 } unknown)
+            if (_toolboxes.Invalid(createDto.AvailableToolIds ?? []) is { Count: > 0 } invalid)
             {
-                return BadRequest(new { error = "unknown_tools", unknownToolIds = unknown });
+                return BadRequest(new { error = "invalid_tools", invalidToolIds = invalid });
             }
 
             if (UnknownKnowledgeSourceIds(createDto.KnowledgeSourceIds) is { Count: > 0 } unknownSources)
@@ -112,9 +112,9 @@ public class AdminAssistantsController : ControllerBase
                 return BadRequest("Route id does not match request body id");
             }
 
-            if (UnknownToolIds(updateDto.AvailableToolIds) is { Count: > 0 } unknown)
+            if (_toolboxes.Invalid(updateDto.AvailableToolIds ?? []) is { Count: > 0 } invalid)
             {
-                return BadRequest(new { error = "unknown_tools", unknownToolIds = unknown });
+                return BadRequest(new { error = "invalid_tools", invalidToolIds = invalid });
             }
 
             if (UnknownKnowledgeSourceIds(updateDto.KnowledgeSourceIds) is { Count: > 0 } unknownSources)
@@ -169,9 +169,6 @@ public class AdminAssistantsController : ControllerBase
     /// <summary>System assistants serve everyone, so admins are not access-checked; unknown ids are still refused.</summary>
     private static List<string> InvalidGroupIds(AssistantAccessPolicyDto? access)
         => (access?.AllowedGroupIds ?? []).Where(g => !Guid.TryParse(g?.Trim(), out _)).ToList();
-
-    private List<string> UnknownToolIds(List<string>? toolIds)
-        => (toolIds ?? []).SelectMany(_toolboxes.Expand).Where(id => _toolboxes.Find(id) == null).Distinct().ToList();
 
     private List<string> UnknownKnowledgeSourceIds(List<string>? sourceIds)
         => (sourceIds ?? []).Where(id => _knowledgeSources.Find(id) == null).Distinct().ToList();

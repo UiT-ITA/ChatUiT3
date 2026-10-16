@@ -211,9 +211,20 @@ const AssistantForm: React.FC<AssistantFormProps> = ({
 
   // System assistants ignore tool policies, so the admin picks from every tool; users pick from what they may use.
   const adminTools: AdminToolDto[] = systemAssistant ? (adminToolsSignal.value ?? []) : [];
+  const toChatTool = (tool: AdminToolDto): ChatToolDto => ({
+    id: tool.id,
+    name: tool.name,
+    description: tool.description,
+    requiresConfirmation: tool.requiresConfirmation,
+    requiredScopes: tool.requiredScopes,
+    execution: tool.execution,
+    children: adminTools.filter(child => child.parentId === tool.id).map(toChatTool),
+  });
   const availableTools: ChatToolDto[] = systemAssistant
-    ? adminTools.map(tool => ({ id: tool.id, name: tool.name, description: tool.description, requiresConfirmation: tool.requiresConfirmation, requiredScopes: tool.requiredScopes, execution: tool.execution }))
+    ? adminTools.filter(tool => tool.parentId === null).map(toChatTool)
     : (toolsSignal.value || []);
+  const withDescendants = (tool: ChatToolDto): ChatToolDto[] => [tool, ...tool.children.flatMap(withDescendants)];
+  const availableToolIds = new Set(availableTools.flatMap(withDescendants).map(tool => tool.id));
   const toolPolicyById = new Map(adminTools.map(tool => [tool.id, tool.policy]));
   const toolIsWiderThanPolicy = (toolId: string) => {
     const policy = toolPolicyById.get(toolId);
@@ -298,13 +309,50 @@ const AssistantForm: React.FC<AssistantFormProps> = ({
     setIsModelDropdownOpen(false);
   };
 
-  const handleToolSelection = (toolId: string, isSelected: boolean) => {
-    const newSelectedIds = isSelected
-      ? [...selectedToolIds, toolId]
-      : selectedToolIds.filter(id => id !== toolId);
+  const setToolSelection = (toolIds: string[]) => {
+    setSelectedToolIds(toolIds);
+    handleChange('availableToolIds', toolIds);
+  };
 
-    setSelectedToolIds(newSelectedIds);
-    handleChange('availableToolIds', newSelectedIds);
+  // Unchecking a toolbox also unchecks its child toolboxes.
+  const handleToolSelection = (tool: ChatToolDto, isSelected: boolean) => {
+    const removed = new Set(withDescendants(tool).map(candidate => candidate.id));
+    setToolSelection(isSelected ? [...selectedToolIds, tool.id] : selectedToolIds.filter(id => !removed.has(id)));
+  };
+
+  // A checked toolbox shows its child toolboxes under it.
+  const renderToolbox = (tool: ChatToolDto): React.ReactNode => {
+    const selected = selectedToolIds.includes(tool.id);
+    const wider = selected && toolIsWiderThanPolicy(tool.id);
+    return (
+      <React.Fragment key={tool.id}>
+        <label className={`af-checkbox-label af-tool t-table${wider ? ' af-tool-wider' : ''}`}>
+          <input
+            type="checkbox"
+            checked={selected}
+            onChange={(e) => handleToolSelection(tool, e.target.checked)}
+            disabled={loading}
+          />
+          <span>
+            <span className="af-tool-name t-table-strong">{tool.name}</span>
+            <span className="af-tool-description"> — {tool.description}</span>
+            {(tool.requiresConfirmation || wider) && (
+              <span className="af-tool-hints">
+                {tool.requiresConfirmation && (
+                  <span className="af-tool-hint t-meta">{t('assistants.form.toolHints.requiresConfirmation')}</span>
+                )}
+                {wider && (
+                  <span className="af-tool-hint af-tool-hint-warn t-meta">{t('assistants.form.toolHints.widerAccess')}</span>
+                )}
+              </span>
+            )}
+          </span>
+        </label>
+        {selected && tool.children.length > 0 && (
+          <div className="af-tool-children">{tool.children.map(renderToolbox)}</div>
+        )}
+      </React.Fragment>
+    );
   };
 
   const selectedSnippets: PromptSnippetId[] = formData.promptSnippets ?? [];
@@ -718,36 +766,13 @@ const AssistantForm: React.FC<AssistantFormProps> = ({
           {selectedModel?.capabilities.tools ? (
             availableTools.length > 0 ? (
               <div className="af-tools">
-                {availableTools.map(tool => (
-                  <label key={tool.id} className={`af-checkbox-label af-tool t-table${selectedToolIds.includes(tool.id) && toolIsWiderThanPolicy(tool.id) ? ' af-tool-wider' : ''}`}>
-                    <input
-                      type="checkbox"
-                      checked={selectedToolIds.includes(tool.id)}
-                      onChange={(e) => handleToolSelection(tool.id, e.target.checked)}
-                      disabled={loading}
-                    />
-                    <span>
-                      <span className="af-tool-name t-table-strong">{tool.name}</span>
-                      <span className="af-tool-description"> — {tool.description}</span>
-                      {(tool.requiresConfirmation || (selectedToolIds.includes(tool.id) && toolIsWiderThanPolicy(tool.id))) && (
-                        <span className="af-tool-hints">
-                          {tool.requiresConfirmation && (
-                            <span className="af-tool-hint t-meta">{t('assistants.form.toolHints.requiresConfirmation')}</span>
-                          )}
-                          {selectedToolIds.includes(tool.id) && toolIsWiderThanPolicy(tool.id) && (
-                            <span className="af-tool-hint af-tool-hint-warn t-meta">{t('assistants.form.toolHints.widerAccess')}</span>
-                          )}
-                        </span>
-                      )}
-                    </span>
-                  </label>
-                ))}
-                {selectedToolIds.filter(id => !availableTools.some(tool => tool.id === id)).map(id => (
+                {availableTools.map(renderToolbox)}
+                {selectedToolIds.filter(id => !availableToolIds.has(id)).map(id => (
                   <label key={id} className="af-checkbox-label af-tool af-tool-unavailable t-table">
                     <input
                       type="checkbox"
                       checked
-                      onChange={() => handleToolSelection(id, false)}
+                      onChange={() => setToolSelection(selectedToolIds.filter(other => other !== id))}
                       disabled={loading}
                     />
                     <span>

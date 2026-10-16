@@ -15,22 +15,23 @@ public sealed record LoadToolsArgs(
 
 /// <summary>
 /// Loads toolboxes into a chat. Built per request for the assistant the chat runs on, so it is
-/// not in the registry. It is the one tool a chat with toolboxes always has; the tools of a
-/// toolbox become callable from its result on (<see cref="ToolResult.LoadedToolIds"/>), which
+/// not in the registry. It is the one tool a chat with toolboxes always has. It offers the
+/// assistant's top-level toolboxes; loading one makes its tools and those of its selected
+/// children callable from the result on (<see cref="ToolResult.LoadedToolIds"/>), which
 /// each protocol turns into tool definitions at that point of the conversation.
 /// </summary>
 public sealed class LoadToolsTool : Tool<LoadToolsArgs>
 {
     public const string ToolId = "load_tools";
 
-    private readonly IReadOnlyList<IToolbox> _offered;
+    private readonly IReadOnlyList<ResolvedToolbox> _offered;
     private readonly IToolAccessService? _access;
     private readonly HashSet<string> _loaded;
 
-    /// <param name="offered">The assistant's toolboxes this user may load, in a stable order.</param>
+    /// <param name="offered">The assistant's top-level toolboxes this user may load, with the tools of their selected children, in a stable order.</param>
     /// <param name="loadedToolIds">Tools loaded earlier in the chat.</param>
     /// <param name="access">Checks each toolbox again when it is loaded. Null for assistants that do not enforce policies.</param>
-    public LoadToolsTool(IReadOnlyList<IToolbox> offered, IEnumerable<string> loadedToolIds, IToolAccessService? access)
+    public LoadToolsTool(IReadOnlyList<ResolvedToolbox> offered, IEnumerable<string> loadedToolIds, IToolAccessService? access)
     {
         _offered = offered;
         _access = access;
@@ -44,13 +45,13 @@ public sealed class LoadToolsTool : Tool<LoadToolsArgs>
 
     public override string Description { get; }
 
-    private static string BuildDescription(IReadOnlyList<IToolbox> offered)
+    private static string BuildDescription(IReadOnlyList<ResolvedToolbox> offered)
     {
         var text = new StringBuilder(
             "Loads toolboxes into this conversation. Their functions can be called from the result on and stay loaded for the rest of the conversation. " +
             "Load every toolbox you expect to need in this conversation as early as possible, in one call: what is loaded early is cached and costs less on every later message. " +
             "Toolboxes:");
-        foreach (var toolbox in offered)
+        foreach (var toolbox in offered.Select(o => o.Toolbox))
         {
             text.Append($"\n- {toolbox.Id}: {toolbox.Description}");
         }
@@ -68,20 +69,20 @@ public sealed class LoadToolsTool : Tool<LoadToolsArgs>
 
         foreach (var id in (args.Toolboxes ?? []).Select(id => id?.Trim() ?? string.Empty).Distinct(StringComparer.Ordinal))
         {
-            var toolbox = _offered.FirstOrDefault(t => t.Id == id);
-            if (toolbox == null)
+            var offered = _offered.FirstOrDefault(o => o.Toolbox.Id == id);
+            if (offered == null)
             {
                 refused.Add(new { toolbox = id, reason = "Not one of this assistant's toolboxes." });
                 continue;
             }
 
-            if (_access != null && !await _access.CanUseAsync(toolbox, invocation.Context.Access))
+            if (_access != null && !await _access.CanUseAsync(offered.Toolbox, invocation.Context.Access))
             {
                 refused.Add(new { toolbox = id, reason = "You are not permitted to use this toolbox." });
                 continue;
             }
 
-            var added = toolbox.Tools.Select(t => t.Id).Where(_loaded.Add).ToList();
+            var added = offered.Tools.Select(t => t.Id).Where(_loaded.Add).ToList();
             if (added.Count == 0)
             {
                 alreadyLoaded.Add(id);
@@ -90,7 +91,7 @@ public sealed class LoadToolsTool : Tool<LoadToolsArgs>
 
             newToolIds.AddRange(added);
             loaded.Add(new { toolbox = id, functions = added });
-            loadedNames.Add(toolbox.DisplayName);
+            loadedNames.Add(offered.Toolbox.DisplayName);
         }
 
         var display = loadedNames.Count > 0 ? string.Join(", ", loadedNames) : "Nothing new loaded";

@@ -5,7 +5,6 @@ using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using ChatUitReact.Server.Models;
-using Microsoft.Extensions.Logging;
 
 namespace ChatUitReact.Server.Services.Tools;
 
@@ -13,16 +12,14 @@ public sealed class ToolAccessService : IToolAccessService
 {
     private readonly IToolboxRegistry _toolboxes;
     private readonly IDatabaseService _database;
-    private readonly ILogger<ToolAccessService> _logger;
     private readonly ConcurrentDictionary<string, ToolPolicy> _overrides = new();
     private readonly SemaphoreSlim _initLock = new(1, 1);
     private bool _initialized;
 
-    public ToolAccessService(IToolboxRegistry toolboxes, IDatabaseService database, ILogger<ToolAccessService> logger)
+    public ToolAccessService(IToolboxRegistry toolboxes, IDatabaseService database)
     {
         _toolboxes = toolboxes;
         _database = database;
-        _logger = logger;
     }
 
     private async Task EnsureInitializedAsync()
@@ -40,44 +37,12 @@ public sealed class ToolAccessService : IToolAccessService
                 _overrides[policy.ToolId] = policy;
             }
 
-            await MigrateLegacyOverridesAsync(stored);
             _initialized = true;
         }
         finally
         {
             _initLock.Release();
         }
-    }
-
-    /// <summary>
-    /// An override stored under a legacy id is copied onto each toolbox the id maps to that has
-    /// no override of its own, then deleted. Legacy ids are taken in ordinal order, so where two
-    /// map to the same toolbox the first one's policy is kept.
-    /// </summary>
-    private async Task MigrateLegacyOverridesAsync(IEnumerable<ToolPolicy> stored)
-    {
-        foreach (var legacy in stored.Where(IsLegacy).OrderBy(p => p.ToolId, StringComparer.Ordinal))
-        {
-            foreach (var toolboxId in _toolboxes.Expand(legacy.ToolId))
-            {
-                if (_overrides.ContainsKey(toolboxId))
-                {
-                    continue;
-                }
-
-                var copy = new ToolPolicy { ToolId = toolboxId, Policy = legacy.Policy, UpdatedAt = DateTime.UtcNow };
-                await _database.UpsertToolPolicyAsync(copy);
-                _overrides[toolboxId] = copy;
-            }
-
-            await _database.DeleteToolPolicyAsync(legacy.ToolId);
-            _overrides.TryRemove(legacy.ToolId, out _);
-            _logger.LogInformation("Moved the policy stored under legacy id {LegacyId} to toolboxes {ToolboxIds}", legacy.ToolId, string.Join(", ", _toolboxes.Expand(legacy.ToolId)));
-        }
-
-        // Unknown ids expand to themselves; only a legacy id expands to something else.
-        bool IsLegacy(ToolPolicy policy)
-            => !_toolboxes.Expand(policy.ToolId).SequenceEqual([policy.ToolId]);
     }
 
     public async Task<ToolAccessPolicy> GetEffectivePolicyAsync(string toolboxId)
@@ -118,7 +83,8 @@ public sealed class ToolAccessService : IToolAccessService
     }
 
     public async Task<bool> CanUseAsync(IToolbox toolbox, UserAccess access)
-        => (await GetEffectivePolicyAsync(toolbox.Id)).Allows(access);
+        => (await GetEffectivePolicyAsync(toolbox.Id)).Allows(access)
+            && (_toolboxes.ParentOf(toolbox.Id) is not { } parent || await CanUseAsync(parent, access));
 
     public async Task<bool> CanUseAsync(ITool tool, UserAccess access)
     {
@@ -148,37 +114,33 @@ public sealed class ToolAccessService : IToolAccessService
 
     public async Task<ToolIdCheck> CheckToolIdsAsync(IEnumerable<string> toolboxIds, UserAccess access)
     {
-        var unknown = new List<string>();
+        var ids = (toolboxIds ?? []).Distinct().ToList();
+        var invalid = _toolboxes.Invalid(ids);
         var disallowed = new List<string>();
 
-        foreach (var id in (toolboxIds ?? []).SelectMany(_toolboxes.Expand).Distinct())
+        foreach (var toolbox in ids.Except(invalid).Select(_toolboxes.Find).OfType<IToolbox>())
         {
-            var toolbox = _toolboxes.Find(id);
-            if (toolbox == null)
-            {
-                unknown.Add(id);
-            }
-            else if (!await CanUseAsync(toolbox, access))
+            if (!await CanUseAsync(toolbox, access))
             {
                 disallowed.Add(toolbox.Id);
             }
         }
 
-        return new ToolIdCheck(unknown, disallowed);
+        return new ToolIdCheck(invalid, disallowed);
     }
 
-    public async Task<IReadOnlyList<IToolbox>> FilterAllowedAsync(IEnumerable<string> toolboxIds, UserAccess access)
+    public async Task<IReadOnlyList<ResolvedToolbox>> FilterAllowedAsync(IEnumerable<string> toolboxIds, UserAccess access)
     {
-        var result = new List<IToolbox>();
-        foreach (var toolbox in _toolboxes.Resolve(toolboxIds))
+        var allowed = new List<string>();
+        foreach (var toolbox in (toolboxIds ?? []).Select(_toolboxes.Find).OfType<IToolbox>())
         {
             if (await CanUseAsync(toolbox, access))
             {
-                result.Add(toolbox);
+                allowed.Add(toolbox.Id);
             }
         }
 
-        return result;
+        return _toolboxes.Resolve(allowed);
     }
 
     public async Task<bool> MayUseClientToolsAsync(UserAccess access)

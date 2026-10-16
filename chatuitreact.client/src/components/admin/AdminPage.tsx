@@ -10,6 +10,7 @@ import AdminAssistantEditor from './AdminAssistantEditor';
 import SettingsEditor from './SettingsEditor';
 import ToolEditor from './ToolEditor';
 import InternalAgentEditor from './InternalAgentEditor';
+import { toolboxLabel } from '../../types/admin';
 
 const AdminPage: React.FC = () => {
   useSignals();
@@ -197,7 +198,7 @@ const AdminPage: React.FC = () => {
                   onClick={() => navigate(`/admin/tools/${tool.id}`)}
                 >
                   <div className="admin-row-main">
-                    <div className="admin-row-title t-table-strong">{tool.name}</div>
+                    <div className="admin-row-title t-table-strong">{toolboxLabel(tool, tools)}</div>
                     <div className="admin-row-sub t-caption">{tool.description}</div>
                   </div>
                   <div className="admin-row-meta t-meta">

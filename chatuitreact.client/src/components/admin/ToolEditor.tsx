@@ -5,7 +5,7 @@ import { useSignals } from '@preact/signals-react/runtime';
 import { updateAdminToolPolicy, resetAdminToolPolicy } from '../../services/adminService';
 import { adminToolsSignal, loadAdminData } from '../../services/adminDataService';
 import { refreshTools } from '../../services/toolService';
-import type { UserRole, AdminToolDto, ToolAccessPolicyDto } from '../../types/admin';
+import { toolboxLabel, type UserRole, type AdminToolDto, type ToolAccessPolicyDto } from '../../types/admin';
 import GroupPicker from '../common/GroupPicker';
 import AgentFunctionRows from './AgentFunctionRows';
 
@@ -111,7 +111,7 @@ const ToolEditor: React.FC<ToolEditorProps> = ({ toolId }) => {
 
   return (
     <div className="admin-form admin-form-wide">
-      <h1 className="t-page-title">{tool.name}</h1>
+      <h1 className="t-page-title">{toolboxLabel(tool, tools)}</h1>
       <div className="page-title-bar" />
 
       <div className="admin-field">

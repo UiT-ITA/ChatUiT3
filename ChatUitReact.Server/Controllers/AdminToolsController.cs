@@ -39,7 +39,7 @@ public class AdminToolsController : ControllerBase
         try
         {
             var result = new List<ToolAdminDto>();
-            foreach (var toolbox in _registry.Toolboxes)
+            foreach (var toolbox in _registry.All)
             {
                 result.Add(await ToAdminDtoAsync(toolbox));
             }
@@ -130,7 +130,7 @@ public class AdminToolsController : ControllerBase
         => id == ToolRegistry.ClientToolsPolicyId ? await ClientToolsEntryAsync() : await ToAdminDtoAsync(_registry.Find(id)!);
 
     private async Task<ToolAdminDto> ToAdminDtoAsync(IToolbox toolbox)
-        => ToolMapping.ToAdminDto(toolbox, await _access.GetEffectivePolicyAsync(toolbox.Id), await _access.GetStoredPolicyAsync(toolbox.Id));
+        => ToolMapping.ToAdminDto(toolbox, _registry.ParentOf(toolbox.Id), await _access.GetEffectivePolicyAsync(toolbox.Id), await _access.GetStoredPolicyAsync(toolbox.Id));
 
     /// <summary>The gate for client-declared tools, shown as one row because there is one policy for all of them.</summary>
     private async Task<ToolAdminDto> ClientToolsEntryAsync()

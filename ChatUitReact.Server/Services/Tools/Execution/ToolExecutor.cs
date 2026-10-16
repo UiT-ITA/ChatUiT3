@@ -78,7 +78,7 @@ public sealed class ToolExecutor : IToolExecutor
     {
         try
         {
-            if (!await _access.CanUseAsync(tool, context.Access))
+            if (context.EnforceToolAccess && !await _access.CanUseAsync(tool, context.Access))
             {
                 _logger.LogWarning("User {UserId} called tool {ToolId} without access", context.UserId, tool.Id);
                 Complete(writer, ToolResult.Error("You are not permitted to use this tool."), ToolCallStatus.Error);
