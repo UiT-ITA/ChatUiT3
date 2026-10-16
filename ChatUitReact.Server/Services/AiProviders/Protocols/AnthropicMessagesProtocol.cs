@@ -370,6 +370,7 @@ public sealed class AnthropicMessagesProtocol : IApiProtocol
 
     private const string ThinkingType = "thinking";
     private const string RedactedThinkingType = "redacted_thinking";
+    private const string RefusalStopReason = "refusal";
 
     private static Dictionary<string, JsonElement> ParseArguments(string json, string toolName, ILogger logger)
     {
@@ -491,6 +492,20 @@ public sealed class AnthropicMessagesProtocol : IApiProtocol
                     _logger.LogInformation(
                         "Anthropic turn on {Model}: {InputTokens} uncached input tokens, {CacheReadTokens} read from cache, {CacheWriteTokens} written to cache",
                         _request.Model.ModelId, usage.InputTokens, usage.CacheReadInputTokens ?? 0, usage.CacheCreationInputTokens ?? 0);
+                    continue;
+                }
+
+                // Fails the turn when the model refused it, with the refusal's category and explanation.
+                if (streamEvent.TryPickDelta(out var messageDelta) && messageDelta != null)
+                {
+                    if (messageDelta.Delta.StopReason?.Raw() == RefusalStopReason)
+                    {
+                        var category = messageDelta.Delta.StopDetails?.Category?.Raw() ?? "unknown";
+                        var explanation = messageDelta.Delta.StopDetails?.Explanation ?? "no explanation";
+                        _logger.LogWarning("Anthropic turn on {Model} was refused: category {Category}", _request.Model.ModelId, category);
+                        throw new AiTurnFailedException($"The model refused to answer ({category}): {explanation}");
+                    }
+
                     continue;
                 }
 
