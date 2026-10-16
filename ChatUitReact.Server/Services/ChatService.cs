@@ -297,71 +297,82 @@ public class ChatService : IChatService
         var activeSchemes = await _tokenCounting.GetActiveSchemeIdsAsync();
         _tokenCounting.FillMissingMessageCounts(userMessage, activeSchemes);
 
-        var userMessageTask = _databaseService.AddMessageAsync(userId, chatId, userMessage);
-        var assistantMessageTask = _databaseService.AddMessageAsync(userId, chatId, assistantMessage);
+        AiRequest request;
+        ToolExecutionContext toolContext;
+        try
+        {
+            var userMessageTask = _databaseService.AddMessageAsync(userId, chatId, userMessage);
+            var assistantMessageTask = _databaseService.AddMessageAsync(userId, chatId, assistantMessage);
 
-        await Task.WhenAll(userMessageTask, assistantMessageTask);
-        NotifyChatUpdated(userId, chatId);
+            await Task.WhenAll(userMessageTask, assistantMessageTask);
+            NotifyChatUpdated(userId, chatId);
         
-        var chat = await GetChatByIdAsync(userId, chatId);
-        var messages = chat?.Messages ?? new();
+            var chat = await GetChatByIdAsync(userId, chatId);
+            var messages = chat?.Messages ?? new();
 
-        var wasEmpty = messages.All(m => m.Id == userMessage.Id || m.Id == assistantMessage.Id);
-        if (wasEmpty)
-        {
-            _ = Task.Run(async () => {
-                var name = await GenerateChatNameAsync(userMessage.Content);
-                if (name != null)
-                {
-                    await UpdateChatAsync(userId, chatId, name, null);
-                }
-            });
-        }
+            var wasEmpty = messages.All(m => m.Id == userMessage.Id || m.Id == assistantMessage.Id);
+            if (wasEmpty)
+            {
+                _ = Task.Run(async () => {
+                    var name = await GenerateChatNameAsync(userMessage.Content);
+                    if (name != null)
+                    {
+                        await UpdateChatAsync(userId, chatId, name, null);
+                    }
+                });
+            }
         
-        var effectiveAssistantId = string.IsNullOrWhiteSpace(assistantId) ? chat?.AssistantId : assistantId;
-        if (chat != null && !string.IsNullOrWhiteSpace(assistantId) && assistantId != chat.AssistantId)
-        {
-            await UpdateChatAsync(userId, chatId, null, assistantId);
-        }
-        if (string.IsNullOrWhiteSpace(effectiveAssistantId))
-        {
-            await _hubContext.Clients.Group(userId).Notify(NotifyLevel.Error, "Assistant is required.");
-            throw new InvalidOperationException("AssistantId is required for chat operations");
-        }
-        // Pin order is kept: pinned files are placed in the request in the order they were loaded.
-        var pinnedFileIds = (chat?.LoadedFiles ?? new List<ChatLoadedFile>()).Select(f => f.FileId).Distinct().ToList();
-        _logger.LogInformation("Chat {ChatId} read with {PinnedCount} pinned files", chatId, pinnedFileIds.Count);
-        var resolved = await ResolveAssistantForChatAsync(userId, effectiveAssistantId, promptUser, tools.Access, pinnedFileIds);
+            var effectiveAssistantId = string.IsNullOrWhiteSpace(assistantId) ? chat?.AssistantId : assistantId;
+            if (chat != null && !string.IsNullOrWhiteSpace(assistantId) && assistantId != chat.AssistantId)
+            {
+                await UpdateChatAsync(userId, chatId, null, assistantId);
+            }
+            if (string.IsNullOrWhiteSpace(effectiveAssistantId))
+            {
+                await _hubContext.Clients.Group(userId).Notify(NotifyLevel.Error, "Assistant is required.");
+                throw new InvalidOperationException("AssistantId is required for chat operations");
+            }
+            // Pin order is kept: pinned files are placed in the request in the order they were loaded.
+            var pinnedFileIds = (chat?.LoadedFiles ?? new List<ChatLoadedFile>()).Select(f => f.FileId).Distinct().ToList();
+            _logger.LogInformation("Chat {ChatId} read with {PinnedCount} pinned files", chatId, pinnedFileIds.Count);
+            var resolved = await ResolveAssistantForChatAsync(userId, effectiveAssistantId, promptUser, tools.Access, pinnedFileIds);
 
-        var modelId = resolved.Assistant.ChatSettings.Model.Id;
-        var modelWithEndpoint = await _modelService.GetModelWithEndpointAsync(modelId);
-        if (modelWithEndpoint == null)
-        {
-            await _hubContext.Clients.Group(userId).Notify(NotifyLevel.Error, "Selected model is unavailable or misconfigured.");
-            throw new InvalidOperationException($"Model {modelId} not found or has no endpoint configured");
+            var modelId = resolved.Assistant.ChatSettings.Model.Id;
+            var modelWithEndpoint = await _modelService.GetModelWithEndpointAsync(modelId);
+            if (modelWithEndpoint == null)
+            {
+                await _hubContext.Clients.Group(userId).Notify(NotifyLevel.Error, "Selected model is unavailable or misconfigured.");
+                throw new InvalidOperationException($"Model {modelId} not found or has no endpoint configured");
+            }
+
+            var (endpoint, model) = modelWithEndpoint.Value;
+
+            if (!_providers.Supports(endpoint.EndpointType))
+            {
+                await _hubContext.Clients.Group(userId).Notify(NotifyLevel.Error, "The selected provider is not supported.");
+                throw new NotSupportedException($"No AI provider is registered for endpoint type {endpoint.EndpointType}.");
+            }
+
+            toolContext = new ToolExecutionContext
+            {
+                UserId = userId,
+                ChatId = chatId,
+                MessageId = assistantMessage.Id,
+                Access = tools.Access,
+                Tokens = tools.Tokens,
+                UserDisplayName = tools.UserDisplayName,
+                UserPrincipalName = tools.UserPrincipalName,
+                Model = model,
+                Endpoint = endpoint
+            };
+            request = await BuildAiRequestAsync(model, endpoint, resolved, messages, tools, toolContext);
         }
-
-        var (endpoint, model) = modelWithEndpoint.Value;
-
-        if (!_providers.Supports(endpoint.EndpointType))
+        catch
         {
-            await _hubContext.Clients.Group(userId).Notify(NotifyLevel.Error, "The selected provider is not supported.");
-            throw new NotSupportedException($"No AI provider is registered for endpoint type {endpoint.EndpointType}.");
+            // Marks the reply placeholder as failed when the send fails before the run starts.
+            await FailBeforeRunAsync(userId, chatId, assistantMessage);
+            throw;
         }
-
-        var toolContext = new ToolExecutionContext
-        {
-            UserId = userId,
-            ChatId = chatId,
-            MessageId = assistantMessage.Id,
-            Access = tools.Access,
-            Tokens = tools.Tokens,
-            UserDisplayName = tools.UserDisplayName,
-            UserPrincipalName = tools.UserPrincipalName,
-            Model = model,
-            Endpoint = endpoint
-        };
-        var request = await BuildAiRequestAsync(model, endpoint, resolved, messages, tools, toolContext);
 
         _ = Task.Run(async () =>
         {
@@ -468,6 +479,25 @@ public class ChatService : IChatService
                 }
             }
         });
+    }
+
+    // Ends the reply's stream and stores the reply as failed.
+    private async Task FailBeforeRunAsync(string userId, string chatId, Models.ChatMessage assistantMessage)
+    {
+        _streamingService.CompleteMessage(userId, assistantMessage.Id);
+
+        assistantMessage.Content = GenerationFailedText;
+        assistantMessage.Status = AiChatStatus.Error;
+        try
+        {
+            await _databaseService.UpdateMessageAsync(userId, chatId, assistantMessage);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Could not mark message {MessageId} as failed", assistantMessage.Id);
+        }
+
+        NotifyChatUpdated(userId, chatId);
     }
 
     public Task AddMessageAsync(string userId, string chatId, Models.ChatMessage message)
