@@ -29,7 +29,7 @@ public sealed class RespondToEventFunction : ConfirmableTool<RespondToEventArgs>
 
     public override string Id => "respond_to_event";
     public override string DisplayName => "Respond to invitation";
-    public override string Description => "Accept, decline or tentatively accept a meeting invitation, optionally with a message to the organizer. The user must approve it first.";
+    public override string Description => "Accept, decline or tentatively accept a meeting invitation, optionally with a message to the organizer. The user must approve it first. If they reject it, do not retry or change it.";
     public override IReadOnlyList<string> RequiredScopes => EventSupport.Scopes;
 
     protected override async Task<ToolPreview> PrepareAsync(RespondToEventArgs args, ToolInvocation invocation, CancellationToken ct)

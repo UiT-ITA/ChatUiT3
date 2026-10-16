@@ -60,7 +60,7 @@ export interface ReasoningItem {
   encrypted_content: string;
 }
 
-/** A tool the server ran itself, such as `m365_reader`. */
+/** A tool the server ran itself, such as `get_calendar_view`. */
 export interface McpCallItem {
   type: "mcp_call";
   id: string;

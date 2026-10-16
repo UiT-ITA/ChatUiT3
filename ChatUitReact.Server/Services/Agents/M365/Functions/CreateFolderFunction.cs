@@ -19,7 +19,7 @@ public sealed class CreateFolderFunction : ConfirmableTool<CreateFolderArgs>
 
     public override string Id => "create_folder";
     public override string DisplayName => "Create folder";
-    public override string Description => "Create a folder in the user's OneDrive. The user must approve it first.";
+    public override string Description => "Create a folder in the user's OneDrive. The user must approve it first. If they reject it, do not retry or change it.";
     public override IReadOnlyList<string> RequiredScopes => DriveSupport.Scopes;
 
     protected override Task<ToolPreview> PrepareAsync(CreateFolderArgs args, ToolInvocation invocation, CancellationToken ct)

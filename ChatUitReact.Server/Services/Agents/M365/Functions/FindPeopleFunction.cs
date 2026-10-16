@@ -26,7 +26,7 @@ public sealed class FindPeopleFunction : Tool<FindPeopleArgs>
 
     public override string Id => "find_people";
     public override string DisplayName => "Find people";
-    public override string Description => "Find people by name in the organisation and in the user's Outlook contacts. Organisation people (inOrganization: true) have an id; frequent: true marks people the user works with. Contacts have no id and can only be emailed or invited. Email addresses given in the task need no lookup. For the signed-in user call get_user with \"me\" instead.";
+    public override string Description => "Find people by name in the organisation and in the user's Outlook contacts. Call this whenever the user names a person and use the returned id or email: never build an email address from a name and never invent ids. If several match, prefer one marked frequent; if it is still unclear, list the candidates and ask the user. Organisation people (inOrganization: true) have an id; frequent: true marks people the user works with. Contacts have no id and can only be emailed or invited. An email address the user wrote is used exactly as written, also outside the organisation, without a lookup. For the signed-in user call get_user with \"me\" instead.";
     public override IReadOnlyList<string> RequiredScopes => Scopes;
 
     protected override async Task<ToolResult> ExecuteAsync(FindPeopleArgs args, ToolInvocation invocation, CancellationToken ct)

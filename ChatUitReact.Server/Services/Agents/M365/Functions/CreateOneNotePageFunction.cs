@@ -25,7 +25,7 @@ public sealed class CreateOneNotePageFunction : ConfirmableTool<CreateOneNotePag
 
     public override string Id => "create_onenote_page";
     public override string DisplayName => "Create OneNote page";
-    public override string Description => "Create a page in a OneNote section from simple HTML. The user must approve it first.";
+    public override string Description => "Create a page in a OneNote section from simple HTML. The user must approve it first. If they reject it, do not retry or change it.";
     public override IReadOnlyList<string> RequiredScopes => OneNoteSupport.WriteScopes;
 
     protected override async Task<ToolPreview> PrepareAsync(CreateOneNotePageArgs args, ToolInvocation invocation, CancellationToken ct)

@@ -20,7 +20,7 @@ public sealed class GetPresenceFunction : Tool<GetPresenceArgs>
 
     public override string Id => "get_presence";
     public override string DisplayName => "Get presence";
-    public override string Description => "Get Teams presence (Available, Busy, Away, Offline, ...) for one or more users by id.";
+    public override string Description => "Get Teams presence (Available, Busy, Away, Offline, ...) for one or more users by id. Get people's email addresses and ids from find_people; never build an email address from a name.";
     public override IReadOnlyList<string> RequiredScopes => Scopes;
 
     protected override async Task<ToolResult> ExecuteAsync(GetPresenceArgs args, ToolInvocation invocation, CancellationToken ct)

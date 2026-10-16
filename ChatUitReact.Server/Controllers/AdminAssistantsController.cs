@@ -14,16 +14,16 @@ public class AdminAssistantsController : ControllerBase
 {
     private readonly IAssistantService _assistantService;
     private readonly ILogger<AdminAssistantsController> _logger;
-    private readonly IToolRegistry _toolRegistry;
+    private readonly IToolboxRegistry _toolboxes;
     private readonly IKnowledgeSourceRegistry _knowledgeSources;
 
     public AdminAssistantsController(
         IAssistantService assistantService,
-        IToolRegistry toolRegistry,
+        IToolboxRegistry toolboxes,
         IKnowledgeSourceRegistry knowledgeSources,
         ILogger<AdminAssistantsController> logger)
     {
-        _toolRegistry = toolRegistry;
+        _toolboxes = toolboxes;
         _knowledgeSources = knowledgeSources;
         _assistantService = assistantService;
         _logger = logger;
@@ -171,7 +171,7 @@ public class AdminAssistantsController : ControllerBase
         => (access?.AllowedGroupIds ?? []).Where(g => !Guid.TryParse(g?.Trim(), out _)).ToList();
 
     private List<string> UnknownToolIds(List<string>? toolIds)
-        => (toolIds ?? []).Where(id => _toolRegistry.Find(id) == null).Distinct().ToList();
+        => (toolIds ?? []).SelectMany(_toolboxes.Expand).Where(id => _toolboxes.Find(id) == null).Distinct().ToList();
 
     private List<string> UnknownKnowledgeSourceIds(List<string>? sourceIds)
         => (sourceIds ?? []).Where(id => _knowledgeSources.Find(id) == null).Distinct().ToList();

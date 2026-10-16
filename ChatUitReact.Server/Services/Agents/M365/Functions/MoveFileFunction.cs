@@ -25,7 +25,7 @@ public sealed class MoveFileFunction : ConfirmableTool<MoveFileArgs>
 
     public override string Id => "move_file";
     public override string DisplayName => "Move or rename file";
-    public override string Description => "Move and/or rename a file or folder within the same OneDrive or SharePoint drive. The user must approve it first.";
+    public override string Description => "Move and/or rename a file or folder within the same OneDrive or SharePoint drive. The user must approve it first. If they reject it, do not retry or change it.";
     public override IReadOnlyList<string> RequiredScopes => DriveSupport.Scopes;
 
     protected override async Task<ToolPreview> PrepareAsync(MoveFileArgs args, ToolInvocation invocation, CancellationToken ct)

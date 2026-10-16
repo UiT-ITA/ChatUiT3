@@ -27,7 +27,7 @@ public sealed class CreateTodoTaskFunction : ConfirmableTool<CreateTodoTaskArgs>
 
     public override string Id => "create_todo_task";
     public override string DisplayName => "Create To Do task";
-    public override string Description => "Add a task to a Microsoft To Do list. The user must approve it first.";
+    public override string Description => "Add a task to a Microsoft To Do list. The user must approve it first. If they reject it, do not retry or change it.";
     public override IReadOnlyList<string> RequiredScopes => TaskSupport.Scopes;
 
     protected override async Task<ToolPreview> PrepareAsync(CreateTodoTaskArgs args, ToolInvocation invocation, CancellationToken ct)

@@ -217,6 +217,7 @@ public sealed class OpenAiResponsesProtocol : IApiProtocol
                     foreach (var result in results.Results)
                     {
                         items.Add(BuildToolOutputItem(result, request.Parameters.AllowImages));
+                        AddLoadedTools(items, request, result.LoadedToolIds);
                     }
                     break;
             }
@@ -254,6 +255,45 @@ public sealed class OpenAiResponsesProtocol : IApiProtocol
         return item;
     }
 
+    /// <summary>
+    /// After a toolbox load's output: an additional_tools developer item with the definitions of
+    /// the tools it loaded. On replay the item is rebuilt at the same place. The SDK has no type
+    /// for the item, so it is read from its JSON.
+    /// </summary>
+    private static void AddLoadedTools(List<ResponseItem> items, AiRequest request, IReadOnlyList<string>? loadedToolIds)
+    {
+        if (loadedToolIds is not { Count: > 0 })
+        {
+            return;
+        }
+
+        var tools = new JsonArray();
+        foreach (var id in loadedToolIds)
+        {
+            if (request.LoadableTools.FirstOrDefault(t => t.Id == id) is not { } tool)
+            {
+                continue;
+            }
+
+            tools.Add(new JsonObject
+            {
+                ["type"] = "function",
+                ["name"] = tool.Id,
+                ["description"] = tool.Description,
+                ["parameters"] = JsonNode.Parse(tool.ParametersSchema.ToJsonString()),
+                ["strict"] = false
+            });
+        }
+
+        if (tools.Count == 0)
+        {
+            return;
+        }
+
+        var item = new JsonObject { ["type"] = "additional_tools", ["role"] = "developer", ["tools"] = tools };
+        items.Add(ModelReaderWriter.Read<ResponseItem>(BinaryData.FromString(item.ToJsonString()), ModelReaderWriterOptions.Json)!);
+    }
+
     private static void AddMessage(List<ResponseItem> items, Models.ChatMessage message, bool allowImages)
     {
         switch (message.Role)
@@ -265,7 +305,7 @@ public sealed class OpenAiResponsesProtocol : IApiProtocol
                 items.Add(ResponseItem.CreateAssistantMessageItem(message.Content));
                 break;
             case AiChatRole.System:
-                items.Add(ResponseItem.CreateSystemMessageItem(message.Content));
+                items.Add(ResponseItem.CreateDeveloperMessageItem(message.Content));
                 break;
         }
     }
@@ -390,6 +430,12 @@ public sealed class OpenAiResponsesProtocol : IApiProtocol
                     _logger.LogWarning("OpenAI Responses turn on {Model} got a stream error: code {Code}", _request.Model.ModelId, error.Code ?? "unknown");
                     throw new AiTurnFailedException($"The model service sent an error ({error.Code ?? "unknown"}): {error.Message ?? "no message"}");
                 }
+                else if (update is StreamingResponseCompletedUpdate completed && completed.Response?.Usage is { } usage)
+                {
+                    _logger.LogInformation(
+                        "OpenAI Responses turn on {Model}: {InputTokens} input tokens, {CacheReadTokens} read from cache",
+                        _request.Model.ModelId, usage.InputTokenCount, usage.InputTokenDetails?.CachedTokenCount ?? 0);
+                }
                 else if (update is StreamingResponseOutputItemDoneUpdate done)
                 {
                     _items.Add(done.Item);
@@ -425,6 +471,7 @@ public sealed class OpenAiResponsesProtocol : IApiProtocol
             foreach (var result in results)
             {
                 _items.Add(ResponseItem.CreateFunctionCallOutputItem(result.ToolCallId, result.Content));
+                AddLoadedTools(_items, _request, result.LoadedToolIds);
             }
         }
     }

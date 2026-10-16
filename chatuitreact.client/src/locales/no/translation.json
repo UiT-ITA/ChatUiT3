@@ -195,8 +195,8 @@
       "systemPrompt": "Instruks",
       "systemPromptPlaceholder": "Beskriv hvordan assistenten skal oppføre seg (valgfritt)",
       "characters": "tegn",
-      "tools": "Verktøy assistenten får bruke",
-      "noTools": "Ingen verktøy tilgjengelig",
+      "tools": "Verktøykasser assistenten kan laste inn",
+      "noTools": "Ingen verktøykasser tilgjengelig",
       "modelNoTools": "Denne modellen støtter ikke verktøy",
       "snippets": {
         "formatMarkdown": "Formater tekst",
@@ -219,13 +219,13 @@
       "modelNotDefaultEligible": "Dette er standardassistenten din. Denne modellen kan ikke være standard, så nye samtaler slutter å starte her hvis du lagrer.",
       "toolHints": {
         "requiresConfirmation": "Spør før kjøring",
-        "widerAccess": "Noen brukere som har tilgang til denne assistenten kan ikke bruke dette verktøyet på egen hånd"
+        "widerAccess": "Noen brukere som har tilgang til denne assistenten kan ikke bruke denne verktøykassen på egen hånd"
       },
-      "toolsSharingNote": "Andre kan bare legge til denne assistenten hvis de har lov til å bruke alle verktøyene den har.",
+      "toolsSharingNote": "Andre kan bare legge til denne assistenten hvis de har lov til å bruke alle verktøykassene den har.",
       "toolUnavailable": "Ikke lenger tilgjengelig for deg. Fjern haken for å lagre.",
       "access": {
         "title": "Hvem kan bruke denne assistenten",
-        "help": "Verktøypolicyer håndheves ikke på systemassistenter. Alle som slippes inn her får alle verktøyene den har.",
+        "help": "Verktøypolicyer håndheves ikke på systemassistenter. Alle som slippes inn her får alle verktøykassene den har.",
         "everyone": "Alle",
         "roles": "Roller",
         "groups": "Entra-grupper",
@@ -288,7 +288,7 @@
       },
       "sources": {
         "title": "Levende kilder",
-        "description": "Data som hentes for den som chatter hver gang en melding sendes, og legges i starten av samtalen.",
+        "description": "Data som hentes for den som chatter når samtalen starter, og legges i starten av samtalen.",
         "none": "Ingen levende kilder er tilgjengelige for deg.",
         "unavailable": "Ikke lenger tilgjengelig"
       }
@@ -485,7 +485,7 @@
       "models": "Modeller",
       "assistants": "Systemassistenter",
       "settings": "Innstillinger",
-      "tools": "Verktøy",
+      "tools": "Verktøykasser",
       "agents": "Interne agenter"
     },
     "endpoints": {
@@ -654,9 +654,9 @@
       }
     },
     "tools": {
-      "title": "Verktøy",
+      "title": "Verktøykasser",
       "list": {
-        "empty": "Ingen verktøy registrert."
+        "empty": "Ingen verktøykasser registrert."
       },
       "meta": {
         "disabled": "Avslått",
@@ -664,25 +664,25 @@
         "default": "Standardtilgang"
       },
       "edit": {
-        "title": "Verktøytilgang"
+        "title": "Tilgang til verktøykasse"
       },
       "fields": {
-        "id": "Verktøy-id",
+        "id": "Verktøykasse-id",
         "description": "Beskrivelse modellen ser",
         "requiresConfirmation": "Spør brukeren før kjøring",
         "requiredScopes": "Delegerte tillatelser",
         "schema": "Argumentskjema",
         "enabled": "Aktivert",
-        "enabledHelp": "Av slår verktøyet av for alle, uavhengig av roller og grupper.",
+        "enabledHelp": "Av slår verktøykassen av for alle, uavhengig av roller og grupper.",
         "allowedRoles": "Tillatte roller",
         "allowedGroups": "Tillatte Entra-grupper",
-        "allowedGroupsHelp": "En bruker i en av de valgte Entra-gruppene kan bruke verktøyet, i tillegg til rollene over.",
-        "nobodyWarning": "Ingen roller og ingen grupper: ingen kan bruke dette verktøyet.",
+        "allowedGroupsHelp": "En bruker i en av de valgte Entra-gruppene kan bruke verktøykassen, i tillegg til rollene over.",
+        "nobodyWarning": "Ingen roller og ingen grupper: ingen kan bruke denne verktøykassen.",
         "defaultPolicy": "Standard fra kode",
-        "overridden": "Dette verktøyet bruker en tilpasset policy lagret {{date}}.",
-        "usingDefault": "Dette verktøyet bruker standarden fra koden.",
+        "overridden": "Denne verktøykassen bruker en tilpasset policy lagret {{date}}.",
+        "usingDefault": "Denne verktøykassen bruker standarden fra koden.",
         "functions": "Funksjoner",
-        "functionsHelp": "Dette verktøyet er en intern agent. Dette er funksjonene den kan kalle på vegne av brukeren; de har ingen egne tilgangspolicyer."
+        "functionsHelp": "Funksjonene modellen får når den laster inn denne verktøykassen. Tilgang settes på verktøykassen."
       },
       "actions": {
         "reset": "Tilbakestill til standard",
@@ -691,7 +691,7 @@
     },
     "agents": {
       "title": "Interne agenter",
-      "intro": "Agenter definert i kode. Hver kjører på modellen som settes her, i chatter gjennom verktøyet sitt og i API-et.",
+      "intro": "Agenter definert i kode. Hver kjører på modellen som settes her og tilbys gjennom API-et.",
       "meta": {
         "notSet": "Ingen modell satt"
       },
@@ -699,11 +699,11 @@
         "id": "Id",
         "description": "Beskrivelse",
         "functions": "Funksjoner",
-        "functionsHelp": "Funksjonene agenten kan kalle på vegne av brukeren. De har ingen egne tilgangspolicyer.",
+        "functionsHelp": "Funksjonene agenten kan kalle på vegne av brukeren. Funksjoner i verktøykasser følger tilgangspolicyene til verktøykassene.",
         "model": "Kjører på modell",
         "chooseModel": "Velg en modell",
-        "modelHelp": "Bare modeller som støtter funksjonskall vises. Gjelder hver kjøring av agenten, i chatter og i API-et.",
-        "notSetHelp": "Ingen modell er satt. I chatter kjører agenten på chattens modell. API-et kan ikke bruke den.",
+        "modelHelp": "Bare modeller som støtter funksjonskall vises. Gjelder hver kjøring av agenten.",
+        "notSetHelp": "Ingen modell er satt. API-et kan ikke bruke den.",
         "reasoningEffort": "Resonneringsinnsats",
         "reasoningEffortHelp": "Bare nivåene den valgte modellen godtar, vises.",
         "exposedInApi": "Tilgjengelig i API-et",

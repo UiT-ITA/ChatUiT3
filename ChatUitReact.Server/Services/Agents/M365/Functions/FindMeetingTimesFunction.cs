@@ -17,7 +17,7 @@ public sealed record FindMeetingTimesArgs(
     string End,
     [property: Description("Meeting length in minutes.")]
     int DurationMinutes,
-    [property: Description("Time zone of start/end and of the returned times, IANA or Windows name. Defaults to UTC.")]
+    [property: Description("Time zone of start/end and of the returned times, IANA or Windows name. Defaults to UTC. Use the time zone the user gave; when they gave none, use Europe/Oslo and say so.")]
     string? TimeZone);
 
 public sealed class FindMeetingTimesFunction : Tool<FindMeetingTimesArgs>
@@ -29,7 +29,7 @@ public sealed class FindMeetingTimesFunction : Tool<FindMeetingTimesArgs>
 
     public override string Id => "find_meeting_times";
     public override string DisplayName => "Find meeting times";
-    public override string Description => "Suggest meeting times within working hours when the user and all attendees are free.";
+    public override string Description => "Suggest meeting times within working hours when the user and all attendees are free. Get people's email addresses and ids from find_people; never build an email address from a name.";
     public override IReadOnlyList<string> RequiredScopes => Scopes;
 
     protected override async Task<ToolResult> ExecuteAsync(FindMeetingTimesArgs args, ToolInvocation invocation, CancellationToken ct)

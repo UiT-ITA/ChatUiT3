@@ -33,6 +33,7 @@ public class ChatService : IChatService
     private readonly IAssistantService _assistantService;
     private readonly IModelService _modelService;
     private readonly IToolRegistry _toolRegistry;
+    private readonly IToolboxRegistry _toolboxes;
     private readonly IToolAccessService _toolAccess;
     private readonly PendingInteractionRegistry _pendingInteractions;
     private readonly ISettingsService _settingsService;
@@ -50,6 +51,7 @@ public class ChatService : IChatService
         IAssistantService assistantService,
         IModelService modelService,
         IToolRegistry toolRegistry,
+        IToolboxRegistry toolboxes,
         IToolAccessService toolAccess,
         PendingInteractionRegistry pendingInteractions,
         ISettingsService settingsService,
@@ -66,6 +68,7 @@ public class ChatService : IChatService
         _assistantService = assistantService;
         _modelService = modelService;
         _toolRegistry = toolRegistry;
+        _toolboxes = toolboxes;
         _toolAccess = toolAccess;
         _pendingInteractions = pendingInteractions;
         _settingsService = settingsService;
@@ -361,7 +364,16 @@ public class ChatService : IChatService
             Model = model,
             Endpoint = endpoint
         };
-        var request = await BuildAiRequestAsync(model, endpoint, resolved, messages, tools, toolContext);
+
+        // Knowledge sources are read once, for the first message, and saved in the chat ahead of it.
+        // Later turns replay that message unchanged.
+        if (wasEmpty && await BuildKnowledgeMessageAsync(resolved, tools, toolContext, userMessage, activeSchemes) is { } knowledge)
+        {
+            await _databaseService.AddMessageAsync(userId, chatId, knowledge);
+            messages.Insert(Math.Max(0, messages.FindIndex(m => m.Id == userMessage.Id)), knowledge);
+        }
+
+        var request = await BuildAiRequestAsync(model, endpoint, resolved, messages, tools);
 
         _ = Task.Run(async () =>
         {
@@ -369,6 +381,7 @@ public class ChatService : IChatService
             // Owned here rather than by the runner so a failed run still leaves its partial
             // record (tool calls made, time spent) on the message.
             var activity = new MessageActivity();
+            var transcript = new List<TranscriptItem>();
             var stopwatch = Stopwatch.StartNew();
 
             // Without a token a run that hangs — or keeps calling tools — outlives the
@@ -379,7 +392,7 @@ public class ChatService : IChatService
 
             try
             {
-                await foreach (var chunk in _conversationRunner.StreamAsync(request, toolContext, activity, cancellation.Token))
+                await foreach (var chunk in _conversationRunner.StreamAsync(request, toolContext, activity, transcript, cancellation.Token))
                 {
                     _streamingService.AddChunk(userId, assistantMessage.Id, chunk);
 
@@ -399,6 +412,7 @@ public class ChatService : IChatService
 
                 assistantMessage.Content = content.ToString();
                 assistantMessage.Activity = activity;
+                assistantMessage.Transcript = transcript;
                 _streamingService.CompleteMessage(userId, assistantMessage.Id);
 
                 assistantMessage.Status = AiChatStatus.Success;
@@ -437,6 +451,7 @@ public class ChatService : IChatService
                 assistantMessage.Status = AiChatStatus.Error;
                 AiConversationRunner.Finish(activity, stopwatch.ElapsedMilliseconds);
                 assistantMessage.Activity = activity;
+                assistantMessage.Transcript = transcript;
                 assistantMessage.TokenCounts = _tokenCounting.CountMessage(assistantMessage, activeSchemes).Total;
                 await _databaseService.UpdateMessageAsync(userId, chatId, assistantMessage);
                 NotifyChatUpdated(userId, chatId);
@@ -458,7 +473,8 @@ public class ChatService : IChatService
                 await _databaseService.DeleteMessageAsync(userId, chatId, userMessage.Id);
 
                 var remainingChat = await GetChatByIdAsync(userId, chatId, includeFileContent: false);
-                if (remainingChat == null || remainingChat.Messages.Count == 0)
+                // The knowledge message alone is not a conversation.
+                if (remainingChat == null || remainingChat.Messages.All(m => m.Role == AiChatRole.System))
                 {
                     await DeleteChatAsync(userId, chatId);
                 }
@@ -598,16 +614,16 @@ public class ChatService : IChatService
     // The one place assistant settings become a provider request: capabilities are reconciled
     // once here against the live model row, so no provider has to re-derive what the model
     // will accept and the prompt never names a tool the model was not given. Tools are the
-    // assistant's list cut down to what this user may use, the loader for the on-demand files
-    // still loadable, plus the client's own tools. Knowledge files (always-loaded and pinned)
-    // lead the history as synthetic user messages, followed by one message per knowledge source.
+    // toolbox loader with the assistant's toolboxes cut down to what this user may use, the
+    // loader for the on-demand files still loadable, plus the client's own tools. Knowledge files
+    // (always-loaded and pinned) lead the history as synthetic user messages; earlier assistant
+    // messages replay their transcripts.
     private async Task<AiRequest> BuildAiRequestAsync(
         Model model,
         ModelEndpoint endpoint,
         ResolvedAssistant resolved,
         List<Models.ChatMessage> messages,
-        ToolSessionInput tools,
-        ToolExecutionContext toolContext)
+        ToolSessionInput tools)
     {
         var assistant = resolved.Assistant;
         var canLoadOnDemand = model.Capabilities.SupportsFunctionCalling;
@@ -631,9 +647,17 @@ public class ChatService : IChatService
 
         var parameters = ChatParameterResolver.Resolve(model.Capabilities, settings);
 
-        var resolvedTools = new List<ITool>(resolved.EnforceToolAccess
+        var toolboxes = resolved.EnforceToolAccess
             ? await _toolAccess.FilterAllowedAsync(parameters.ToolIds, tools.Access)
-            : _toolRegistry.Resolve(parameters.ToolIds));
+            : _toolboxes.Resolve(parameters.ToolIds);
+        IReadOnlyCollection<string> loadedToolIds = canLoadOnDemand ? TranscriptReplay.LoadedToolIds(messages) : Array.Empty<string>();
+        var loadableTools = LoadableTools(toolboxes, loadedToolIds);
+
+        var resolvedTools = new List<ITool>();
+        if (loadableTools.Count > 0)
+        {
+            resolvedTools.Add(new LoadToolsTool(toolboxes, loadedToolIds, resolved.EnforceToolAccess ? _toolAccess : null));
+        }
 
         if (canLoadOnDemand && onDemandFiles.Count > 0)
         {
@@ -646,24 +670,83 @@ public class ChatService : IChatService
         }
 
         _logger.LogInformation(
-            "Assistant {AssistantId}: {PinnedCount} pinned files ({PinnedIds}), {OnDemandCount} on-demand files offered ({OnDemandIds})",
+            "Assistant {AssistantId}: {PinnedCount} pinned files ({PinnedIds}), {OnDemandCount} on-demand files offered ({OnDemandIds}), toolboxes {Toolboxes}, {LoadedCount} tools loaded",
             assistant.Id,
             pinnedFileIds.Count,
             string.Join(",", pinnedFileIds),
             onDemandFiles.Count,
-            string.Join(",", onDemandFiles.Select(f => f.Id)));
+            string.Join(",", onDemandFiles.Select(f => f.Id)),
+            string.Join(",", toolboxes.Select(t => t.Id)),
+            loadedToolIds.Count);
 
-        var sourceMessages = await BuildKnowledgeSourceMessagesAsync(resolved, tools, toolContext);
+        // A model that cannot call tools gets earlier messages as text.
+        var history = canLoadOnDemand
+            ? TranscriptReplay.ToInputItems(messages)
+            : AiInputItem.From(messages);
 
         return new AiRequest
         {
             Model = model,
             Endpoint = endpoint,
             SystemPrompt = settings.SystemPrompt,
-            Messages = AiInputItem.From([.. KnowledgeFileMessages.Build(assistant.Files, resolved.PinnedFileIds), .. sourceMessages, .. messages]),
+            Messages = [.. AiInputItem.From(KnowledgeFileMessages.Build(assistant.Files, resolved.PinnedFileIds)), .. history],
             Parameters = parameters,
-            Tools = resolvedTools
+            Tools = resolvedTools,
+            LoadableTools = loadableTools,
+            LoadedToolIds = loadedToolIds
         };
+    }
+
+    /// <summary>
+    /// Every tool of the toolboxes on offer, plus every tool a load in the history named, also when
+    /// its toolbox is no longer on offer. Sorted by id.
+    /// </summary>
+    private List<ITool> LoadableTools(IReadOnlyList<IToolbox> toolboxes, IReadOnlyCollection<string> loadedToolIds)
+    {
+        var loadable = new Dictionary<string, ITool>(StringComparer.Ordinal);
+        foreach (var tool in toolboxes.SelectMany(t => t.Tools))
+        {
+            loadable.TryAdd(tool.Id, tool);
+        }
+
+        foreach (var id in loadedToolIds)
+        {
+            if (!loadable.ContainsKey(id) && _toolRegistry.Find(id) is { } tool && tool.Id == id)
+            {
+                loadable[id] = tool;
+            }
+        }
+
+        return loadable.Values.OrderBy(t => t.Id, StringComparer.Ordinal).ToList();
+    }
+
+    /// <summary>
+    /// The knowledge sources as one hidden message placed just before the first user message, or
+    /// null when the assistant has none or none returned anything.
+    /// </summary>
+    private async Task<Models.ChatMessage?> BuildKnowledgeMessageAsync(
+        ResolvedAssistant resolved,
+        ToolSessionInput tools,
+        ToolExecutionContext toolContext,
+        Models.ChatMessage userMessage,
+        IReadOnlyList<string> activeSchemes)
+    {
+        var sources = await BuildKnowledgeSourceMessagesAsync(resolved, tools, toolContext);
+        if (sources.Count == 0)
+        {
+            return null;
+        }
+
+        var message = new Models.ChatMessage
+        {
+            Role = AiChatRole.System,
+            Timestamp = userMessage.Timestamp.AddSeconds(-1),
+            Content = string.Join("\n\n", sources.Select(m => m.Content)),
+            Status = AiChatStatus.Success,
+            AssistantId = resolved.Assistant.Id
+        };
+        _tokenCounting.FillMissingMessageCounts(message, activeSchemes);
+        return message;
     }
 
     // Sources act on the user's behalf, so a caller without a delegated token gets none. Like

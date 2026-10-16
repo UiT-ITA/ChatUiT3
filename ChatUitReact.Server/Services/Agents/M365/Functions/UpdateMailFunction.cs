@@ -28,7 +28,7 @@ public sealed class UpdateMailFunction : ConfirmableTool<UpdateMailArgs>
 
     public override string Id => "update_mail";
     public override string DisplayName => "Update email";
-    public override string Description => "Move an email to a folder, mark it read or unread, flag it or set its categories. Only given fields change. The user must approve it first.";
+    public override string Description => "Move an email to a folder, mark it read or unread, flag it or set its categories. Only given fields change. The user must approve it first. If they reject it, do not retry or change it.";
     public override IReadOnlyList<string> RequiredScopes => MailSupport.WriteScopes;
 
     protected override async Task<ToolPreview> PrepareAsync(UpdateMailArgs args, ToolInvocation invocation, CancellationToken ct)

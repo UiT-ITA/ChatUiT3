@@ -8,21 +8,21 @@ using Microsoft.AspNetCore.SignalR;
 namespace ChatUitReact.Server.Controllers;
 
 /// <summary>
-/// Tools are code, so this controller only edits who may use them. A stored policy overrides
-/// the tool's code default; deleting it goes back to the default.
+/// Toolboxes are code, so this controller only edits who may use them. A stored policy overrides
+/// the toolbox's code default; deleting it goes back to the default.
 /// </summary>
 [ApiController]
 [Route("api/admin/tools")]
 [Authorize(Roles = "Admin")]
 public class AdminToolsController : ControllerBase
 {
-    private readonly IToolRegistry _registry;
+    private readonly IToolboxRegistry _registry;
     private readonly IToolAccessService _access;
     private readonly IHubContext<ChatHub, IChatHubClient> _hubContext;
     private readonly ILogger<AdminToolsController> _logger;
 
     public AdminToolsController(
-        IToolRegistry registry,
+        IToolboxRegistry registry,
         IToolAccessService access,
         IHubContext<ChatHub, IChatHubClient> hubContext,
         ILogger<AdminToolsController> logger)
@@ -39,9 +39,9 @@ public class AdminToolsController : ControllerBase
         try
         {
             var result = new List<ToolAdminDto>();
-            foreach (var tool in _registry.ServerTools)
+            foreach (var toolbox in _registry.Toolboxes)
             {
-                result.Add(await ToAdminDtoAsync(tool));
+                result.Add(await ToAdminDtoAsync(toolbox));
             }
 
             result.Add(await ClientToolsEntryAsync());
@@ -64,8 +64,8 @@ public class AdminToolsController : ControllerBase
                 return Ok(await ClientToolsEntryAsync());
             }
 
-            var tool = _registry.Find(id);
-            return tool == null ? NotFound($"Tool {id} not found") : Ok(await ToAdminDtoAsync(tool));
+            var toolbox = _registry.Find(id);
+            return toolbox == null ? NotFound($"Tool {id} not found") : Ok(await ToAdminDtoAsync(toolbox));
         }
         catch (Exception ex)
         {
@@ -129,8 +129,8 @@ public class AdminToolsController : ControllerBase
     private async Task<ToolAdminDto> GetDtoAsync(string id)
         => id == ToolRegistry.ClientToolsPolicyId ? await ClientToolsEntryAsync() : await ToAdminDtoAsync(_registry.Find(id)!);
 
-    private async Task<ToolAdminDto> ToAdminDtoAsync(ITool tool)
-        => ToolMapping.ToAdminDto(tool, await _access.GetEffectivePolicyAsync(tool.Id), await _access.GetStoredPolicyAsync(tool.Id));
+    private async Task<ToolAdminDto> ToAdminDtoAsync(IToolbox toolbox)
+        => ToolMapping.ToAdminDto(toolbox, await _access.GetEffectivePolicyAsync(toolbox.Id), await _access.GetStoredPolicyAsync(toolbox.Id));
 
     /// <summary>The gate for client-declared tools, shown as one row because there is one policy for all of them.</summary>
     private async Task<ToolAdminDto> ClientToolsEntryAsync()

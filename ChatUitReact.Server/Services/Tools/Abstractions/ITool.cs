@@ -129,8 +129,10 @@ public enum InteractionMode
 /// <summary>
 /// What a tool returns. <see cref="Content"/> goes to the model; <see cref="Display"/> is
 /// what the user sees in the activity panel and defaults to the content.
+/// <see cref="LoadedToolIds"/> is set only by <see cref="LoadToolsTool"/>: the tools that
+/// become callable from this result on.
 /// </summary>
-public sealed record ToolResult(string Content, string? Display = null, bool IsError = false)
+public sealed record ToolResult(string Content, string? Display = null, bool IsError = false, IReadOnlyList<string>? LoadedToolIds = null)
 {
     public string DisplayText => Display ?? Content;
 

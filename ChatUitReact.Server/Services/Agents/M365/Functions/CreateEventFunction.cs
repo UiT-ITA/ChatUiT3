@@ -13,7 +13,7 @@ public sealed record CreateEventArgs(
     string Start,
     [property: Description("End, ISO 8601 without offset.")]
     string End,
-    [property: Description("Time zone of start and end, IANA or Windows name (e.g. Europe/Oslo).")]
+    [property: Description("Time zone of start and end, IANA or Windows name (e.g. Europe/Oslo). Use the time zone the user gave; when they gave none, use Europe/Oslo and say so.")]
     string TimeZone,
     [property: Description("Email addresses of people to invite.")]
     List<string>? Attendees,
@@ -33,7 +33,7 @@ public sealed class CreateEventFunction : ConfirmableTool<CreateEventArgs>
 
     public override string Id => "create_event";
     public override string DisplayName => "Create calendar event";
-    public override string Description => "Create an event in the user's calendar and invite attendees, optionally with a Teams meeting link. The user must approve it first.";
+    public override string Description => "Create an event in the user's calendar and invite attendees, optionally with a Teams meeting link. The user must approve it first. If they reject it, do not retry or change it. Get people's email addresses and ids from find_people; never build an email address from a name.";
     public override IReadOnlyList<string> RequiredScopes => EventSupport.Scopes;
 
     protected override Task<ToolPreview> PrepareAsync(CreateEventArgs args, ToolInvocation invocation, CancellationToken ct)

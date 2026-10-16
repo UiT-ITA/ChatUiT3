@@ -14,7 +14,7 @@ public static class InternalAgentServiceCollectionExtensions
         services.AddSingleton<InternalAgentSettingsService>();
         services.AddSingleton<IInternalAgentRegistry, InternalAgentRegistry>();
 
-        services.AddM365Agents();
+        services.AddM365Toolboxes();
         services.AddInternalAgent<OfficeAgent>();
 
         return services;

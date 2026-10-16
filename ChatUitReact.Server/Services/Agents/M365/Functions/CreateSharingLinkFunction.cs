@@ -31,7 +31,7 @@ public sealed class CreateSharingLinkFunction : ConfirmableTool<CreateSharingLin
 
     public override string Id => "create_sharing_link";
     public override string DisplayName => "Share file";
-    public override string Description => "Share a file or folder with view or edit access: with specific people (who are notified), or as a link for anyone in the organization. The user must approve it first.";
+    public override string Description => "Share a file or folder with view or edit access: with specific people (who are notified), or as a link for anyone in the organization. The user must approve it first. If they reject it, do not retry or change it. Get people's email addresses and ids from find_people; never build an email address from a name.";
     public override IReadOnlyList<string> RequiredScopes => DriveSupport.Scopes;
 
     protected override async Task<ToolPreview> PrepareAsync(CreateSharingLinkArgs args, ToolInvocation invocation, CancellationToken ct)

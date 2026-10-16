@@ -23,7 +23,7 @@ public sealed class SendChatMessageFunction : ConfirmableTool<SendChatMessageArg
 
     public override string Id => "send_chat_message";
     public override string DisplayName => "Send Teams message";
-    public override string Description => "Send a Teams chat message to one person (by id or email) or into an existing chat (by chat id). The user must approve it first.";
+    public override string Description => "Send a Teams chat message to one person (by id or email) or into an existing chat (by chat id). The user must approve it first. If they reject it, do not retry or change it. Get people's email addresses and ids from find_people; never build an email address from a name.";
     public override IReadOnlyList<string> RequiredScopes => TeamsChatSupport.SendScopes;
 
     protected override async Task<ToolPreview> PrepareAsync(SendChatMessageArgs args, ToolInvocation invocation, CancellationToken ct)

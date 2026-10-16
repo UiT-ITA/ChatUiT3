@@ -32,7 +32,7 @@ public sealed class UpdatePlannerTaskFunction : ConfirmableTool<UpdatePlannerTas
 
     public override string Id => "update_planner_task";
     public override string DisplayName => "Update Planner task";
-    public override string Description => "Change, move, reassign or complete a Planner task. Only given fields change. The user must approve it first.";
+    public override string Description => "Change, move, reassign or complete a Planner task. Only given fields change. The user must approve it first. If they reject it, do not retry or change it. Get people's email addresses and ids from find_people; never build an email address from a name.";
     public override IReadOnlyList<string> RequiredScopes => TaskSupport.PlannerScopes;
 
     protected override async Task<ToolPreview> PrepareAsync(UpdatePlannerTaskArgs args, ToolInvocation invocation, CancellationToken ct)

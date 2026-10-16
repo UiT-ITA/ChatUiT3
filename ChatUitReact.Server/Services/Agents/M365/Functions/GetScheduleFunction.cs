@@ -15,7 +15,7 @@ public sealed record GetScheduleArgs(
     string Start,
     [property: Description("End of the window, ISO 8601 without offset.")]
     string End,
-    [property: Description("Time zone of start/end and of the returned times, IANA or Windows name. Defaults to UTC.")]
+    [property: Description("Time zone of start/end and of the returned times, IANA or Windows name. Defaults to UTC. Use the time zone the user gave; when they gave none, use Europe/Oslo and say so.")]
     string? TimeZone,
     [property: Description("Slot length in minutes for the availability view, 5 to 1440. Defaults to 30.")]
     int? IntervalMinutes);
@@ -30,7 +30,7 @@ public sealed class GetScheduleFunction : Tool<GetScheduleArgs>
 
     public override string Id => "get_schedule";
     public override string DisplayName => "Get free/busy";
-    public override string Description => "Get free/busy information for several people in one call. Returns, per person, an availability string (one character per slot: 0 free, 1 tentative, 2 busy, 3 out of office, 4 working elsewhere) and the busy items with start/end. Use this to find common free time.";
+    public override string Description => "Get free/busy information for several people in one call. Returns, per person, an availability string (one character per slot: 0 free, 1 tentative, 2 busy, 3 out of office, 4 working elsewhere) and the busy items with start/end. Use this to find common free time. Get people's email addresses and ids from find_people; never build an email address from a name.";
     public override IReadOnlyList<string> RequiredScopes => Scopes;
 
     protected override async Task<ToolResult> ExecuteAsync(GetScheduleArgs args, ToolInvocation invocation, CancellationToken ct)

@@ -31,11 +31,11 @@ public class ToolAdminDto : ToolDto
     public ToolAccessPolicyDto Policy { get; set; } = new();
     public bool IsOverridden { get; set; }
     public DateTime? UpdatedAt { get; set; }
-    /// <summary>Internal agents only: the private functions the agent can call.</summary>
+    /// <summary>Toolboxes of more than one tool: the functions the toolbox holds.</summary>
     public List<ToolFunctionDto>? Functions { get; set; }
 }
 
-/// <summary>One private function of an internal agent, for display in the admin panel.</summary>
+/// <summary>One function of a toolbox, for display in the admin panel.</summary>
 public class ToolFunctionDto
 {
     public string Id { get; set; } = string.Empty;

@@ -26,7 +26,7 @@ public sealed class WriteTextFileFunction : ConfirmableTool<WriteTextFileArgs>
 
     public override string Id => "write_text_file";
     public override string DisplayName => "Write text file";
-    public override string Description => "Create or overwrite a text file (txt, md, csv, json, ...) in the user's OneDrive at the given path. The user must approve it first.";
+    public override string Description => "Create or overwrite a text file (txt, md, csv, json, ...) in the user's OneDrive at the given path. The user must approve it first. If they reject it, do not retry or change it.";
     public override IReadOnlyList<string> RequiredScopes => Scopes;
 
     protected override async Task<ToolPreview> PrepareAsync(WriteTextFileArgs args, ToolInvocation invocation, CancellationToken ct)

@@ -46,7 +46,7 @@ public sealed class UpdateOneNotePageFunction : ConfirmableTool<UpdateOneNotePag
 
     public override string Id => "update_onenote_page";
     public override string DisplayName => "Update OneNote page";
-    public override string Description => "Edit a OneNote page: add, insert or replace elements, or change the title. Target elements by the ids from read_onenote_page. The user must approve it first.";
+    public override string Description => "Edit a OneNote page: add, insert or replace elements, or change the title. Target elements by the ids from read_onenote_page. The user must approve it first. If they reject it, do not retry or change it.";
     public override IReadOnlyList<string> RequiredScopes => OneNoteSupport.WriteScopes;
 
     protected override async Task<ToolPreview> PrepareAsync(UpdateOneNotePageArgs args, ToolInvocation invocation, CancellationToken ct)

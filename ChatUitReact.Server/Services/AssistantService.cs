@@ -14,7 +14,7 @@ namespace ChatUitReact.Server.Services
         private readonly IDatabaseService _databaseService;
         private readonly IModelService _modelService;
         private readonly IHubContext<ChatHub, IChatHubClient> _hubContext;
-        private readonly IToolRegistry _toolRegistry;
+        private readonly IToolboxRegistry _toolboxes;
         private readonly IToolAccessService _toolAccess;
         private readonly ITokenCountingService _tokenCounting;
         private readonly ToolOptions _toolOptions;
@@ -43,7 +43,7 @@ namespace ChatUitReact.Server.Services
             IDatabaseService databaseService,
             IModelService modelService,
             IHubContext<ChatHub, IChatHubClient> hubContext,
-            IToolRegistry toolRegistry,
+            IToolboxRegistry toolboxes,
             IToolAccessService toolAccess,
             ITokenCountingService tokenCounting,
             IOptions<ToolOptions> toolOptions,
@@ -52,7 +52,7 @@ namespace ChatUitReact.Server.Services
             _databaseService = databaseService;
             _modelService = modelService;
             _hubContext = hubContext;
-            _toolRegistry = toolRegistry;
+            _toolboxes = toolboxes;
             _toolAccess = toolAccess;
             _tokenCounting = tokenCounting;
             _toolOptions = toolOptions.Value;
@@ -89,7 +89,14 @@ namespace ChatUitReact.Server.Services
             // Resolved against the model row rather than the stored tool ids, so a model that
             // lost function calling after the assistant was saved counts no tools.
             var parameters = ChatParameterResolver.Resolve(assistant.ChatSettings.Model.Capabilities, assistant.ChatSettings);
-            var tools = new List<ITool>(_toolRegistry.Resolve(parameters.ToolIds));
+            // A chat starts with the toolbox loader.
+            var toolboxes = _toolboxes.Resolve(parameters.ToolIds);
+            var tools = new List<ITool>();
+            if (toolboxes.Count > 0)
+            {
+                tools.Add(new LoadToolsTool(toolboxes, [], access: null));
+            }
+
             var onDemandFiles = KnowledgeFileMessages.Loadable(files, noLoadedFiles);
             if (canLoadOnDemand && onDemandFiles.Count > 0)
             {
@@ -244,7 +251,7 @@ namespace ChatUitReact.Server.Services
         public async Task<IReadOnlyList<string>> DisallowedToolNamesAsync(Assistant assistant, UserAccess access)
         {
             var check = await _toolAccess.CheckToolIdsAsync(assistant.ChatSettings.AvailableToolIds, access);
-            return check.Disallowed.Select(id => _toolRegistry.Find(id)?.DisplayName ?? id).ToList();
+            return check.Disallowed.Select(id => _toolboxes.Find(id)?.DisplayName ?? id).ToList();
         }
 
         public static string SharedAssistantRemovedMessage(Assistant assistant, IReadOnlyList<string> disallowedToolNames)
@@ -258,6 +265,7 @@ namespace ChatUitReact.Server.Services
 
         // Assistants come from the database with only the model id; the model itself is read
         // from ModelService, which keeps every model in memory.
+        // Also maps toolbox ids stored under legacy ids to the current ones.
         private async Task<Assistant> WithModelAsync(Assistant assistant)
         {
             var model = await _modelService.GetModelByIdAsync(assistant.ChatSettings.Model.Id);
@@ -265,6 +273,7 @@ namespace ChatUitReact.Server.Services
             {
                 assistant.ChatSettings.Model = model;
             }
+            assistant.ChatSettings.AvailableToolIds = assistant.ChatSettings.AvailableToolIds.SelectMany(_toolboxes.Expand).Distinct().ToList();
             return assistant;
         }
 
@@ -743,7 +752,7 @@ namespace ChatUitReact.Server.Services
                 Model = model,
                 // Stored under current ids: an assistant saved with a legacy id is rewritten on save.
                 AvailableToolIds = capabilities.SupportsFunctionCalling
-                    ? (requestedToolIds ?? new List<string>()).Select(_toolRegistry.Normalise).Distinct().ToList()
+                    ? (requestedToolIds ?? new List<string>()).SelectMany(_toolboxes.Expand).Distinct().ToList()
                     : new List<string>(),
                 PromptSnippets = PromptSnippets.Normalize(requestedSnippets)
             };

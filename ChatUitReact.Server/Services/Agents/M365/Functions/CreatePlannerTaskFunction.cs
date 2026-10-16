@@ -29,7 +29,7 @@ public sealed class CreatePlannerTaskFunction : ConfirmableTool<CreatePlannerTas
 
     public override string Id => "create_planner_task";
     public override string DisplayName => "Create Planner task";
-    public override string Description => "Create a task in a Planner plan, optionally in a bucket, assigned to people and with a due date. The user must approve it first.";
+    public override string Description => "Create a task in a Planner plan, optionally in a bucket, assigned to people and with a due date. The user must approve it first. If they reject it, do not retry or change it. Get people's email addresses and ids from find_people; never build an email address from a name.";
     public override IReadOnlyList<string> RequiredScopes => TaskSupport.PlannerScopes;
 
     protected override async Task<ToolPreview> PrepareAsync(CreatePlannerTaskArgs args, ToolInvocation invocation, CancellationToken ct)

@@ -27,7 +27,7 @@ public sealed class CopyFileFunction : ConfirmableTool<CopyFileArgs>
 
     public override string Id => "copy_file";
     public override string DisplayName => "Copy file";
-    public override string Description => "Copy a file or folder to another folder, in the same or another drive. The copy finishes in the background. The user must approve it first.";
+    public override string Description => "Copy a file or folder to another folder, in the same or another drive. The copy finishes in the background. The user must approve it first. If they reject it, do not retry or change it.";
     public override IReadOnlyList<string> RequiredScopes => DriveSupport.Scopes;
 
     protected override async Task<ToolPreview> PrepareAsync(CopyFileArgs args, ToolInvocation invocation, CancellationToken ct)

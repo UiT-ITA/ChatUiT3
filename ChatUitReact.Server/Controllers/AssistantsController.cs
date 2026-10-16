@@ -408,8 +408,8 @@ public class AssistantsController : ControllerBase
     {
         try
         {
-            var tools = await _toolAccess.GetToolsForUserAsync(_userService.GetUserAccess(User));
-            return Ok(tools.Select(ToolMapping.ToDto).ToArray());
+            var toolboxes = await _toolAccess.GetToolboxesForUserAsync(_userService.GetUserAccess(User));
+            return Ok(toolboxes.Select(ToolMapping.ToDto).ToArray());
         }
         catch (Exception ex)
         {

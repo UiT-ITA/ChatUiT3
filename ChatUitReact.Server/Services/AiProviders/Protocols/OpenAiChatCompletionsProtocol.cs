@@ -89,7 +89,10 @@ public sealed class OpenAiChatCompletionsProtocol : IApiProtocol
             options: new OpenAIClientOptions { Endpoint = new Uri(target.BaseUrl) });
     }
 
-    private static ChatCompletionOptions BuildOptions(AiRequest request, bool includeTools, bool allowToolCalls = true)
+    /// <param name="loadedToolIds">
+    /// The loadable tools that are callable. They join the tool list.
+    /// </param>
+    private static ChatCompletionOptions BuildOptions(AiRequest request, bool includeTools, bool allowToolCalls = true, IReadOnlyCollection<string>? loadedToolIds = null)
     {
         var parameters = request.Parameters;
         var capabilities = request.Model.Capabilities;
@@ -124,7 +127,8 @@ public sealed class OpenAiChatCompletionsProtocol : IApiProtocol
 
         if (includeTools)
         {
-            foreach (var tool in request.Tools)
+            var loaded = loadedToolIds ?? request.LoadedToolIds;
+            foreach (var tool in request.Tools.Concat(request.LoadableTools.Where(t => loaded.Contains(t.Id))))
             {
                 options.Tools.Add(OpenAiChatTool.CreateFunctionTool(
                     tool.Id,
@@ -307,6 +311,7 @@ public sealed class OpenAiChatCompletionsProtocol : IApiProtocol
         private readonly ProtocolTarget _target;
         private readonly List<OpenAiChatMessage> _messages;
         private readonly ILogger _logger;
+        private readonly HashSet<string> _loaded;
 
         public Conversation(AiRequest request, ProtocolTarget target, List<OpenAiChatMessage> messages, ILogger logger)
         {
@@ -314,13 +319,14 @@ public sealed class OpenAiChatCompletionsProtocol : IApiProtocol
             _target = target;
             _messages = messages;
             _logger = logger;
+            _loaded = new HashSet<string>(request.LoadedToolIds, StringComparer.Ordinal);
         }
 
         public async IAsyncEnumerable<AiStreamEvent> StreamTurnAsync(
             bool allowToolCalls = true,
             [EnumeratorCancellation] CancellationToken cancellationToken = default)
         {
-            var options = BuildOptions(_request, includeTools: true, allowToolCalls);
+            var options = BuildOptions(_request, includeTools: true, allowToolCalls, _loaded);
             var client = CreateClient(_request, _target);
 
             var turn = new TurnState();
@@ -328,6 +334,13 @@ public sealed class OpenAiChatCompletionsProtocol : IApiProtocol
 
             await foreach (var update in client.CompleteChatStreamingAsync(_messages, options, cancellationToken).WithCancellation(cancellationToken))
             {
+                if (update.Usage is { } usage)
+                {
+                    _logger.LogInformation(
+                        "Chat Completions turn on {Model}: {InputTokens} input tokens, {CacheReadTokens} read from cache",
+                        _request.Model.ModelId, usage.InputTokenCount, usage.InputTokenDetails?.CachedTokenCount ?? 0);
+                }
+
                 if (update.Patch.TryGetValue(ReasoningContentDeltaPath, out string? reasoningDelta) && !string.IsNullOrEmpty(reasoningDelta))
                 {
                     yield return turn.AcceptReasoning(reasoningDelta);
@@ -427,6 +440,7 @@ public sealed class OpenAiChatCompletionsProtocol : IApiProtocol
             foreach (var result in results)
             {
                 _messages.Add(new ToolChatMessage(result.ToolCallId, result.Content));
+                _loaded.UnionWith(result.LoadedToolIds ?? []);
             }
         }
 

@@ -2,20 +2,19 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text.Json;
 using ChatUitReact.Server.Models;
-using ChatUitReact.Server.Services.Agents;
 
 namespace ChatUitReact.Server.Services.Tools;
 
 public static class ToolMapping
 {
-    public static ToolDto ToDto(ITool tool) => new()
+    public static ToolDto ToDto(IToolbox toolbox) => new()
     {
-        Id = tool.Id,
-        Name = tool.DisplayName,
-        Description = tool.Description,
-        RequiresConfirmation = tool is IConfirmableTool,
-        RequiredScopes = tool.RequiredScopes.ToList(),
-        Execution = tool.Execution
+        Id = toolbox.Id,
+        Name = toolbox.DisplayName,
+        Description = toolbox.Description,
+        RequiresConfirmation = toolbox.Tools.Any(t => t is IConfirmableTool),
+        RequiredScopes = RequiredScopes(toolbox),
+        Execution = ToolExecution.Server
     };
 
     public static ToolAccessPolicyDto ToDto(ToolAccessPolicy policy) => new()
@@ -32,27 +31,31 @@ public static class ToolMapping
         AllowedGroupIds = dto.AllowedGroupIds?.Select(id => id.Trim()).Where(id => id.Length > 0).Distinct().ToList() ?? []
     };
 
-    public static ToolAdminDto ToAdminDto(ITool tool, ToolAccessPolicy effective, ToolPolicy? stored) => new()
+    /// <summary>A toolbox of one tool shows that tool's schema; a larger toolbox lists its functions.</summary>
+    public static ToolAdminDto ToAdminDto(IToolbox toolbox, ToolAccessPolicy effective, ToolPolicy? stored) => new()
     {
-        Id = tool.Id,
-        Name = tool.DisplayName,
-        Description = tool.Description,
-        RequiresConfirmation = tool is IConfirmableTool,
-        RequiredScopes = tool.RequiredScopes.ToList(),
-        Execution = tool.Execution,
-        ParametersSchema = JsonSerializer.SerializeToElement(tool.ParametersSchema),
-        DefaultPolicy = ToDto(tool.DefaultPolicy),
+        Id = toolbox.Id,
+        Name = toolbox.DisplayName,
+        Description = toolbox.Description,
+        RequiresConfirmation = toolbox.Tools.Any(t => t is IConfirmableTool),
+        RequiredScopes = RequiredScopes(toolbox),
+        Execution = ToolExecution.Server,
+        ParametersSchema = toolbox.Tools is [var only] ? JsonSerializer.SerializeToElement(only.ParametersSchema) : null,
+        DefaultPolicy = ToDto(toolbox.DefaultPolicy),
         Policy = ToDto(effective),
         IsOverridden = stored != null,
         UpdatedAt = stored?.UpdatedAt,
-        Functions = tool is InternalAgentTool agentTool ? ToFunctionDtos(agentTool.Agent) : null
+        Functions = toolbox.Tools.Count > 1 ? ToFunctionDtos(toolbox.Tools) : null
     };
 
-    public static List<ToolFunctionDto> ToFunctionDtos(InternalAgent agent) => agent.Functions.Select(f => new ToolFunctionDto
+    public static List<ToolFunctionDto> ToFunctionDtos(IEnumerable<ITool> tools) => tools.Select(f => new ToolFunctionDto
     {
         Id = f.Id,
         Description = f.Description,
         RequiresConfirmation = f is IConfirmableTool,
         RequiredScopes = f.RequiredScopes.ToList()
     }).ToList();
+
+    private static List<string> RequiredScopes(IToolbox toolbox)
+        => toolbox.Tools.SelectMany(t => t.RequiredScopes).Distinct().ToList();
 }

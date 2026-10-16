@@ -23,7 +23,7 @@ public sealed class CreateGroupChatFunction : ConfirmableTool<CreateGroupChatArg
 
     public override string Id => "create_group_chat";
     public override string DisplayName => "Create Teams group chat";
-    public override string Description => "Create a Teams group chat with two or more people, optionally with a topic and a first message. The user must approve it first.";
+    public override string Description => "Create a Teams group chat with two or more people, optionally with a topic and a first message. The user must approve it first. If they reject it, do not retry or change it. Get people's email addresses and ids from find_people; never build an email address from a name.";
     public override IReadOnlyList<string> RequiredScopes => TeamsChatSupport.SendScopes;
 
     protected override async Task<ToolPreview> PrepareAsync(CreateGroupChatArgs args, ToolInvocation invocation, CancellationToken ct)

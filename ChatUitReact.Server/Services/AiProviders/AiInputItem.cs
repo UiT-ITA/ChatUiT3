@@ -8,9 +8,10 @@ using ChatUitReact.Server.Models;
 using ChatUitReact.Server.Services.TokenCounting;
 
 /// <summary>
-/// One entry of the history an <see cref="AiRequest"/> carries. Chats only ever send
-/// <see cref="Message"/>; the Responses API also replays earlier tool calls, their results and
-/// the provider's reasoning state, because it keeps no conversation of its own.
+/// One entry of the history an <see cref="AiRequest"/> carries. Chats replay earlier tool
+/// calls, their results and the provider's reasoning state from each assistant message's saved
+/// transcript; the Responses API gets them back from the client, because it keeps no
+/// conversation of its own.
 ///
 /// Tool fields stay out of <see cref="ChatMessage"/>, which also backs persistence.
 /// </summary>
@@ -26,8 +27,10 @@ public abstract record AiInputItem
     /// The result that answered <see cref="ToolCall"/> with the same id. <paramref name="Images"/>
     /// are pictures a client tool returned with its text (the Responses API's <c>input_image</c>
     /// output parts); each protocol sends them the way its service accepts images in a tool result.
+    /// <paramref name="LoadedToolIds"/> are the tools a toolbox load made callable from here on,
+    /// as in <see cref="AiToolResult.LoadedToolIds"/>.
     /// </summary>
-    public sealed record ToolResult(string ToolCallId, string Content, bool IsError, IReadOnlyList<ImagePart>? Images = null) : AiInputItem;
+    public sealed record ToolResult(string ToolCallId, string Content, bool IsError, IReadOnlyList<ImagePart>? Images = null, IReadOnlyList<string>? LoadedToolIds = null) : AiInputItem;
 
     /// <summary>
     /// Provider reasoning state from an earlier turn, as that protocol emitted it in
