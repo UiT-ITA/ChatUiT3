@@ -26,5 +26,16 @@ export interface UserModelDto {
     description: string;
     /** Whether an assistant on this model may be pinned as the user's default assistant. */
     allowedAsDefault: boolean;
+    classification: DataClassification;
     capabilities: UserModelCapabilitiesDto;
+}
+
+/** Which data may be put into a model, function, toolbox, assistant or chat. Lowest first. */
+export type DataClassification = 'Green' | 'Yellow' | 'Red';
+
+export const DATA_CLASSIFICATIONS: DataClassification[] = ['Green', 'Yellow', 'Red'];
+
+/** A chat follows its assistant, but is at most yellow until the user allows red. */
+export function chatClassification(assistant: DataClassification, redEnabled: boolean): DataClassification {
+    return redEnabled || assistant !== 'Red' ? assistant : 'Yellow';
 }

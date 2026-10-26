@@ -2,6 +2,7 @@ using System.Collections.Generic;
 using System.ComponentModel;
 using System.Threading;
 using System.Threading.Tasks;
+using ChatUitReact.Server.Models;
 using ChatUitReact.Server.Services.Tools;
 
 namespace ChatUitReact.Server.Services.Agents.M365.Functions;
@@ -25,6 +26,7 @@ public sealed class MoveFileFunction : ConfirmableTool<MoveFileArgs>
 
     public override string Id => "move_file";
     public override string DisplayName => "Move or rename file";
+    public override DataClassification Classification => DataClassification.Red;
     public override string Description => "Move and/or rename a file or folder within the same OneDrive or SharePoint drive. The user must approve it first. If they reject it, do not retry or change it.";
     public override IReadOnlyList<string> RequiredScopes => DriveSupport.Scopes;
 

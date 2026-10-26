@@ -25,6 +25,9 @@ public interface ITool
     /// <summary>Written for the model.</summary>
     string Description { get; }
 
+    /// <summary>Which data may be put into the tool.</summary>
+    DataClassification Classification { get; }
+
     /// <summary>JSON Schema for the arguments. Always an object schema.</summary>
     JsonObject ParametersSchema { get; }
 

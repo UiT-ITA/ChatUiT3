@@ -2,6 +2,7 @@ using System.Collections.Generic;
 using System.ComponentModel;
 using System.Threading;
 using System.Threading.Tasks;
+using ChatUitReact.Server.Models;
 using ChatUitReact.Server.Services.Tools;
 
 namespace ChatUitReact.Server.Services.Agents.M365.Functions;
@@ -29,6 +30,7 @@ public sealed class RespondToEventFunction : ConfirmableTool<RespondToEventArgs>
 
     public override string Id => "respond_to_event";
     public override string DisplayName => "Respond to invitation";
+    public override DataClassification Classification => DataClassification.Red;
     public override string Description => "Accept, decline or tentatively accept a meeting invitation, optionally with a message to the organizer. The user must approve it first. If they reject it, do not retry or change it.";
     public override IReadOnlyList<string> RequiredScopes => EventSupport.Scopes;
 

@@ -19,6 +19,14 @@ public partial class DatabaseService
         return chatDocuments.Select(MapChatHeader).ToList();
     }
 
+    public async Task<ChatHeader?> GetChatHeaderAsync(string userId, string chatId)
+    {
+        await EnsureInitializedAsync();
+
+        var chatDocument = await ReadItemOrDefaultAsync<ChatDocument>(_chatContainer!, chatId, userId);
+        return chatDocument == null ? null : MapChatHeader(chatDocument);
+    }
+
     public async Task<Chat?> GetChatByIdAsync(string userId, string chatId, bool includeFileContent = true)
     {
         await EnsureInitializedAsync();
@@ -64,6 +72,7 @@ public partial class DatabaseService
             UpdatedAt = chatDocument.UpdatedAt,
             Status = chatDocument.Status,
             IsFavorite = chatDocument.IsFavorite,
+            RedEnabled = chatDocument.RedEnabled,
             LoadedFiles = MapLoadedFiles(chatDocument.LoadedFiles),
             Messages = messages
         };
@@ -113,6 +122,7 @@ public partial class DatabaseService
             UpdatedAt = updatedAt,
             Status = chat.Status,
             IsFavorite = chat.IsFavorite,
+            RedEnabled = chat.RedEnabled,
             LoadedFiles = chat.LoadedFiles.Select(MapLoadedFile).ToList()
         };
 
@@ -176,6 +186,29 @@ public partial class DatabaseService
         {
             PatchOperation.Set("/isFavorite", isFavorite)
         };
+
+        try
+        {
+            await _chatContainer!.PatchItemAsync<ChatDocument>(chatId, new PartitionKey(userId), patchOperations);
+        }
+        catch (CosmosException ex) when (ex.StatusCode == System.Net.HttpStatusCode.NotFound)
+        {
+        }
+    }
+
+    public async Task EnableRedAsync(string userId, string chatId, string? assistantId)
+    {
+        await EnsureInitializedAsync();
+
+        var patchOperations = new List<PatchOperation>
+        {
+            PatchOperation.Set("/redEnabled", true)
+        };
+
+        if (!string.IsNullOrWhiteSpace(assistantId))
+        {
+            patchOperations.Add(PatchOperation.Set("/assistantId", assistantId));
+        }
 
         try
         {
@@ -403,6 +436,7 @@ public partial class DatabaseService
             UpdatedAt = chatDocument.UpdatedAt,
             Status = chatDocument.Status,
             IsFavorite = chatDocument.IsFavorite,
+            RedEnabled = chatDocument.RedEnabled,
             LoadedFiles = MapLoadedFiles(chatDocument.LoadedFiles)
         };
     }

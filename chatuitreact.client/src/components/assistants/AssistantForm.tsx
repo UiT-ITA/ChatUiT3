@@ -13,6 +13,7 @@ import GroupPicker from '../common/GroupPicker';
 import type { UserModelDto } from '../../types/modelModels';
 import { createAssistant, updateAssistant, fetchAssistantFile, getAssistants } from '../../services/assistantService';
 import TagField from '../common/TagField';
+import ClassificationBadge from '../common/ClassificationBadge';
 import KnowledgeFileList, { type KnowledgeFileCategory, type KnowledgeFileItemData } from './KnowledgeFileList';
 import KnowledgeSourceList from './KnowledgeSourceList';
 import type { ChatFile } from '../../types/fileModels';
@@ -218,6 +219,7 @@ const AssistantForm: React.FC<AssistantFormProps> = ({
     requiresConfirmation: tool.requiresConfirmation,
     requiredScopes: tool.requiredScopes,
     execution: tool.execution,
+    classification: tool.classification,
     children: adminTools.filter(child => child.parentId === tool.id).map(toChatTool),
   });
   const availableTools: ChatToolDto[] = systemAssistant
@@ -335,6 +337,7 @@ const AssistantForm: React.FC<AssistantFormProps> = ({
           />
           <span>
             <span className="af-tool-name t-table-strong">{tool.name}</span>
+            <ClassificationBadge classification={tool.classification} className="af-tool-classification" />
             <span className="af-tool-description"> — {tool.description}</span>
             {(tool.requiresConfirmation || wider) && (
               <span className="af-tool-hints">
@@ -566,6 +569,7 @@ const AssistantForm: React.FC<AssistantFormProps> = ({
               <span className="af-model-button-text">
                 {selectedModel ? selectedModel.modelName : t('assistants.form.selectModel')}
               </span>
+              {selectedModel && <ClassificationBadge classification={selectedModel.classification} />}
               {isModelDropdownOpen ? <MdExpandLess size="1.25rem" /> : <MdExpandMore size="1.25rem" />}
             </button>
 
@@ -586,6 +590,7 @@ const AssistantForm: React.FC<AssistantFormProps> = ({
                   >
                     <div className="af-model-option-header">
                       <span className="af-model-name t-ui">{model.modelName}</span>
+                      <ClassificationBadge classification={model.classification} />
                       <div className="af-model-capabilities">
                         {renderCapabilityIcon('Vision', model.capabilities.vision, <MdImage size="1rem" />)}
                         {renderCapabilityIcon('Tools', model.capabilities.tools, <MdPublic size="1rem" />)}

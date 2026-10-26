@@ -136,7 +136,13 @@
       "awaitingClient": "Kjører {{name}} i nettleseren din…",
       "timeLeft": "{{duration}} igjen"
     },
-    "awaitingInputHint": "Et verktøy venter på svar fra deg ovenfor."
+    "awaitingInputHint": "Et verktøy venter på svar fra deg ovenfor.",
+    "redToggle": {
+      "label": "Tillat rødt",
+      "enable": "Tillat røde data i denne samtalen. Dette kan ikke angres.",
+      "enabled": "Røde data er tillatt i denne samtalen. Dette kan ikke angres.",
+      "assistantNotRed": "Denne samtalen tillater røde data, så bare røde assistenter kan brukes."
+    }
   },
   "welcome": {
     "header": "Velkommen til ChatUiT",
@@ -615,7 +621,8 @@
         "allowedAsDefault": "Kan brukes som standardassistent",
         "allowedAsDefaultHelp": "Lar brukere velge en assistent bygget på denne modellen som standard for alle nye samtaler. Slå av for dyre modeller. Det påvirker ikke hvem som kan bruke modellen — det styres av Tillatte roller.",
         "exposedInApi": "Tilgjengelig i API-et",
-        "exposedInApiHelp": "Responses-API-et tilbyr denne modellen til API-klienter under modell-ID-en, for brukere med en av de tillatte rollene."
+        "exposedInApiHelp": "Responses-API-et tilbyr denne modellen til API-klienter under modell-ID-en, for brukere med en av de tillatte rollene.",
+        "classification": "Dataklassifisering"
       },
       "temperatureSupport": {
         "Unsupported": "Ikke støttet",
@@ -771,5 +778,11 @@
     "claimType": "Type",
     "claimValue": "Verdi",
     "groupsOverage": "Tokenet har en overage-markør for grupper (for mange grupper til å listes). Tjeneren behandler dette som ingen grupper. Bruk «Groups assigned to the application» i Entra."
+  },
+  "classification": {
+    "Green": "Grønn",
+    "Yellow": "Gul",
+    "Red": "Rød",
+    "title": "Dataklassifisering: {{level}}"
   }
 }

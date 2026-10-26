@@ -23,6 +23,8 @@ public abstract class Tool<TArgs> : ITool where TArgs : class
 
     public abstract string Description { get; }
 
+    public abstract DataClassification Classification { get; }
+
     public virtual ToolAccessPolicy DefaultPolicy => ToolAccessPolicy.Everyone;
 
     public virtual IReadOnlyList<string> LegacyIds => [];

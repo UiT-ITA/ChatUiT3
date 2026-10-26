@@ -15,6 +15,9 @@ public sealed class ClientTool : ITool
 {
     public const string Prefix = "client_";
 
+    /// <summary>The classification of every client tool.</summary>
+    public const DataClassification ClientClassification = DataClassification.Red;
+
     public ClientTool(string id, string description, JsonObject parametersSchema)
     {
         Id = id;
@@ -27,6 +30,8 @@ public sealed class ClientTool : ITool
     public string DisplayName => Id;
 
     public string Description { get; }
+
+    public DataClassification Classification => ClientClassification;
 
     public JsonObject ParametersSchema { get; }
 

@@ -188,6 +188,8 @@ export interface ChatHeaderDto {
   updatedAt: string;
   status: AiChatStatus;
   isFavorite: boolean;
+  /** Whether the user has allowed red data. Without it the chat is at most yellow. Never switched off. */
+  redEnabled: boolean;
   /** On-demand assistant files the model pinned to this chat. Token counts are per scheme id. */
   loadedFiles: ChatLoadedFileDto[];
 }
@@ -221,9 +223,13 @@ export interface SendMessageDto {
 
 export interface CreateChatDto {
   assistantId: string;
+  redEnabled?: boolean;
 }
 
 export interface UpdateChatDto {
   name?: string;
   isFavorite?: boolean;
+  redEnabled?: boolean;
+  /** With redEnabled: the picked assistant the chat switches to. */
+  assistantId?: string;
 }

@@ -4,6 +4,7 @@ using System.ComponentModel;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
+using ChatUitReact.Server.Models;
 using ChatUitReact.Server.Services.Tools;
 
 namespace ChatUitReact.Server.Services.Agents.M365.Functions;
@@ -33,6 +34,7 @@ public sealed class ReplyToMailFunction : ConfirmableTool<ReplyToMailArgs>
 
     public override string Id => "reply_to_mail";
     public override string DisplayName => "Reply to email";
+    public override DataClassification Classification => DataClassification.Red;
     public override string Description => "Reply, reply all or forward an email from the user's mailbox. The user must approve it first. If they reject it, do not retry or change it. Get people's email addresses and ids from find_people; never build an email address from a name.";
     public override IReadOnlyList<string> RequiredScopes => MailSupport.SendScopes;
 

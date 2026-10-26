@@ -136,7 +136,13 @@
       "awaitingClient": "Running {{name}} in your browser…",
       "timeLeft": "{{duration}} left"
     },
-    "awaitingInputHint": "A tool is waiting for your answer above."
+    "awaitingInputHint": "A tool is waiting for your answer above.",
+    "redToggle": {
+      "label": "Allow red",
+      "enable": "Allow red data in this conversation. This cannot be undone.",
+      "enabled": "Red data is allowed in this conversation. This cannot be undone.",
+      "assistantNotRed": "This conversation allows red data, so only red assistants can be used."
+    }
   },
   "welcome": {
     "header": "Welcome to ChatUiT",
@@ -615,7 +621,8 @@
         "allowedAsDefault": "Can be a default assistant model",
         "allowedAsDefaultHelp": "Lets users pin an assistant built on this model as their default for every new chat. Leave off for expensive models. It does not affect who may use the model — that is Allowed roles.",
         "exposedInApi": "Exposed in the API",
-        "exposedInApiHelp": "The Responses API serves this model to API clients under its model id, to users with one of the allowed roles."
+        "exposedInApiHelp": "The Responses API serves this model to API clients under its model id, to users with one of the allowed roles.",
+        "classification": "Data classification"
       },
       "temperatureSupport": {
         "Unsupported": "Not supported",
@@ -771,5 +778,11 @@
     "claimType": "Type",
     "claimValue": "Value",
     "groupsOverage": "The token carries a groups overage marker (too many groups to list). The server treats this as no groups. Use \"Groups assigned to the application\" in Entra."
+  },
+  "classification": {
+    "Green": "Green",
+    "Yellow": "Yellow",
+    "Red": "Red",
+    "title": "Data classification: {{level}}"
   }
 }

@@ -19,6 +19,16 @@
   background: var(--sel);
 }
 
+.assistant-option.disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.assistant-option.disabled:hover,
+.assistant-option.disabled:focus {
+  background: transparent;
+}
+
 .ap-row-main {
   display: flex;
   flex-direction: column;

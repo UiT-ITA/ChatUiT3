@@ -2,6 +2,7 @@ using System.Collections.Generic;
 using System.ComponentModel;
 using System.Threading;
 using System.Threading.Tasks;
+using ChatUitReact.Server.Models;
 using ChatUitReact.Server.Services.Tools;
 
 namespace ChatUitReact.Server.Services.Agents.M365.Functions;
@@ -23,6 +24,7 @@ public sealed class SendChatMessageFunction : ConfirmableTool<SendChatMessageArg
 
     public override string Id => "send_chat_message";
     public override string DisplayName => "Send Teams message";
+    public override DataClassification Classification => DataClassification.Red;
     public override string Description => "Send a Teams chat message to one person (by id or email) or into an existing chat (by chat id). The user must approve it first. If they reject it, do not retry or change it. Get people's email addresses and ids from find_people; never build an email address from a name.";
     public override IReadOnlyList<string> RequiredScopes => TeamsChatSupport.SendScopes;
 

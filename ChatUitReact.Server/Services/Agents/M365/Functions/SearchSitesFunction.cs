@@ -4,6 +4,7 @@ using System.ComponentModel;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
+using ChatUitReact.Server.Models;
 using ChatUitReact.Server.Services.Tools;
 
 namespace ChatUitReact.Server.Services.Agents.M365.Functions;
@@ -21,6 +22,7 @@ public sealed class SearchSitesFunction : Tool<SearchSitesArgs>
 
     public override string Id => "search_sites";
     public override string DisplayName => "Search SharePoint sites";
+    public override DataClassification Classification => DataClassification.Red;
     public override string Description => "Find SharePoint sites by name. Returns site id, name, description and link.";
     public override IReadOnlyList<string> RequiredScopes => Scopes;
 

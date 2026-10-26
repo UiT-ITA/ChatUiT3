@@ -4,6 +4,7 @@ using System.ComponentModel;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
+using ChatUitReact.Server.Models;
 using ChatUitReact.Server.Services.Tools;
 
 namespace ChatUitReact.Server.Services.Agents.M365.Functions;
@@ -29,6 +30,7 @@ public sealed class CreatePlannerTaskFunction : ConfirmableTool<CreatePlannerTas
 
     public override string Id => "create_planner_task";
     public override string DisplayName => "Create Planner task";
+    public override DataClassification Classification => DataClassification.Red;
     public override string Description => "Create a task in a Planner plan, optionally in a bucket, assigned to people and with a due date. The user must approve it first. If they reject it, do not retry or change it. Get people's email addresses and ids from find_people; never build an email address from a name.";
     public override IReadOnlyList<string> RequiredScopes => TaskSupport.PlannerScopes;
 

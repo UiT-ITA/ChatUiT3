@@ -2,7 +2,7 @@ import { useTranslation } from 'react-i18next';
 import { useAuth } from '../../hooks/useAuth';
 import { useSignals } from '@preact/signals-react/runtime';
 import { getUserProfile } from '../../services/userProfileService';
-import { getRecentAssistants, getCurrentAssistantId, setUserSelectedAssistantId } from '../../services/chatService';
+import { getRecentAssistants, getCurrentAssistantId, setUserSelectedAssistantId, getRedEnabled } from '../../services/chatService';
 import AssistantRow from '../common/AssistantRow';
 import './NewChatWelcome.css';
 
@@ -13,6 +13,7 @@ export default function NewChatWelcome() {
   const profileName = getUserProfile().value?.displayName ?? '';
   const recentAssistants = getRecentAssistants().value;
   const currentAssistantId = getCurrentAssistantId().value;
+  const redEnabled = getRedEnabled().value;
 
   const nameParts = (profileName || account?.name || '')
     .split(/[\s,]+/)
@@ -63,6 +64,7 @@ export default function NewChatWelcome() {
                   key={assistant.id}
                   assistant={assistant}
                   selected={assistant.id === currentAssistantId}
+                  disabledReason={redEnabled && assistant.classification !== 'Red' ? t('chat.redToggle.assistantNotRed') : undefined}
                   onSelect={a => setUserSelectedAssistantId(a.id)}
                 />
               ))}

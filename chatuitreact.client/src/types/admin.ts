@@ -1,4 +1,5 @@
 import type { FullAssistantDto, CreateAssistantDto, UpdateAssistantDto, UserRole } from './assistantModels';
+import type { DataClassification } from './modelModels';
 
 /** Where an endpoint points (the host). The host decides which protocols it serves and on what path. */
 export type EndpointType = 'AzureOpenAI' | 'OpenAI' | 'Anthropic' | 'LlamaCpp' | 'Other' | 'MicrosoftFoundry';
@@ -64,6 +65,7 @@ export interface AdminToolFunctionDto {
   description: string;
   requiresConfirmation: boolean;
   requiredScopes: string[];
+  classification: DataClassification;
 }
 
 /** A tool as the admin panel sees it. Tools are code; only the policy is editable. */
@@ -74,6 +76,8 @@ export interface AdminToolDto {
   requiresConfirmation: boolean;
   requiredScopes: string[];
   execution: 'server' | 'client';
+  /** The lowest classification of the toolbox's own functions. */
+  classification: DataClassification;
   parametersSchema: Record<string, unknown> | null;
   /** The policy from code. */
   defaultPolicy: ToolAccessPolicyDto;
@@ -185,6 +189,7 @@ export interface ModelDto {
   capabilities: ModelCapabilities;
   /** Empty string on a stored row that predates per-model protocols; such a row cannot be used until set. */
   apiProtocol: ApiProtocol | '';
+  classification: DataClassification;
 }
 
 export interface CreateModelDto {
@@ -199,6 +204,7 @@ export interface CreateModelDto {
   exposedInApi: boolean;
   capabilities: ModelCapabilities;
   apiProtocol: ApiProtocol;
+  classification: DataClassification;
 }
 
 export interface UpdateModelDto {
@@ -214,6 +220,7 @@ export interface UpdateModelDto {
   exposedInApi: boolean;
   capabilities: ModelCapabilities;
   apiProtocol: ApiProtocol;
+  classification: DataClassification;
 }
 
 /**

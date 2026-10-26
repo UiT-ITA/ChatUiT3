@@ -143,6 +143,7 @@ public class AdminToolsController : ControllerBase
             Name = "Client tools",
             Description = "Tools declared and executed by the client application (browser, Office add-ins). This policy decides who may use any of them.",
             Execution = ToolExecution.Client,
+            Classification = ClientTool.ClientClassification,
             DefaultPolicy = ToolMapping.ToDto(ToolAccessPolicy.Everyone),
             Policy = ToolMapping.ToDto(await _access.GetEffectivePolicyAsync(id)),
             IsOverridden = stored != null,

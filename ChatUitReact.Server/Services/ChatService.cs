@@ -84,6 +84,9 @@ public class ChatService : IChatService
         return await _databaseService.GetChatListAsync(userId);
     }
 
+    public Task<ChatHeader?> GetChatHeaderAsync(string userId, string chatId)
+        => _databaseService.GetChatHeaderAsync(userId, chatId);
+
     public async Task<Chat?> GetChatByIdAsync(string userId, string chatId, bool includeFileContent = true)
     {
         var chat = await _databaseService.GetChatByIdAsync(userId, chatId, includeFileContent);
@@ -204,12 +207,13 @@ public class ChatService : IChatService
         return await _databaseService.GetChatFileAsync(userId, chatId, fileId);
     }
 
-    public async Task<Chat> CreateChatAsync(string userId, string assistantId)
+    public async Task<Chat> CreateChatAsync(string userId, string assistantId, bool redEnabled = false)
     {
         var newChat = new Chat
         {
             Name = "New chat",
-            AssistantId = assistantId
+            AssistantId = assistantId,
+            RedEnabled = redEnabled
         };
 
         await _databaseService.AddChatAsync(userId, newChat);
@@ -236,6 +240,12 @@ public class ChatService : IChatService
     public async Task SetChatFavoriteAsync(string userId, string chatId, bool isFavorite)
     {
         await _databaseService.SetChatFavoriteAsync(userId, chatId, isFavorite);
+        NotifyChatListUpdated(userId);
+    }
+
+    public async Task EnableRedAsync(string userId, string chatId, string? assistantId)
+    {
+        await _databaseService.EnableRedAsync(userId, chatId, assistantId);
         NotifyChatListUpdated(userId);
     }
 
@@ -280,9 +290,22 @@ public class ChatService : IChatService
         // A blank assistantId only reaches here from the overloads that pass none; those leave
         // the fields empty and the client falls back to the chat's assistant.
         var attributedAssistantId = assistantId ?? string.Empty;
+
+        // Refuses a non-red assistant in a chat that allows red data, before anything is written.
+        var chatHeader = await _databaseService.GetChatHeaderAsync(userId, chatId);
+        var targetAssistantId = string.IsNullOrWhiteSpace(assistantId) ? chatHeader?.AssistantId : assistantId;
+        var targetAssistant = string.IsNullOrWhiteSpace(targetAssistantId)
+            ? null
+            : await _assistantService.GetAssistantByIdAsync(targetAssistantId);
+        if (chatHeader is { RedEnabled: true } && targetAssistant != null && _assistantService.ClassificationOf(targetAssistant) != DataClassification.Red)
+        {
+            await _hubContext.Clients.Group(userId).Notify(NotifyLevel.Error, $"This chat allows red data, so it can only use red assistants. \"{targetAssistant.Name}\" is not red.");
+            throw new InvalidOperationException($"Chat {chatId} allows red data but assistant {targetAssistantId} is not red");
+        }
+
         var attributedAssistantName = string.IsNullOrWhiteSpace(attributedAssistantId)
             ? string.Empty
-            : (await _assistantService.GetAssistantByIdAsync(attributedAssistantId))?.Name ?? string.Empty;
+            : targetAssistant?.Name ?? string.Empty;
 
         var assistantMessage = new Models.ChatMessage
         {

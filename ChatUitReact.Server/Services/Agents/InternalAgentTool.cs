@@ -34,6 +34,8 @@ public sealed class InternalAgentTool : IStreamingTool
 
     public string Description => Agent.Description;
 
+    public DataClassification Classification => DataClassification.Red;
+
     public JsonObject ParametersSchema => Schema;
 
     public ToolAccessPolicy DefaultPolicy => Agent.DefaultPolicy;

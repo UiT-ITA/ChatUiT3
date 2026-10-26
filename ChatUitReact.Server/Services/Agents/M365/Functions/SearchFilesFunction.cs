@@ -4,6 +4,7 @@ using System.ComponentModel;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
+using ChatUitReact.Server.Models;
 using ChatUitReact.Server.Services.Tools;
 
 namespace ChatUitReact.Server.Services.Agents.M365.Functions;
@@ -23,6 +24,7 @@ public sealed class SearchFilesFunction : Tool<SearchFilesArgs>
 
     public override string Id => "search_files";
     public override string DisplayName => "Search files";
+    public override DataClassification Classification => DataClassification.Red;
     public override string Description => "Search files the user can access in OneDrive and SharePoint by name or content. Returns name, driveId, itemId, last modified, size and a web link. Use driveId and itemId with read_file.";
     public override IReadOnlyList<string> RequiredScopes => Scopes;
 

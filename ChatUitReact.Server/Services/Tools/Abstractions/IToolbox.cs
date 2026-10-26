@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using System.Linq;
 using ChatUitReact.Server.Models;
 
 namespace ChatUitReact.Server.Services.Tools;
@@ -28,6 +29,9 @@ public interface IToolbox
     IReadOnlyList<ITool> Tools { get; }
 
     IReadOnlyList<IToolbox> Children { get; }
+
+    /// <summary>The lowest classification of the toolbox's own tools. Children are not included.</summary>
+    DataClassification Classification => Tools.Count == 0 ? DataClassification.Red : Tools.Min(t => t.Classification);
 }
 
 public sealed class Toolbox : IToolbox

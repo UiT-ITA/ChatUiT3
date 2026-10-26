@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { useSignals } from '@preact/signals-react/runtime';
 import { useTranslation } from 'react-i18next';
 import { Icon, type IconName } from './Icon';
-import { getSelectableAssistants, getCurrentAssistantId, setUserSelectedAssistantId } from '../../services/chatService';
+import { getSelectableAssistants, getCurrentAssistantId, setUserSelectedAssistantId, getRedEnabled } from '../../services/chatService';
 import { getModels } from '../../services/modelService';
 import AssistantRow from './AssistantRow';
 import { CAPABILITIES, capabilitiesOf, type Capability } from './assistantCapabilities';
@@ -40,6 +40,7 @@ export default function AssistantDropdown({ isOpen, direction, onClose }: Assist
 
   const modelsSignal = getModels();
   const models: UserModelDto[] = modelsSignal.value ?? [];
+  const redEnabled = getRedEnabled().value;
 
   const handleSelectAssistant = (assistant: AssistantDto) => {
     setUserSelectedAssistantId(assistant.id);
@@ -177,6 +178,7 @@ export default function AssistantDropdown({ isOpen, direction, onClose }: Assist
               key={assistant.id}
               assistant={assistant}
               selected={selectedAssistant?.id === assistant.id}
+              disabledReason={redEnabled && assistant.classification !== 'Red' ? t('chat.redToggle.assistantNotRed') : undefined}
               onSelect={handleSelectAssistant}
             />
           ))}

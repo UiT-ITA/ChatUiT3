@@ -78,6 +78,8 @@ public class ModelDto
     /// </summary>
     [Required(AllowEmptyStrings = true)]
     public string ApiProtocol { get; set; } = string.Empty;
+
+    public DataClassification Classification { get; set; } = DataClassification.Green;
 }
 
 public class CreateModelDto
@@ -116,6 +118,8 @@ public class CreateModelDto
     /// </summary>
     [Required(AllowEmptyStrings = true)]
     public string ApiProtocol { get; set; } = string.Empty;
+
+    public DataClassification Classification { get; set; } = DataClassification.Green;
 }
 
 public class UpdateModelDto
@@ -157,4 +161,6 @@ public class UpdateModelDto
     /// </summary>
     [Required(AllowEmptyStrings = true)]
     public string ApiProtocol { get; set; } = string.Empty;
+
+    public DataClassification Classification { get; set; } = DataClassification.Green;
 }

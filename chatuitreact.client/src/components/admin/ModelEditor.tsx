@@ -15,6 +15,7 @@ import type {
   EndpointDto,
 } from '../../types/admin';
 import { API_PROTOCOLS, REASONING_EFFORT_ORDER, TOKEN_COUNTING_SCHEME_OPTIONS } from '../../types/admin';
+import { DATA_CLASSIFICATIONS, type DataClassification } from '../../types/modelModels';
 
 const ALL_ROLES: UserRole[] = ['User', 'Admin', 'Beta', 'Super', 'External'];
 
@@ -56,6 +57,7 @@ function formStateFor(model: ModelDto | undefined, endpoints: EndpointDto[]) {
     allowedAsDefault: model?.allowedAsDefault ?? true,
     exposedInApi: model?.exposedInApi ?? false,
     apiProtocol: (model?.apiProtocol ?? '') as ApiProtocol | '',
+    classification: model?.classification ?? 'Green' as DataClassification,
     capabilities: caps,
     knowledgeCutoffMonth: typeof iso === 'string' && iso.length >= 7 ? iso.slice(0, 7) : '',
   };
@@ -79,6 +81,7 @@ const ModelEditor: React.FC<ModelEditorProps> = ({ modelId: editId }) => {
   const [exposedInApi, setExposedInApi] = useState(initial.exposedInApi);
   // '' until the admin picks one; a stored row from before per-model protocols also arrives as ''.
   const [apiProtocol, setApiProtocol] = useState<ApiProtocol | ''>(initial.apiProtocol);
+  const [classification, setClassification] = useState<DataClassification>(initial.classification);
   const [capabilities, setCapabilities] = useState<ModelCapabilities>(initial.capabilities);
   const [knowledgeCutoffMonth, setKnowledgeCutoffMonth] = useState<string>(initial.knowledgeCutoffMonth);
   const [saving, setSaving] = useState(false);
@@ -102,6 +105,7 @@ const ModelEditor: React.FC<ModelEditorProps> = ({ modelId: editId }) => {
     setAllowedAsDefault(next.allowedAsDefault);
     setExposedInApi(next.exposedInApi);
     setApiProtocol(next.apiProtocol);
+    setClassification(next.classification);
     setCapabilities(next.capabilities);
     setKnowledgeCutoffMonth(next.knowledgeCutoffMonth);
   }
@@ -177,7 +181,7 @@ const ModelEditor: React.FC<ModelEditorProps> = ({ modelId: editId }) => {
         knowledgeCutoff: knowledgeCutoffMonth ? `${knowledgeCutoffMonth}-01T00:00:00Z` : null,
         tokenCountingScheme: capabilities.tokenCountingScheme?.trim() || null,
       };
-      const payload = { modelId, modelName, description, endpointId, allowedRoles, allowedAsDefault, exposedInApi, apiProtocol, capabilities: capsToSend };
+      const payload = { modelId, modelName, description, endpointId, allowedRoles, allowedAsDefault, exposedInApi, apiProtocol, classification, capabilities: capsToSend };
 
       if (model) {
         await updateModel(model.id, { id: model.id, ...payload });
@@ -289,6 +293,19 @@ const ModelEditor: React.FC<ModelEditorProps> = ({ modelId: editId }) => {
             {apiProtocol === '' ? t('admin.models.fields.apiProtocolRequired') : t('admin.models.fields.apiProtocolHint')}
           </div>
         </div>
+      </div>
+
+      <div className="admin-field">
+        <label className="admin-label t-label">{t('admin.models.fields.classification')}</label>
+        <select
+          className="admin-select t-body"
+          value={classification}
+          onChange={(e) => setClassification(e.target.value as DataClassification)}
+        >
+          {DATA_CLASSIFICATIONS.map(level => (
+            <option key={level} value={level}>{t(`classification.${level}`)}</option>
+          ))}
+        </select>
       </div>
 
       <div className="admin-field">

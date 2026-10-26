@@ -4,6 +4,7 @@ using System.ComponentModel;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
+using ChatUitReact.Server.Models;
 using ChatUitReact.Server.Services.Tools;
 
 namespace ChatUitReact.Server.Services.Agents.M365.Functions;
@@ -21,6 +22,7 @@ public sealed class GetMeetingAttendanceFunction : Tool<GetMeetingAttendanceArgs
 
     public override string Id => "get_meeting_attendance";
     public override string DisplayName => "Get meeting attendance";
+    public override DataClassification Classification => DataClassification.Red;
     public override string Description => "List who joined a Teams meeting (the most recent occurrence), with join and leave times and minutes attended. Usually only available for meetings the user organized.";
     public override IReadOnlyList<string> RequiredScopes => Scopes;
 

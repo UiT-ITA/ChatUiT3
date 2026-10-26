@@ -116,6 +116,10 @@ public partial class DatabaseService
         [JsonProperty("isFavorite")]
         public bool IsFavorite { get; set; }
 
+        // Absent on rows written before data classification existed.
+        [JsonProperty("redEnabled")]
+        public bool RedEnabled { get; set; }
+
         // Absent on rows written before on-demand files existed.
         [JsonProperty("loadedFiles")]
         public List<ChatLoadedFileDocument> LoadedFiles { get; set; } = new();
@@ -278,6 +282,11 @@ public partial class DatabaseService
         [JsonProperty("apiProtocol")]
         [JsonConverter(typeof(StringEnumConverter))]
         public ApiProtocol? ApiProtocol { get; set; }
+
+        // Absent in rows saved before data classification existed; those read as Green.
+        [JsonProperty("classification")]
+        [JsonConverter(typeof(StringEnumConverter))]
+        public DataClassification Classification { get; set; } = DataClassification.Green;
     }
 
     /// <summary>

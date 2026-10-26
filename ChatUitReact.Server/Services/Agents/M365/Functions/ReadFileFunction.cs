@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.ComponentModel;
 using System.Threading;
 using System.Threading.Tasks;
+using ChatUitReact.Server.Models;
 using ChatUitReact.Server.Services.Tools;
 
 namespace ChatUitReact.Server.Services.Agents.M365.Functions;
@@ -24,6 +25,7 @@ public sealed class ReadFileFunction : Tool<ReadFileArgs>
 
     public override string Id => "read_file";
     public override string DisplayName => "Read file";
+    public override DataClassification Classification => DataClassification.Red;
     public override string Description => "Read the content of a text-based file (txt, md, csv, json, xml, html, code) from OneDrive or SharePoint. Office documents and PDFs return metadata only.";
     public override IReadOnlyList<string> RequiredScopes => Scopes;
 

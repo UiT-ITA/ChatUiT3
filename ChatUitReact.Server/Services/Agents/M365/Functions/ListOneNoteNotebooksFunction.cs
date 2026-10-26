@@ -4,6 +4,7 @@ using System.Linq;
 using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
+using ChatUitReact.Server.Models;
 using ChatUitReact.Server.Services.Tools;
 
 namespace ChatUitReact.Server.Services.Agents.M365.Functions;
@@ -24,6 +25,7 @@ public sealed class ListOneNoteNotebooksFunction : Tool<ListOneNoteNotebooksArgs
 
     public override string Id => "list_onenote_notebooks";
     public override string DisplayName => "List OneNote notebooks";
+    public override DataClassification Classification => DataClassification.Red;
     public override string Description => "List the user's own OneNote notebooks (mine: true) and the notebooks of others they have opened (mine: false, with where they are stored), with ids.";
     public override IReadOnlyList<string> RequiredScopes => Scopes;
 

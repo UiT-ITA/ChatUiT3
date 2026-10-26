@@ -15,6 +15,7 @@ public static class ToolMapping
         RequiresConfirmation = toolbox.Tools.Any(t => t is IConfirmableTool),
         RequiredScopes = RequiredScopes(toolbox),
         Execution = ToolExecution.Server,
+        Classification = toolbox.Classification,
         Children = children
     };
 
@@ -42,6 +43,7 @@ public static class ToolMapping
         RequiresConfirmation = toolbox.Tools.Any(t => t is IConfirmableTool),
         RequiredScopes = RequiredScopes(toolbox),
         Execution = ToolExecution.Server,
+        Classification = toolbox.Classification,
         ParametersSchema = toolbox.Tools is [var only] ? JsonSerializer.SerializeToElement(only.ParametersSchema) : null,
         DefaultPolicy = ToDto(toolbox.DefaultPolicy),
         Policy = ToDto(effective),
@@ -55,7 +57,8 @@ public static class ToolMapping
         Id = f.Id,
         Description = f.Description,
         RequiresConfirmation = f is IConfirmableTool,
-        RequiredScopes = f.RequiredScopes.ToList()
+        RequiredScopes = f.RequiredScopes.ToList(),
+        Classification = f.Classification
     }).ToList();
 
     private static List<string> RequiredScopes(IToolbox toolbox)

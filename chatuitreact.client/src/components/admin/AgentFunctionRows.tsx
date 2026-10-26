@@ -1,13 +1,16 @@
 import React from 'react';
 import { useTranslation } from 'react-i18next';
 import type { AdminToolFunctionDto } from '../../types/admin';
+import ClassificationBadge from '../common/ClassificationBadge';
 
 interface AgentFunctionRowsProps {
   functions: AdminToolFunctionDto[];
+  /** Shows each function's data classification. */
+  showClassification?: boolean;
 }
 
 /** An internal agent's functions, read-only. */
-const AgentFunctionRows: React.FC<AgentFunctionRowsProps> = ({ functions }) => {
+const AgentFunctionRows: React.FC<AgentFunctionRowsProps> = ({ functions, showClassification }) => {
   const { t } = useTranslation();
   return (
     <>
@@ -25,6 +28,7 @@ const AgentFunctionRows: React.FC<AgentFunctionRowsProps> = ({ functions }) => {
               </div>
             )}
           </div>
+          {showClassification && <ClassificationBadge classification={fn.classification} />}
         </div>
       ))}
     </>

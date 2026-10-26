@@ -42,6 +42,7 @@ public sealed class LoadToolsTool : Tool<LoadToolsArgs>
     public override string Id => ToolId;
 
     public override string DisplayName => "Load tools";
+    public override DataClassification Classification => DataClassification.Red;
 
     public override string Description { get; }
 

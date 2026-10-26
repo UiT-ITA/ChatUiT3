@@ -45,5 +45,7 @@ public class UserModelDto
     /// </summary>
     public bool AllowedAsDefault { get; set; }
 
+    public DataClassification Classification { get; set; }
+
     public UserModelCapabilitiesDto Capabilities { get; set; } = new UserModelCapabilitiesDto();
 }

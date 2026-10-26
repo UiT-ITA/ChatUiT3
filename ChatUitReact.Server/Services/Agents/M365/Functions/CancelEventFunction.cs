@@ -3,6 +3,7 @@ using System.ComponentModel;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
+using ChatUitReact.Server.Models;
 using ChatUitReact.Server.Services.Tools;
 
 namespace ChatUitReact.Server.Services.Agents.M365.Functions;
@@ -22,6 +23,7 @@ public sealed class CancelEventFunction : ConfirmableTool<CancelEventArgs>
 
     public override string Id => "cancel_event";
     public override string DisplayName => "Cancel calendar event";
+    public override DataClassification Classification => DataClassification.Red;
     public override string Description => "Cancel an event the user organizes and notify the attendees. For invitations from others, use respond_to_event with decline. The user must approve it first. If they reject it, do not retry or change it.";
     public override IReadOnlyList<string> RequiredScopes => EventSupport.Scopes;
 

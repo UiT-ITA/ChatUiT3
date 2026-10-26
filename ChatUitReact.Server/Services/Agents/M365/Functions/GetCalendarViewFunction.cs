@@ -4,6 +4,7 @@ using System.ComponentModel;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
+using ChatUitReact.Server.Models;
 using ChatUitReact.Server.Services.Tools;
 
 namespace ChatUitReact.Server.Services.Agents.M365.Functions;
@@ -27,6 +28,7 @@ public sealed class GetCalendarViewFunction : Tool<GetCalendarViewArgs>
 
     public override string Id => "get_calendar_view";
     public override string DisplayName => "Get calendar";
+    public override DataClassification Classification => DataClassification.Red;
     public override string Description => "List calendar events in a time window for the signed-in user, or for a colleague whose calendar is shared with them. Returns subject, start, end, location, organizer, attendees and free/busy status. For availability use get_schedule instead.";
     public override IReadOnlyList<string> RequiredScopes => Scopes;
 

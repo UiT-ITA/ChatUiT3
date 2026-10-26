@@ -14,6 +14,10 @@ public interface IAssistantService
     Task<bool> AddSharedAssistantAsync(string assistantId, string userId, UserAccess access);
     /// <summary>Display names of the assistant's tools this user may not use.</summary>
     Task<IReadOnlyList<string>> DisallowedToolNamesAsync(Assistant assistant, UserAccess access);
+    /// <summary>The lowest classification of the assistant's model and the tools of its selected toolboxes.</summary>
+    DataClassification ClassificationOf(Assistant assistant);
+    /// <summary>Whether the assistant is in the user's list: owned, a system assistant they may use, or shared with them.</summary>
+    Task<bool> IsInUserListAsync(Assistant assistant, string userId, UserAccess access);
     Task<bool> RemoveSharedAssistantAsync(string assistantId, string userId);
     Task<bool> ToggleAssistantVisibilityAsync(string assistantId, string userId);
     Task<bool> SetDefaultAssistantAsync(string assistantId, string userId, List<UserRole> roles);

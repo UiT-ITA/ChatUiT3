@@ -5,6 +5,7 @@ import { toggleFavorite } from '../../services/assistantService';
 import { getModels } from '../../services/modelService';
 import type { AssistantDto } from '../../types/assistantModels';
 import { CAPABILITIES, capabilitiesOf } from './assistantCapabilities';
+import ClassificationBadge from './ClassificationBadge';
 import './AssistantRow.css';
 
 /** Categories map onto AssistantDto.type, except 'all' and the per-user 'favorites'. */
@@ -17,10 +18,12 @@ const ROW_ICON: Record<AssistantDto['type'], IconName> = {
 interface AssistantRowProps {
   assistant: AssistantDto;
   selected: boolean;
+  /** Shown but not selectable, with this text as the reason. */
+  disabledReason?: string;
   onSelect: (assistant: AssistantDto) => void;
 }
 
-export default function AssistantRow({ assistant, selected, onSelect }: AssistantRowProps) {
+export default function AssistantRow({ assistant, selected, disabledReason, onSelect }: AssistantRowProps) {
   useSignals();
   const { t } = useTranslation();
   const models = getModels().value ?? [];
@@ -34,12 +37,16 @@ export default function AssistantRow({ assistant, selected, onSelect }: Assistan
       role="option"
       tabIndex={0}
       aria-selected={selected}
-      className={`assistant-option ${selected ? 'selected' : ''}`}
-      onClick={() => onSelect(assistant)}
+      aria-disabled={disabledReason !== undefined}
+      title={disabledReason}
+      className={`assistant-option ${selected ? 'selected' : ''} ${disabledReason !== undefined ? 'disabled' : ''}`}
+      onClick={() => {
+        if (disabledReason === undefined) onSelect(assistant);
+      }}
       onKeyDown={(e) => {
         if (e.key === 'Enter' || e.key === ' ') {
           e.preventDefault();
-          onSelect(assistant);
+          if (disabledReason === undefined) onSelect(assistant);
         }
       }}
     >
@@ -48,6 +55,7 @@ export default function AssistantRow({ assistant, selected, onSelect }: Assistan
           <Icon name={ROW_ICON[assistant.type] ?? 'assistants'} size={1} className="ap-row-type-icon" />
           <span className="assistant-option-name t-body-strong">{assistant.name}</span>
           {modelName && <span className="ap-row-model t-meta">{modelName}</span>}
+          <ClassificationBadge classification={assistant.classification} />
           <button
             type="button"
             className={`ap-row-favorite ${assistant.isFavorite ? 'active' : ''}`}

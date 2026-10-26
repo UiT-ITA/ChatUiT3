@@ -127,6 +127,11 @@
   gap: 0.5rem;
 }
 
+.af-tool-classification {
+  margin-left: 0.4375rem;
+  vertical-align: middle;
+}
+
 .af-model-name {
   flex: 1;
 }

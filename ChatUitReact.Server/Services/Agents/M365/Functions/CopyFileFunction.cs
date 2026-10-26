@@ -2,6 +2,7 @@ using System.Collections.Generic;
 using System.ComponentModel;
 using System.Threading;
 using System.Threading.Tasks;
+using ChatUitReact.Server.Models;
 using ChatUitReact.Server.Services.Tools;
 
 namespace ChatUitReact.Server.Services.Agents.M365.Functions;
@@ -27,6 +28,7 @@ public sealed class CopyFileFunction : ConfirmableTool<CopyFileArgs>
 
     public override string Id => "copy_file";
     public override string DisplayName => "Copy file";
+    public override DataClassification Classification => DataClassification.Red;
     public override string Description => "Copy a file or folder to another folder, in the same or another drive. The copy finishes in the background. The user must approve it first. If they reject it, do not retry or change it.";
     public override IReadOnlyList<string> RequiredScopes => DriveSupport.Scopes;
 

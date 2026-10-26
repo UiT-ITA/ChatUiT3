@@ -2,6 +2,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
+using ChatUitReact.Server.Models;
 using ChatUitReact.Server.Services.Tools;
 
 namespace ChatUitReact.Server.Services.Agents.M365.Functions;
@@ -16,6 +17,7 @@ public sealed class ListTodoListsFunction : Tool<ListTodoListsArgs>
 
     public override string Id => "list_todo_lists";
     public override string DisplayName => "List To Do lists";
+    public override DataClassification Classification => DataClassification.Red;
     public override string Description => "List the user's Microsoft To Do lists with ids. The default list has wellKnownName defaultList.";
     public override IReadOnlyList<string> RequiredScopes => TaskSupport.Scopes;
 

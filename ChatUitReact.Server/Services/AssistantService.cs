@@ -278,6 +278,38 @@ namespace ChatUitReact.Server.Services
             return assistant;
         }
 
+        public DataClassification ClassificationOf(Assistant assistant)
+        {
+            var selected = assistant.ChatSettings.AvailableToolIds.ToHashSet(StringComparer.Ordinal);
+            return _toolboxes.Resolve(selected)
+                .SelectMany(resolved => WithSelectedChildren(resolved.Toolbox, selected))
+                .Select(toolbox => toolbox.Classification)
+                .Append(assistant.ChatSettings.Model.Classification)
+                .Min();
+        }
+
+        private static IEnumerable<IToolbox> WithSelectedChildren(IToolbox toolbox, HashSet<string> selected)
+            => toolbox.Children
+                .Where(child => selected.Contains(child.Id))
+                .SelectMany(child => WithSelectedChildren(child, selected))
+                .Prepend(toolbox);
+
+        public async Task<bool> IsInUserListAsync(Assistant assistant, string userId, UserAccess access)
+        {
+            if (assistant.OwnerId == userId)
+            {
+                return true;
+            }
+
+            if (assistant.IsSystem)
+            {
+                return assistant.Access == null || assistant.Access.Allows(access);
+            }
+
+            var user = await _databaseService.GetUserAsync(userId);
+            return user != null && user.Preferences.SharedAssistantIds.Contains(assistant.Id);
+        }
+
         public async Task<AssistantFileDto?> GetAssistantFileDtoAsync(string assistantId, string fileId)
         {
             var file = await _databaseService.GetAssistantFileAsync(assistantId, fileId);
@@ -799,7 +831,7 @@ namespace ChatUitReact.Server.Services
             => access == null ? null : new AssistantAccessPolicyDto { AllowedRoles = access.AllowedRoles.ToList(), AllowedGroupIds = access.AllowedGroupIds.ToList() };
 
         // eligibleModelIds is null on the admin paths, which have no user to pin anything for.
-        private static FullAssistantDto MapToFullAssistantDto(
+        private FullAssistantDto MapToFullAssistantDto(
             Assistant assistant,
             PromptTokenCounts promptTokenCounts,
             UserInfo? user = null,
@@ -814,6 +846,7 @@ namespace ChatUitReact.Server.Services
                 Description = assistant.Description,
                 Tags = assistant.Tags,
                 ModelId = assistant.ChatSettings.Model.Id,
+                Classification = ClassificationOf(assistant),
                 SystemPrompt = assistant.ChatSettings.SystemPrompt,
                 Temperature = assistant.ChatSettings.Temperature,
                 ReasoningEffort = assistant.ChatSettings.ReasoningEffort,
@@ -881,7 +914,7 @@ namespace ChatUitReact.Server.Services
             };
         }
 
-        private static AssistantSummaryDto MapToAssistantSummaryDto(
+        private AssistantSummaryDto MapToAssistantSummaryDto(
             Assistant assistant,
             PromptTokenCounts promptTokenCounts,
             UserInfo? user = null,
@@ -896,6 +929,7 @@ namespace ChatUitReact.Server.Services
                 Description = assistant.Description,
                 Tags = assistant.Tags,
                 ModelId = assistant.ChatSettings.Model.Id,
+                Classification = ClassificationOf(assistant),
                 IsVisible = !(user?.Preferences.HiddenAssistantIds.Contains(assistant.Id) ?? false),
                 IsFavorite = user?.Preferences.FavoritedAssistantIds.Contains(assistant.Id) ?? false,
                 CanBeDefault = eligibleModelIds?.Contains(assistant.ChatSettings.Model.Id) ?? false,

@@ -8,6 +8,7 @@ import { refreshTools } from '../../services/toolService';
 import { toolboxLabel, type UserRole, type AdminToolDto, type ToolAccessPolicyDto } from '../../types/admin';
 import GroupPicker from '../common/GroupPicker';
 import AgentFunctionRows from './AgentFunctionRows';
+import ClassificationBadge from '../common/ClassificationBadge';
 
 const ALL_ROLES: UserRole[] = ['User', 'Admin', 'Beta', 'Super', 'External'];
 
@@ -125,6 +126,11 @@ const ToolEditor: React.FC<ToolEditorProps> = ({ toolId }) => {
       </div>
 
       <div className="admin-field">
+        <div className="admin-label t-label">{t('admin.models.fields.classification')}</div>
+        <div><ClassificationBadge classification={tool.classification} /></div>
+      </div>
+
+      <div className="admin-field">
         <div className="admin-label t-label">{t('admin.tools.fields.requiresConfirmation')}</div>
         <div className="t-body">{tool.requiresConfirmation ? t('common.yes', { defaultValue: 'Yes' }) : t('common.no', { defaultValue: 'No' })}</div>
       </div>
@@ -140,7 +146,7 @@ const ToolEditor: React.FC<ToolEditorProps> = ({ toolId }) => {
         <div className="admin-field">
           <div className="admin-label t-label">{t('admin.tools.fields.functions')}</div>
           <div className="admin-field-help t-caption">{t('admin.tools.fields.functionsHelp')}</div>
-          <AgentFunctionRows functions={tool.functions} />
+          <AgentFunctionRows functions={tool.functions} showClassification />
         </div>
       )}
 

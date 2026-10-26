@@ -3,6 +3,7 @@ using System.ComponentModel;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
+using ChatUitReact.Server.Models;
 using ChatUitReact.Server.Services.Tools;
 
 namespace ChatUitReact.Server.Services.Agents.M365.Functions;
@@ -46,6 +47,7 @@ public sealed class UpdateOneNotePageFunction : ConfirmableTool<UpdateOneNotePag
 
     public override string Id => "update_onenote_page";
     public override string DisplayName => "Update OneNote page";
+    public override DataClassification Classification => DataClassification.Red;
     public override string Description => "Edit a OneNote page: add, insert or replace elements, or change the title. Target elements by the ids from read_onenote_page. The user must approve it first. If they reject it, do not retry or change it.";
     public override IReadOnlyList<string> RequiredScopes => OneNoteSupport.WriteScopes;
 

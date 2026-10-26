@@ -4,6 +4,7 @@ using System.ComponentModel;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
+using ChatUitReact.Server.Models;
 using ChatUitReact.Server.Services.Tools;
 
 namespace ChatUitReact.Server.Services.Agents.M365.Functions;
@@ -22,6 +23,7 @@ public sealed class ListTodoTasksFunction : Tool<ListTodoTasksArgs>
 
     public override string Id => "list_todo_tasks";
     public override string DisplayName => "List To Do tasks";
+    public override DataClassification Classification => DataClassification.Red;
     public override string Description => "List tasks in a To Do list: title, status, importance, due date and notes. Open tasks only unless includeCompleted is set.";
     public override IReadOnlyList<string> RequiredScopes => TaskSupport.Scopes;
 

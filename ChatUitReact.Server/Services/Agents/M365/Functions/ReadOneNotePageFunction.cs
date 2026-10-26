@@ -2,6 +2,7 @@ using System.Collections.Generic;
 using System.ComponentModel;
 using System.Threading;
 using System.Threading.Tasks;
+using ChatUitReact.Server.Models;
 using ChatUitReact.Server.Services.Tools;
 
 namespace ChatUitReact.Server.Services.Agents.M365.Functions;
@@ -20,6 +21,7 @@ public sealed class ReadOneNotePageFunction : Tool<ReadOneNotePageArgs>
 
     public override string Id => "read_onenote_page";
     public override string DisplayName => "Read OneNote page";
+    public override DataClassification Classification => DataClassification.Red;
     public override string Description => "Read a OneNote page as HTML. Element id attributes are the targets for update_onenote_page.";
     public override IReadOnlyList<string> RequiredScopes => OneNoteSupport.ReadScopes;
 
