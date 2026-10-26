@@ -4,6 +4,7 @@ using System.ComponentModel;
 using System.Net;
 using System.Threading;
 using System.Threading.Tasks;
+using ChatUitReact.Server.Models;
 using ChatUitReact.Server.Services.Tools;
 
 namespace ChatUitReact.Server.Services.Agents.M365.Functions;
@@ -21,6 +22,7 @@ public sealed class GetUserFunction : Tool<GetUserArgs>
 
     public override string Id => "get_user";
     public override string DisplayName => "Get user";
+    public override DataClassification Classification => DataClassification.Red;
     public override string Description => "Get one user's profile: display name, email, job title, department, office, phones and manager. Pass \"me\" for the signed-in user.";
     public override IReadOnlyList<string> RequiredScopes => Scopes;
 

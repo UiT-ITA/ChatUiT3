@@ -13,12 +13,15 @@ public interface IDatabaseService
 
     // Chat management
     Task<List<ChatHeader>> GetChatListAsync(string userId);
+    /// <summary>The chat without its messages.</summary>
+    Task<ChatHeader?> GetChatHeaderAsync(string userId, string chatId);
     Task<Chat?> GetChatByIdAsync(string userId, string chatId, bool includeFileContent = true);
     Task<ChatFile?> GetChatFileAsync(string userId, string chatId, string fileId);
     Task AddChatAsync(string userId, Chat chat);
     Task DeleteChatAsync(string userId, string chatId);
     Task UpdateChatAsync(string userId, string chatId, string? newTitle, string? newAssistantId = null);
     Task SetChatFavoriteAsync(string userId, string chatId, bool isFavorite);
+    Task EnableRedAsync(string userId, string chatId, string? assistantId);
     /// <summary>
     /// Pins an on-demand assistant file to the chat. A file already pinned is left as is.
     /// Returns false when the chat does not exist.

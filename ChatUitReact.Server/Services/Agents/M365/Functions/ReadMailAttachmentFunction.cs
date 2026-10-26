@@ -4,6 +4,7 @@ using System.ComponentModel;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
+using ChatUitReact.Server.Models;
 using ChatUitReact.Server.Services.Tools;
 
 namespace ChatUitReact.Server.Services.Agents.M365.Functions;
@@ -25,6 +26,7 @@ public sealed class ReadMailAttachmentFunction : Tool<ReadMailAttachmentArgs>
 
     public override string Id => "read_mail_attachment";
     public override string DisplayName => "Read email attachment";
+    public override DataClassification Classification => DataClassification.Red;
     public override string Description => "Read a text-based email attachment (txt, md, csv, json, ...). Other types return metadata only.";
     public override IReadOnlyList<string> RequiredScopes => MailSupport.ReadScopes;
 

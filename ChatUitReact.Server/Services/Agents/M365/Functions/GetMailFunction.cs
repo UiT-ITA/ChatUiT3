@@ -5,6 +5,7 @@ using System.Linq;
 using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
+using ChatUitReact.Server.Models;
 using ChatUitReact.Server.Services.Tools;
 
 namespace ChatUitReact.Server.Services.Agents.M365.Functions;
@@ -29,6 +30,7 @@ public sealed class GetMailFunction : Tool<GetMailArgs>
 
     public override string Id => "get_mail";
     public override string DisplayName => "Read email";
+    public override DataClassification Classification => DataClassification.Red;
     public override string Description => "Read one email in full: sender, recipients, body as text and attachments (ids for read_mail_attachment). includeThread returns the whole conversation instead.";
     public override IReadOnlyList<string> RequiredScopes => MailSupport.ReadScopes;
 

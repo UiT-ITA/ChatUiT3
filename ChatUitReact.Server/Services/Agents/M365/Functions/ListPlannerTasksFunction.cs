@@ -4,6 +4,7 @@ using System.ComponentModel;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
+using ChatUitReact.Server.Models;
 using ChatUitReact.Server.Services.Tools;
 
 namespace ChatUitReact.Server.Services.Agents.M365.Functions;
@@ -20,6 +21,7 @@ public sealed class ListPlannerTasksFunction : Tool<ListPlannerTasksArgs>
 
     public override string Id => "list_planner_tasks";
     public override string DisplayName => "List Planner tasks";
+    public override DataClassification Classification => DataClassification.Red;
     public override string Description => "List Planner tasks in a plan, or the user's assigned tasks: title, bucket, assignee ids, due date and percent complete.";
     public override IReadOnlyList<string> RequiredScopes => TaskSupport.Scopes;
 

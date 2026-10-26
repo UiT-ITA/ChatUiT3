@@ -3,6 +3,7 @@ using System.ComponentModel;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
+using ChatUitReact.Server.Models;
 using ChatUitReact.Server.Services.Tools;
 
 namespace ChatUitReact.Server.Services.Agents.M365.Functions;
@@ -23,6 +24,7 @@ public sealed class CreateGroupChatFunction : ConfirmableTool<CreateGroupChatArg
 
     public override string Id => "create_group_chat";
     public override string DisplayName => "Create Teams group chat";
+    public override DataClassification Classification => DataClassification.Red;
     public override string Description => "Create a Teams group chat with two or more people, optionally with a topic and a first message. The user must approve it first. If they reject it, do not retry or change it. Get people's email addresses and ids from find_people; never build an email address from a name.";
     public override IReadOnlyList<string> RequiredScopes => TeamsChatSupport.SendScopes;
 

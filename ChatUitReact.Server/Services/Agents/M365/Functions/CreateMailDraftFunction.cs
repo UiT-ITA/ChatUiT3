@@ -4,6 +4,7 @@ using System.ComponentModel;
 using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
+using ChatUitReact.Server.Models;
 using ChatUitReact.Server.Services.Tools;
 
 namespace ChatUitReact.Server.Services.Agents.M365.Functions;
@@ -29,6 +30,7 @@ public sealed class CreateMailDraftFunction : ConfirmableTool<CreateMailDraftArg
 
     public override string Id => "create_mail_draft";
     public override string DisplayName => "Create email draft";
+    public override DataClassification Classification => DataClassification.Red;
     public override string Description => "Save an email in the user's Drafts folder without sending it, either new or as a reply. The user must approve it first. If they reject it, do not retry or change it. Get people's email addresses and ids from find_people; never build an email address from a name.";
     public override IReadOnlyList<string> RequiredScopes => MailSupport.WriteScopes;
 

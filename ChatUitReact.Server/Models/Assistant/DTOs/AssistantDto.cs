@@ -31,6 +31,9 @@ public class FullAssistantDto
     public string Description { get; set; } = string.Empty;
     public List<string> Tags { get; set; } = new List<string>();
     public string ModelId { get; set; } = string.Empty;
+
+    /// <summary>The lowest classification of the model and the tools of the selected toolboxes. Set when reading an assistant.</summary>
+    public DataClassification Classification { get; set; }
     public string SystemPrompt { get; set; } = string.Empty;
     public float Temperature { get; set; } = 0.7f;
     public ReasoningEffort ReasoningEffort { get; set; } = ReasoningEffort.None;
@@ -91,6 +94,9 @@ public class AssistantSummaryDto
     public string Description { get; set; } = string.Empty;
     public List<string> Tags { get; set; } = new List<string>();
     public string ModelId { get; set; } = string.Empty;
+
+    /// <summary>The lowest classification of the model and the tools of the selected toolboxes. Set when reading an assistant.</summary>
+    public DataClassification Classification { get; set; }
     public bool IsVisible { get; set; }
     public bool IsFavorite { get; set; }
 

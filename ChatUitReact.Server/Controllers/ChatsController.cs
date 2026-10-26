@@ -65,6 +65,23 @@ public class ChatsController : ControllerBase
         return await _modelService.GetModelForUserAsync(modelId, _userService.GetUserRoles(User)) != null;
     }
 
+    /// <summary>
+    /// Null when the assistant may hold red data in a chat of this user, otherwise the response
+    /// refusing it: forbidden when it is not in the user's list, bad request when it is not red.
+    /// </summary>
+    private async Task<ActionResult?> RefuseRedAssistantAsync(string userId, string? assistantId)
+    {
+        var assistant = string.IsNullOrWhiteSpace(assistantId) ? null : await _assistantService.GetAssistantByIdAsync(assistantId);
+        if (assistant == null || !await _assistantService.IsInUserListAsync(assistant, userId, _userService.GetUserAccess(User)))
+        {
+            return Forbid();
+        }
+
+        return _assistantService.ClassificationOf(assistant) == DataClassification.Red
+            ? null
+            : BadRequest("Red data requires a red assistant");
+    }
+
     private string GetCurrentUserId()
     {
         return _userService.GetCurrentUserId(User);
@@ -162,7 +179,12 @@ public class ChatsController : ControllerBase
                 return Forbid();
             }
 
-            var chat = await _chatService.CreateChatAsync(userId, request.AssistantId);
+            if (request.RedEnabled && await RefuseRedAssistantAsync(userId, request.AssistantId) is { } refused)
+            {
+                return refused;
+            }
+
+            var chat = await _chatService.CreateChatAsync(userId, request.AssistantId, request.RedEnabled);
 
             await _hubContext.Clients.Group(userId).ChatListUpdated();
 
@@ -327,6 +349,7 @@ public class ChatsController : ControllerBase
             UpdatedAt = chat.UpdatedAt,
             Status = chat.Status,
             IsFavorite = chat.IsFavorite,
+            RedEnabled = chat.RedEnabled,
             AssistantId = chat.AssistantId,
             LoadedFiles = MapLoadedFiles(chat.LoadedFiles)
         };
@@ -350,6 +373,7 @@ public class ChatsController : ControllerBase
             UpdatedAt = chat.UpdatedAt,
             Status = chat.Status,
             IsFavorite = chat.IsFavorite,
+            RedEnabled = chat.RedEnabled,
             AssistantId = chat.AssistantId,
             LoadedFiles = MapLoadedFiles(chat.LoadedFiles),
             // System messages (the knowledge sources read at the start of the chat) are for the model only.
@@ -412,9 +436,43 @@ public class ChatsController : ControllerBase
                 }
             }
 
+            var enableRed = false;
+            if (request.RedEnabled.HasValue)
+            {
+                var chat = await _chatService.GetChatHeaderAsync(userId, chatId);
+                if (chat == null)
+                {
+                    return NotFound();
+                }
+
+                if (!request.RedEnabled.Value && chat.RedEnabled)
+                {
+                    return BadRequest("Red data cannot be switched off once allowed");
+                }
+
+                if (request.RedEnabled.Value && !chat.RedEnabled)
+                {
+                    var assistantId = string.IsNullOrWhiteSpace(request.AssistantId) ? chat.AssistantId : request.AssistantId;
+                    if (!await CanUseAssistantAsync(assistantId))
+                    {
+                        return Forbid();
+                    }
+                    if (await RefuseRedAssistantAsync(userId, assistantId) is { } refused)
+                    {
+                        return refused;
+                    }
+                    enableRed = true;
+                }
+            }
+
             if (newName != null)
             {
                 await _chatService.UpdateChatAsync(userId, chatId, newName);
+            }
+
+            if (enableRed)
+            {
+                await _chatService.EnableRedAsync(userId, chatId, request.AssistantId);
             }
 
             if (request.IsFavorite.HasValue)

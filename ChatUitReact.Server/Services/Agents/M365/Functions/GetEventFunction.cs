@@ -4,6 +4,7 @@ using System.ComponentModel;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
+using ChatUitReact.Server.Models;
 using ChatUitReact.Server.Services.Tools;
 
 namespace ChatUitReact.Server.Services.Agents.M365.Functions;
@@ -26,6 +27,7 @@ public sealed class GetEventFunction : Tool<GetEventArgs>
 
     public override string Id => "get_event";
     public override string DisplayName => "Get calendar event";
+    public override DataClassification Classification => DataClassification.Red;
     public override string Description => "Get one calendar event in full: body as text, attendee responses, recurrence and Teams join link.";
     public override IReadOnlyList<string> RequiredScopes => Scopes;
 

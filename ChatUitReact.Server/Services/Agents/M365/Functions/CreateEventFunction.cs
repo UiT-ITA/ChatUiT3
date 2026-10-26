@@ -2,6 +2,7 @@ using System.Collections.Generic;
 using System.ComponentModel;
 using System.Threading;
 using System.Threading.Tasks;
+using ChatUitReact.Server.Models;
 using ChatUitReact.Server.Services.Tools;
 
 namespace ChatUitReact.Server.Services.Agents.M365.Functions;
@@ -33,6 +34,7 @@ public sealed class CreateEventFunction : ConfirmableTool<CreateEventArgs>
 
     public override string Id => "create_event";
     public override string DisplayName => "Create calendar event";
+    public override DataClassification Classification => DataClassification.Red;
     public override string Description => "Create an event in the user's calendar and invite attendees, optionally with a Teams meeting link. The user must approve it first. If they reject it, do not retry or change it. Get people's email addresses and ids from find_people; never build an email address from a name.";
     public override IReadOnlyList<string> RequiredScopes => EventSupport.Scopes;
 

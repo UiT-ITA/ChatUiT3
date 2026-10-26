@@ -74,6 +74,7 @@ public sealed class LoadKnowledgeFileTool : Tool<LoadKnowledgeFileArgs>
     public override string Id => ToolId;
 
     public override string DisplayName => "Load knowledge file";
+    public override DataClassification Classification => DataClassification.Red;
 
     public override string Description =>
         "Read one of the assistant's on-demand knowledge files. Temporary loads return the content for this turn; " +

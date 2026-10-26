@@ -382,6 +382,7 @@ public class AssistantsController : ControllerBase
                 ModelName = m.ModelName,
                 Description = m.Description,
                 AllowedAsDefault = m.AllowedAsDefault,
+                Classification = m.Classification,
                 Capabilities = new UserModelCapabilitiesDto
                 {
                     Vision = m.Capabilities.SupportsVision,

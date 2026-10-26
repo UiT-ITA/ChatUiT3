@@ -4,6 +4,7 @@ using System.ComponentModel;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
+using ChatUitReact.Server.Models;
 using ChatUitReact.Server.Services.Tools;
 
 namespace ChatUitReact.Server.Services.Agents.M365.Functions;
@@ -20,6 +21,7 @@ public sealed class ListSiteListsFunction : Tool<ListSiteListsArgs>
 
     public override string Id => "list_site_lists";
     public override string DisplayName => "List SharePoint lists";
+    public override DataClassification Classification => DataClassification.Red;
     public override string Description => "List the lists and document libraries in a SharePoint site. Document libraries are returned with a driveId for list_folder.";
     public override IReadOnlyList<string> RequiredScopes => SearchSitesFunction.Scopes;
 

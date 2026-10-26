@@ -37,6 +37,9 @@ public class Model
     /// silently sent to the wrong API.
     /// </summary>
     public ApiProtocol? ApiProtocol { get; set; }
+
+    /// <summary>Which data may be put into the model.</summary>
+    public DataClassification Classification { get; set; } = DataClassification.Green;
 }
 
 /// <summary>

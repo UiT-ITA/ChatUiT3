@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.ComponentModel;
 using System.Threading;
 using System.Threading.Tasks;
+using ChatUitReact.Server.Models;
 using ChatUitReact.Server.Services.Tools;
 
 namespace ChatUitReact.Server.Services.Agents.M365.Functions;
@@ -27,6 +28,7 @@ public sealed class SendChannelMessageFunction : ConfirmableTool<SendChannelMess
 
     public override string Id => "send_channel_message";
     public override string DisplayName => "Post in Teams channel";
+    public override DataClassification Classification => DataClassification.Red;
     public override string Description => "Post a new message in a Teams channel, or reply to a post. The user must approve it first. If they reject it, do not retry or change it.";
     public override IReadOnlyList<string> RequiredScopes => Scopes;
 

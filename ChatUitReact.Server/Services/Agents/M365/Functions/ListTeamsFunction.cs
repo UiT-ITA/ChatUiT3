@@ -2,6 +2,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
+using ChatUitReact.Server.Models;
 using ChatUitReact.Server.Services.Tools;
 
 namespace ChatUitReact.Server.Services.Agents.M365.Functions;
@@ -17,6 +18,7 @@ public sealed class ListTeamsFunction : Tool<ListTeamsArgs>
 
     public override string Id => "list_teams";
     public override string DisplayName => "List Teams teams";
+    public override DataClassification Classification => DataClassification.Red;
     public override string Description => "List the teams the user is a member of, with ids. The team id is also the group id for Planner.";
     public override IReadOnlyList<string> RequiredScopes => Scopes;
 

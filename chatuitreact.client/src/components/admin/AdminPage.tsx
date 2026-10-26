@@ -11,6 +11,7 @@ import SettingsEditor from './SettingsEditor';
 import ToolEditor from './ToolEditor';
 import InternalAgentEditor from './InternalAgentEditor';
 import { toolboxLabel } from '../../types/admin';
+import ClassificationBadge from '../common/ClassificationBadge';
 
 const AdminPage: React.FC = () => {
   useSignals();
@@ -142,6 +143,7 @@ const AdminPage: React.FC = () => {
                       {endpoints?.find(e => e.id === model.endpointId)?.url ?? ''}
                     </div>
                   </div>
+                  <ClassificationBadge classification={model.classification} />
                   <div className="admin-row-meta t-meta">{model.modelId}</div>
                 </button>
               ))}
@@ -201,6 +203,7 @@ const AdminPage: React.FC = () => {
                     <div className="admin-row-title t-table-strong">{toolboxLabel(tool, tools)}</div>
                     <div className="admin-row-sub t-caption">{tool.description}</div>
                   </div>
+                  <ClassificationBadge classification={tool.classification} />
                   <div className="admin-row-meta t-meta">
                     {!tool.policy.enabled
                       ? t('admin.tools.meta.disabled')

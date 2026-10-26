@@ -203,7 +203,8 @@ public partial class DatabaseService
             AllowedAsDefault = document.AllowedAsDefault,
             ExposedInApi = document.ExposedInApi,
             Capabilities = MapModelCapabilities(document.Capabilities),
-            ApiProtocol = document.ApiProtocol
+            ApiProtocol = document.ApiProtocol,
+            Classification = document.Classification
         };
     }
 
@@ -221,7 +222,8 @@ public partial class DatabaseService
             AllowedAsDefault = model.AllowedAsDefault,
             ExposedInApi = model.ExposedInApi,
             Capabilities = MapModelCapabilitiesDocument(model.Capabilities),
-            ApiProtocol = model.ApiProtocol
+            ApiProtocol = model.ApiProtocol,
+            Classification = model.Classification
         };
     }
 

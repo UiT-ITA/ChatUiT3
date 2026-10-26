@@ -12,6 +12,7 @@ public class ChatHeaderDto
     public DateTime UpdatedAt { get; set; }
     public AiChatStatus Status { get; set; }
     public bool IsFavorite { get; set; }
+    public bool RedEnabled { get; set; }
     public List<ChatLoadedFileDto> LoadedFiles { get; set; } = new();
 }
 
@@ -68,12 +69,24 @@ public class CreateChatFileDto
 public class CreateChatDto
 {
     public string AssistantId { get; set; } = string.Empty;
+
+    /// <summary>Allows red data from the start. Requires a red assistant.</summary>
+    public bool RedEnabled { get; set; }
 }
 
 public class UpdateChatDto
 {
     public string? Name { get; set; }
     public bool? IsFavorite { get; set; }
+
+    /// <summary>True allows red data and requires a red assistant. Once on it cannot be switched off.</summary>
+    public bool? RedEnabled { get; set; }
+
+    /// <summary>
+    /// With <see cref="RedEnabled"/>: the assistant the user has picked but not sent to yet. The
+    /// chat switches to it, and it is the one that must be red. Absent means the chat's own assistant.
+    /// </summary>
+    public string? AssistantId { get; set; }
 }
 
 public class SendMessageDto

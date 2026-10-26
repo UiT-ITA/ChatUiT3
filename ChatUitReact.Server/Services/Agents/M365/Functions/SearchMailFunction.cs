@@ -4,6 +4,7 @@ using System.ComponentModel;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
+using ChatUitReact.Server.Models;
 using ChatUitReact.Server.Services.Tools;
 
 namespace ChatUitReact.Server.Services.Agents.M365.Functions;
@@ -28,6 +29,7 @@ public sealed class SearchMailFunction : Tool<SearchMailArgs>
 
     public override string Id => "search_mail";
     public override string DisplayName => "Search mail";
+    public override DataClassification Classification => DataClassification.Red;
     public override string Description => "Find emails by Outlook search, or list the newest in a folder. Returns id, subject, sender, received time and a preview. Read one in full with get_mail.";
     public override IReadOnlyList<string> RequiredScopes => MailSupport.ReadScopes;
 

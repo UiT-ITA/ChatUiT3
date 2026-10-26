@@ -4,6 +4,7 @@ using System.ComponentModel;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
+using ChatUitReact.Server.Models;
 using ChatUitReact.Server.Services.Tools;
 
 namespace ChatUitReact.Server.Services.Agents.M365.Functions;
@@ -37,6 +38,7 @@ public sealed class SendMailFunction : ConfirmableTool<SendMailArgs>
 
     public override string Id => "send_mail";
     public override string DisplayName => "Send email";
+    public override DataClassification Classification => DataClassification.Red;
     public override string Description => "Send a new email from the user's mailbox, optionally with OneDrive or SharePoint files attached. The user must approve it first. If they reject it, do not retry or change it. Get people's email addresses and ids from find_people; never build an email address from a name.";
     public override IReadOnlyList<string> RequiredScopes => Scopes;
 

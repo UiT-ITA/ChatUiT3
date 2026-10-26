@@ -9,11 +9,15 @@ public interface IChatService
 {    
     // Chat Management
     Task<List<ChatHeader>> GetChatListAsync(string userId);
+    /// <summary>The chat without its messages.</summary>
+    Task<ChatHeader?> GetChatHeaderAsync(string userId, string chatId);
     Task<Chat?> GetChatByIdAsync(string userId, string chatId, bool includeFileContent = true);
     Task<ChatFile?> GetChatFileAsync(string userId, string chatId, string fileId);
-    Task<Chat> CreateChatAsync(string userId, string assistantId);
+    Task<Chat> CreateChatAsync(string userId, string assistantId, bool redEnabled = false);
     Task UpdateChatAsync(string userId, string chatId, string? newTitle, string? newAssistantId = null);
     Task SetChatFavoriteAsync(string userId, string chatId, bool isFavorite);
+    /// <summary>Allows red data in the chat, and switches it to <paramref name="assistantId"/> when given.</summary>
+    Task EnableRedAsync(string userId, string chatId, string? assistantId);
     Task DeleteChatAsync(string userId, string chatId);
     
     // Message Operations

@@ -4,6 +4,7 @@ using System.ComponentModel;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
+using ChatUitReact.Server.Models;
 using ChatUitReact.Server.Services.Tools;
 
 namespace ChatUitReact.Server.Services.Agents.M365.Functions;
@@ -23,6 +24,7 @@ public sealed class GetChatMessagesFunction : Tool<GetChatMessagesArgs>
 
     public override string Id => "get_chat_messages";
     public override string DisplayName => "Read Teams chat";
+    public override DataClassification Classification => DataClassification.Red;
     public override string Description => "Read the newest messages in one Teams chat, newest first: sender, time and plain-text body.";
     public override IReadOnlyList<string> RequiredScopes => Scopes;
 

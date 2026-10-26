@@ -69,6 +69,11 @@ public class AdminModelsController : ControllerBase
                 return BadRequest($"Unknown API protocol '{createDto.ApiProtocol}'");
             }
 
+            if (!Enum.IsDefined(createDto.Classification))
+            {
+                return BadRequest($"Unknown data classification '{createDto.Classification}'");
+            }
+
             var model = new Model
             {
                 ApiProtocol = protocol,
@@ -78,6 +83,7 @@ public class AdminModelsController : ControllerBase
                 EndpointId = createDto.EndpointId,
                 AllowedRoles = createDto.AllowedRoles,
                 AllowedAsDefault = createDto.AllowedAsDefault,
+                Classification = createDto.Classification,
                 ExposedInApi = createDto.ExposedInApi,
                 Capabilities = ToCapabilities(createDto.Capabilities)
             };
@@ -118,6 +124,11 @@ public class AdminModelsController : ControllerBase
                 return BadRequest($"Unknown API protocol '{updateDto.ApiProtocol}'");
             }
 
+            if (!Enum.IsDefined(updateDto.Classification))
+            {
+                return BadRequest($"Unknown data classification '{updateDto.Classification}'");
+            }
+
             var model = new Model
             {
                 ApiProtocol = protocol,
@@ -128,6 +139,7 @@ public class AdminModelsController : ControllerBase
                 EndpointId = updateDto.EndpointId,
                 AllowedRoles = updateDto.AllowedRoles,
                 AllowedAsDefault = updateDto.AllowedAsDefault,
+                Classification = updateDto.Classification,
                 ExposedInApi = updateDto.ExposedInApi,
                 Capabilities = ToCapabilities(updateDto.Capabilities)
             };
@@ -181,6 +193,7 @@ public class AdminModelsController : ControllerBase
         AllowedAsDefault = model.AllowedAsDefault,
         ExposedInApi = model.ExposedInApi,
         ApiProtocol = model.ApiProtocol?.ToString() ?? string.Empty,
+        Classification = model.Classification,
         Capabilities = new ModelCapabilitiesDto
         {
             SupportsVision = model.Capabilities.SupportsVision,

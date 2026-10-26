@@ -4,6 +4,7 @@ using System.ComponentModel;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
+using ChatUitReact.Server.Models;
 using ChatUitReact.Server.Services.Tools;
 
 namespace ChatUitReact.Server.Services.Agents.M365.Functions;
@@ -29,6 +30,7 @@ public sealed class FindMeetingTimesFunction : Tool<FindMeetingTimesArgs>
 
     public override string Id => "find_meeting_times";
     public override string DisplayName => "Find meeting times";
+    public override DataClassification Classification => DataClassification.Red;
     public override string Description => "Suggest meeting times within working hours when the user and all attendees are free. Get people's email addresses and ids from find_people; never build an email address from a name.";
     public override IReadOnlyList<string> RequiredScopes => Scopes;
 

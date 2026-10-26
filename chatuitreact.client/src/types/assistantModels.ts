@@ -1,4 +1,5 @@
 import type { ChatFileChunkDto } from './chatModels';
+import type { DataClassification } from './modelModels';
 
 export type AssistantFileCategory = 'alwaysLoaded' | 'selectiveLoaded' | 'ragLoaded';
 
@@ -36,6 +37,8 @@ export interface FullAssistantDto {
     description?: string;
     tags: string[];
     modelId: string;
+    /** The lowest classification of the model and the tools of the selected toolboxes. Server-computed. */
+    classification: DataClassification;
     systemPrompt?: string;
     temperature: number;
     reasoningEffort: ReasoningEffort;
@@ -68,6 +71,8 @@ export interface AssistantSummaryDto {
     description?: string;
     tags: string[];
     modelId: string;
+    /** The lowest classification of the model and the tools of the selected toolboxes. Server-computed. */
+    classification: DataClassification;
     isVisible: boolean;
     isFavorite: boolean;
     /**
@@ -100,6 +105,8 @@ export interface AssistantDto {
     description?: string;
     tags: string[];
     modelId: string;
+    /** The lowest classification of the model and the tools of the selected toolboxes. Server-computed. */
+    classification: DataClassification;
     systemPrompt?: string;
     temperature?: number;
     reasoningEffort?: ReasoningEffort;
@@ -178,6 +185,8 @@ export interface ChatToolDto {
     /** Delegated Microsoft Graph scopes the tool needs. */
     requiredScopes: string[];
     execution: 'server' | 'client';
+    /** The lowest classification of the toolbox's own functions. Children carry their own. */
+    classification: DataClassification;
     /** Child toolboxes, shown as options under this one. Only those the caller may use. */
     children: ChatToolDto[];
 }

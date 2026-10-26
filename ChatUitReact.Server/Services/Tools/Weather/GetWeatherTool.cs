@@ -25,6 +25,7 @@ public sealed class GetWeatherTool : Tool<GetWeatherArgs>
     public override string Id => "get_weather";
 
     public override string DisplayName => "Get Weather";
+    public override DataClassification Classification => DataClassification.Red;
 
     public override string Description => "Get the current weather for a specified location.";
 

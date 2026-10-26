@@ -14,6 +14,9 @@ public abstract class ToolSummaryDto
     public bool RequiresConfirmation { get; set; }
     public List<string> RequiredScopes { get; set; } = new();
     public ToolExecution Execution { get; set; } = ToolExecution.Server;
+
+    /// <summary>The lowest classification of the toolbox's own functions. Children carry their own.</summary>
+    public DataClassification Classification { get; set; }
 }
 
 /// <summary>A tool as the assistant editor sees it: only tools and child toolboxes the caller may use are listed.</summary>
@@ -50,6 +53,7 @@ public class ToolFunctionDto
     public string Description { get; set; } = string.Empty;
     public bool RequiresConfirmation { get; set; }
     public List<string> RequiredScopes { get; set; } = new();
+    public DataClassification Classification { get; set; }
 }
 
 /// <summary>A tool the client offers to run itself for this message.</summary>

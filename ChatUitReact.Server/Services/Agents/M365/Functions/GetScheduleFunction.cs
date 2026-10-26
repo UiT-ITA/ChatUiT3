@@ -4,6 +4,7 @@ using System.ComponentModel;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
+using ChatUitReact.Server.Models;
 using ChatUitReact.Server.Services.Tools;
 
 namespace ChatUitReact.Server.Services.Agents.M365.Functions;
@@ -30,6 +31,7 @@ public sealed class GetScheduleFunction : Tool<GetScheduleArgs>
 
     public override string Id => "get_schedule";
     public override string DisplayName => "Get free/busy";
+    public override DataClassification Classification => DataClassification.Red;
     public override string Description => "Get free/busy information for several people in one call. Returns, per person, an availability string (one character per slot: 0 free, 1 tentative, 2 busy, 3 out of office, 4 working elsewhere) and the busy items with start/end. Use this to find common free time. Get people's email addresses and ids from find_people; never build an email address from a name.";
     public override IReadOnlyList<string> RequiredScopes => Scopes;
 

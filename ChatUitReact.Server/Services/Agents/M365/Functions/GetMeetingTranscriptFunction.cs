@@ -6,6 +6,7 @@ using System.Text;
 using System.Text.RegularExpressions;
 using System.Threading;
 using System.Threading.Tasks;
+using ChatUitReact.Server.Models;
 using ChatUitReact.Server.Services.Tools;
 
 namespace ChatUitReact.Server.Services.Agents.M365.Functions;
@@ -27,6 +28,7 @@ public sealed class GetMeetingTranscriptFunction : Tool<GetMeetingTranscriptArgs
 
     public override string Id => "get_meeting_transcript";
     public override string DisplayName => "Get meeting transcript";
+    public override DataClassification Classification => DataClassification.Red;
     public override string Description => "Get the transcript of a Teams meeting as 'speaker: text' lines. Usually only available for meetings the user organized.";
     public override IReadOnlyList<string> RequiredScopes => Scopes;
 

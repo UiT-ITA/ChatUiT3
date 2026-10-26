@@ -14,6 +14,12 @@ public class ChatHeader
     public bool IsFavorite { get; set; } = false;
 
     /// <summary>
+    /// Whether the user has allowed red data in this chat. Without it the chat is at most yellow.
+    /// Can only be switched on while the chat's assistant is red, and never switched off.
+    /// </summary>
+    public bool RedEnabled { get; set; } = false;
+
+    /// <summary>
     /// On-demand assistant files the model chose to keep in context for the rest of this chat.
     /// Each is carried as a leading message on every later turn.
     /// </summary>

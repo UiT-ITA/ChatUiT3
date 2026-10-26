@@ -27,6 +27,8 @@ function ensurePayloadWithinLimit(payload: unknown): void {
 const chatListSignal = signal<ChatHeaderDto[] | undefined>(undefined);
 const currentChatIdSignal = signal<string | undefined>(undefined);
 const userSelectedAssistantIdSignal = signal<string | undefined>(undefined);
+// Red switched on before the first message of a new chat; sent when the chat is created.
+const pendingRedEnabledSignal = signal<boolean>(false);
 
 const chatCache = new Map<string, Signal<ChatDto | undefined>>();
 const messageStreamCache = new Map<string, Signal<string>>();
@@ -76,7 +78,7 @@ export async function invalidateChats(): Promise<void> {
 }
 
 async function createChat(assistantId: string): Promise<ChatDto> {
-  const createChatDto: CreateChatDto = { assistantId };
+  const createChatDto: CreateChatDto = { assistantId, redEnabled: pendingRedEnabledSignal.peek() };
   return apiService.post<ChatDto>("/api/Chats", createChatDto);
 }
 
@@ -700,6 +702,50 @@ export function clearStreamCache(messageId?: string): void {
   }
 }
 
+/** Whether the current chat, or the new chat being started, allows red data. */
+export function getRedEnabled(): Signal<boolean> {
+  return computed(() => {
+    const chatId = currentChatIdSignal.value;
+    if (!chatId) return pendingRedEnabledSignal.value;
+    return getChat(chatId).value?.redEnabled
+      ?? chatListSignal.value?.find(chat => chat.id === chatId)?.redEnabled
+      ?? false;
+  });
+}
+
+/**
+ * Allows red data in the current chat. In an existing chat the server also switches the chat to
+ * the assistant the user has picked, since that is the one it checks is red.
+ */
+export async function enableRed(): Promise<void> {
+  const chatId = currentChatIdSignal.peek();
+  if (!chatId) {
+    pendingRedEnabledSignal.value = true;
+    return;
+  }
+
+  const assistantId = userSelectedAssistantIdSignal.peek();
+  try {
+    const update: UpdateChatDto = { redEnabled: true, assistantId };
+    await apiService(`/api/Chats/${chatId}`, {
+      method: 'PATCH',
+      body: JSON.stringify(update),
+    });
+
+    const changes = assistantId ? { redEnabled: true, assistantId } : { redEnabled: true };
+    chatListSignal.value = chatListSignal.value?.map(chat =>
+      chat.id === chatId ? { ...chat, ...changes } : chat
+    );
+
+    const chatSignal = chatCache.get(chatId);
+    if (chatSignal?.value) {
+      chatSignal.value = { ...chatSignal.value, ...changes };
+    }
+  } catch (error) {
+    console.error(`Error allowing red data in chat ${chatId}:`, error);
+  }
+}
+
 export function getChatNotFound(chatId: string): Signal<boolean> {
   let nf = chatNotFoundCache.get(chatId);
   if (!nf) {
@@ -723,6 +769,7 @@ export function getCurrentChatId(): Signal<string | undefined> {
 export function setCurrentChatId(chatId: string | undefined): void {
   currentChatIdSignal.value = chatId;
   userSelectedAssistantIdSignal.value = undefined;
+  pendingRedEnabledSignal.value = false;
 }
 
 /**
@@ -775,7 +822,9 @@ export function getCurrentAssistantId(): Signal<string | undefined> {
   });
 }
 
+/** Picks the assistant for the current chat. While red is allowed, only red assistants are taken. */
 export function setUserSelectedAssistantId(assistantId: string): void {
+  if (getRedEnabled().peek() && getAssistant(assistantId).peek()?.classification !== 'Red') return;
   userSelectedAssistantIdSignal.value = assistantId;
 }
 

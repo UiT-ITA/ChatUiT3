@@ -3,6 +3,7 @@ using System.ComponentModel;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
+using ChatUitReact.Server.Models;
 using ChatUitReact.Server.Services.Tools;
 
 namespace ChatUitReact.Server.Services.Agents.M365.Functions;
@@ -20,6 +21,7 @@ public sealed class GetPresenceFunction : Tool<GetPresenceArgs>
 
     public override string Id => "get_presence";
     public override string DisplayName => "Get presence";
+    public override DataClassification Classification => DataClassification.Red;
     public override string Description => "Get Teams presence (Available, Busy, Away, Offline, ...) for one or more users by id. Get people's email addresses and ids from find_people; never build an email address from a name.";
     public override IReadOnlyList<string> RequiredScopes => Scopes;
 

@@ -1,0 +1,37 @@
+.classification-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3125rem;
+  flex: 0 0 auto;
+  color: var(--text-2);
+  white-space: nowrap;
+}
+
+.classification-dots {
+  display: inline-flex;
+  align-items: center;
+}
+
+.classification-dot {
+  width: 0.5rem;
+  height: 0.5rem;
+  border-radius: 50%;
+  flex: 0 0 auto;
+}
+
+/* Each circle covers half of the one before it */
+.classification-dot + .classification-dot {
+  margin-left: -0.25rem;
+}
+
+.classification-green {
+  background: var(--status-success);
+}
+
+.classification-yellow {
+  background: var(--status-warning);
+}
+
+.classification-red {
+  background: var(--status-critical);
+}

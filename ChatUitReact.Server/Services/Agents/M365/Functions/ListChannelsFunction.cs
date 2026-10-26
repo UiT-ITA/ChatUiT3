@@ -4,6 +4,7 @@ using System.ComponentModel;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
+using ChatUitReact.Server.Models;
 using ChatUitReact.Server.Services.Tools;
 
 namespace ChatUitReact.Server.Services.Agents.M365.Functions;
@@ -21,6 +22,7 @@ public sealed class ListChannelsFunction : Tool<ListChannelsArgs>
 
     public override string Id => "list_channels";
     public override string DisplayName => "List Teams channels";
+    public override DataClassification Classification => DataClassification.Red;
     public override string Description => "List the channels in a team, with ids.";
     public override IReadOnlyList<string> RequiredScopes => Scopes;
 

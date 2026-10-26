@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.ComponentModel;
 using System.Threading;
 using System.Threading.Tasks;
+using ChatUitReact.Server.Models;
 using ChatUitReact.Server.Services.Tools;
 
 namespace ChatUitReact.Server.Services.Agents.M365.Functions;
@@ -30,6 +31,7 @@ public sealed class UpdateTodoTaskFunction : ConfirmableTool<UpdateTodoTaskArgs>
 
     public override string Id => "update_todo_task";
     public override string DisplayName => "Update To Do task";
+    public override DataClassification Classification => DataClassification.Red;
     public override string Description => "Change or complete a To Do task. Only given fields change. The user must approve it first. If they reject it, do not retry or change it.";
     public override IReadOnlyList<string> RequiredScopes => TaskSupport.Scopes;
 

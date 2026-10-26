@@ -5,6 +5,7 @@ using System.Linq;
 using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
+using ChatUitReact.Server.Models;
 using ChatUitReact.Server.Services.Tools;
 
 namespace ChatUitReact.Server.Services.Agents.M365.Functions;
@@ -25,6 +26,7 @@ public sealed class GetListItemsFunction : Tool<GetListItemsArgs>
 
     public override string Id => "get_list_items";
     public override string DisplayName => "Read SharePoint list";
+    public override DataClassification Classification => DataClassification.Red;
     public override string Description => "Read items in a SharePoint list with their field values.";
     public override IReadOnlyList<string> RequiredScopes => SearchSitesFunction.Scopes;
 

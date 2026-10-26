@@ -3,6 +3,7 @@ using System.ComponentModel;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
+using ChatUitReact.Server.Models;
 using ChatUitReact.Server.Services.Tools;
 
 namespace ChatUitReact.Server.Services.Agents.M365.Functions;
@@ -19,6 +20,7 @@ public sealed class ListOneNotePagesFunction : Tool<ListOneNotePagesArgs>
 
     public override string Id => "list_onenote_pages";
     public override string DisplayName => "List OneNote pages";
+    public override DataClassification Classification => DataClassification.Red;
     public override string Description => "List the pages in a OneNote section, newest first, with ids.";
     public override IReadOnlyList<string> RequiredScopes => OneNoteSupport.ReadScopes;
 

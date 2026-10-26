@@ -28,6 +28,7 @@ public sealed class GetWebsiteTool : Tool<GetWebsiteArgs>
   public override string Id => "get_website";
 
   public override string DisplayName => "Fetch Web Page";
+  public override DataClassification Classification => DataClassification.Red;
 
   public override string Description => "Fetch a webpage, extract the main content, and return Markdown with links preserved (absolute URLs).";
 
