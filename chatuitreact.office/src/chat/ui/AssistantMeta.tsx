@@ -1,41 +1,35 @@
 import { makeStyles, mergeClasses } from "@fluentui/react-components";
-import type { ReactNode } from "react";
+import { useState, type ReactNode } from "react";
 import { Icon } from "./icons";
-import { color, radius, typography } from "./tokens";
-
-const ASSISTANT_NAME = "ChatUiT";
+import { color, typography } from "./tokens";
 
 const useStyles = makeStyles({
-  meta: {
-    display: "flex",
-    alignItems: "center",
-    gap: "0.625rem",
-    marginBottom: "0.5rem",
-  },
   summary: {
-    listStyleType: "none",
-    cursor: "pointer",
-    userSelect: "none",
-    "&::-webkit-details-marker": { display: "none" },
-  },
-  name: { ...typography.overline, color: color.text2 },
-  headline: {
     ...typography.caption,
     display: "inline-flex",
     alignItems: "center",
-    gap: "0.4rem",
-    minWidth: 0,
-    padding: "0.125rem 0.5rem",
-    borderRadius: radius.sm,
-    color: color.text2,
-    ":hover": { color: color.text, backgroundColor: color.panel },
+    gap: "0.25rem",
+    marginBottom: "0.5rem",
+    padding: "0.125rem 0",
+    listStyleType: "none",
+    cursor: "pointer",
+    userSelect: "none",
+    color: color.text3,
+    ":hover": { color: color.text },
+    "&::-webkit-details-marker": { display: "none" },
   },
+  chevron: {
+    display: "flex",
+    transitionProperty: "transform",
+    transitionDuration: "120ms",
+  },
+  open: { transform: "rotate(90deg)" },
   body: {
     display: "flex",
     flexDirection: "column",
     gap: "0.375rem",
-    margin: "-0.125rem 0 0.5rem 0.5rem",
-    padding: "0.25rem 0 0.25rem 0.75rem",
+    margin: "0 0 0.75rem 0.25rem",
+    padding: "0.125rem 0 0.125rem 0.75rem",
     borderLeft: `2px solid ${color.line}`,
   },
 });
@@ -46,26 +40,16 @@ export interface TurnActivity {
   children: ReactNode;
 }
 
-/**
- * The assistant's meta row: its name, and for a finished turn "Worked for <N>s", which opens the
- * turn's reasoning and tool activity underneath.
- */
-export function AssistantMeta({ activity }: { activity?: TurnActivity }) {
+/** "Worked for <N>s" above a finished turn's reply, which opens the turn's reasoning and tool activity underneath. */
+export function AssistantMeta({ activity }: { activity: TurnActivity }) {
   const styles = useStyles();
-  if (!activity) {
-    return (
-      <div className={styles.meta}>
-        <span className={styles.name}>{ASSISTANT_NAME}</span>
-      </div>
-    );
-  }
+  const [open, setOpen] = useState(false);
   return (
-    <details>
-      <summary className={mergeClasses(styles.meta, styles.summary)}>
-        <span className={styles.name}>{ASSISTANT_NAME}</span>
-        <span className={styles.headline}>
-          <Icon name="branch" size={0.9} />
-          Worked for {activity.seconds}s
+    <details onToggle={(event) => setOpen(event.currentTarget.open)}>
+      <summary className={styles.summary}>
+        Worked for {activity.seconds}s
+        <span className={mergeClasses(styles.chevron, open && styles.open)}>
+          <Icon name="chevron" size={0.75} />
         </span>
       </summary>
       <div className={styles.body}>{activity.children}</div>

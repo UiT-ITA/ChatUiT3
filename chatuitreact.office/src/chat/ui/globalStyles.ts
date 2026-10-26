@@ -4,7 +4,7 @@ import { color, font } from "./tokens";
 /**
  * The ChatUiT app's global base styles (App.css, typography.css and theme.css): the reset, base
  * text, form controls that inherit the font, selection colours, no focus outline and the scrollbars.
- * The page and its #root container fill the pane.
+ * The page, its #root container and the Fluent provider in it fill the pane.
  */
 export const useGlobalStyles = makeStaticStyles(`
   :root {
@@ -25,7 +25,8 @@ export const useGlobalStyles = makeStaticStyles(`
 
   html,
   body,
-  #root {
+  #root,
+  #root > .fui-FluentProvider {
     width: 100%;
     height: 100%;
   }
@@ -40,8 +41,8 @@ export const useGlobalStyles = makeStaticStyles(`
   }
 
   ::selection {
-    background: ${color.accent2};
-    color: ${color.text};
+    background: ${color.selBg};
+    color: ${color.selFg};
   }
 
   :focus,

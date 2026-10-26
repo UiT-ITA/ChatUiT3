@@ -4,6 +4,7 @@ import type { HostAdapter } from "../chat/host";
 import type { ClientToolDefinition } from "../chat/tools/types";
 import { isSetSupported, type OfficeApp, type OfficeToolDefinition, type RequirementSet } from "./shared/officeTool";
 import { excelApp } from "./excel/adapter";
+import { getOfficeLoginHint } from "./shared/loginHint";
 import { outlookApp } from "./outlook/adapter";
 import { powerPointApp } from "./powerpoint/adapter";
 import { wordApp } from "./word/adapter";
@@ -45,14 +46,29 @@ export function resolveHost(host: Office.HostType | null): HostResult {
   }
   return {
     adapter: {
+      logoUrl: "assets/icon-64.png",
       emptyMessage: app.emptyMessage,
+      starters: app.starters,
       model: OFFICE_MODEL,
       instructions: app.instructions,
       tools: app.tools.filter((tool) => !tool.requires || isSetSupported(tool.requires)).map(toClientTool),
       getContext: app.getContext,
-      Settings: app.Settings,
+      getDocumentKey: host === Office.HostType.Outlook ? outlookThreadKey : documentUrlKey,
+      noDocumentMessage: app.noDocumentMessage,
+      getUserName: getOfficeLoginHint,
+      MenuItems: app.MenuItems,
     },
   };
+}
+
+/** The file's path or URL. Empty for a file that was never saved. */
+async function documentUrlKey(): Promise<string | null> {
+  return Office.context.document.url || null;
+}
+
+/** The selected email's thread. Null for a new email. */
+async function outlookThreadKey(): Promise<string | null> {
+  return Office.context.mailbox.item?.conversationId || null;
 }
 
 function toClientTool(tool: OfficeToolDefinition): ClientToolDefinition {

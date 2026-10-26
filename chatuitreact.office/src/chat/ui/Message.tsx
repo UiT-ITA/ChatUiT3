@@ -1,7 +1,6 @@
 import { makeStyles } from "@fluentui/react-components";
 import { Marked } from "marked";
 import { useMemo, type ReactNode } from "react";
-import { AssistantMeta } from "./AssistantMeta";
 import { color, font, fontSize, radius, typography } from "./tokens";
 
 const markdown = new Marked({
@@ -31,7 +30,7 @@ const useStyles = makeStyles({
     padding: "0.125rem 0.5rem",
     border: `1px solid ${color.line}`,
     borderRadius: radius.sm,
-    backgroundColor: color.surface,
+    backgroundColor: color.panel,
     color: color.text2,
     overflow: "hidden",
     textOverflow: "ellipsis",
@@ -41,10 +40,9 @@ const useStyles = makeStyles({
     ...typography.chat,
     lineHeight: 1.5,
     maxWidth: "85%",
-    padding: "0.6875rem 0.875rem",
-    backgroundColor: color.panel2,
-    border: `1px solid ${color.line}`,
-    borderRadius: radius.md,
+    padding: "0.5625rem 0.8125rem",
+    backgroundColor: color.bubble,
+    borderRadius: radius.lg,
     color: color.text,
     whiteSpace: "pre-wrap",
     overflowWrap: "anywhere",
@@ -127,11 +125,11 @@ export interface MessageProps {
   text: string;
   /** The names of the files attached to a user message. */
   files?: string[];
-  /** Replaces the assistant's meta row, for example with the turn's collapsed activity. */
+  /** Shown above an assistant message, for example the turn's collapsed activity. */
   meta?: ReactNode;
 }
 
-/** One chat message. Assistant messages are rendered as Markdown under the assistant's name. */
+/** One chat message. Assistant messages are rendered as Markdown. */
 export function Message({ role, text, files = [], meta }: MessageProps) {
   const styles = useStyles();
   const html = useMemo(() => (role === "assistant" ? renderMarkdown(text) : null), [role, text]);
@@ -154,7 +152,7 @@ export function Message({ role, text, files = [], meta }: MessageProps) {
   }
   return (
     <div className={styles.assistant}>
-      {meta ?? <AssistantMeta />}
+      {meta}
       <div className={styles.assistantContent} dangerouslySetInnerHTML={{ __html: html }} />
     </div>
   );

@@ -1,46 +1,58 @@
-/* global File, HTMLFormElement, HTMLInputElement, HTMLTextAreaElement */
+/* global File, HTMLFormElement, HTMLInputElement, HTMLTextAreaElement, window */
 
 import { makeStyles, shorthands, Spinner } from "@fluentui/react-components";
-import { useRef, useState, type ClipboardEvent, type ComponentType, type DragEvent, type KeyboardEvent } from "react";
+import {
+  useCallback,
+  useEffect,
+  useLayoutEffect,
+  useRef,
+  useState,
+  type ClipboardEvent,
+  type DragEvent,
+  type KeyboardEvent,
+} from "react";
 import type { ChatFile } from "../files/fileModels";
 import { MAX_FILES } from "../files/filePart";
 import { getSupportedImportKind, SUPPORTED_IMPORT_ACCEPT } from "../files/kinds";
 import { readFile } from "../files/readFile";
 import { Icon } from "./icons";
 import { ToolbarButton } from "./ToolbarButton";
-import { color, fontSize, radius, shadowCard, typography } from "./tokens";
+import { color, fontSize, radius, typography } from "./tokens";
+
+/** The text box grows with its text up to this height in px, then scrolls. */
+const MAX_INPUT_HEIGHT = 200;
 
 export interface ComposerProps {
-  /** App-specific controls, shown left of the send button. */
-  Settings?: ComponentType;
+  /** Text to put in the composer, replacing what is there. A new `id` puts it in again. */
+  draft: { text: string; id: number } | null;
   /** True while a response streams or tools run. Sending is blocked and Stop is shown. */
   busy: boolean;
-  onNewChat(): void;
   onSend(text: string, files: ChatFile[]): void;
   onStop(): void;
 }
 
 const useStyles = makeStyles({
-  root: { padding: "0.625rem 0.875rem 0.875rem", backgroundColor: color.bg },
+  root: { flexShrink: 0, padding: "0.25rem 0.75rem 0.75rem" },
   card: {
     border: `1px solid ${color.line}`,
-    borderRadius: radius.md,
+    borderRadius: radius.lg,
     backgroundColor: color.surface,
-    boxShadow: shadowCard,
+    ":focus-within": shorthands.borderColor(color.text3),
   },
   input: {
     display: "block",
     width: "100%",
     boxSizing: "border-box",
-    maxHeight: "12.5rem",
-    padding: "0.75rem 0.875rem 0.375rem",
+    maxHeight: `${MAX_INPUT_HEIGHT}px`,
+    overflowY: "hidden",
+    padding: "0.75rem 0.875rem 0.125rem",
     border: "none",
     outline: "none",
     resize: "none",
     backgroundColor: "transparent",
     fontFamily: "inherit",
-    fontSize: fontSize.titleSm,
-    lineHeight: 1.55,
+    fontSize: fontSize.bodySm,
+    lineHeight: 1.5,
     color: color.text,
     "::placeholder": { color: color.text3 },
   },
@@ -55,7 +67,7 @@ const useStyles = makeStyles({
     padding: "0.125rem 0.25rem 0.125rem 0.5rem",
     border: `1px solid ${color.line}`,
     borderRadius: radius.sm,
-    backgroundColor: color.panel2,
+    backgroundColor: color.panel,
     color: color.text,
   },
   fileName: { overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" },
@@ -73,30 +85,61 @@ const useStyles = makeStyles({
   hidden: { display: "none" },
   spacer: { flex: 1 },
   send: {
-    ...typography.ui,
+    flexShrink: 0,
     display: "flex",
     alignItems: "center",
     justifyContent: "center",
+    width: "2rem",
     height: "2rem",
-    padding: "0 0.875rem",
-    border: `2px solid ${color.btnBg}`,
-    borderRadius: radius.md,
+    padding: 0,
+    border: "none",
+    borderRadius: radius.pill,
     backgroundColor: color.btnBg,
     color: color.btnFg,
     cursor: "pointer",
-    ":hover:enabled": { backgroundColor: color.btnHover, ...shorthands.borderColor(color.btnHover) },
-    ":disabled": { opacity: 0.5, cursor: "not-allowed" },
+    ":hover:enabled": { backgroundColor: color.btnHover },
+    ":disabled": { backgroundColor: color.panel2, color: color.text3, cursor: "default" },
   },
 });
 
-export function Composer({ Settings, busy, onNewChat, onSend, onStop }: ComposerProps) {
+export function Composer({ draft, busy, onSend, onStop }: ComposerProps) {
   const styles = useStyles();
   const [text, setText] = useState("");
   const [files, setFiles] = useState<ChatFile[]>([]);
   const [reading, setReading] = useState(0);
   const [notice, setNotice] = useState<string | null>(null);
   const picker = useRef<HTMLInputElement>(null);
+  const input = useRef<HTMLTextAreaElement>(null);
   const canSend = !busy && reading === 0 && (text.trim().length > 0 || files.length > 0);
+
+  // Fits the text box to its text, up to MAX_INPUT_HEIGHT, and scrolls it beyond that: when the text changes and
+  // when the pane is resized, which rewraps it.
+  const fit = useCallback(() => {
+    const box = input.current;
+    if (!box) {
+      return;
+    }
+    box.style.height = "auto";
+    box.style.height = `${Math.min(box.scrollHeight, MAX_INPUT_HEIGHT)}px`;
+    box.style.overflowY = box.scrollHeight > MAX_INPUT_HEIGHT ? "auto" : "hidden";
+  }, []);
+
+  useLayoutEffect(fit, [text, fit]);
+
+  useEffect(() => {
+    window.addEventListener("resize", fit);
+    return () => window.removeEventListener("resize", fit);
+  }, [fit]);
+
+  useEffect(() => {
+    const box = input.current;
+    if (!draft || !box) {
+      return;
+    }
+    setText(draft.text);
+    box.focus();
+    box.setSelectionRange(draft.text.length, draft.text.length);
+  }, [draft]);
 
   const submit = () => {
     if (!canSend) {
@@ -192,13 +235,14 @@ export function Composer({ Settings, busy, onNewChat, onSend, onStop }: Composer
         )}
         {notice && <div className={styles.notice}>{notice}</div>}
         <textarea
+          ref={input}
           className={styles.input}
           value={text}
           onChange={(event) => setText(event.target.value)}
           onKeyDown={onKeyDown}
           onPaste={onPaste}
           placeholder="Ask ChatUiT…"
-          rows={2}
+          rows={1}
         />
         <input
           ref={picker}
@@ -213,16 +257,14 @@ export function Composer({ Settings, busy, onNewChat, onSend, onStop }: Composer
         />
         <div className={styles.toolbar}>
           <ToolbarButton icon="attach" label="Attach file" onClick={() => picker.current?.click()} />
-          {Settings && <Settings />}
           <span className={styles.spacer} />
-          <ToolbarButton icon="chatNew" label="New chat" onClick={onNewChat} />
           {busy ? (
             <button type="button" className={styles.send} onClick={onStop} aria-label="Stop" title="Stop">
-              <Icon name="stop" size={0.9375} />
+              <Icon name="stop" size={0.75} />
             </button>
           ) : (
             <button type="submit" className={styles.send} disabled={!canSend} aria-label="Send" title="Send">
-              <Icon name="send" size={0.9375} />
+              <Icon name="send" size={1} />
             </button>
           )}
         </div>

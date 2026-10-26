@@ -11,8 +11,8 @@ const environments = require("./environments");
 // Every failed tool call of a dev pane, one JSON object per line (src/chat/dev/toolErrorLog.ts).
 const toolErrorLog = path.join(__dirname, "logs", "tool-errors.jsonl");
 
-// The ChatUiT server as `dotnet run` starts it (the default "http" launch profile).
-const apiDev = "http://localhost:5157";
+// The ChatUiT server as `dotnet run --launch-profile https` starts it.
+const apiDev = "https://localhost:7254";
 
 /** The prod environment, or an error naming every value that is still empty. */
 function prodEnvironment() {

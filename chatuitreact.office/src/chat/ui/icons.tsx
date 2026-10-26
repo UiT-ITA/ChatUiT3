@@ -1,27 +1,44 @@
-/** Icons the ChatUiT app uses (react-icons md and ri), as inline SVG. */
+/** The pane's icons, as inline SVG. Filled icons are react-icons md and ri, as in the ChatUiT app. */
 
-const paths = {
-  send: "M2.01 21L23 12 2.01 3 2 10l15 2-15 2z",
-  attach:
-    "M16.5 6v11.5c0 2.21-1.79 4-4 4s-4-1.79-4-4V5a2.5 2.5 0 0 1 5 0v10.5c0 .55-.45 1-1 1s-1-.45-1-1V6H10v9.5a2.5 2.5 0 0 0 5 0V5c0-2.21-1.79-4-4-4S7 2.79 7 5v12.5c0 3.04 2.46 5.5 5.5 5.5s5.5-2.46 5.5-5.5V6z",
+const filled = {
   close: "M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z",
   stop: "M6 6h12v12H6z",
-  branch: "M14 4l2.29 2.29-2.88 2.88 1.42 1.42 2.88-2.88L20 10V4zm-4 0H4v6l2.29-2.29 4.71 4.7V20h2v-8.41l-5.29-5.3z",
-  /** RiChatAiLine, the app's new chat icon. */
-  chatNew:
-    "M20.7134 8.12811L20.4668 8.69379C20.2864 9.10792 19.7136 9.10792 19.5331 8.69379L19.2866 8.12811C18.8471 7.11947 18.0555 6.31641 17.0677 5.87708L16.308 5.53922C15.8973 5.35653 15.8973 4.75881 16.308 4.57612L17.0252 4.25714C18.0384 3.80651 18.8442 2.97373 19.2761 1.93083L19.5293 1.31953C19.7058 0.893489 20.2942 0.893489 20.4706 1.31953L20.7238 1.93083C21.1558 2.97373 21.9616 3.80651 22.9748 4.25714L23.6919 4.57612C24.1027 4.75881 24.1027 5.35653 23.6919 5.53922L22.9323 5.87708C21.9445 6.31641 21.1529 7.11947 20.7134 8.12811ZM10 3H14V5H10C6.68629 5 4 7.68629 4 11C4 14.61 6.46208 16.9656 12 19.4798V17H14C17.3137 17 20 14.3137 20 11H22C22 15.4183 18.4183 19 14 19V22.5C9 20.5 2 17.5 2 11C2 6.58172 5.58172 3 10 3Z",
-  /** RiDraftLine, a page with a pencil. */
-  draft:
-    "M20 2C20.5523 2 21 2.44772 21 3V6.757L19 8.757V4H5V20H19V17.242L21 15.242V21C21 21.5523 20.5523 22 20 22H4C3.44772 22 3 21.5523 3 21V3C3 2.44772 3.44772 2 4 2H20ZM21.7782 8.80761L23.1924 10.2218L15.4142 18L13.9979 17.9979L14 16.5858L21.7782 8.80761ZM13 12V14H8V12H13ZM16 8V10H8V8H16Z",
+  more: "M5 10.3a1.7 1.7 0 1 0 0 3.4 1.7 1.7 0 0 0 0-3.4zm7 0a1.7 1.7 0 1 0 0 3.4 1.7 1.7 0 0 0 0-3.4zm7 0a1.7 1.7 0 1 0 0 3.4 1.7 1.7 0 0 0 0-3.4z",
 } as const;
 
-export type IconName = keyof typeof paths;
+/** Outline icons, drawn with a 1.8px stroke. */
+const outlined = {
+  history: "M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0zM12 7v5l3 2",
+  chatNew: "M20 12a8 8 0 0 1-11.6 7.1L4 20l1-4.2A8 8 0 1 1 20 12zM12 9v6M9 12h6",
+  attach: "M20 11.5l-8.1 8.1a5 5 0 0 1-7.1-7.1l8.5-8.5a3.3 3.3 0 0 1 4.7 4.7l-8.5 8.5a1.7 1.7 0 0 1-2.4-2.4l7.8-7.8",
+  send: "M12 19V5M6 11l6-6 6 6",
+  check: "M5 12l5 5 9-10",
+  failed: "M18 6L6 18M6 6l12 12",
+  chevron: "M9 6l6 6-6 6",
+} as const;
+
+export type IconName = keyof typeof filled | keyof typeof outlined;
 
 /** `size` is in rem. */
 export function Icon({ name, size = 1 }: { name: IconName; size?: number }) {
+  const dimensions = { width: `${size}rem`, height: `${size}rem`, viewBox: "0 0 24 24", "aria-hidden": true } as const;
+  if (name in filled) {
+    return (
+      <svg {...dimensions} fill="currentColor">
+        <path d={filled[name as keyof typeof filled]} />
+      </svg>
+    );
+  }
   return (
-    <svg width={`${size}rem`} height={`${size}rem`} viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
-      <path d={paths[name]} />
+    <svg
+      {...dimensions}
+      fill="none"
+      stroke="currentColor"
+      strokeWidth={1.8}
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
+      <path d={outlined[name as keyof typeof outlined]} />
     </svg>
   );
 }
