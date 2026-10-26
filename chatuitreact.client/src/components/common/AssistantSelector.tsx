@@ -4,7 +4,6 @@ import { useTranslation } from 'react-i18next';
 import { Icon } from './Icon';
 import { getSelectableAssistants, getCurrentAssistantId } from '../../services/chatService';
 import AssistantDropdown from './AssistantDropdown';
-import ClassificationBadge from './ClassificationBadge';
 import './AssistantSelector.css';
 
 interface AssistantSelectorProps {
@@ -64,7 +63,6 @@ export default function AssistantSelector({ className }: AssistantSelectorProps)
           <Icon name="assistants" size={1} className="icon" />
         </div>
         <span className="assistant-name">{selectedAssistant?.name || t('assistants.defaultAssistant')}</span>
-        {selectedAssistant && <ClassificationBadge classification={selectedAssistant.classification} />}
         <Icon
           name={isOpen ? "arrowDown" : "arrowUp"}
           size={0.875}
