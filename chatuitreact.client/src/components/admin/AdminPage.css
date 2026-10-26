@@ -25,15 +25,6 @@
   max-width: 38.75rem;
 }
 
-.admin-overview-group {
-  margin-bottom: 1.75rem;
-}
-
-.admin-overview-group .t-overline {
-  display: block;
-  margin-bottom: 0.625rem;
-}
-
 /* Bordered row list — the design's list pattern */
 .admin-list {
   border: 1px solid var(--line);
@@ -90,6 +81,11 @@
 .admin-list-empty {
   padding: 0.6875rem 0.75rem;
   color: var(--text-3);
+}
+
+.admin-row-icon {
+  flex: 0 0 auto;
+  color: var(--text-2);
 }
 
 .admin-row-main {
@@ -251,42 +247,6 @@
   padding-top: 1.125rem;
   margin-top: 1.625rem;
   border-top: 1px solid var(--line);
-}
-
-.admin-save-button {
-  height: 2.25rem;
-  padding: 0 0.875rem;
-  background: var(--btn-bg);
-  color: var(--btn-fg);
-  border: 2px solid var(--btn-bg);
-  border-radius: var(--radius-md);
-  cursor: pointer;
-  transition: background var(--dur-base) var(--ease-standard);
-}
-
-.admin-save-button:hover:not(:disabled) {
-  background: var(--btn-hover);
-  border-color: var(--btn-hover);
-}
-
-.admin-save-button:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
-}
-
-.admin-cancel-button {
-  height: 2.25rem;
-  padding: 0 0.875rem;
-  background: transparent;
-  color: var(--text);
-  border: 2px solid var(--btn-bg);
-  border-radius: var(--radius-md);
-  cursor: pointer;
-  transition: background var(--dur-base) var(--ease-standard);
-}
-
-.admin-cancel-button:hover {
-  background: var(--panel-2);
 }
 
 .admin-footer-spacer {

@@ -485,7 +485,7 @@
     "External": "Ekstern"
   },
   "admin": {
-    "intro": "Administrer endepunktene, modellene, systemassistentene og verktøyene som er tilgjengelige i ChatUiT. Velg et element i listen, eller legg til et nytt.",
+    "intro": "Administrer endepunktene, modellene, systemassistentene og verktøyene som er tilgjengelige i ChatUiT. Velg et område å administrere.",
     "tabs": {
       "endpoints": "Endepunkter",
       "models": "Modeller",
@@ -493,6 +493,14 @@
       "settings": "Innstillinger",
       "tools": "Verktøykasser",
       "agents": "Interne agenter"
+    },
+    "domains": {
+      "endpoints": "Tjenestene ChatUiT sender modellforespørsler til.",
+      "models": "Modellene brukerne kan chatte med, og endepunktet hver kjører på.",
+      "assistants": "Systemassistentene som tilbys i ChatUiT.",
+      "tools": "Verktøykassene og hvem som kan bruke dem.",
+      "agents": "Agenter definert i kode, og modellen hver kjører på.",
+      "settings": "Modellene og assistenten ChatUiT bruker som standard."
     },
     "endpoints": {
       "title": "Endepunkter",
@@ -658,6 +666,9 @@
         "chatNamingModelHelp": "Brukes til å lage et navn på en ny chat ut fra den første meldingen. Nye chatter beholder plassholdernavnet sitt når denne ikke er valgt.",
         "defaultAssistant": "Standardassistent",
         "defaultAssistantHelp": "Systemassistenten en ny samtale starter på når brukeren ikke har valgt en egen."
+      },
+      "pages": {
+        "general": "Generelt"
       }
     },
     "tools": {
@@ -666,9 +677,7 @@
         "empty": "Ingen verktøykasser registrert."
       },
       "meta": {
-        "disabled": "Avslått",
-        "overridden": "Tilpasset tilgang",
-        "default": "Standardtilgang"
+        "disabled": "Avslått"
       },
       "edit": {
         "title": "Tilgang til verktøykasse"

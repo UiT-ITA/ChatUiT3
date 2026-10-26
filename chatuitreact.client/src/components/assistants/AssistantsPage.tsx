@@ -133,6 +133,8 @@ const AssistantsPage: React.FC = () => {
             editingAssistant={null}
             onSaved={() => navigate('/assistants')}
             saveLabel={t('assistants.saveAssistant')}
+            backPath="/assistants"
+            backLabel={t('contextColumn.assistants')}
           />
         </div>
       </div>
@@ -236,6 +238,8 @@ const AssistantsPage: React.FC = () => {
               key={assistant.id}
               editingAssistant={assistant as FullAssistantDto}
               saveLabel={t('assistants.saveAssistant')}
+              backPath="/assistants"
+              backLabel={t('contextColumn.assistants')}
             />
           ) : (
             <div className="assistant-readonly">

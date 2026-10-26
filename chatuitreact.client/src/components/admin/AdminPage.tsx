@@ -1,17 +1,18 @@
 import React, { useEffect } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate, Navigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { useSignals } from '@preact/signals-react/runtime';
 import './AdminPage.css';
-import { adminEndpointsSignal, adminModelsSignal, adminAssistantsSignal, adminSettingsSignal, adminToolsSignal, adminInternalAgentsSignal, loadAdminData } from '../../services/adminDataService';
+import { adminEndpointsSignal, adminModelsSignal, adminAssistantsSignal, adminToolsSignal, adminInternalAgentsSignal, loadAdminData } from '../../services/adminDataService';
 import EndpointEditor from './EndpointEditor';
 import ModelEditor from './ModelEditor';
 import AdminAssistantEditor from './AdminAssistantEditor';
 import SettingsEditor from './SettingsEditor';
 import ToolEditor from './ToolEditor';
 import InternalAgentEditor from './InternalAgentEditor';
-import { toolboxLabel } from '../../types/admin';
+import { toolboxLabel, ADMIN_DOMAINS, ADMIN_DOMAIN_ICONS, ADMIN_SETTINGS_PAGES, type AdminDomain, type AdminSettingsPage } from '../../types/admin';
 import ClassificationBadge from '../common/ClassificationBadge';
+import { Icon } from '../common/Icon';
 
 const AdminPage: React.FC = () => {
   useSignals();
@@ -22,7 +23,6 @@ const AdminPage: React.FC = () => {
   const endpoints = adminEndpointsSignal.value;
   const models = adminModelsSignal.value;
   const assistants = adminAssistantsSignal.value;
-  const settings = adminSettingsSignal.value;
   const tools = adminToolsSignal.value;
   const internalAgents = adminInternalAgentsSignal.value;
 
@@ -33,16 +33,138 @@ const AdminPage: React.FC = () => {
     loadAdminData();
   }, []);
 
+  // Title, accent bar and intro shared by the admin overview and every domain overview
+  const renderHeading = (title: string, intro: string) => (
+    <>
+      <h1 className="t-page-title">{title}</h1>
+      <div className="page-title-bar" />
+      <p className="admin-intro t-body-lg">{intro}</p>
+    </>
+  );
+
+  const renderLoading = () => <div className="admin-empty t-ui-plain">{t('common.loading')}</div>;
+
+  const renderEndpoints = () => (
+    <>
+      {renderHeading(t('admin.tabs.endpoints'), t('admin.domains.endpoints'))}
+      {endpoints === undefined ? renderLoading() : (
+        <div className="admin-list">
+          {endpoints.length === 0 && (
+            <div className="admin-list-empty t-ui-plain">{t('admin.endpoints.list.empty')}</div>
+          )}
+          {endpoints.map((endpoint) => (
+            <button
+              key={endpoint.id}
+              className="admin-list-row"
+              onClick={() => navigate(`/admin/endpoints/${endpoint.id}`)}
+            >
+              <div className="admin-row-main">
+                <div className="admin-row-title t-table-strong">{endpoint.url}</div>
+              </div>
+              <div className="admin-row-meta t-meta">{t(`admin.endpointType.${endpoint.endpointType}`)}</div>
+            </button>
+          ))}
+          <button className="admin-list-add t-ui" onClick={() => navigate('/admin/endpoints/new')}>
+            + {t('admin.endpoints.add.title')}
+          </button>
+        </div>
+      )}
+    </>
+  );
+
+  const renderModels = () => (
+    <>
+      {renderHeading(t('admin.tabs.models'), t('admin.domains.models'))}
+      {models === undefined ? renderLoading() : (
+        <div className="admin-list">
+          {models.length === 0 && (
+            <div className="admin-list-empty t-ui-plain">{t('admin.models.list.empty')}</div>
+          )}
+          {models.map((model) => (
+            <button
+              key={model.id}
+              className="admin-list-row"
+              onClick={() => navigate(`/admin/models/${model.id}`)}
+            >
+              <div className="admin-row-main">
+                <div className="admin-row-title t-table-strong">{model.modelName}</div>
+                <div className="admin-row-sub t-caption">
+                  {endpoints?.find(e => e.id === model.endpointId)?.url ?? ''}
+                </div>
+              </div>
+              <ClassificationBadge classification={model.classification} />
+              <div className="admin-row-meta t-meta">{model.modelId}</div>
+            </button>
+          ))}
+          <button className="admin-list-add t-ui" onClick={() => navigate('/admin/models/new')}>
+            + {t('admin.models.add.title')}
+          </button>
+        </div>
+      )}
+    </>
+  );
+
+  const renderAssistants = () => (
+    <>
+      {renderHeading(t('admin.tabs.assistants'), t('admin.domains.assistants'))}
+      {assistants === undefined ? renderLoading() : (
+        <div className="admin-list">
+          {assistants.length === 0 && (
+            <div className="admin-list-empty t-ui-plain">{t('admin.assistants.list.empty')}</div>
+          )}
+          {assistants.map((assistant) => (
+            <button
+              key={assistant.id}
+              className="admin-list-row"
+              onClick={() => navigate(`/admin/assistants/${assistant.id}`)}
+            >
+              <div className="admin-row-main">
+                <div className="admin-row-title t-table-strong">{assistant.name}</div>
+                {assistant.description && (
+                  <div className="admin-row-sub t-caption">{assistant.description}</div>
+                )}
+              </div>
+            </button>
+          ))}
+          <button className="admin-list-add t-ui" onClick={() => navigate('/admin/assistants/new')}>
+            + {t('admin.assistants.add.title')}
+          </button>
+        </div>
+      )}
+    </>
+  );
+
+  const renderTools = () => (
+    <>
+      {renderHeading(t('admin.tabs.tools'), t('admin.domains.tools'))}
+      {tools === undefined ? renderLoading() : (
+        <div className="admin-list">
+          {tools.length === 0 && (
+            <div className="admin-list-empty t-ui-plain">{t('admin.tools.list.empty')}</div>
+          )}
+          {tools.map((tool) => (
+            <button
+              key={tool.id}
+              className="admin-list-row"
+              onClick={() => navigate(`/admin/tools/${tool.id}`)}
+            >
+              <div className="admin-row-main">
+                <div className="admin-row-title t-table-strong">{toolboxLabel(tool, tools)}</div>
+                <div className="admin-row-sub t-caption">{tool.description}</div>
+              </div>
+              <ClassificationBadge classification={tool.classification} />
+            </button>
+          ))}
+        </div>
+      )}
+    </>
+  );
+
   // Every internal agent definition and the model it runs on.
   const renderInternalAgents = () => (
     <>
-      <h1 className="t-page-title">{t('admin.agents.title')}</h1>
-      <div className="page-title-bar" />
-      <p className="admin-intro t-body-lg">{t('admin.agents.intro')}</p>
-
-      {internalAgents === undefined ? (
-        <div className="admin-empty t-ui-plain">{t('common.loading')}</div>
-      ) : (
+      {renderHeading(t('admin.agents.title'), t('admin.agents.intro'))}
+      {internalAgents === undefined ? renderLoading() : (
         <div className="admin-list">
           {internalAgents.map((agent) => (
             <button
@@ -64,8 +186,45 @@ const AdminPage: React.FC = () => {
     </>
   );
 
+  const domainCounts: Record<AdminDomain, number | undefined> = {
+    endpoints: endpoints?.length,
+    models: models?.length,
+    assistants: assistants?.length,
+    tools: tools?.length,
+    agents: internalAgents?.length,
+    settings: undefined,
+  };
+
+  // Admin overview — one row per domain; clicking a row opens that domain
+  const renderOverview = () => (
+    <>
+      {renderHeading(t('contextColumn.admin'), t('admin.intro'))}
+      <div className="admin-list">
+        {ADMIN_DOMAINS.map((domain) => (
+          <button
+            key={domain}
+            className="admin-list-row"
+            onClick={() => navigate(domain === 'settings' ? `/admin/settings/${ADMIN_SETTINGS_PAGES[0]}` : `/admin/${domain}`)}
+          >
+            <Icon name={ADMIN_DOMAIN_ICONS[domain]} size={1.25} className="admin-row-icon" />
+            <div className="admin-row-main">
+              <div className="admin-row-title t-table-strong">{t(`admin.tabs.${domain}`)}</div>
+              <div className="admin-row-sub t-caption">{t(`admin.domains.${domain}`)}</div>
+            </div>
+            {domainCounts[domain] !== undefined && (
+              <div className="admin-row-meta t-meta">{domainCounts[domain]}</div>
+            )}
+          </button>
+        ))}
+      </div>
+    </>
+  );
+
   const renderContent = () => {
     if (tab === 'settings') {
+      if (!ADMIN_SETTINGS_PAGES.includes(id as AdminSettingsPage)) {
+        return <Navigate to={`/admin/settings/${ADMIN_SETTINGS_PAGES[0]}`} replace />;
+      }
       return <SettingsEditor />;
     }
     if (tab === 'endpoints' && id) {
@@ -83,159 +242,12 @@ const AdminPage: React.FC = () => {
     if (tab === 'agents' && id) {
       return <InternalAgentEditor key={id} agentId={id} />;
     }
-    if (tab === 'agents') {
-      return renderInternalAgents();
-    }
-
-    // Overview — each group is a bordered row list; clicking a row opens it in the main area
-    return (
-      <>
-        <h1 className="t-page-title">{t('contextColumn.admin')}</h1>
-        <div className="page-title-bar" />
-        <p className="admin-intro t-body-lg">{t('admin.intro')}</p>
-
-        <div className="admin-overview-group">
-          <div className="t-overline">{t('admin.tabs.endpoints')}</div>
-          {endpoints === undefined ? (
-            <div className="admin-empty t-ui-plain">{t('common.loading')}</div>
-          ) : (
-            <div className="admin-list">
-              {endpoints.length === 0 && (
-                <div className="admin-list-empty t-ui-plain">{t('admin.endpoints.list.empty')}</div>
-              )}
-              {endpoints.map((endpoint) => (
-                <button
-                  key={endpoint.id}
-                  className="admin-list-row"
-                  onClick={() => navigate(`/admin/endpoints/${endpoint.id}`)}
-                >
-                  <div className="admin-row-main">
-                    <div className="admin-row-title t-table-strong">{endpoint.url}</div>
-                  </div>
-                  <div className="admin-row-meta t-meta">{t(`admin.endpointType.${endpoint.endpointType}`)}</div>
-                </button>
-              ))}
-              <button className="admin-list-add t-ui" onClick={() => navigate('/admin/endpoints/new')}>
-                + {t('admin.endpoints.add.title')}
-              </button>
-            </div>
-          )}
-        </div>
-
-        <div className="admin-overview-group">
-          <div className="t-overline">{t('admin.tabs.models')}</div>
-          {models === undefined ? (
-            <div className="admin-empty t-ui-plain">{t('common.loading')}</div>
-          ) : (
-            <div className="admin-list">
-              {models.length === 0 && (
-                <div className="admin-list-empty t-ui-plain">{t('admin.models.list.empty')}</div>
-              )}
-              {models.map((model) => (
-                <button
-                  key={model.id}
-                  className="admin-list-row"
-                  onClick={() => navigate(`/admin/models/${model.id}`)}
-                >
-                  <div className="admin-row-main">
-                    <div className="admin-row-title t-table-strong">{model.modelName}</div>
-                    <div className="admin-row-sub t-caption">
-                      {endpoints?.find(e => e.id === model.endpointId)?.url ?? ''}
-                    </div>
-                  </div>
-                  <ClassificationBadge classification={model.classification} />
-                  <div className="admin-row-meta t-meta">{model.modelId}</div>
-                </button>
-              ))}
-              <button className="admin-list-add t-ui" onClick={() => navigate('/admin/models/new')}>
-                + {t('admin.models.add.title')}
-              </button>
-            </div>
-          )}
-        </div>
-
-        <div className="admin-overview-group">
-          <div className="t-overline">{t('admin.tabs.assistants')}</div>
-          {assistants === undefined ? (
-            <div className="admin-empty t-ui-plain">{t('common.loading')}</div>
-          ) : (
-            <div className="admin-list">
-              {assistants.length === 0 && (
-                <div className="admin-list-empty t-ui-plain">{t('admin.assistants.list.empty')}</div>
-              )}
-              {assistants.map((assistant) => (
-                <button
-                  key={assistant.id}
-                  className="admin-list-row"
-                  onClick={() => navigate(`/admin/assistants/${assistant.id}`)}
-                >
-                  <div className="admin-row-main">
-                    <div className="admin-row-title t-table-strong">{assistant.name}</div>
-                    {assistant.description && (
-                      <div className="admin-row-sub t-caption">{assistant.description}</div>
-                    )}
-                  </div>
-                </button>
-              ))}
-              <button className="admin-list-add t-ui" onClick={() => navigate('/admin/assistants/new')}>
-                + {t('admin.assistants.add.title')}
-              </button>
-            </div>
-          )}
-        </div>
-
-        <div className="admin-overview-group">
-          <div className="t-overline">{t('admin.tabs.tools')}</div>
-          {tools === undefined ? (
-            <div className="admin-empty t-ui-plain">{t('common.loading')}</div>
-          ) : (
-            <div className="admin-list">
-              {tools.length === 0 && (
-                <div className="admin-list-empty t-ui-plain">{t('admin.tools.list.empty')}</div>
-              )}
-              {tools.map((tool) => (
-                <button
-                  key={tool.id}
-                  className="admin-list-row"
-                  onClick={() => navigate(`/admin/tools/${tool.id}`)}
-                >
-                  <div className="admin-row-main">
-                    <div className="admin-row-title t-table-strong">{toolboxLabel(tool, tools)}</div>
-                    <div className="admin-row-sub t-caption">{tool.description}</div>
-                  </div>
-                  <ClassificationBadge classification={tool.classification} />
-                  <div className="admin-row-meta t-meta">
-                    {!tool.policy.enabled
-                      ? t('admin.tools.meta.disabled')
-                      : tool.isOverridden ? t('admin.tools.meta.overridden') : t('admin.tools.meta.default')}
-                  </div>
-                </button>
-              ))}
-            </div>
-          )}
-        </div>
-
-        <div className="admin-overview-group">
-          <div className="t-overline">{t('admin.tabs.settings')}</div>
-          {settings === undefined ? (
-            <div className="admin-empty t-ui-plain">{t('common.loading')}</div>
-          ) : (
-            <div className="admin-list">
-              <button className="admin-list-row" onClick={() => navigate('/admin/settings')}>
-                <div className="admin-row-main">
-                  <div className="admin-row-title t-table-strong">{t('admin.settings.title')}</div>
-                  <div className="admin-row-sub t-caption">
-                    {t('admin.settings.fields.defaultModel')}: {modelNameById(settings.defaultModelId)}
-                    {' · '}
-                    {t('admin.settings.fields.chatNamingModel')}: {modelNameById(settings.chatNamingModelId)}
-                  </div>
-                </div>
-              </button>
-            </div>
-          )}
-        </div>
-      </>
-    );
+    if (tab === 'endpoints') return renderEndpoints();
+    if (tab === 'models') return renderModels();
+    if (tab === 'assistants') return renderAssistants();
+    if (tab === 'tools') return renderTools();
+    if (tab === 'agents') return renderInternalAgents();
+    return renderOverview();
   };
 
   return (

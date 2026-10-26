@@ -485,7 +485,7 @@
     "External": "External"
   },
   "admin": {
-    "intro": "Manage the endpoints, models, system assistants and tools available in ChatUiT. Pick an item in the list, or add a new one.",
+    "intro": "Manage the endpoints, models, system assistants and tools available in ChatUiT. Pick an area to manage.",
     "tabs": {
       "endpoints": "Endpoints",
       "models": "Models",
@@ -493,6 +493,14 @@
       "settings": "Settings",
       "tools": "Toolboxes",
       "agents": "Internal agents"
+    },
+    "domains": {
+      "endpoints": "The services ChatUiT sends model requests to.",
+      "models": "The models users can chat with, and the endpoint each runs on.",
+      "assistants": "The system assistants offered in ChatUiT.",
+      "tools": "The toolboxes and who may use them.",
+      "agents": "Agents defined in code, and the model each runs on.",
+      "settings": "The models and assistant ChatUiT uses by default."
     },
     "endpoints": {
       "title": "Endpoints",
@@ -658,6 +666,9 @@
         "chatNamingModelHelp": "Used to generate a name for a new chat from the first message. New chats keep their placeholder name when this is not selected.",
         "defaultAssistant": "Default assistant",
         "defaultAssistantHelp": "The system assistant a new chat starts on when the user has not pinned one of their own."
+      },
+      "pages": {
+        "general": "General"
       }
     },
     "tools": {
@@ -666,9 +677,7 @@
         "empty": "No toolboxes registered."
       },
       "meta": {
-        "disabled": "Disabled",
-        "overridden": "Custom access",
-        "default": "Default access"
+        "disabled": "Disabled"
       },
       "edit": {
         "title": "Toolbox access"

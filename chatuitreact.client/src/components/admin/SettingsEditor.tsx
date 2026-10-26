@@ -6,6 +6,8 @@ import { updateAppSettings } from '../../services/adminService';
 import { adminAssistantsSignal, adminModelsSignal, adminSettingsSignal, loadAdminData } from '../../services/adminDataService';
 import { refreshAppDefaults } from '../../services/appSettingsService';
 import type { ModelDto } from '../../types/admin';
+import EditorHeader from '../layout/EditorHeader';
+import { hasChanges } from '../../utils/formChanges';
 
 const SettingsEditor: React.FC = () => {
   useSignals();
@@ -59,8 +61,22 @@ const SettingsEditor: React.FC = () => {
     </select>
   );
 
+  const dirty = hasChanges(
+    { defaultModelId, chatNamingModelId, defaultAssistantId },
+    { defaultModelId: settings.defaultModelId ?? '', chatNamingModelId: settings.chatNamingModelId ?? '', defaultAssistantId: settings.defaultAssistantId ?? '' },
+  );
+
   return (
     <div className="admin-form">
+      <EditorHeader
+        backPath="/admin"
+        backLabel={t('contextColumn.admin')}
+        dirty={dirty}
+        saveLabel={saving ? t('assistants.saving') : t('common.save')}
+        saveDisabled={saving}
+        onSave={handleSave}
+        onCancel={() => navigate('/admin')}
+      />
       <h1 className="t-page-title">{t('admin.settings.title')}</h1>
       <div className="page-title-bar" />
       <p className="admin-intro t-body-lg">{t('admin.settings.intro')}</p>
@@ -98,14 +114,6 @@ const SettingsEditor: React.FC = () => {
         <div className="admin-field-help t-caption">{t('admin.settings.fields.defaultAssistantHelp')}</div>
       </div>
 
-      <div className="admin-form-footer">
-        <button className="admin-save-button t-ui" onClick={handleSave} disabled={saving}>
-          {saving ? t('assistants.saving') : t('common.save')}
-        </button>
-        <button className="admin-cancel-button t-ui" onClick={() => navigate('/admin')}>
-          {t('common.cancel')}
-        </button>
-      </div>
     </div>
   );
 };
