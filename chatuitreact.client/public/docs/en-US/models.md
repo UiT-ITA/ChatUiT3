@@ -36,10 +36,6 @@ Tools let the model fetch information during the answer. An assistant only has t
 
 - **Fetch Web Page** reads a web address you give it and returns the main text of the page. Useful for summarising an article or checking a document online.
 
-> [!NOT_IMPLEMENTED]
-
-- **Get Weather** looks up the current weather for a place.
-
 When the model uses a tool, the activity line under the answer counts the call. Expand it to see the tool's name, what the model asked for, and what came back.
 
 ![Replace with screenshot featuring an expanded tool call showing the fetched URL and the result](placeholder)
