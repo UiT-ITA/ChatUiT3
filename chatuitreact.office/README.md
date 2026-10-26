@@ -16,7 +16,7 @@ The ChatUiT assistant as a task pane in Word, Excel, PowerPoint and Outlook on W
 
 ## Development
 
-Requirements: Node 22, Microsoft 365 Apps (current channel), and the ChatUiT server running locally (`dotnet run` in `../ChatUitReact.Server`, which listens on http://localhost:5157). The dev server serves the pane on https://localhost:3000 and forwards `/api` to that server.
+Requirements: Node 22.15 or later, Microsoft 365 Apps (current channel), and the ChatUiT server running locally (`dotnet run --launch-profile https` in `../ChatUitReact.Server`, which listens on https://localhost:7254). The dev server serves the pane on https://localhost:3000 and forwards `/api` to that server.
 
 | App | Windows | Mac |
 | --- | --- | --- |

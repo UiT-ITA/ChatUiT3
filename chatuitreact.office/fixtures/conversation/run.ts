@@ -540,7 +540,6 @@ const cases: Array<[string, () => Promise<void>]> = [
         finalText,
         [
           "What meetings do I have tomorrow?",
-          "▸ ChatUiT",
           "▸ Worked for 3s",
           "  ▸ Planning",
           "    Look up the calendar.",
@@ -718,7 +717,6 @@ const cases: Array<[string, () => Promise<void>]> = [
         finalText,
         [
           "Summarize and check my calendar",
-          "▸ ChatUiT",
           "▸ Worked for 42s",
           "  ▸ Reading the document",
           "    I will read the selection first.",
@@ -769,7 +767,6 @@ const cases: Array<[string, () => Promise<void>]> = [
         renderOutline(state),
         [
           "Read it",
-          "▸ ChatUiT",
           "▸ Worked for 5s",
           "  ▸ Reading",
           "    the selection.",

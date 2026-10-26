@@ -70,6 +70,9 @@ export interface ConversationState {
   turns: readonly Turn[];
 }
 
+/** The part of a conversation that is saved, and restored by `Conversation.load`. */
+export type SavedConversation = Pick<ConversationState, "items" | "thoughts" | "activity" | "turns">;
+
 export interface ApprovalDecision {
   approve: boolean;
   /** A JSON object string. Only for confirmation requests whose preview has `allow_edit`. */
@@ -230,6 +233,19 @@ export class Conversation {
     this.controller = null;
     this.generation += 1;
     this.state = initialState;
+    this.emit();
+  }
+
+  /** Replaces the conversation with a saved one. A saved approval that is still pending can be answered. */
+  load(saved: SavedConversation): void {
+    this.reset();
+    const awaiting = pendingApprovalRequests(saved.items).length > 0;
+    this.state = {
+      ...initialState,
+      ...saved,
+      status: awaiting ? "awaiting_approval" : "idle",
+      turns: awaiting ? saved.turns : endOpenTurn(saved.turns, this.now()),
+    };
     this.emit();
   }
 

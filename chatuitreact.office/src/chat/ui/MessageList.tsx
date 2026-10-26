@@ -3,6 +3,7 @@
 import { makeStyles, Spinner } from "@fluentui/react-components";
 import { useLayoutEffect, useRef, type ReactNode } from "react";
 import { outputText, type InputItem, type OutputItem } from "../api/types";
+import type { Starter } from "../host";
 import {
   approvalState,
   CONTEXT_PREFIX,
@@ -17,12 +18,15 @@ import { AssistantMeta, type TurnActivity } from "./AssistantMeta";
 import { Message } from "./Message";
 import { hasActivity, Reasoning } from "./Reasoning";
 import { ToolActivity } from "./ToolActivity";
-import { color, typography } from "./tokens";
+import { color, radius, typography } from "./tokens";
 
 export interface MessageListProps {
   state: ConversationState;
   /** Shown while the conversation is empty. */
   emptyMessage: string;
+  /** Example tasks shown while the conversation is empty. */
+  starters: readonly Starter[];
+  onStarter(starter: Starter): void;
   onAnswer(requestId: string, decision: ApprovalDecision): Promise<void>;
 }
 
@@ -32,19 +36,38 @@ const useStyles = makeStyles({
     overflowY: "auto",
     display: "flex",
     flexDirection: "column",
-    gap: "1rem",
-    // Office draws its personality menu over the top-right 34x32 px of the task pane (Mac), so the
-    // first message starts below it.
-    padding: "2.5rem 0.875rem 1rem",
+    gap: "1.125rem",
+    padding: "0.5rem 0.875rem 1rem",
     // The list scrolls, so its items must keep their height. Without this, an item with
     // overflow: hidden (a tool call) shrinks to its borders once the list overflows.
     "& > *": { flexShrink: 0 },
   },
-  empty: { ...typography.chat, color: color.text2, textAlign: "center", marginTop: "2rem" },
+  empty: {
+    flex: 1,
+    display: "flex",
+    flexDirection: "column",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: "1.125rem",
+    padding: "0 0.75rem 1.5rem",
+  },
+  emptyLogo: { display: "block", width: "2.5rem", height: "2.5rem" },
+  emptyMessage: { ...typography.title, fontWeight: 600, margin: 0, textAlign: "center", color: color.text },
+  starters: { display: "flex", flexWrap: "wrap", justifyContent: "center", gap: "0.5rem", maxWidth: "20rem" },
+  starter: {
+    ...typography.uiPlain,
+    padding: "0.375rem 0.75rem",
+    border: `1px solid ${color.line}`,
+    borderRadius: radius.pill,
+    backgroundColor: "transparent",
+    color: color.text2,
+    cursor: "pointer",
+    ":hover": { backgroundColor: color.panel, color: color.text },
+  },
   status: { ...typography.caption, color: color.text3 },
 });
 
-export function MessageList({ state, emptyMessage, onAnswer }: MessageListProps) {
+export function MessageList({ state, emptyMessage, starters, onStarter, onAnswer }: MessageListProps) {
   const styles = useStyles();
   const listRef = useRef<HTMLDivElement>(null);
   const contentHeight = useRef(0);
@@ -76,7 +99,21 @@ export function MessageList({ state, emptyMessage, onAnswer }: MessageListProps)
 
   return (
     <div ref={listRef} className={styles.root}>
-      {state.items.length === 0 && <p className={styles.empty}>{emptyMessage}</p>}
+      {state.items.length === 0 && (
+        <div className={styles.empty}>
+          <img className={styles.emptyLogo} src="assets/icon-64.png" alt="" />
+          <p className={styles.emptyMessage}>{emptyMessage}</p>
+          {starters.length > 0 && (
+            <div className={styles.starters}>
+              {starters.map((starter) => (
+                <button key={starter.label} type="button" className={styles.starter} onClick={() => onStarter(starter)}>
+                  {starter.label}
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
       {rendered}
       {live}
       {showThinking && (

@@ -18,7 +18,7 @@ export interface OfficeToolDefinition extends ClientToolDefinition {
  * What one Office app contributes: its chat adapter, typed with Office tools, and the API set it needs.
  * Every Office app talks to the same server agent (hosts.ts), so the app's rules go in `instructions`.
  */
-export interface OfficeApp extends Omit<HostAdapter, "model" | "tools"> {
+export interface OfficeApp extends Omit<HostAdapter, "model" | "tools" | "getDocumentKey" | "getUserName"> {
   /** The app's name in messages, such as "Excel". */
   name: string;
   /** The oldest API set ChatUiT works with in this app. */

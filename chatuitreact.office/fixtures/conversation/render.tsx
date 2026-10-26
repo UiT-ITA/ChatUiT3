@@ -11,7 +11,13 @@ import { MessageList } from "../../src/chat/ui/MessageList";
 export function renderOutline(state: ConversationState): string {
   const markup = renderToStaticMarkup(
     <FluentProvider theme={webLightTheme}>
-      <MessageList state={state} emptyMessage="Ask ChatUiT about this document." onAnswer={async () => undefined} />
+      <MessageList
+        state={state}
+        emptyMessage="Ask ChatUiT about this document."
+        starters={[]}
+        onStarter={() => undefined}
+        onAnswer={async () => undefined}
+      />
     </FluentProvider>
   ).replace(/<style[\s\S]*?<\/style>/g, "");
 

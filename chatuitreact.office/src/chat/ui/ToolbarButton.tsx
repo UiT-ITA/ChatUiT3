@@ -1,16 +1,16 @@
-import { makeStyles, mergeClasses, shorthands } from "@fluentui/react-components";
+/* global HTMLButtonElement */
+
+import { makeStyles, mergeClasses } from "@fluentui/react-components";
+import { forwardRef, type ButtonHTMLAttributes } from "react";
 import { Icon, type IconName } from "./icons";
 import { color, radius } from "./tokens";
 
-export interface ToolbarButtonProps {
+export interface ToolbarButtonProps extends Omit<ButtonHTMLAttributes<HTMLButtonElement>, "children"> {
   icon: IconName;
   /** The accessible name, and the tooltip unless `title` is set. */
   label: string;
-  /** Set for an on/off button. */
-  pressed?: boolean;
-  disabled?: boolean;
-  title?: string;
-  onClick(): void;
+  /** Shown as pressed, for example while the button's menu is open. */
+  active?: boolean;
 }
 
 const useStyles = makeStyles({
@@ -22,36 +22,33 @@ const useStyles = makeStyles({
     width: "2rem",
     height: "2rem",
     padding: 0,
-    border: `1px solid ${color.line}`,
+    border: "none",
     borderRadius: radius.md,
     backgroundColor: "transparent",
     color: color.text2,
     cursor: "pointer",
-    ":hover:enabled": { backgroundColor: color.panel, color: color.accent },
+    ":hover:enabled": { backgroundColor: color.panel, color: color.text },
     ":disabled": { opacity: 0.5, cursor: "default" },
   },
-  pressed: {
-    backgroundColor: color.panel2,
-    color: color.brand,
-    ...shorthands.borderColor(color.brand),
-    ":hover:enabled": { backgroundColor: color.panel2, color: color.brand },
-  },
+  active: { backgroundColor: color.panel, color: color.text },
 });
 
-/** An icon button in the composer toolbar, styled as the app's composer tool buttons. */
-export function ToolbarButton({ icon, label, pressed, disabled, title, onClick }: ToolbarButtonProps) {
+/** A borderless icon button, for the header and the composer. Takes a ref and props, so it can open a menu. */
+export const ToolbarButton = forwardRef<HTMLButtonElement, ToolbarButtonProps>(function ToolbarButton(
+  { icon, label, active, title, className, ...props },
+  ref
+) {
   const styles = useStyles();
   return (
     <button
+      ref={ref}
       type="button"
-      className={mergeClasses(styles.root, pressed && styles.pressed)}
+      className={mergeClasses(styles.root, active && styles.active, className)}
       aria-label={label}
-      aria-pressed={pressed}
-      disabled={disabled}
       title={title ?? label}
-      onClick={onClick}
+      {...props}
     >
       <Icon name={icon} size={1.0625} />
     </button>
   );
-}
+});
