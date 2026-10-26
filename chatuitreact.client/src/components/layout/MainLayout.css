@@ -156,9 +156,10 @@
   background: var(--panel-2);
 }
 
-/* Back button: back-to-list on mobile, and back from an edit page */
+/* Back button: back-to-list on mobile, and back from an edit page. It shrinks before the buttons after it. */
 .main-header-back {
-  flex: 0 0 auto;
+  flex: 0 1 auto;
+  min-width: 0;
   display: flex;
   align-items: center;
   gap: 0.25rem;
@@ -170,6 +171,11 @@
   cursor: pointer;
   color: var(--accent);
   white-space: nowrap;
+}
+
+.main-header-back-label {
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .main-header-back:hover {

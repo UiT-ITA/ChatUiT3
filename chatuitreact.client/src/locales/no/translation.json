@@ -677,9 +677,7 @@
         "empty": "Ingen verktøykasser registrert."
       },
       "meta": {
-        "disabled": "Avslått",
-        "overridden": "Tilpasset tilgang",
-        "default": "Standardtilgang"
+        "disabled": "Avslått"
       },
       "edit": {
         "title": "Tilgang til verktøykasse"

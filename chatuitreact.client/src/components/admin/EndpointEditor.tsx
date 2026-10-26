@@ -6,6 +6,7 @@ import { createEndpoint, updateEndpoint, deleteEndpoint } from '../../services/a
 import { adminEndpointsSignal, loadAdminData } from '../../services/adminDataService';
 import type { EndpointType } from '../../types/admin';
 import EditorHeader from '../layout/EditorHeader';
+import { hasChanges } from '../../utils/formChanges';
 
 const PROVIDERS: EndpointType[] = ['AzureOpenAI', 'MicrosoftFoundry', 'Anthropic', 'OpenAI', 'LlamaCpp', 'Other'];
 
@@ -69,7 +70,10 @@ const EndpointEditor: React.FC<EndpointEditorProps> = ({ endpointId }) => {
     navigate('/admin/endpoints');
   };
 
-  const dirty = url !== (endpoint?.url ?? '') || apiKey !== '' || endpointType !== (endpoint?.endpointType ?? 'AzureOpenAI');
+  const dirty = hasChanges(
+    { url, apiKey, endpointType },
+    { url: endpoint?.url ?? '', apiKey: '', endpointType: endpoint?.endpointType ?? 'AzureOpenAI' },
+  );
 
   return (
     <div className="admin-form">

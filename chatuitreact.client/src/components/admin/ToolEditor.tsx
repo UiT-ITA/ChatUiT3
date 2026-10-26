@@ -8,6 +8,7 @@ import { refreshTools } from '../../services/toolService';
 import { toolboxLabel, type UserRole, type AdminToolDto, type ToolAccessPolicyDto } from '../../types/admin';
 import GroupPicker from '../common/GroupPicker';
 import EditorHeader from '../layout/EditorHeader';
+import { hasChanges } from '../../utils/formChanges';
 import AgentFunctionRows from './AgentFunctionRows';
 import ClassificationBadge from '../common/ClassificationBadge';
 
@@ -111,9 +112,7 @@ const ToolEditor: React.FC<ToolEditorProps> = ({ toolId }) => {
     return parts.join(' · ') || '—';
   };
 
-  const comparable = (policy: ToolAccessPolicyDto) =>
-    JSON.stringify({ ...policy, allowedRoles: [...policy.allowedRoles].sort(), allowedGroupIds: [...policy.allowedGroupIds].sort() });
-  const dirty = comparable({ enabled, allowedRoles, allowedGroupIds }) !== comparable(initial);
+  const dirty = hasChanges({ enabled, allowedRoles, allowedGroupIds }, initial);
 
   return (
     <div className="admin-form admin-form-wide">

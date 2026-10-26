@@ -8,6 +8,7 @@ import { clampEffort } from '../../types/admin';
 import type { ReasoningEffortLevel } from '../../types/admin';
 import AgentFunctionRows from './AgentFunctionRows';
 import EditorHeader from '../layout/EditorHeader';
+import { hasChanges } from '../../utils/formChanges';
 
 interface InternalAgentEditorProps {
   agentId: string;
@@ -67,7 +68,11 @@ const InternalAgentEditor: React.FC<InternalAgentEditorProps> = ({ agentId }) =>
     }
   };
 
-  const dirty = modelId !== (agent.modelId ?? '') || reasoningEffort !== (agent.reasoningEffort ?? 'None') || exposedInApi !== (agent.exposedInApi ?? false);
+  // Compares the clamped effort a save would send with the stored effort
+  const dirty = hasChanges(
+    { modelId, reasoningEffort: models === undefined ? reasoningEffort : currentEffort, exposedInApi },
+    { modelId: agent.modelId ?? '', reasoningEffort: agent.reasoningEffort ?? 'None', exposedInApi: agent.exposedInApi ?? false },
+  );
 
   return (
     <div className="admin-form admin-form-wide">

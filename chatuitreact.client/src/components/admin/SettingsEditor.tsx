@@ -7,6 +7,7 @@ import { adminAssistantsSignal, adminModelsSignal, adminSettingsSignal, loadAdmi
 import { refreshAppDefaults } from '../../services/appSettingsService';
 import type { ModelDto } from '../../types/admin';
 import EditorHeader from '../layout/EditorHeader';
+import { hasChanges } from '../../utils/formChanges';
 
 const SettingsEditor: React.FC = () => {
   useSignals();
@@ -60,9 +61,10 @@ const SettingsEditor: React.FC = () => {
     </select>
   );
 
-  const dirty = defaultModelId !== (settings.defaultModelId ?? '')
-    || chatNamingModelId !== (settings.chatNamingModelId ?? '')
-    || defaultAssistantId !== (settings.defaultAssistantId ?? '');
+  const dirty = hasChanges(
+    { defaultModelId, chatNamingModelId, defaultAssistantId },
+    { defaultModelId: settings.defaultModelId ?? '', chatNamingModelId: settings.chatNamingModelId ?? '', defaultAssistantId: settings.defaultAssistantId ?? '' },
+  );
 
   return (
     <div className="admin-form">

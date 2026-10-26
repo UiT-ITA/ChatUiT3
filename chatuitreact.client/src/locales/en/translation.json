@@ -677,9 +677,7 @@
         "empty": "No toolboxes registered."
       },
       "meta": {
-        "disabled": "Disabled",
-        "overridden": "Custom access",
-        "default": "Default access"
+        "disabled": "Disabled"
       },
       "edit": {
         "title": "Toolbox access"

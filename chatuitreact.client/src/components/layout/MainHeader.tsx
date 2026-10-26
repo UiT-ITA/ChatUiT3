@@ -104,7 +104,7 @@ const MainHeader = ({ isMobile }: MainHeaderProps) => {
           onClick={() => navigate(editor.backPath)}
         >
           <Icon name="back" size={1.125} />
-          {editor.backLabel}
+          <span className="main-header-back-label">{editor.backLabel}</span>
         </button>
       ) : isMobile && (
         <button

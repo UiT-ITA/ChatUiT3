@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { MdImage, MdPublic, MdPsychology, MdExpandMore, MdExpandLess } from 'react-icons/md';
@@ -23,6 +23,7 @@ import { alwaysLoadedLimit, formatTokens, parseScheme, type ParsedScheme, type T
 import AlwaysLoadedBudget, { type RejectedKnowledgeFile } from './AlwaysLoadedBudget';
 import { knowledgeFileTokens, knowledgeFilesTokens } from './knowledgeTokens';
 import EditorHeader from '../layout/EditorHeader';
+import { hasChanges } from '../../utils/formChanges';
 import './AssistantForm.css';
 
 const createEmptyKnowledgeFiles = (): Record<KnowledgeFileCategory, KnowledgeFileItemData[]> => ({
@@ -530,6 +531,8 @@ const AssistantForm: React.FC<AssistantFormProps> = ({
           id: editingAssistant.id,
           ...normalized
         });
+        // The saved values are the new baseline until the assistant list is refetched
+        setInitialState({ formData, knowledgeFiles, selectedToolIds, access });
       } else {
         await (onCreate ?? createAssistant)(normalized);
       }
@@ -541,20 +544,20 @@ const AssistantForm: React.FC<AssistantFormProps> = ({
     }
   };
 
-  // Files are compared by id and description; their content is never edited in place.
-  const comparableState = (state: typeof initialState) => JSON.stringify({
-    formData: state.formData,
-    selectedToolIds: state.selectedToolIds,
-    access: state.access,
-    knowledgeFiles: Object.fromEntries(
-      Object.entries(state.knowledgeFiles).map(([category, items]) => [category, items.map((item) => [item.id, item.description ?? ''])])
-    ),
-  });
-  // A new assistant's preselected default model is not a change.
-  const dirty = comparableState({ formData, knowledgeFiles, selectedToolIds, access }) !== comparableState({
-    ...initialState,
-    formData: { ...initialState.formData, modelId: initialState.formData.modelId || selectableDefaultModelId },
-  });
+  const dirty = useMemo(() => {
+    // Files are compared by id and description
+    const comparableState = (state: typeof initialState) => ({
+      formData: state.formData,
+      selectedToolIds: state.selectedToolIds,
+      access: state.access,
+      knowledgeFiles: Object.fromEntries(
+        Object.entries(state.knowledgeFiles).map(([category, items]) => [category, items.map((item) => [item.id, item.description ?? ''])])
+      ),
+    });
+    // The saved values, with a new assistant's preselected default model counted as saved
+    const saved = { ...initialState, formData: { ...initialState.formData, modelId: initialState.formData.modelId || selectableDefaultModelId } };
+    return hasChanges(comparableState({ formData, knowledgeFiles, selectedToolIds, access }), comparableState(saved));
+  }, [formData, knowledgeFiles, selectedToolIds, access, initialState, selectableDefaultModelId]);
 
   const renderCapabilityIcon = (capability: string, enabled: boolean, icon: React.ReactNode) => {
     if (!enabled) return null;

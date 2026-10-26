@@ -17,6 +17,7 @@ import type {
 import { API_PROTOCOLS, REASONING_EFFORT_ORDER, TOKEN_COUNTING_SCHEME_OPTIONS } from '../../types/admin';
 import { DATA_CLASSIFICATIONS, type DataClassification } from '../../types/modelModels';
 import EditorHeader from '../layout/EditorHeader';
+import { hasChanges } from '../../utils/formChanges';
 
 const ALL_ROLES: UserRole[] = ['User', 'Admin', 'Beta', 'Super', 'External'];
 
@@ -204,9 +205,10 @@ const ModelEditor: React.FC<ModelEditorProps> = ({ modelId: editId }) => {
     navigate('/admin/models');
   };
 
-  const current = { modelId, modelName, description, endpointId, allowedRoles, allowedAsDefault, exposedInApi, apiProtocol, classification, capabilities, knowledgeCutoffMonth };
-  const comparable = (state: typeof current) => JSON.stringify({ ...state, allowedRoles: [...state.allowedRoles].sort() });
-  const dirty = comparable(current) !== comparable(initial);
+  const dirty = hasChanges(
+    { modelId, modelName, description, endpointId, allowedRoles, allowedAsDefault, exposedInApi, apiProtocol, classification, capabilities, knowledgeCutoffMonth },
+    initial,
+  );
 
   return (
     <div className="admin-form admin-form-wide">
