@@ -8,7 +8,7 @@ on the client.
 
 - **Tool**: something the model can call. Server tools implement `ITool`; client tools are declared by the
   client with each message and run in the browser or add-in.
-- **Tool id**: a stable snake_case string (`get_weather`). It is also the function name the model sees and
+- **Tool id**: a stable snake_case string (`get_website`). It is also the function name the model sees and
   the key the access policy is stored under. Never rename an id; add the old one to `LegacyIds` instead.
 - **Access policy**: `Enabled`, `AllowedRoles`, `AllowedGroupIds`. A user may use a tool when it is enabled
   and they hold any listed role or belong to any listed Entra group. Every tool has a code default; an admin

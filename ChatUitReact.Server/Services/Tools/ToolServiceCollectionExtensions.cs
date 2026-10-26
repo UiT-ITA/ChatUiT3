@@ -14,7 +14,6 @@ public static class ToolServiceCollectionExtensions
     {
         services.Configure<ToolOptions>(configuration.GetSection(ToolOptions.SectionName));
 
-        services.AddSingleToolToolbox<GetWeatherTool>();
         services.AddSingleToolToolbox<GetWebsiteTool>();
 
         services.AddSingleton<IToolRegistry, ToolRegistry>();

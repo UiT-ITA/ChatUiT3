@@ -36,10 +36,6 @@ Verktøy lar modellen hente informasjon underveis i svaret. En assistent har bar
 
 - **Hent nettside** leser en nettadresse du gir den og returnerer hovedteksten på siden. Nyttig for å oppsummere en artikkel eller sjekke et dokument på nett.
 
-> [!NOT_IMPLEMENTED]
-
-- **Hent vær** slår opp været akkurat nå på et sted.
-
 Når modellen bruker et verktøy, teller aktivitetslinjen under svaret kallet. Utvid den for å se navnet på verktøyet, hva modellen ba om, og hva som kom tilbake.
 
 ![Replace with screenshot featuring an expanded tool call showing the fetched URL and the result](placeholder)
