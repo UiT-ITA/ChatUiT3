@@ -16,6 +16,7 @@ import type {
 } from '../../types/admin';
 import { API_PROTOCOLS, REASONING_EFFORT_ORDER, TOKEN_COUNTING_SCHEME_OPTIONS } from '../../types/admin';
 import { DATA_CLASSIFICATIONS, type DataClassification } from '../../types/modelModels';
+import EditorHeader from '../layout/EditorHeader';
 
 const ALL_ROLES: UserRole[] = ['User', 'Admin', 'Beta', 'Super', 'External'];
 
@@ -189,7 +190,7 @@ const ModelEditor: React.FC<ModelEditorProps> = ({ modelId: editId }) => {
         await createModel(payload);
       }
       await loadAdminData(true);
-      navigate('/admin');
+      navigate('/admin/models');
     } finally {
       setSaving(false);
     }
@@ -200,11 +201,24 @@ const ModelEditor: React.FC<ModelEditorProps> = ({ modelId: editId }) => {
     if (!window.confirm(t('admin.models.dialog.delete.confirm'))) return;
     await deleteModel(model.id);
     await loadAdminData(true);
-    navigate('/admin');
+    navigate('/admin/models');
   };
+
+  const current = { modelId, modelName, description, endpointId, allowedRoles, allowedAsDefault, exposedInApi, apiProtocol, classification, capabilities, knowledgeCutoffMonth };
+  const comparable = (state: typeof current) => JSON.stringify({ ...state, allowedRoles: [...state.allowedRoles].sort() });
+  const dirty = comparable(current) !== comparable(initial);
 
   return (
     <div className="admin-form admin-form-wide">
+      <EditorHeader
+        backPath="/admin/models"
+        backLabel={t('admin.tabs.models')}
+        dirty={dirty}
+        saveLabel={saving ? t('assistants.saving') : (model ? t('common.save') : t('common.create'))}
+        saveDisabled={!canSave || saving}
+        onSave={handleSave}
+        onCancel={() => navigate('/admin/models')}
+      />
       <h1 className="t-page-title">
         {model ? t('admin.models.dialog.edit.title') : t('admin.models.add.title')}
       </h1>
@@ -479,22 +493,14 @@ const ModelEditor: React.FC<ModelEditorProps> = ({ modelId: editId }) => {
         </div>
       </div>
 
-      <div className="admin-form-footer">
-        <button className="admin-save-button t-ui" onClick={handleSave} disabled={!canSave || saving}>
-          {saving ? t('assistants.saving') : (model ? t('common.save') : t('common.create'))}
-        </button>
-        <button className="admin-cancel-button t-ui" onClick={() => navigate('/admin')}>
-          {t('common.cancel')}
-        </button>
-        {model && (
-          <>
-            <div className="admin-footer-spacer" />
-            <button className="admin-delete-button t-ui" onClick={handleDelete}>
-              {t('admin.models.actions.delete')}
-            </button>
-          </>
-        )}
-      </div>
+      {model && (
+        <div className="admin-form-footer">
+          <div className="admin-footer-spacer" />
+          <button className="admin-delete-button t-ui" onClick={handleDelete}>
+            {t('admin.models.actions.delete')}
+          </button>
+        </div>
+      )}
     </div>
   );
 };

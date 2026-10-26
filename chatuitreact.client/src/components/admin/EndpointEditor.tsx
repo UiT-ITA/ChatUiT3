@@ -5,6 +5,7 @@ import { useSignals } from '@preact/signals-react/runtime';
 import { createEndpoint, updateEndpoint, deleteEndpoint } from '../../services/adminService';
 import { adminEndpointsSignal, loadAdminData } from '../../services/adminDataService';
 import type { EndpointType } from '../../types/admin';
+import EditorHeader from '../layout/EditorHeader';
 
 const PROVIDERS: EndpointType[] = ['AzureOpenAI', 'MicrosoftFoundry', 'Anthropic', 'OpenAI', 'LlamaCpp', 'Other'];
 
@@ -54,7 +55,7 @@ const EndpointEditor: React.FC<EndpointEditorProps> = ({ endpointId }) => {
         await createEndpoint({ url, apiKey, endpointType });
       }
       await loadAdminData(true);
-      navigate('/admin');
+      navigate('/admin/endpoints');
     } finally {
       setSaving(false);
     }
@@ -65,11 +66,22 @@ const EndpointEditor: React.FC<EndpointEditorProps> = ({ endpointId }) => {
     if (!window.confirm(t('admin.endpoints.dialog.delete.confirm'))) return;
     await deleteEndpoint(endpoint.id);
     await loadAdminData(true);
-    navigate('/admin');
+    navigate('/admin/endpoints');
   };
+
+  const dirty = url !== (endpoint?.url ?? '') || apiKey !== '' || endpointType !== (endpoint?.endpointType ?? 'AzureOpenAI');
 
   return (
     <div className="admin-form">
+      <EditorHeader
+        backPath="/admin/endpoints"
+        backLabel={t('admin.tabs.endpoints')}
+        dirty={dirty}
+        saveLabel={saving ? t('assistants.saving') : (endpoint ? t('common.save') : t('common.create'))}
+        saveDisabled={!url || (!endpoint && !apiKey) || saving}
+        onSave={handleSave}
+        onCancel={() => navigate('/admin/endpoints')}
+      />
       <h1 className="t-page-title">
         {endpoint ? t('admin.endpoints.dialog.edit.title') : t('admin.endpoints.add.title')}
       </h1>
@@ -120,26 +132,14 @@ const EndpointEditor: React.FC<EndpointEditorProps> = ({ endpointId }) => {
         </select>
       </div>
 
-      <div className="admin-form-footer">
-        <button
-          className="admin-save-button t-ui"
-          onClick={handleSave}
-          disabled={!url || (!endpoint && !apiKey) || saving}
-        >
-          {saving ? t('assistants.saving') : (endpoint ? t('common.save') : t('common.create'))}
-        </button>
-        <button className="admin-cancel-button t-ui" onClick={() => navigate('/admin')}>
-          {t('common.cancel')}
-        </button>
-        {endpoint && (
-          <>
-            <div className="admin-footer-spacer" />
-            <button className="admin-delete-button t-ui" onClick={handleDelete}>
-              {t('admin.endpoints.actions.delete')}
-            </button>
-          </>
-        )}
-      </div>
+      {endpoint && (
+        <div className="admin-form-footer">
+          <div className="admin-footer-spacer" />
+          <button className="admin-delete-button t-ui" onClick={handleDelete}>
+            {t('admin.endpoints.actions.delete')}
+          </button>
+        </div>
+      )}
     </div>
   );
 };

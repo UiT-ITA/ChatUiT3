@@ -7,6 +7,7 @@ import { adminToolsSignal, loadAdminData } from '../../services/adminDataService
 import { refreshTools } from '../../services/toolService';
 import { toolboxLabel, type UserRole, type AdminToolDto, type ToolAccessPolicyDto } from '../../types/admin';
 import GroupPicker from '../common/GroupPicker';
+import EditorHeader from '../layout/EditorHeader';
 import AgentFunctionRows from './AgentFunctionRows';
 import ClassificationBadge from '../common/ClassificationBadge';
 
@@ -76,7 +77,7 @@ const ToolEditor: React.FC<ToolEditorProps> = ({ toolId }) => {
   const finish = async () => {
     await loadAdminData(true);
     await refreshTools();
-    navigate('/admin');
+    navigate('/admin/tools');
   };
 
   const handleSave = async () => {
@@ -110,8 +111,21 @@ const ToolEditor: React.FC<ToolEditorProps> = ({ toolId }) => {
     return parts.join(' · ') || '—';
   };
 
+  const comparable = (policy: ToolAccessPolicyDto) =>
+    JSON.stringify({ ...policy, allowedRoles: [...policy.allowedRoles].sort(), allowedGroupIds: [...policy.allowedGroupIds].sort() });
+  const dirty = comparable({ enabled, allowedRoles, allowedGroupIds }) !== comparable(initial);
+
   return (
     <div className="admin-form admin-form-wide">
+      <EditorHeader
+        backPath="/admin/tools"
+        backLabel={t('admin.tabs.tools')}
+        dirty={dirty}
+        saveLabel={saving ? t('assistants.saving') : t('common.save')}
+        saveDisabled={saving}
+        onSave={handleSave}
+        onCancel={() => navigate('/admin/tools')}
+      />
       <h1 className="t-page-title">{toolboxLabel(tool, tools)}</h1>
       <div className="page-title-bar" />
 
@@ -203,22 +217,14 @@ const ToolEditor: React.FC<ToolEditorProps> = ({ toolId }) => {
         <div className="admin-field-help t-caption" style={{ color: 'var(--warn)' }}>{t('admin.tools.fields.nobodyWarning')}</div>
       )}
 
-      <div className="admin-form-footer">
-        <button className="admin-save-button t-ui" onClick={handleSave} disabled={saving}>
-          {saving ? t('assistants.saving') : t('common.save')}
-        </button>
-        <button className="admin-cancel-button t-ui" onClick={() => navigate('/admin')}>
-          {t('common.cancel')}
-        </button>
-        {tool.isOverridden && (
-          <>
-            <div className="admin-footer-spacer" />
-            <button className="admin-delete-button t-ui" onClick={handleReset} disabled={saving}>
-              {t('admin.tools.actions.reset')}
-            </button>
-          </>
-        )}
-      </div>
+      {tool.isOverridden && (
+        <div className="admin-form-footer">
+          <div className="admin-footer-spacer" />
+          <button className="admin-delete-button t-ui" onClick={handleReset} disabled={saving}>
+            {t('admin.tools.actions.reset')}
+          </button>
+        </div>
+      )}
     </div>
   );
 };

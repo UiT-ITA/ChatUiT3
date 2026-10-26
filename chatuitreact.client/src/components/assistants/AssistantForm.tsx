@@ -1,4 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { MdImage, MdPublic, MdPsychology, MdExpandMore, MdExpandLess } from 'react-icons/md';
 import { useSignals } from '@preact/signals-react/runtime';
@@ -21,6 +22,7 @@ import { getTokenizer, loadTokenizer } from '../../services/tokenizerService';
 import { alwaysLoadedLimit, formatTokens, parseScheme, type ParsedScheme, type Tokenizer } from '../../utils/tokenCounting';
 import AlwaysLoadedBudget, { type RejectedKnowledgeFile } from './AlwaysLoadedBudget';
 import { knowledgeFileTokens, knowledgeFilesTokens } from './knowledgeTokens';
+import EditorHeader from '../layout/EditorHeader';
 import './AssistantForm.css';
 
 const createEmptyKnowledgeFiles = (): Record<KnowledgeFileCategory, KnowledgeFileItemData[]> => ({
@@ -109,9 +111,12 @@ interface AssistantFormProps {
   onUpdate?: (assistant: UpdateAssistantDto) => Promise<unknown>;
   /** Called after a successful save */
   onSaved?: () => void;
-  /** Extra buttons rendered next to Save in the footer */
+  /** Extra buttons rendered in the footer */
   footerExtra?: React.ReactNode;
   saveLabel?: string;
+  /** Where the header's back and cancel buttons go */
+  backPath: string;
+  backLabel: string;
   /** Editing a system assistant as admin: every tool is offered, tool policies are not enforced, and access is editable. */
   systemAssistant?: boolean;
 }
@@ -123,17 +128,20 @@ const AssistantForm: React.FC<AssistantFormProps> = ({
   onSaved,
   footerExtra,
   saveLabel,
+  backPath,
+  backLabel,
   systemAssistant = false
 }) => {
   useSignals();
   const { t, i18n } = useTranslation();
+  const navigate = useNavigate();
   const modelsSignal = getModels();
   const appDefaultsSignal = getAppDefaults();
   const toolsSignal = getTools();
   const knowledgeSourcesSignal = getKnowledgeSources();
   const [isModelDropdownOpen, setIsModelDropdownOpen] = useState(false);
   const [loading, setLoading] = useState(false);
-  const [initialState] = useState(() => formStateFor(editingAssistant));
+  const [initialState, setInitialState] = useState(() => formStateFor(editingAssistant));
   const [selectedToolIds, setSelectedToolIds] = useState<string[]>(initialState.selectedToolIds);
   const [access, setAccess] = useState<AssistantAccessPolicyDto | null>(initialState.access);
 
@@ -147,6 +155,7 @@ const AssistantForm: React.FC<AssistantFormProps> = ({
   if (editingAssistant !== syncedAssistant) {
     setSyncedAssistant(editingAssistant);
     const next = formStateFor(editingAssistant);
+    setInitialState(next);
     setKnowledgeFiles(next.knowledgeFiles);
     setFormData(next.formData);
     setSelectedToolIds(next.selectedToolIds);
@@ -532,6 +541,21 @@ const AssistantForm: React.FC<AssistantFormProps> = ({
     }
   };
 
+  // Files are compared by id and description; their content is never edited in place.
+  const comparableState = (state: typeof initialState) => JSON.stringify({
+    formData: state.formData,
+    selectedToolIds: state.selectedToolIds,
+    access: state.access,
+    knowledgeFiles: Object.fromEntries(
+      Object.entries(state.knowledgeFiles).map(([category, items]) => [category, items.map((item) => [item.id, item.description ?? ''])])
+    ),
+  });
+  // A new assistant's preselected default model is not a change.
+  const dirty = comparableState({ formData, knowledgeFiles, selectedToolIds, access }) !== comparableState({
+    ...initialState,
+    formData: { ...initialState.formData, modelId: initialState.formData.modelId || selectableDefaultModelId },
+  });
+
   const renderCapabilityIcon = (capability: string, enabled: boolean, icon: React.ReactNode) => {
     if (!enabled) return null;
 
@@ -544,6 +568,17 @@ const AssistantForm: React.FC<AssistantFormProps> = ({
 
   return (
     <div className="assistant-form">
+      <EditorHeader
+        backPath={backPath}
+        backLabel={backLabel}
+        dirty={dirty}
+        saveLabel={loading
+          ? t('assistants.saving')
+          : (saveLabel ?? (editingAssistant ? t('assistants.update') : t('common.create')))}
+        saveDisabled={!formData.name.trim() || !formData.modelId || loading || hasMissingDescriptions || isBudgetBlocking}
+        onSave={() => { void handleSubmit(); }}
+        onCancel={() => navigate(backPath)}
+      />
       <div className="af-grid">
         <div className="af-field">
           <label className="af-label t-label">{t('assistants.form.name')}</label>
@@ -843,19 +878,11 @@ const AssistantForm: React.FC<AssistantFormProps> = ({
         </div>
       </div>
 
-      <div className="af-footer">
-        <button
-          type="button"
-          className="af-save-button t-ui"
-          onClick={handleSubmit}
-          disabled={!formData.name.trim() || !formData.modelId || loading || hasMissingDescriptions || isBudgetBlocking}
-        >
-          {loading
-            ? t('assistants.saving')
-            : (saveLabel ?? (editingAssistant ? t('assistants.update') : t('common.create')))}
-        </button>
-        {footerExtra}
-      </div>
+      {footerExtra && (
+        <div className="af-footer">
+          {footerExtra}
+        </div>
+      )}
     </div>
   );
 };

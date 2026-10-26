@@ -9,7 +9,7 @@ import { getChats } from '../../services/chatService';
 import { getAssistants } from '../../services/assistantService';
 import { adminEndpointsSignal, adminModelsSignal, adminAssistantsSignal, adminToolsSignal, adminInternalAgentsSignal, loadAdminData } from '../../services/adminDataService';
 import { useAuth } from '../../hooks/useAuth';
-import { toolboxLabel } from '../../types/admin';
+import { toolboxLabel, ADMIN_DOMAINS, ADMIN_DOMAIN_ICONS, ADMIN_SETTINGS_PAGES, type AdminDomain } from '../../types/admin';
 import type { SettingsCategory } from '../../types/settingsModels';
 import { HELP_SECTIONS, isHelpSection } from '../help/helpSections';
 import HelpSectionNav from '../help/HelpSectionNav';
@@ -56,10 +56,7 @@ const ContextColumn = ({ isMobile }: ContextColumnProps) => {
     ? chats.value.length
     : section === 'assistants' && assistants.value !== undefined
       ? assistants.value.owned.length + assistants.value.system.length + assistants.value.shared.length
-      : section === 'admin' && adminEndpoints !== undefined
-        ? adminEndpoints.length + (adminModels?.length ?? 0) + (adminAssistants?.length ?? 0) + (adminTools?.length ?? 0)
-          + (adminInternalAgents?.length ?? 0)
-        : undefined;
+      : undefined;
 
   const titles: Record<string, string> = {
     chats: t('contextColumn.chats'),
@@ -84,8 +81,82 @@ const ContextColumn = ({ isMobile }: ContextColumnProps) => {
 
   const activeAssistantId = section === 'assistants' ? pathParts[1] : undefined;
 
-  const adminNav = (path: string) => {
-    navigate(path);
+  const renderAdminLoading = () => (
+    <div className="context-column-note t-ui-plain">{t('common.loading')}</div>
+  );
+
+  // The items of the open admin domain, shown under its row in the sidebar
+  const renderAdminDomainItems = (domain: AdminDomain) => {
+    switch (domain) {
+      case 'endpoints':
+        return adminEndpoints === undefined ? renderAdminLoading() : adminEndpoints.map((endpoint) => (
+          <button
+            key={endpoint.id}
+            className={`context-nav-row context-list-row t-ui-plain ${activeAdminId === endpoint.id ? 'active' : ''}`}
+            onClick={() => navigate(`/admin/endpoints/${endpoint.id}`)}
+          >
+            <span className="context-list-row-title">{endpoint.url}</span>
+            <span className="context-list-row-meta t-caption">{t(`admin.endpointType.${endpoint.endpointType}`)}</span>
+          </button>
+        ));
+      case 'models':
+        return adminModels === undefined ? renderAdminLoading() : adminModels.map((model) => (
+          <button
+            key={model.id}
+            className={`context-nav-row context-list-row t-ui-plain ${activeAdminId === model.id ? 'active' : ''}`}
+            onClick={() => navigate(`/admin/models/${model.id}`)}
+          >
+            <span className="context-list-row-title">{model.modelName}</span>
+            <span className="context-list-row-meta t-caption">{adminEndpoints?.find(endpoint => endpoint.id === model.endpointId)?.url ?? ''}</span>
+          </button>
+        ));
+      case 'assistants':
+        return adminAssistants === undefined ? renderAdminLoading() : adminAssistants.map((assistant) => (
+          <button
+            key={assistant.id}
+            className={`context-nav-row context-list-row t-ui-plain ${activeAdminId === assistant.id ? 'active' : ''}`}
+            onClick={() => navigate(`/admin/assistants/${assistant.id}`)}
+          >
+            <span className="context-list-row-title">{assistant.name}</span>
+            {assistant.description && (
+              <span className="context-list-row-sub t-caption">{assistant.description}</span>
+            )}
+          </button>
+        ));
+      case 'tools':
+        return adminTools === undefined ? renderAdminLoading() : adminTools.map((tool) => (
+          <button
+            key={tool.id}
+            className={`context-nav-row context-list-row t-ui-plain ${activeAdminId === tool.id ? 'active' : ''}`}
+            onClick={() => navigate(`/admin/tools/${tool.id}`)}
+          >
+            <span className="context-list-row-title">{toolboxLabel(tool, adminTools)}</span>
+          </button>
+        ));
+      case 'agents':
+        return adminInternalAgents === undefined ? renderAdminLoading() : adminInternalAgents.map((agent) => (
+          <button
+            key={agent.id}
+            className={`context-nav-row context-list-row t-ui-plain ${activeAdminId === agent.id ? 'active' : ''}`}
+            onClick={() => navigate(`/admin/agents/${agent.id}`)}
+          >
+            <span className="context-list-row-title">{agent.name}</span>
+            <span className="context-list-row-meta t-caption">
+              {agent.modelId ? adminModels?.find(model => model.id === agent.modelId)?.modelName ?? agent.modelId : t('admin.agents.meta.notSet')}
+            </span>
+          </button>
+        ));
+      case 'settings':
+        return ADMIN_SETTINGS_PAGES.map((page) => (
+          <button
+            key={page}
+            className={`context-nav-row t-ui-plain ${activeAdminId === page ? 'active' : ''}`}
+            onClick={() => navigate(`/admin/settings/${page}`)}
+          >
+            {t(`admin.settings.pages.${page}`)}
+          </button>
+        ));
+    }
   };
 
   const className = isMobile ? 'context-column context-column-mobile' : 'context-column';
@@ -162,121 +233,29 @@ const ContextColumn = ({ isMobile }: ContextColumnProps) => {
       {section === 'admin' && (
         <div className="context-column-scroll">
           <button
-            className={`context-nav-row t-ui ${activeAdminTab === undefined ? 'active' : ''}`}
-            onClick={() => adminNav('/admin')}
+            className={`context-nav-row context-icon-row t-ui ${activeAdminTab === undefined ? 'active' : ''}`}
+            onClick={() => navigate('/admin')}
           >
+            <Icon name="grid" size={1} className="context-icon-row-icon" />
             {t('assistants.overview')}
           </button>
 
-          <div className="context-group-label t-group-label">{t('admin.tabs.endpoints')}</div>
-          {adminEndpoints === undefined ? (
-            <div className="context-column-note t-ui-plain">{t('common.loading')}</div>
-          ) : (
-            adminEndpoints.map((endpoint) => (
+          {ADMIN_DOMAINS.map((domain) => (
+            <div key={domain}>
               <button
-                key={endpoint.id}
-                className={`context-nav-row context-list-row t-ui ${activeAdminTab === 'endpoints' && activeAdminId === endpoint.id ? 'active' : ''}`}
-                onClick={() => adminNav(`/admin/endpoints/${endpoint.id}`)}
+                className={`context-nav-row context-icon-row t-ui ${activeAdminTab === domain && activeAdminId === undefined ? 'active' : ''}`}
+                onClick={() => navigate(domain === 'settings' ? `/admin/settings/${ADMIN_SETTINGS_PAGES[0]}` : `/admin/${domain}`)}
               >
-                <span className="context-list-row-title">{endpoint.url}</span>
-                <span className="context-list-row-meta t-meta">{t(`admin.endpointType.${endpoint.endpointType}`)}</span>
+                <Icon name={ADMIN_DOMAIN_ICONS[domain]} size={1} className="context-icon-row-icon" />
+                {t(`admin.tabs.${domain}`)}
               </button>
-            ))
-          )}
-          <button
-            className={`context-add-row t-ui ${activeAdminTab === 'endpoints' && activeAdminId === 'new' ? 'active' : ''}`}
-            onClick={() => adminNav('/admin/endpoints/new')}
-          >
-            + {t('admin.endpoints.add.title')}
-          </button>
-
-          <div className="context-group-label t-group-label">{t('admin.tabs.models')}</div>
-          {adminModels === undefined ? (
-            <div className="context-column-note t-ui-plain">{t('common.loading')}</div>
-          ) : (
-            adminModels.map((model) => (
-              <button
-                key={model.id}
-                className={`context-nav-row context-list-row t-ui ${activeAdminTab === 'models' && activeAdminId === model.id ? 'active' : ''}`}
-                onClick={() => adminNav(`/admin/models/${model.id}`)}
-              >
-                <span className="context-list-row-title">{model.modelName}</span>
-                <span className="context-list-row-meta t-meta">{model.modelId}</span>
-              </button>
-            ))
-          )}
-          <button
-            className={`context-add-row t-ui ${activeAdminTab === 'models' && activeAdminId === 'new' ? 'active' : ''}`}
-            onClick={() => adminNav('/admin/models/new')}
-          >
-            + {t('admin.models.add.title')}
-          </button>
-
-          <div className="context-group-label t-group-label">{t('admin.tabs.assistants')}</div>
-          {adminAssistants === undefined ? (
-            <div className="context-column-note t-ui-plain">{t('common.loading')}</div>
-          ) : (
-            adminAssistants.map((assistant) => (
-              <button
-                key={assistant.id}
-                className={`context-nav-row context-list-row t-ui ${activeAdminTab === 'assistants' && activeAdminId === assistant.id ? 'active' : ''}`}
-                onClick={() => adminNav(`/admin/assistants/${assistant.id}`)}
-              >
-                <span className="context-list-row-title">{assistant.name}</span>
-                {assistant.description && (
-                  <span className="context-list-row-sub t-caption">{assistant.description}</span>
-                )}
-              </button>
-            ))
-          )}
-          <button
-            className={`context-add-row t-ui ${activeAdminTab === 'assistants' && activeAdminId === 'new' ? 'active' : ''}`}
-            onClick={() => adminNav('/admin/assistants/new')}
-          >
-            + {t('admin.assistants.add.title')}
-          </button>
-
-          <div className="context-group-label t-group-label">{t('admin.tabs.tools')}</div>
-          {adminTools === undefined ? (
-            <div className="context-column-note t-ui-plain">{t('common.loading')}</div>
-          ) : (
-            adminTools.map((tool) => (
-              <button
-                key={tool.id}
-                className={`context-nav-row context-list-row t-ui ${activeAdminTab === 'tools' && activeAdminId === tool.id ? 'active' : ''}`}
-                onClick={() => adminNav(`/admin/tools/${tool.id}`)}
-              >
-                <span className="context-list-row-title">{toolboxLabel(tool, adminTools)}</span>
-                <span className="context-list-row-meta t-meta">{tool.policy.enabled ? tool.id : t('admin.tools.meta.disabled')}</span>
-              </button>
-            ))
-          )}
-
-          <div className="context-group-label t-group-label">{t('admin.tabs.agents')}</div>
-          {adminInternalAgents === undefined ? (
-            <div className="context-column-note t-ui-plain">{t('common.loading')}</div>
-          ) : (
-            adminInternalAgents.map((agent) => (
-              <button
-                key={agent.id}
-                className={`context-nav-row context-list-row t-ui ${activeAdminTab === 'agents' && activeAdminId === agent.id ? 'active' : ''}`}
-                onClick={() => adminNav(`/admin/agents/${agent.id}`)}
-              >
-                <span className="context-list-row-title">{agent.name}</span>
-                <span className="context-list-row-meta t-meta">
-                  {agent.modelId ? adminModels?.find(model => model.id === agent.modelId)?.modelName ?? agent.modelId : t('admin.agents.meta.notSet')}
-                </span>
-              </button>
-            ))
-          )}
-
-          <div className="context-group-label t-group-label">{t('admin.tabs.settings')}</div>
-          <button
-            className={`context-nav-row t-ui ${activeAdminTab === 'settings' ? 'active' : ''}`}
-            onClick={() => adminNav('/admin/settings')}
-          >
-            {t('admin.settings.title')}
-          </button>
+              {activeAdminTab === domain && (
+                <div className="context-nav-children">
+                  {renderAdminDomainItems(domain)}
+                </div>
+              )}
+            </div>
+          ))}
         </div>
       )}
     </aside>

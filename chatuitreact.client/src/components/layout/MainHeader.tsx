@@ -6,7 +6,7 @@ import ClassificationBadge from '../common/ClassificationBadge';
 import { getChat, getCurrentAssistantId, getRedEnabled, enableRed } from '../../services/chatService';
 import { getAssistant, getAssistants } from '../../services/assistantService';
 import { chatClassification } from '../../types/modelModels';
-import { conversationPanelOpenSignal } from '../../services/uiService';
+import { conversationPanelOpenSignal, editorHeaderSignal } from '../../services/uiService';
 import useMediaQuery from '../../hooks/useMediaQuery';
 import type { SettingsCategory } from '../../types/settingsModels';
 import { isHelpSection } from '../help/helpSections';
@@ -93,9 +93,20 @@ const MainHeader = ({ isMobile }: MainHeaderProps) => {
   const redEnabled = getRedEnabled().value;
   const showRedToggle = assistant?.classification === 'Red';
 
+  // An open edit page: back to its list, and save/cancel once the form has changes
+  const editor = editorHeaderSignal.value;
+
   return (
     <header className="main-header">
-      {isMobile && (
+      {editor ? (
+        <button
+          className="main-header-back t-ui"
+          onClick={() => navigate(editor.backPath)}
+        >
+          <Icon name="back" size={1.125} />
+          {editor.backLabel}
+        </button>
+      ) : isMobile && (
         <button
           className="main-header-back t-ui"
           onClick={() => navigate(sectionRoots[section])}
@@ -123,6 +134,16 @@ const MainHeader = ({ isMobile }: MainHeaderProps) => {
             <span className="main-header-red-toggle-knob" />
           </button>
         </label>
+      )}
+      {editor?.dirty && (
+        <>
+          <button className="main-header-save t-ui" onClick={editor.onSave} disabled={editor.saveDisabled}>
+            {editor.saveLabel}
+          </button>
+          <button className="main-header-cancel t-ui" onClick={editor.onCancel}>
+            {t('common.cancel')}
+          </button>
+        </>
       )}
       {showPanelToggle && (
         <button

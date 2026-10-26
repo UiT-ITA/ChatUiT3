@@ -33,13 +33,13 @@ const AdminAssistantEditor: React.FC<AdminAssistantEditorProps> = ({ assistantId
   const handleCreate = async (payload: CreateAdminAssistantDto) => {
     await createAdminAssistant(payload);
     await loadAdminData(true);
-    navigate('/admin');
+    navigate('/admin/assistants');
   };
 
   const handleUpdate = async (payload: UpdateAdminAssistantDto) => {
     await updateAdminAssistant(payload.id, payload);
     await loadAdminData(true);
-    navigate('/admin');
+    navigate('/admin/assistants');
   };
 
   const handleDelete = async () => {
@@ -47,7 +47,7 @@ const AdminAssistantEditor: React.FC<AdminAssistantEditorProps> = ({ assistantId
     if (!window.confirm(t('admin.assistants.dialog.delete.confirm'))) return;
     await deleteAdminAssistant(assistant.id);
     await loadAdminData(true);
-    navigate('/admin');
+    navigate('/admin/assistants');
   };
 
   return (
@@ -64,21 +64,16 @@ const AdminAssistantEditor: React.FC<AdminAssistantEditorProps> = ({ assistantId
         onCreate={handleCreate}
         onUpdate={handleUpdate}
         saveLabel={t('assistants.saveAssistant')}
-        footerExtra={
+        backPath="/admin/assistants"
+        backLabel={t('admin.tabs.assistants')}
+        footerExtra={assistant && (
           <>
-            <button className="admin-cancel-button t-ui" onClick={() => navigate('/admin')}>
-              {t('common.cancel')}
+            <div className="admin-footer-spacer" />
+            <button className="admin-delete-button t-ui" onClick={handleDelete}>
+              {t('common.delete')}
             </button>
-            {assistant && (
-              <>
-                <div className="admin-footer-spacer" />
-                <button className="admin-delete-button t-ui" onClick={handleDelete}>
-                  {t('common.delete')}
-                </button>
-              </>
-            )}
           </>
-        }
+        )}
       />
     </div>
   );

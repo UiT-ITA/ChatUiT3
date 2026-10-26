@@ -1,5 +1,6 @@
 import type { FullAssistantDto, CreateAssistantDto, UpdateAssistantDto, UserRole } from './assistantModels';
 import type { DataClassification } from './modelModels';
+import type { IconName } from '../components/common/Icon';
 
 /** Where an endpoint points (the host). The host decides which protocols it serves and on what path. */
 export type EndpointType = 'AzureOpenAI' | 'OpenAI' | 'Anthropic' | 'LlamaCpp' | 'Other' | 'MicrosoftFoundry';
@@ -8,6 +9,26 @@ export type EndpointType = 'AzureOpenAI' | 'OpenAI' | 'Anthropic' | 'LlamaCpp' |
 export type ApiProtocol = 'OpenAiChatCompletions' | 'OpenAiResponses' | 'AnthropicMessages';
 
 export const API_PROTOCOLS: ApiProtocol[] = ['OpenAiResponses', 'OpenAiChatCompletions', 'AnthropicMessages'];
+
+/** The admin domains, in the order the sidebar and the admin overview list them. Each id is its route segment. */
+export type AdminDomain = 'endpoints' | 'models' | 'assistants' | 'tools' | 'agents' | 'settings';
+
+export const ADMIN_DOMAINS: AdminDomain[] = ['endpoints', 'models', 'assistants', 'tools', 'agents', 'settings'];
+
+/** The icon shown next to each admin domain in the sidebar and the admin overview. */
+export const ADMIN_DOMAIN_ICONS: Record<AdminDomain, IconName> = {
+  endpoints: 'server',
+  models: 'cpu',
+  assistants: 'assistants',
+  tools: 'tools',
+  agents: 'code',
+  settings: 'settings',
+};
+
+/** The pages under /admin/settings. Settings has no overview page and opens the first one. */
+export type AdminSettingsPage = 'general';
+
+export const ADMIN_SETTINGS_PAGES: AdminSettingsPage[] = ['general'];
 
 /**
  * The token counting schemes an admin can pick. Ids must match what the server parses

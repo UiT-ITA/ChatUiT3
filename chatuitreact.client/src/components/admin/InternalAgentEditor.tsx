@@ -7,6 +7,7 @@ import { adminInternalAgentsSignal, adminModelsSignal, loadAdminData } from '../
 import { clampEffort } from '../../types/admin';
 import type { ReasoningEffortLevel } from '../../types/admin';
 import AgentFunctionRows from './AgentFunctionRows';
+import EditorHeader from '../layout/EditorHeader';
 
 interface InternalAgentEditorProps {
   agentId: string;
@@ -66,8 +67,19 @@ const InternalAgentEditor: React.FC<InternalAgentEditorProps> = ({ agentId }) =>
     }
   };
 
+  const dirty = modelId !== (agent.modelId ?? '') || reasoningEffort !== (agent.reasoningEffort ?? 'None') || exposedInApi !== (agent.exposedInApi ?? false);
+
   return (
     <div className="admin-form admin-form-wide">
+      <EditorHeader
+        backPath="/admin/agents"
+        backLabel={t('admin.tabs.agents')}
+        dirty={dirty}
+        saveLabel={saving ? t('assistants.saving') : t('common.save')}
+        saveDisabled={!canSave}
+        onSave={handleSave}
+        onCancel={() => navigate('/admin/agents')}
+      />
       <h1 className="t-page-title">{agent.name}</h1>
       <div className="page-title-bar" />
 
@@ -147,14 +159,6 @@ const InternalAgentEditor: React.FC<InternalAgentEditorProps> = ({ agentId }) =>
         </div>
       )}
 
-      <div className="admin-form-footer">
-        <button className="admin-save-button t-ui" onClick={handleSave} disabled={!canSave}>
-          {saving ? t('assistants.saving') : t('common.save')}
-        </button>
-        <button className="admin-cancel-button t-ui" onClick={() => navigate('/admin/agents')}>
-          {t('common.cancel')}
-        </button>
-      </div>
     </div>
   );
 };
