@@ -136,6 +136,8 @@ export class Conversation {
   private state: ConversationState = initialState;
   private readonly listeners = new Set<() => void>();
   private controller: AbortController | null = null;
+  /** The run in progress, which settles once the conversation is idle or waits for an approval. */
+  private running: Promise<void> | null = null;
   /** Incremented by `reset`, so a run that is still unwinding cannot touch the new conversation. */
   private generation = 0;
 
@@ -227,6 +229,12 @@ export class Conversation {
     this.controller?.abort();
   }
 
+  /** Stops the response or tool call in progress and resolves once the conversation has recorded it. */
+  async stop(): Promise<void> {
+    this.cancel();
+    await this.running;
+  }
+
   /** Starts a new, empty conversation. */
   reset(): void {
     this.controller?.abort();
@@ -250,6 +258,18 @@ export class Conversation {
   }
 
   private async run(): Promise<void> {
+    const run = this.loop();
+    this.running = run;
+    try {
+      await run;
+    } finally {
+      if (this.running === run) {
+        this.running = null;
+      }
+    }
+  }
+
+  private async loop(): Promise<void> {
     const generation = this.generation;
     const controller = new AbortController();
     this.controller = controller;

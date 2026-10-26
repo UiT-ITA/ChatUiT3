@@ -22,6 +22,8 @@ import { color, radius, typography } from "./tokens";
 
 export interface MessageListProps {
   state: ConversationState;
+  /** The logo shown while the conversation is empty. */
+  logoUrl: string;
   /** Shown while the conversation is empty. */
   emptyMessage: string;
   /** Example tasks shown while the conversation is empty. */
@@ -67,7 +69,7 @@ const useStyles = makeStyles({
   status: { ...typography.caption, color: color.text3 },
 });
 
-export function MessageList({ state, emptyMessage, starters, onStarter, onAnswer }: MessageListProps) {
+export function MessageList({ state, logoUrl, emptyMessage, starters, onStarter, onAnswer }: MessageListProps) {
   const styles = useStyles();
   const listRef = useRef<HTMLDivElement>(null);
   const contentHeight = useRef(0);
@@ -101,7 +103,7 @@ export function MessageList({ state, emptyMessage, starters, onStarter, onAnswer
     <div ref={listRef} className={styles.root}>
       {state.items.length === 0 && (
         <div className={styles.empty}>
-          <img className={styles.emptyLogo} src="assets/icon-64.png" alt="" />
+          <img className={styles.emptyLogo} src={logoUrl} alt="" />
           <p className={styles.emptyMessage}>{emptyMessage}</p>
           {starters.length > 0 && (
             <div className={styles.starters}>

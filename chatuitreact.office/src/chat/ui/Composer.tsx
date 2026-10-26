@@ -1,7 +1,8 @@
-/* global File, HTMLFormElement, HTMLInputElement, HTMLTextAreaElement */
+/* global File, HTMLFormElement, HTMLInputElement, HTMLTextAreaElement, window */
 
 import { makeStyles, shorthands, Spinner } from "@fluentui/react-components";
 import {
+  useCallback,
   useEffect,
   useLayoutEffect,
   useRef,
@@ -111,8 +112,9 @@ export function Composer({ draft, busy, onSend, onStop }: ComposerProps) {
   const input = useRef<HTMLTextAreaElement>(null);
   const canSend = !busy && reading === 0 && (text.trim().length > 0 || files.length > 0);
 
-  // Fits the text box to its text, up to MAX_INPUT_HEIGHT, and scrolls it beyond that.
-  useLayoutEffect(() => {
+  // Fits the text box to its text, up to MAX_INPUT_HEIGHT, and scrolls it beyond that: when the text changes and
+  // when the pane is resized, which rewraps it.
+  const fit = useCallback(() => {
     const box = input.current;
     if (!box) {
       return;
@@ -120,7 +122,14 @@ export function Composer({ draft, busy, onSend, onStop }: ComposerProps) {
     box.style.height = "auto";
     box.style.height = `${Math.min(box.scrollHeight, MAX_INPUT_HEIGHT)}px`;
     box.style.overflowY = box.scrollHeight > MAX_INPUT_HEIGHT ? "auto" : "hidden";
-  }, [text]);
+  }, []);
+
+  useLayoutEffect(fit, [text, fit]);
+
+  useEffect(() => {
+    window.addEventListener("resize", fit);
+    return () => window.removeEventListener("resize", fit);
+  }, [fit]);
 
   useEffect(() => {
     const box = input.current;

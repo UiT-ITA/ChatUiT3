@@ -6,7 +6,7 @@
     "dev_server_port": 3000
   },
   "engines": {
-    "node": "22"
+    "node": ">=22.15"
   },
   "scripts": {
     "dev-server": "node --use-system-ca node_modules/webpack-cli/bin/cli.js serve --mode development",

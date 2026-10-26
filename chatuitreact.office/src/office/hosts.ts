@@ -46,6 +46,7 @@ export function resolveHost(host: Office.HostType | null): HostResult {
   }
   return {
     adapter: {
+      logoUrl: "assets/icon-64.png",
       emptyMessage: app.emptyMessage,
       starters: app.starters,
       model: OFFICE_MODEL,

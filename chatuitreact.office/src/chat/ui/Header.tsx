@@ -1,3 +1,5 @@
+/* global console */
+
 import {
   makeStyles,
   Menu,
@@ -16,6 +18,7 @@ import { ToolbarButton } from "./ToolbarButton";
 import { color, typography } from "./tokens";
 
 export interface HeaderProps {
+  logoUrl: string;
   /** Opens a saved chat. */
   onOpenChat(id: string): void;
   listChats(): Promise<ChatList>;
@@ -52,6 +55,7 @@ const dateFormat = new Intl.DateTimeFormat(undefined, { dateStyle: "short", time
 
 /** The pane's top bar: the ChatUiT logo, the saved chats of this document, New chat and the menu. */
 export function Header({
+  logoUrl,
   onOpenChat,
   listChats,
   noDocumentMessage,
@@ -62,7 +66,7 @@ export function Header({
 }: HeaderProps) {
   const styles = useStyles();
   const [historyOpen, setHistoryOpen] = useState(false);
-  const [chats, setChats] = useState<ChatList | undefined>(undefined);
+  const [chats, setChats] = useState<ChatList | "failed" | undefined>(undefined);
   const [menuOpen, setMenuOpen] = useState(false);
   const [userName, setUserName] = useState<string | undefined>(undefined);
 
@@ -74,13 +78,16 @@ export function Header({
     setHistoryOpen(open);
     if (open) {
       setChats(undefined);
-      listChats().then(setChats, () => setChats([]));
+      listChats().then(setChats, (error: unknown) => {
+        console.warn("The saved chats could not be read.", error);
+        setChats("failed");
+      });
     }
   };
 
   return (
     <header className={styles.root}>
-      <img className={styles.logo} src="assets/icon-64.png" alt="ChatUiT" />
+      <img className={styles.logo} src={logoUrl} alt="ChatUiT" />
       <span className={styles.spacer} />
 
       <Menu open={historyOpen} onOpenChange={(_event, data) => openHistory(data.open)} positioning="below-end">
@@ -91,6 +98,8 @@ export function Header({
           <MenuList className={styles.history}>
             {chats === undefined ? (
               <div className={styles.note}>Loading…</div>
+            ) : chats === "failed" ? (
+              <div className={styles.note}>The saved chats could not be read.</div>
             ) : chats === null ? (
               <div className={styles.note}>{noDocumentMessage}</div>
             ) : chats.length === 0 ? (
@@ -111,34 +120,36 @@ export function Header({
 
       <ToolbarButton icon="chatNew" label="New chat" onClick={onNewChat} />
 
-      <Menu
-        open={menuOpen}
-        onOpenChange={(_event, data) => setMenuOpen(data.open)}
-        positioning="below-end"
-        checkedValues={dev ? { server: [dev.host] } : undefined}
-        onCheckedValueChange={(_event, data) => data.name === "server" && dev?.setHost(data.checkedItems[0])}
-      >
-        <MenuTrigger disableButtonEnhancement>
-          <ToolbarButton icon="more" label="More" active={menuOpen} />
-        </MenuTrigger>
-        <MenuPopover>
-          <MenuList>
-            {MenuItems && <MenuItems />}
-            {MenuItems && (userName || dev) && <MenuDivider />}
-            {userName && <div className={styles.note}>Signed in as {userName}</div>}
-            {dev && (
-              <MenuGroup>
-                <MenuGroupHeader>Server</MenuGroupHeader>
-                {dev.hosts.map((host) => (
-                  <MenuItemRadio key={host} name="server" value={host}>
-                    {host}
-                  </MenuItemRadio>
-                ))}
-              </MenuGroup>
-            )}
-          </MenuList>
-        </MenuPopover>
-      </Menu>
+      {(MenuItems || userName || dev) && (
+        <Menu
+          open={menuOpen}
+          onOpenChange={(_event, data) => setMenuOpen(data.open)}
+          positioning="below-end"
+          checkedValues={dev ? { server: [dev.host] } : undefined}
+          onCheckedValueChange={(_event, data) => data.name === "server" && dev?.setHost(data.checkedItems[0])}
+        >
+          <MenuTrigger disableButtonEnhancement>
+            <ToolbarButton icon="more" label="More" active={menuOpen} />
+          </MenuTrigger>
+          <MenuPopover>
+            <MenuList>
+              {MenuItems && <MenuItems />}
+              {MenuItems && (userName || dev) && <MenuDivider />}
+              {userName && <div className={styles.note}>Signed in as {userName}</div>}
+              {dev && (
+                <MenuGroup>
+                  <MenuGroupHeader>Server</MenuGroupHeader>
+                  {dev.hosts.map((host) => (
+                    <MenuItemRadio key={host} name="server" value={host}>
+                      {host}
+                    </MenuItemRadio>
+                  ))}
+                </MenuGroup>
+              )}
+            </MenuList>
+          </MenuPopover>
+        </Menu>
+      )}
     </header>
   );
 }

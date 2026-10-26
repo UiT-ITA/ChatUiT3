@@ -9,73 +9,131 @@ import { listChats, loadChat, saveChat, type SavedChatSummary } from "./historyS
 export type ChatList = SavedChatSummary[] | null;
 
 export interface ChatHistory {
-  /** Starts a new chat. The current one stays saved. */
-  startNew(): void;
+  /** Stops and saves the current chat, then starts a new one. */
+  startNew(): Promise<void>;
+  /** Stops and saves the current chat, then opens a saved one. */
   open(id: string): Promise<void>;
   list(): Promise<ChatList>;
 }
 
+/** The chat being shown: its id, its document key once it is read, and the items saved last. */
+interface CurrentChat {
+  id: string;
+  /** Read when the chat's first message is sent. Resolves to null when the document has no key yet. */
+  documentKey: Promise<string | null> | null;
+  savedItems: readonly InputItem[];
+}
+
 const TITLE_LENGTH = 80;
+
+function newChat(): CurrentChat {
+  return { id: crypto.randomUUID(), documentKey: null, savedItems: [] };
+}
 
 /**
  * Saves the conversation under the pane's document whenever it stops (done, stopped, failed or waiting for an
- * approval), and opens saved chats. A chat keeps the document key it was first saved under.
+ * approval), and opens saved chats. A chat belongs to the document that was open when its first message was sent.
  */
 export function useChatHistory(
   state: ConversationState,
   conversation: Conversation,
   getDocumentKey: (() => Promise<string | null>) | undefined
 ): ChatHistory {
-  const chat = useRef<{ id: string; documentKey: string | null }>({ id: crypto.randomUUID(), documentKey: null });
-  const savedItems = useRef<readonly InputItem[] | null>(null);
-
-  const forget = useCallback(() => {
-    chat.current = { id: crypto.randomUUID(), documentKey: null };
-    savedItems.current = null;
-  }, []);
-
-  useEffect(forget, [conversation, forget]);
+  const chat = useRef<CurrentChat>(newChat());
+  /** The items being saved or saved last, so the same items are not saved twice. */
+  const pendingItems = useRef<readonly InputItem[] | null>(null);
+  /** The saves in order, so a later one never overtakes an earlier one. */
+  const saving = useRef<Promise<void>>(Promise.resolve());
 
   useEffect(() => {
-    if (!getDocumentKey || isBusy(state) || state.items.length === 0 || state.items === savedItems.current) {
-      return;
-    }
-    const current = chat.current;
-    const { items, thoughts, activity, turns } = state;
-    savedItems.current = items;
-    void (async () => {
-      const documentKey = current.documentKey ?? (await getDocumentKey());
-      if (!documentKey) {
-        savedItems.current = null;
-        return;
-      }
-      current.documentKey = documentKey;
-      await saveChat({
-        id: current.id,
-        documentKey,
-        title: titleOf(items),
-        updatedAt: Date.now(),
-        conversation: { items, thoughts, activity, turns },
-      });
-    })().catch((error: unknown) => console.warn("The chat could not be saved.", error));
-  }, [state, getDocumentKey]);
+    chat.current = newChat();
+    pendingItems.current = null;
+  }, [conversation]);
 
-  const startNew = useCallback(() => {
+  const save = useCallback(
+    (current: ConversationState): Promise<void> => {
+      if (!getDocumentKey || isBusy(current) || current.items.length === 0 || current.items === pendingItems.current) {
+        return saving.current;
+      }
+      const target = chat.current;
+      const { items, thoughts, activity, turns } = current;
+      pendingItems.current = items;
+      saving.current = saving.current
+        .then(async () => {
+          const documentKey = await (target.documentKey ?? getDocumentKey());
+          if (!documentKey) {
+            // Read again on the next change: the file may have been saved meanwhile.
+            target.documentKey = null;
+            if (pendingItems.current === items) {
+              pendingItems.current = null;
+            }
+            return;
+          }
+          target.documentKey = Promise.resolve(documentKey);
+          await saveChat(
+            {
+              id: target.id,
+              documentKey,
+              title: titleOf(items),
+              updatedAt: Date.now(),
+              conversation: { items, thoughts, activity, turns },
+            },
+            target.savedItems
+          );
+          target.savedItems = items;
+        })
+        .catch((error: unknown) => {
+          // Saved again on the next change, or when the chat is left.
+          if (pendingItems.current === items) {
+            pendingItems.current = null;
+          }
+          console.warn("The chat could not be saved.", error);
+        });
+      return saving.current;
+    },
+    [getDocumentKey]
+  );
+
+  // The document key is read as the first message is sent, before the user can move to another document or email.
+  useEffect(() => {
+    if (getDocumentKey && state.items.length > 0 && !chat.current.documentKey) {
+      chat.current.documentKey = getDocumentKey().catch(() => null);
+    }
+    void save(state);
+  }, [state, getDocumentKey, save]);
+
+  /** Stops a running reply, so its turn is recorded, and saves the chat before it is replaced. */
+  const leave = useCallback(async () => {
+    await conversation.stop();
+    await save(conversation.getState());
+  }, [conversation, save]);
+
+  const startNew = useCallback(async () => {
+    await leave();
     conversation.reset();
-    forget();
-  }, [conversation, forget]);
+    chat.current = newChat();
+    pendingItems.current = null;
+  }, [conversation, leave]);
 
   const open = useCallback(
     async (id: string) => {
-      const saved = await loadChat(id);
+      await leave();
+      const saved = await loadChat(id).catch((error: unknown) => {
+        console.warn("The chat could not be opened.", error);
+        return undefined;
+      });
       if (!saved) {
         return;
       }
-      chat.current = { id: saved.id, documentKey: saved.documentKey };
-      savedItems.current = saved.conversation.items;
+      chat.current = {
+        id: saved.id,
+        documentKey: Promise.resolve(saved.documentKey),
+        savedItems: saved.conversation.items,
+      };
+      pendingItems.current = saved.conversation.items;
       conversation.load(saved.conversation);
     },
-    [conversation]
+    [conversation, leave]
   );
 
   const list = useCallback(async (): Promise<ChatList> => {

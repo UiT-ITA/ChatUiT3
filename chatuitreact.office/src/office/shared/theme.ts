@@ -1,6 +1,8 @@
 /* global Office, window */
 
-import type { PaneTheme } from "../../chat/ui/tokens";
+import type { PaneTheme, ThemeMode } from "../../chat/ui/tokens";
+
+const DARK_SCHEME = "(prefers-color-scheme: dark)";
 
 /** Office's theme: dark for the Black and Dark Gray themes, with Office's body colour as the pane background. */
 export function readOfficeTheme(): PaneTheme {
@@ -14,15 +16,21 @@ export function readOfficeTheme(): PaneTheme {
 }
 
 /**
- * Calls `onChange` with Office's theme when it may have changed: on Outlook's theme event, and when the pane gets
- * focus, as the other apps have no theme event.
+ * Calls `onChange` with the pane's theme when it changes: when the system switches between light and dark (Word on
+ * Mac follows it without updating Office's theme), and on Outlook's theme event.
  */
 export function watchOfficeTheme(onChange: (theme: PaneTheme) => void): void {
-  const notify = () => onChange(readOfficeTheme());
-  window.addEventListener("focus", notify);
+  const scheme = window.matchMedia(DARK_SCHEME);
+  scheme.addEventListener("change", () => onChange(themeFor(scheme.matches ? "dark" : "light")));
   if (Office.context.mailbox && Office.context.requirements.isSetSupported("Mailbox", "1.14")) {
-    Office.context.mailbox.addHandlerAsync(Office.EventType.OfficeThemeChanged, notify);
+    Office.context.mailbox.addHandlerAsync(Office.EventType.OfficeThemeChanged, () => onChange(readOfficeTheme()));
   }
+}
+
+/** The theme for a mode, with Office's background when Office's theme has that mode too. */
+function themeFor(mode: ThemeMode): PaneTheme {
+  const office = readOfficeTheme();
+  return office.mode === mode ? office : { mode, background: null };
 }
 
 /** True when a "#RRGGBB" colour is darker than mid grey. */

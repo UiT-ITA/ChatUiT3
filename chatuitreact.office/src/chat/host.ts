@@ -9,6 +9,8 @@ export interface Starter {
 
 /** What one app (Word, Excel, Teams, ...) contributes to the shared chat. */
 export interface HostAdapter {
+  /** The ChatUiT logo's URL, shown in the header and on the empty chat. */
+  logoUrl: string;
   /** Shown while the conversation is empty. */
   emptyMessage: string;
   /** Example tasks shown while the conversation is empty. */

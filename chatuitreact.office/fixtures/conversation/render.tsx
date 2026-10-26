@@ -13,6 +13,7 @@ export function renderOutline(state: ConversationState): string {
     <FluentProvider theme={webLightTheme}>
       <MessageList
         state={state}
+        logoUrl="assets/icon-64.png"
         emptyMessage="Ask ChatUiT about this document."
         starters={[]}
         onStarter={() => undefined}

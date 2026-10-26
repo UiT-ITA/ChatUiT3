@@ -97,16 +97,18 @@ function Chat({ adapter, client, dev }: ChatProps) {
   return (
     <div className={styles.chat}>
       <Header
+        logoUrl={adapter.logoUrl}
         onOpenChat={(id) => void history.open(id)}
         listChats={history.list}
         noDocumentMessage={adapter.noDocumentMessage}
-        onNewChat={history.startNew}
+        onNewChat={() => void history.startNew()}
         getUserName={adapter.getUserName}
         MenuItems={adapter.MenuItems}
         dev={dev}
       />
       <MessageList
         state={state}
+        logoUrl={adapter.logoUrl}
         emptyMessage={adapter.emptyMessage}
         starters={adapter.starters}
         onStarter={(starter) => setDraft((current) => ({ text: starter.prompt, id: (current?.id ?? 0) + 1 }))}
