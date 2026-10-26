@@ -53,7 +53,7 @@ const useStyles = makeStyles({
     gap: "1.125rem",
     padding: "0 0.75rem 1.5rem",
   },
-  emptyLogo: { display: "block", width: "2.5rem", height: "2.5rem" },
+  emptyLogo: { display: "block", width: "4rem", height: "4rem" },
   emptyMessage: { ...typography.title, fontWeight: 600, margin: 0, textAlign: "center", color: color.text },
   starters: { display: "flex", flexWrap: "wrap", justifyContent: "center", gap: "0.5rem", maxWidth: "20rem" },
   starter: {
