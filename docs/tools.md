@@ -1,7 +1,7 @@
 # Assistant tools
 
 How tools work, how to add one, and how access is controlled. Code lives under
-`ChatUitReact.Server/Services/Tools/` on the server and `chatuitreact.client/src/services/clientTools/`
+`ChatUiT.Server/Services/Tools/` on the server and `ChatUiT.Client/src/services/clientTools/`
 on the client.
 
 ## Concepts
@@ -182,7 +182,7 @@ the Configuration database.
 ## Internal agents
 
 ChatUiT has two kinds of agent: app-created agents (assistants, including system assistants, which are
-ordinary assistant documents) and internal agents, defined in code under `ChatUitReact.Server/Services/Agents/`.
+ordinary assistant documents) and internal agents, defined in code under `ChatUiT.Server/Services/Agents/`.
 
 An internal agent is a definition: an `InternalAgent` subclass with `Id`, `DisplayName`, `Description` (what the
 outer model reads to decide when to delegate), `SystemPrompt`, `Functions` (private `ITool` instances),

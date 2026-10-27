@@ -2,12 +2,12 @@
   "version": "0.0.1",
   "configurations": [
     {
-      "name": "chatuitreact",
+      "name": "chatuit",
       "runtimeExecutable": "dotnet",
       "runtimeArgs": [
         "run",
         "--project",
-        "ChatUitReact.Server/ChatUitReact.Server.csproj",
+        "ChatUiT.Server/ChatUiT.Server.csproj",
         "--launch-profile",
         "https"
       ],
