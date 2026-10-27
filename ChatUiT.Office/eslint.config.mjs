@@ -52,4 +52,12 @@ const appBoundaries = officeApps.map((app) => {
   };
 });
 
-export default [...defaults, { ...typescriptRules, files: ["**/*.tsx"] }, chatBoundary, ...appBoundaries];
+const globalComments = { rules: { "no-redeclare": ["error", { builtinGlobals: false }] } };
+
+export default [
+  ...defaults,
+  { ...typescriptRules, files: ["**/*.tsx"] },
+  globalComments,
+  chatBoundary,
+  ...appBoundaries,
+];

@@ -98,7 +98,7 @@ class AccountManager {
     } catch (popupError) {
       // Acquire token interactive failure.
       console.log(`Unable to acquire token interactively: ${popupError}`);
-      throw new Error(`Unable to acquire access token: ${popupError}`);
+      throw new Error(`Unable to acquire access token: ${popupError}`, { cause: popupError });
     }
   }
 

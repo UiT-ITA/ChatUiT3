@@ -141,7 +141,9 @@ export const editTable: OfficeToolDefinition = {
           await context.sync();
         } catch (error) {
           const done = index > 0 ? ` Operations 1 to ${index} were applied.` : "";
-          throw new Error(`Operation ${index + 1} (${String(operation.op)}) failed: ${describeError(error)}${done}`);
+          throw new Error(`Operation ${index + 1} (${String(operation.op)}) failed: ${describeError(error)}${done}`, {
+            cause: error,
+          });
         }
       }
       return { appliedOperations: operations.length };

@@ -45,7 +45,7 @@ export function createRunScriptTool<Context>(options: RunScriptOptions<Context>)
         // Running model-written code is the purpose of this tool. The async body is not transpiled.
         script = new Function("context", options.apiName, `return (async () => {\n${code}\n})();`) as Script<Context>;
       } catch (error) {
-        throw new Error(`The code does not compile: ${describeError(error)}`);
+        throw new Error(`The code does not compile: ${describeError(error)}`, { cause: error });
       }
       const value = (await options.run(signal, (context) => script(context, options.api()))) ?? null;
       const json = JSON.stringify(value);

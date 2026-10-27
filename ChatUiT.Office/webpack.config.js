@@ -56,6 +56,13 @@ module.exports = async (env, options) => {
       filename: dev ? "[name].js" : "[name].[contenthash].js",
       clean: true,
     },
+    optimization: {
+      runtimeChunk: "single",
+    },
+    performance: {
+      maxAssetSize: 1.5 * 1024 * 1024,
+      maxEntrypointSize: 1.5 * 1024 * 1024,
+    },
     resolve: {
       extensions: [".ts", ".tsx", ".js"],
     },
