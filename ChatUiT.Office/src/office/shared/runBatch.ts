@@ -14,7 +14,7 @@ export async function runBatch<T>(signal: AbortSignal, run: () => Promise<T>, hi
     return await run();
   } catch (error) {
     if (error instanceof OfficeExtension.Error) {
-      throw new Error(describeOfficeError(error, hints));
+      throw new Error(describeOfficeError(error, hints), { cause: error });
     }
     throw error;
   }
