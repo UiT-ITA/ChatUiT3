@@ -1,0 +1,6 @@
+@ChatUiT.Server_HostAddress = http://localhost:5157
+
+GET {{ChatUiT.Server_HostAddress}}/weatherforecast/
+Accept: application/json
+
+###

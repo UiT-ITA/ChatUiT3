@@ -372,4 +372,4 @@ sample/
 .DS_Store
 
 # Office add-in build output
-chatuitreact.office/dist/
+ChatUiT.Office/dist/
