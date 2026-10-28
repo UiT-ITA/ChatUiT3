@@ -35,7 +35,9 @@
     "unfavorite": "Fjern favoritt",
     "rename": "Gi nytt navn",
     "delete": "Slett",
-    "status": "Status (dev)"
+    "status": "Status (dev)",
+    "darkMode": "Mørk modus",
+    "lightMode": "Lys modus"
   },
   "chat": {
     "sendMessage": "Send melding",
@@ -56,9 +58,7 @@
     "enterHint": "Enter sender · Shift + Enter gir ny linje",
     "disclaimer": "ChatUiT kan gjøre feil. Sjekk viktige svar mot kilden.",
     "charCount": "{{count}} tegn",
-    "tokenCount": "{{count}} tokens",
     "contextHint": "{{used}} / {{limit}}",
-    "contextEstimate": "Anslag. Denne modellen har ingen nøyaktig tokenteller.",
     "groups": {
       "favorites": "Favoritter",
       "today": "I dag",
@@ -792,6 +792,12 @@
     "Green": "Grønn",
     "Yellow": "Gul",
     "Red": "Rød",
-    "title": "Dataklassifisering: {{level}}"
+    "title": "Dataklassifisering: {{level}}",
+    "heading": "Dataklassifisering",
+    "descriptions": {
+      "Green": "Åpne data",
+      "Yellow": "Interne data",
+      "Red": "Fortrolige data"
+    }
   }
 }

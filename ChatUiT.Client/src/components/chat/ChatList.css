@@ -58,6 +58,13 @@
   color: var(--accent);
 }
 
+.chat-item-lock {
+  display: inline-flex;
+  flex: 0 0 auto;
+  margin-left: 0.5rem;
+  color: var(--status-critical);
+}
+
 .chat-item-rename-input {
   flex: 1 1 auto;
   min-width: 0;

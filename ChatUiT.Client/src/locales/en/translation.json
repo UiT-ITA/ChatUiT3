@@ -35,7 +35,9 @@
     "unfavorite": "Remove from favorites",
     "rename": "Rename",
     "delete": "Delete",
-    "status": "Status (dev)"
+    "status": "Status (dev)",
+    "darkMode": "Dark mode",
+    "lightMode": "Light mode"
   },
   "chat": {
     "sendMessage": "Send message",
@@ -56,9 +58,7 @@
     "enterHint": "Enter sends · Shift + Enter for a new line",
     "disclaimer": "ChatUiT can make mistakes. Check important answers against the source.",
     "charCount": "{{count}} characters",
-    "tokenCount": "{{count}} tokens",
     "contextHint": "{{used}} / {{limit}}",
-    "contextEstimate": "Estimate. This model has no exact tokenizer.",
     "groups": {
       "favorites": "Favorites",
       "today": "Today",
@@ -792,6 +792,12 @@
     "Green": "Green",
     "Yellow": "Yellow",
     "Red": "Red",
-    "title": "Data classification: {{level}}"
+    "title": "Data classification: {{level}}",
+    "heading": "Data classification",
+    "descriptions": {
+      "Green": "Open",
+      "Yellow": "Internal",
+      "Red": "Confidential"
+    }
   }
 }

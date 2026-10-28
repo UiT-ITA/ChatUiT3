@@ -1,10 +1,11 @@
 import { useState, useRef, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
-import { Icon } from '../common/Icon';
+import { Icon, type IconName } from '../common/Icon';
 import { useAuth } from '../../hooks/useAuth';
 import { useSettings } from '../../hooks/useSettings';
 import { resolveMode } from '../../utils/themeUtils';
+import useMediaQuery from '../../hooks/useMediaQuery';
 import './IconRail.css';
 
 interface IconRailProps {
@@ -28,6 +29,8 @@ const IconRail = ({ isMobile }: IconRailProps) => {
   const { isAdmin, isAuthenticated, account, login, logout } = useAuth();
   const { settings, updateSetting } = useSettings();
   const [userMenuOpen, setUserMenuOpen] = useState(false);
+  // A top bar too narrow for every icon keeps only the main sections and moves the rest into the menu
+  const compact = useMediaQuery('(max-width: 27.5rem)') && !!isMobile;
   const userMenuRef = useRef<HTMLDivElement>(null);
 
   const section = location.pathname.startsWith('/assistants') ? 'assistants'
@@ -59,6 +62,16 @@ const IconRail = ({ isMobile }: IconRailProps) => {
     navigate(path);
     setUserMenuOpen(false);
   };
+
+  // Rail buttons after the main sections; a compact top bar lists them in the menu instead
+  const secondaryItems: { key: string; icon: IconName; title: string; menuLabel: string; active: boolean; onClick: () => void }[] = [
+    ...(import.meta.env.DEV
+      ? [{ key: 'status', icon: 'info' as IconName, title: t('sidebar.status'), menuLabel: t('sidebar.status'), active: section === 'status', onClick: () => go('/status') }]
+      : []),
+    { key: 'help', icon: 'help', title: t('sidebar.help'), menuLabel: t('sidebar.help'), active: section === 'help', onClick: () => go('/help') },
+    { key: 'mode', icon: darkNow ? 'sun' : 'moon', title: t('sidebar.toggleMode'), menuLabel: t(darkNow ? 'sidebar.lightMode' : 'sidebar.darkMode'), active: false, onClick: toggleMode },
+    { key: 'settings', icon: 'settings', title: t('sidebar.settings'), menuLabel: t('sidebar.settings'), active: section === 'settings', onClick: () => go('/settings') },
+  ];
 
   return (
     <nav className={`icon-rail ${isMobile ? 'icon-rail-mobile' : ''}`}>
@@ -103,51 +116,57 @@ const IconRail = ({ isMobile }: IconRailProps) => {
 
       <div className="rail-spacer" />
 
-      {import.meta.env.DEV && (
+      {!compact && secondaryItems.map(item => (
         <button
-          className={`rail-button ${section === 'status' ? 'active' : ''}`}
-          onClick={() => go('/status')}
-          title={t('sidebar.status')}
+          key={item.key}
+          className={`rail-button ${item.active ? 'active' : ''}`}
+          onClick={item.onClick}
+          title={item.title}
         >
-          <Icon name="info" size={1.25} />
+          <Icon name={item.icon} size={1.25} />
         </button>
-      )}
-      <button
-        className={`rail-button ${section === 'help' ? 'active' : ''}`}
-        onClick={() => go('/help')}
-        title={t('sidebar.help')}
-      >
-        <Icon name="help" size={1.25} />
-      </button>
-      <button className="rail-button" onClick={toggleMode} title={t('sidebar.toggleMode')}>
-        <Icon name={darkNow ? 'sun' : 'moon'} size={1.25} />
-      </button>
-      <button
-        className={`rail-button ${section === 'settings' ? 'active' : ''}`}
-        onClick={() => go('/settings')}
-        title={t('sidebar.settings')}
-      >
-        <Icon name="settings" size={1.25} />
-      </button>
+      ))}
 
       <div className="rail-user" ref={userMenuRef}>
-        <button
-          className="rail-avatar t-label"
-          onClick={() => setUserMenuOpen((open) => !open)}
-          title={account?.name || t('sidebar.profile')}
-        >
-          {getInitials(account?.name)}
-        </button>
+        {compact ? (
+          <button
+            className={`rail-button ${userMenuOpen ? 'active' : ''}`}
+            onClick={() => setUserMenuOpen((open) => !open)}
+            title={t('navigation.menu')}
+            aria-expanded={userMenuOpen}
+          >
+            <Icon name="menu" size={1.25} />
+          </button>
+        ) : (
+          <button
+            className="rail-avatar t-label"
+            onClick={() => setUserMenuOpen((open) => !open)}
+            title={account?.name || t('sidebar.profile')}
+          >
+            {getInitials(account?.name)}
+          </button>
+        )}
         {userMenuOpen && (
           <div className="rail-user-menu">
             <div className="rail-user-menu-header">
               <div className="rail-user-menu-name t-body-strong">{account?.name || t('sidebar.profile')}</div>
               {account?.username && <div className="rail-user-menu-email t-caption">{account.username}</div>}
             </div>
-            <div className="rail-user-menu-items">
-              <button className="t-body" onClick={() => go('/settings')}>{t('sidebar.settings')}</button>
-              <button className="t-body" onClick={() => go('/help')}>{t('sidebar.help')}</button>
-            </div>
+            {compact ? (
+              <div className="rail-user-menu-items">
+                {secondaryItems.map(item => (
+                  <button key={item.key} className="rail-user-menu-item t-body" onClick={item.onClick}>
+                    <Icon name={item.icon} size={1.125} />
+                    {item.menuLabel}
+                  </button>
+                ))}
+              </div>
+            ) : (
+              <div className="rail-user-menu-items">
+                <button className="t-body" onClick={() => go('/settings')}>{t('sidebar.settings')}</button>
+                <button className="t-body" onClick={() => go('/help')}>{t('sidebar.help')}</button>
+              </div>
+            )}
             <div className="rail-user-menu-footer">
               {isAuthenticated ? (
                 <button className="rail-user-menu-danger t-body" onClick={logout}>{t('sidebar.logout')}</button>

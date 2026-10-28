@@ -75,46 +75,6 @@
   color: var(--brand);
 }
 
-/* Switch that allows red data in a chat. Once on it is locked. */
-.main-header-red-toggle {
-  flex: 0 0 auto;
-  display: flex;
-  align-items: center;
-  gap: 0.4375rem;
-  color: var(--text-2);
-  white-space: nowrap;
-}
-
-.main-header-red-toggle-pill {
-  flex: 0 0 auto;
-  display: flex;
-  align-items: center;
-  justify-content: flex-start;
-  width: 2.375rem;
-  height: 1.25rem;
-  padding: 0.125rem;
-  border: 1px solid var(--line);
-  background: var(--panel-2);
-  border-radius: 10px;
-  cursor: pointer;
-  transition: background var(--dur-base) var(--ease-standard);
-}
-
-.main-header-red-toggle-pill.on {
-  border-color: var(--status-critical);
-  background: var(--status-critical);
-  justify-content: flex-end;
-  cursor: default;
-}
-
-.main-header-red-toggle-knob {
-  width: 0.875rem;
-  height: 0.875rem;
-  border-radius: 50%;
-  background: var(--surface);
-  display: block;
-}
-
 /* Save and cancel for an edit page with changes */
 .main-header-save {
   flex: 0 0 auto;

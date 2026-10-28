@@ -7,6 +7,10 @@ import { removeCachedChat } from '../../hooks/useChatCache';
 import { FileProcessingService } from '../../services/fileProcessingService';
 import { Icon } from '../common/Icon';
 import AssistantSelector from '../common/AssistantSelector';
+import ChatClassification from './ChatClassification';
+import ComposerPopover from './ComposerPopover';
+import ContextRing from './ContextRing';
+import ContextUsageDetails from './ContextUsageDetails';
 import FileThumbnail from './FileThumbnail';
 import type { ChatFile } from '../../types/fileModels';
 import { SUPPORTED_IMPORT_ACCEPT, isValidFileType } from '../../utils/fileUtils';
@@ -343,21 +347,20 @@ export default function ChatInput() {
               <Icon name="attach" size={1.0625} className="icon" />
             </button>
             <AssistantSelector className="composer-assistant" />
+            <ChatClassification />
             <div className="composer-spacer" />
             {usage.available ? (
-              <div
-                className="composer-token-count t-meta"
-                data-state={usage.level}
-                title={usage.isEstimate ? t('chat.contextEstimate') : undefined}
-              >
-                {usage.isEstimate && '≈ '}
-                {t('chat.tokenCount', { count: usage.draft })}
-                {' · '}
-                {t('chat.contextHint', {
+              <ComposerPopover
+                className="composer-token composer-popover--panel"
+                label={t('chat.contextHint', {
                   used: formatTokens(usage.total, i18n.language),
                   limit: formatTokensCompact(usage.contextSize, i18n.language),
                 })}
-              </div>
+                trigger={<ContextRing fraction={usage.contextSize > 0 ? usage.total / usage.contextSize : 0} level={usage.level} />}
+              >
+                <div className="composer-popover-title t-overline">{t('chat.panel.context')}</div>
+                <ContextUsageDetails usage={usage} />
+              </ComposerPopover>
             ) : charCount > 0 && (
               <div className="composer-char-count t-meta">{t('chat.charCount', { count: charCount })}</div>
             )}
