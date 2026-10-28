@@ -4,6 +4,7 @@ using System.Text.Json.Nodes;
 using System.Threading;
 using System.Threading.Tasks;
 using ChatUiT.Server.Models;
+using ChatUiT.Server.Services.TokenCounting;
 
 namespace ChatUiT.Server.Services.Tools;
 
@@ -136,9 +137,9 @@ public enum InteractionMode
 /// What a tool returns. <see cref="Content"/> goes to the model; <see cref="Display"/> is
 /// what the user sees in the activity panel and defaults to the content.
 /// <see cref="LoadedToolIds"/> is set only by <see cref="LoadToolsTool"/>: the tools that
-/// become callable from this result on.
+/// become callable from this result on. <see cref="Images"/> go to the model with the content.
 /// </summary>
-public sealed record ToolResult(string Content, string? Display = null, bool IsError = false, IReadOnlyList<string>? LoadedToolIds = null)
+public sealed record ToolResult(string Content, string? Display = null, bool IsError = false, IReadOnlyList<string>? LoadedToolIds = null, IReadOnlyList<ImagePart>? Images = null)
 {
     public string DisplayText => Display ?? Content;
 

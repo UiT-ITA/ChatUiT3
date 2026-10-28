@@ -403,7 +403,7 @@ public sealed class ResponsesRunner
 
                     case ToolExecutionEvent.Completed completed:
                         Finish(item, index, completed.Result);
-                        return new AiToolResult(call.Id, completed.Result.Content, completed.Result.IsError);
+                        return new AiToolResult(call.Id, completed.Result.Content, completed.Result.IsError, Images: completed.Result.Images);
 
                     case ToolExecutionEvent.Deferred deferred:
                         if (index is { } announced)

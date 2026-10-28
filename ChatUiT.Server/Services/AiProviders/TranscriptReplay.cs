@@ -5,6 +5,7 @@ using System.Linq;
 namespace ChatUiT.Server.Services.AiProviders;
 
 using ChatUiT.Server.Models;
+using ChatUiT.Server.Services.TokenCounting;
 
 /// <summary>Turns stored chat messages into request history, replaying each assistant message's transcript.</summary>
 public static class TranscriptReplay
@@ -74,7 +75,7 @@ public static class TranscriptReplay
                     unanswered.Add(item.ToolCallId);
                     break;
                 case TranscriptItemKind.ToolResult when item.ToolCallId != null:
-                    items.Add(new AiInputItem.ToolResult(item.ToolCallId, item.Content ?? string.Empty, item.IsError, LoadedToolIds: item.LoadedToolIds));
+                    items.Add(new AiInputItem.ToolResult(item.ToolCallId, item.Content ?? string.Empty, item.IsError, item.Images?.Select(i => new ImagePart(i.Base64, i.MediaType)).ToList(), item.LoadedToolIds));
                     unanswered.Remove(item.ToolCallId);
                     break;
             }

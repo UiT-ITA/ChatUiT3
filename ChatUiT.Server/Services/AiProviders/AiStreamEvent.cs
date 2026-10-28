@@ -51,8 +51,12 @@ public sealed class AiTurnFailedException : Exception
 /// The result of a tool the runner executed, on its way back to the provider.
 /// <paramref name="LoadedToolIds"/> are tools of <see cref="AiRequest.LoadableTools"/> that the
 /// model may call from this result on; each protocol adds their definitions here.
+/// <paramref name="Images"/> are images the tool returned.
 /// </summary>
-public sealed record AiToolResult(string ToolCallId, string Content, bool IsError, IReadOnlyList<string>? LoadedToolIds = null);
+public sealed record AiToolResult(string ToolCallId, string Content, bool IsError, IReadOnlyList<string>? LoadedToolIds = null, IReadOnlyList<TokenCounting.ImagePart>? Images = null)
+{
+    public AiInputItem.ToolResult ToInputItem() => new(ToolCallId, Content, IsError, Images, LoadedToolIds);
+}
 
 /// <summary>
 /// A conversation in progress. The provider owns the message list in its own SDK's shape,

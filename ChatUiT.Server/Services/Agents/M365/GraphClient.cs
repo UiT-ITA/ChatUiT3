@@ -21,6 +21,8 @@ namespace ChatUiT.Server.Services.Agents.M365;
 public sealed class GraphClient
 {
     private const string BaseUrl = "https://graph.microsoft.com/v1.0/";
+    private const int MaxAttempts = 3;
+    private static readonly TimeSpan MaxRetryDelay = TimeSpan.FromSeconds(10);
 
     private readonly IHttpClientFactory _factory;
 
@@ -86,9 +88,14 @@ public sealed class GraphClient
 
     /// <summary>Downloads a file's content, capped at <paramref name="maxBytes"/>.</summary>
     public async Task<byte[]> GetBytesAsync(ToolExecutionContext context, string path, IReadOnlyList<string> scopes, long maxBytes, CancellationToken ct)
+        => (await DownloadAsync(context, path, scopes, maxBytes, ct)).Bytes;
+
+    /// <summary>Downloads a file's content and media type, capped at <paramref name="maxBytes"/>.</summary>
+    public async Task<(byte[] Bytes, string? MediaType)> DownloadAsync(ToolExecutionContext context, string path, IReadOnlyList<string> scopes, long maxBytes, CancellationToken ct)
     {
         using var request = new HttpRequestMessage(HttpMethod.Get, BaseUrl + path.TrimStart('/'));
         using var response = await SendAsync(context, request, scopes, ct);
+        var mediaType = response.Content.Headers.ContentType?.MediaType;
 
         await using var stream = await response.Content.ReadAsStreamAsync(ct);
         using var buffer = new System.IO.MemoryStream();
@@ -105,7 +112,31 @@ public sealed class GraphClient
             buffer.Write(chunk, 0, (int)Math.Min(read, remaining));
         }
 
-        return buffer.ToArray();
+        return (buffer.ToArray(), mediaType);
+    }
+
+    /// <summary>Uploads <paramref name="content"/>; with <paramref name="ifMatch"/>, Graph refuses it when the item has changed.</summary>
+    public async Task<JsonElement> SendBytesAsync(ToolExecutionContext context, HttpMethod method, string path, byte[] content, string mediaType, IReadOnlyList<string> scopes, CancellationToken ct, string? ifMatch = null)
+    {
+        using var request = new HttpRequestMessage(method, BaseUrl + path.TrimStart('/'))
+        {
+            Content = new ByteArrayContent(content)
+        };
+        request.Content.Headers.ContentType = new MediaTypeHeaderValue(mediaType);
+
+        if (ifMatch != null)
+        {
+            request.Headers.TryAddWithoutValidation("If-Match", ifMatch);
+        }
+
+        using var response = await SendAsync(context, request, scopes, ct);
+        return await ReadJsonAsync(response, ct);
+    }
+
+    public async Task DeleteAsync(ToolExecutionContext context, string path, IReadOnlyList<string> scopes, CancellationToken ct)
+    {
+        using var request = new HttpRequestMessage(HttpMethod.Delete, BaseUrl + path.TrimStart('/'));
+        using var response = await SendAsync(context, request, scopes, ct);
     }
 
     public async Task<JsonElement> SendTextAsync(ToolExecutionContext context, HttpMethod method, string path, string content, string mediaType, IReadOnlyList<string> scopes, CancellationToken ct)
@@ -131,6 +162,19 @@ public sealed class GraphClient
         var client = _factory.CreateClient(nameof(GraphClient));
         var response = await client.SendAsync(request, HttpCompletionOption.ResponseHeadersRead, ct);
 
+        // A 503 to any method but POST is sent again after Retry-After, or after a pause that grows with each attempt.
+        byte[]? content = null;
+        for (var attempt = 1; response.StatusCode == HttpStatusCode.ServiceUnavailable && request.Method != HttpMethod.Post && attempt < MaxAttempts; attempt++)
+        {
+            var delay = RetryDelay(response, attempt);
+            response.Dispose();
+            await Task.Delay(delay, ct);
+
+            content ??= request.Content == null ? null : await request.Content.ReadAsByteArrayAsync(ct);
+            using var retry = Clone(request, content);
+            response = await client.SendAsync(retry, HttpCompletionOption.ResponseHeadersRead, ct);
+        }
+
         if (response.IsSuccessStatusCode)
         {
             return response;
@@ -145,6 +189,34 @@ public sealed class GraphClient
         }
 
         throw new GraphRequestException(response.StatusCode, ExtractError(body));
+    }
+
+    private static TimeSpan RetryDelay(HttpResponseMessage response, int attempt)
+    {
+        var retryAfter = response.Headers.RetryAfter;
+        var delay = retryAfter?.Delta
+            ?? (retryAfter?.Date is { } date ? date - DateTimeOffset.UtcNow : TimeSpan.FromSeconds(attempt));
+        return delay < TimeSpan.Zero ? TimeSpan.Zero : delay > MaxRetryDelay ? MaxRetryDelay : delay;
+    }
+
+    private static HttpRequestMessage Clone(HttpRequestMessage request, byte[]? content)
+    {
+        var clone = new HttpRequestMessage(request.Method, request.RequestUri);
+        foreach (var header in request.Headers)
+        {
+            clone.Headers.TryAddWithoutValidation(header.Key, header.Value);
+        }
+
+        if (content != null)
+        {
+            clone.Content = new ByteArrayContent(content);
+            foreach (var header in request.Content!.Headers)
+            {
+                clone.Content.Headers.TryAddWithoutValidation(header.Key, header.Value);
+            }
+        }
+
+        return clone;
     }
 
     private static async Task<JsonElement> ReadJsonAsync(HttpResponseMessage response, CancellationToken ct)

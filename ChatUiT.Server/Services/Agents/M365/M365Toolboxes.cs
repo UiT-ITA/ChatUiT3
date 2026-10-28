@@ -79,10 +79,11 @@ internal static class M365Toolboxes
             typeof(SendChannelMessageFunction)
         ]),
 
-        new("files", "Files", "Search, list and read files in OneDrive and SharePoint, SharePoint sites, lists and list items.",
+        new("files", "Files", "Search, list and read files in OneDrive and SharePoint, including Word, Excel and PowerPoint documents and images, SharePoint sites, lists and list items.",
         [
             typeof(SearchFilesFunction),
             typeof(ReadFileFunction),
+            typeof(ReadExcelRangeFunction),
             typeof(ListFolderFunction),
             typeof(SearchSitesFunction),
             typeof(ListSiteListsFunction),
@@ -91,6 +92,10 @@ internal static class M365Toolboxes
         [
             typeof(FindPeopleFunction),
             typeof(WriteTextFileFunction),
+            typeof(CreateOfficeDocumentFunction),
+            typeof(EditWordDocumentFunction),
+            typeof(EditPowerPointPresentationFunction),
+            typeof(EditExcelWorkbookFunction),
             typeof(CreateFolderFunction),
             typeof(MoveFileFunction),
             typeof(CopyFileFunction),

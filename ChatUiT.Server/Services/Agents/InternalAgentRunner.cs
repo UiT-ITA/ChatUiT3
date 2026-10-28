@@ -239,7 +239,7 @@ public sealed class InternalAgentRunner
                 result ??= ToolResult.Error("The function ended without a result.");
                 // Names and status only: arguments and results carry the user's data.
                 _logger.LogInformation("Agent {AgentId} call {Function} -> {Status}", agent.Id, call.FunctionName, result.IsError ? "error" : "ok");
-                results.Add(new AiToolResult(call.Id, result.Content, result.IsError));
+                results.Add(new AiToolResult(call.Id, result.Content, result.IsError, Images: result.Images));
             }
 
             conversation.AppendToolResults(results);

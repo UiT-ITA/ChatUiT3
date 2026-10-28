@@ -437,9 +437,9 @@ public sealed class OpenAiChatCompletionsProtocol : IApiProtocol
 
         public void AppendToolResults(IReadOnlyList<AiToolResult> results)
         {
+            AddToolResults(_messages, results.Select(result => result.ToInputItem()).ToList(), _request.Parameters.AllowImages);
             foreach (var result in results)
             {
-                _messages.Add(new ToolChatMessage(result.ToolCallId, result.Content));
                 _loaded.UnionWith(result.LoadedToolIds ?? []);
             }
         }

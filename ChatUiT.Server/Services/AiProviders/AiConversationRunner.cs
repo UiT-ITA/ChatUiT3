@@ -243,7 +243,8 @@ public sealed class AiConversationRunner
                     ToolCallId = result.ToolCallId,
                     Content = result.Content,
                     IsError = result.IsError,
-                    LoadedToolIds = result.LoadedToolIds is { Count: > 0 } ids ? ids.ToList() : null
+                    LoadedToolIds = result.LoadedToolIds is { Count: > 0 } ids ? ids.ToList() : null,
+                    Images = result.Images is { Count: > 0 } images ? images.Select(i => new TranscriptImage { Base64 = i.Base64, MediaType = i.MediaType }).ToList() : null
                 });
             }
 
@@ -353,7 +354,7 @@ public sealed class AiConversationRunner
         entry.IsError = result.IsError;
         entry.Status = status;
 
-        results.Add(new AiToolResult(toolCallId, result.Content, result.IsError, result.LoadedToolIds));
+        results.Add(new AiToolResult(toolCallId, result.Content, result.IsError, result.LoadedToolIds, result.Images));
 
         return new ChatStreamChunk
         {
