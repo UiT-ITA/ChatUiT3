@@ -2,10 +2,8 @@ import { useLocation, useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { useSignals } from '@preact/signals-react/runtime';
 import { Icon } from '../common/Icon';
-import ClassificationBadge from '../common/ClassificationBadge';
-import { getChat, getCurrentAssistantId, getRedEnabled, enableRed } from '../../services/chatService';
-import { getAssistant, getAssistants } from '../../services/assistantService';
-import { chatClassification } from '../../types/modelModels';
+import { getChat } from '../../services/chatService';
+import { getAssistants } from '../../services/assistantService';
 import { conversationPanelOpenSignal, editorHeaderSignal } from '../../services/uiService';
 import useMediaQuery from '../../hooks/useMediaQuery';
 import type { SettingsCategory } from '../../types/settingsModels';
@@ -87,12 +85,6 @@ const MainHeader = ({ isMobile }: MainHeaderProps) => {
   const showPanelToggle = section === 'chats' && chatId !== undefined && isWide;
   const panelOpen = conversationPanelOpenSignal.value;
 
-  // Chat: the classification of the conversation, and the switch that allows red data
-  const currentAssistantId = getCurrentAssistantId().value;
-  const assistant = section === 'chats' && currentAssistantId ? getAssistant(currentAssistantId).value : undefined;
-  const redEnabled = getRedEnabled().value;
-  const showRedToggle = assistant?.classification === 'Red';
-
   // An open edit page: back to its list, and save/cancel once the form has changes
   const editor = editorHeaderSignal.value;
 
@@ -117,24 +109,6 @@ const MainHeader = ({ isMobile }: MainHeaderProps) => {
       )}
       <div className="main-header-title t-title">{title}</div>
       {chip && !isMobile && <span className="main-header-chip t-chip">{chip}</span>}
-      {assistant && (
-        <ClassificationBadge classification={chatClassification(assistant.classification, redEnabled)} />
-      )}
-      {showRedToggle && (
-        <label className="main-header-red-toggle t-meta" title={t(redEnabled ? 'chat.redToggle.enabled' : 'chat.redToggle.enable')}>
-          {t('chat.redToggle.label')}
-          <button
-            type="button"
-            className={`main-header-red-toggle-pill ${redEnabled ? 'on' : ''}`}
-            onClick={() => { void enableRed(); }}
-            disabled={redEnabled}
-            aria-pressed={redEnabled}
-            aria-label={t('chat.redToggle.label')}
-          >
-            <span className="main-header-red-toggle-knob" />
-          </button>
-        </label>
-      )}
       {editor?.dirty && (
         <>
           <button className="main-header-save t-ui" onClick={editor.onSave} disabled={editor.saveDisabled}>

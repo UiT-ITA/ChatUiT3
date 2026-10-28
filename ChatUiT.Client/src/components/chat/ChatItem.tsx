@@ -178,6 +178,11 @@ export function ChatItem({ chat, onNavigate }: ChatItemProps) {
             <span className="chat-item-main t-ui">
               {chat.name}
             </span>
+            {chat.redEnabled && (
+              <span className="chat-item-lock" title={t('chat.redToggle.enabled')}>
+                <Icon name="lock" size={0.75} />
+              </span>
+            )}
             {chat.isFavorite && (
               <span className="chat-item-star" title={t('sidebar.favorite')}>
                 <Icon name="star" size={0.75} />

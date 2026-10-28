@@ -5,10 +5,12 @@ import './ClassificationBadge.css';
 interface ClassificationBadgeProps {
   classification: DataClassification;
   className?: string;
+  /** Shows the level as a tooltip. On by default. */
+  showTitle?: boolean;
 }
 
 /** One overlapping circle per level up to the classification, then the level's name. */
-export default function ClassificationBadge({ classification, className }: ClassificationBadgeProps) {
+export default function ClassificationBadge({ classification, className, showTitle = true }: ClassificationBadgeProps) {
   const { t } = useTranslation();
   const level = t(`classification.${classification}`);
   const levels = DATA_CLASSIFICATIONS.slice(0, DATA_CLASSIFICATIONS.indexOf(classification) + 1);
@@ -16,7 +18,7 @@ export default function ClassificationBadge({ classification, className }: Class
   return (
     <span
       className={`classification-badge t-meta ${className ?? ''}`}
-      title={t('classification.title', { level })}
+      title={showTitle ? t('classification.title', { level }) : undefined}
     >
       <span className="classification-dots" aria-hidden="true">
         {levels.map(l => (

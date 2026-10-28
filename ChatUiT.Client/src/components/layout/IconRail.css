@@ -163,6 +163,17 @@
   background: var(--sel);
 }
 
+.rail-user-menu .rail-user-menu-item {
+  display: flex;
+  align-items: center;
+  gap: 0.625rem;
+}
+
+.rail-user-menu-item svg {
+  color: var(--text-2);
+  flex: 0 0 auto;
+}
+
 .rail-user-menu .rail-user-menu-danger {
   color: var(--danger);
 }

@@ -714,13 +714,14 @@ export function getRedEnabled(): Signal<boolean> {
 }
 
 /**
- * Allows red data in the current chat. In an existing chat the server also switches the chat to
- * the assistant the user has picked, since that is the one it checks is red.
+ * Switches red data on or off for the new chat being started, or allows red data in the current
+ * chat. In an existing chat the server also switches the chat to the assistant the user has
+ * picked, since that is the one it checks is red.
  */
-export async function enableRed(): Promise<void> {
+export async function toggleRed(): Promise<void> {
   const chatId = currentChatIdSignal.peek();
   if (!chatId) {
-    pendingRedEnabledSignal.value = true;
+    pendingRedEnabledSignal.value = !pendingRedEnabledSignal.peek();
     return;
   }
 
