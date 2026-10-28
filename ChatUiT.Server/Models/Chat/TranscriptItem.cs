@@ -51,4 +51,14 @@ public sealed class TranscriptItem
 
     /// <summary>Tool result of a toolbox load: the tools it made callable.</summary>
     public List<string>? LoadedToolIds { get; set; }
+
+    /// <summary>Tool result: the images the model got.</summary>
+    public List<TranscriptImage>? Images { get; set; }
+}
+
+public sealed class TranscriptImage
+{
+    public string Base64 { get; set; } = string.Empty;
+
+    public string MediaType { get; set; } = string.Empty;
 }

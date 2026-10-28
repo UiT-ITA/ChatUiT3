@@ -470,7 +470,7 @@ public sealed class OpenAiResponsesProtocol : IApiProtocol
         {
             foreach (var result in results)
             {
-                _items.Add(ResponseItem.CreateFunctionCallOutputItem(result.ToolCallId, result.Content));
+                _items.Add(BuildToolOutputItem(result.ToInputItem(), _request.Parameters.AllowImages));
                 AddLoadedTools(_items, _request, result.LoadedToolIds);
             }
         }

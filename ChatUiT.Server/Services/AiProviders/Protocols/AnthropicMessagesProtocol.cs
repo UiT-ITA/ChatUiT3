@@ -621,19 +621,9 @@ public sealed class AnthropicMessagesProtocol : IApiProtocol
 
         public void AppendToolResults(IReadOnlyList<AiToolResult> results)
         {
-            var blocks = new List<ContentBlockParam>();
-
-            foreach (var result in results)
-            {
-                blocks.Add(result.LoadedToolIds is { Count: > 0 } loaded
-                    ? BuildLoadResult(result.ToolCallId, loaded)
-                    : new ToolResultBlockParam
-                    {
-                        ToolUseID = result.ToolCallId,
-                        Content = result.Content,
-                        IsError = result.IsError
-                    });
-            }
+            var blocks = results
+                .Select(result => (ContentBlockParam)BuildToolResult(result.ToInputItem(), _request.Parameters.AllowImages))
+                .ToList();
 
             // Unlike OpenAI's per-result tool messages, Anthropic wants every result for a
             // turn in a single following user message.
