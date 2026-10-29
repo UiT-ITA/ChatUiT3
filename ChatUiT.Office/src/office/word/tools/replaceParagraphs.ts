@@ -1,6 +1,7 @@
 import { requireString } from "../../../chat/tools/args";
 import type { OfficeToolDefinition } from "../../shared/officeTool";
-import { insertMarkdown } from "../markdownToWord";
+import { planMarkdown } from "../markdownToWord";
+import { replaceWithDiff } from "../paragraphDiff";
 import { markdownHint } from "./markdownHint";
 import { loadParagraphSpan, runWord } from "./shared";
 
@@ -8,6 +9,7 @@ export const replaceParagraphs: OfficeToolDefinition = {
   name: "word_replace_paragraphs",
   description:
     "Replace the paragraphs from fromId to toId (inclusive; use the same id for one paragraph) with Markdown content. " +
+    "Only the words and formatting that differ are changed. " +
     `${markdownHint}`,
   parameters: {
     type: "object",
@@ -26,18 +28,7 @@ export const replaceParagraphs: OfficeToolDefinition = {
 
     return runWord(signal, async (context) => {
       const span = await loadParagraphSpan(context, fromId, toId);
-      const result = await insertMarkdown(
-        context,
-        { kind: "paragraph", paragraph: span[0], location: "Before" },
-        markdown
-      );
-      span.forEach((paragraph) => paragraph.delete());
-      await context.sync();
-      return {
-        deletedParagraphs: span.length,
-        insertedParagraphIds: result.paragraphIds,
-        insertedTables: result.tables,
-      };
+      return replaceWithDiff(context, span, planMarkdown(markdown));
     });
   },
 };
