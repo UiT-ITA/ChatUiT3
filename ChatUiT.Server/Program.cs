@@ -170,6 +170,23 @@ if (!string.IsNullOrWhiteSpace(seedEndpointUrl) && !string.IsNullOrWhiteSpace(se
     }
 }
 
+// Sends visitors of the azurewebsites.net host to ki-beta.uit.no. The Office add-ins (/office),
+// the API (/api) and the hub (/chathub) stay reachable on the old host.
+app.Use(async (context, next) =>
+{
+    var request = context.Request;
+    if (string.Equals(request.Host.Host, "chatuit-v3-ekguc0ase9dghpdn.westeurope-01.azurewebsites.net", StringComparison.OrdinalIgnoreCase) &&
+        !request.Path.StartsWithSegments("/office") &&
+        !request.Path.StartsWithSegments("/api") &&
+        !request.Path.StartsWithSegments("/chathub"))
+    {
+        context.Response.Redirect($"https://ki-beta.uit.no{request.PathBase}{request.Path}{request.QueryString}");
+        return;
+    }
+
+    await next();
+});
+
 app.UseDefaultFiles();
 app.MapStaticAssets();
 
