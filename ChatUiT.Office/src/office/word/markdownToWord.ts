@@ -19,7 +19,7 @@ export interface InsertResult {
   tables: number;
 }
 
-interface Run {
+export interface Run {
   text: string;
   bold?: boolean;
   italic?: boolean;
@@ -28,10 +28,34 @@ interface Run {
   link?: string;
 }
 
-type RunFormat = Omit<Run, "text">;
-type BlockTarget = Exclude<InsertTarget, { kind: "selection" }>;
+export type RunFormat = Omit<Run, "text">;
+export type BlockTarget = Exclude<InsertTarget, { kind: "selection" }>;
 
-const CODE_FONT = "Consolas";
+export interface ListPlacement {
+  ordered: boolean;
+  level: number;
+  /** The first item of a top-level list, which starts a new Word list. */
+  startsList: boolean;
+  /** The first item of its Markdown list, which sets the numbering or bullet of its level. */
+  configuresLevel: boolean;
+}
+
+/** A paragraph to write. `style` applies only when `list` is null. */
+export interface ParagraphBlock {
+  kind: "paragraph";
+  style: Word.BuiltInStyleName;
+  runs: Run[];
+  list: ListPlacement | null;
+}
+
+export interface TableBlock {
+  kind: "table";
+  values: string[][];
+}
+
+export type Block = ParagraphBlock | TableBlock;
+
+export const CODE_FONT = "Consolas";
 /** Word's manual line break. */
 const LINE_BREAK = "\v";
 
@@ -40,23 +64,43 @@ export async function insertMarkdown(
   target: InsertTarget,
   markdown: string
 ): Promise<InsertResult> {
-  const blocks = marked.lexer(markdown).filter((token) => token.type !== "space");
+  const tokens = marked.lexer(markdown).filter((token) => token.type !== "space");
   if (target.kind === "selection") {
-    return insertAtSelection(context, target.range, blocks);
+    return insertAtSelection(context, target.range, tokens);
   }
+  return writeBlocks(context, target, planTokens(tokens));
+}
+
+/** The paragraphs and tables the Markdown becomes, in document order. */
+export function planMarkdown(markdown: string): Block[] {
+  return planTokens(marked.lexer(markdown).filter((token) => token.type !== "space"));
+}
+
+/** Writes the blocks next to the target. */
+export async function writeBlocks(
+  context: Word.RequestContext,
+  target: BlockTarget,
+  blocks: Block[]
+): Promise<InsertResult> {
   const writer = new BlockWriter(context, target);
-  await writer.writeBlocks(blocks);
+  for (const block of blocks) {
+    await writer.write(block);
+  }
   return writer.finish();
+}
+
+export function blockText(block: ParagraphBlock): string {
+  return block.runs.map((run) => run.text).join("");
 }
 
 async function insertAtSelection(
   context: Word.RequestContext,
   range: Word.Range,
-  blocks: Token[]
+  tokens: Token[]
 ): Promise<InsertResult> {
   // A single paragraph replaces the selection in place, inside the current paragraph.
-  if (blocks.length === 1 && blocks[0].type === "paragraph") {
-    const runs = inlineRuns((blocks[0] as Tokens.Paragraph).tokens);
+  if (tokens.length === 1 && tokens[0].type === "paragraph") {
+    const runs = inlineRuns((tokens[0] as Tokens.Paragraph).tokens);
     const paragraphs = writeRunsInPlace(range, runs).paragraphs;
     paragraphs.load("items/uniqueLocalId");
     await context.sync();
@@ -73,8 +117,11 @@ async function insertAtSelection(
   }
 
   const last = selected.items[selected.items.length - 1];
-  const writer = new BlockWriter(context, { kind: "paragraph", paragraph: last, location: "After" });
-  await writer.writeBlocks(blocks);
+  const result = await writeBlocks(
+    context,
+    { kind: "paragraph", paragraph: last, location: "After" },
+    planTokens(tokens)
+  );
 
   const selectedText = selected.items.map((paragraph) => paragraph.text).join("");
   if (compact(range.text) === compact(selectedText)) {
@@ -82,7 +129,88 @@ async function insertAtSelection(
   } else if (range.text.length > 0) {
     range.delete();
   }
-  return writer.finish();
+  await context.sync();
+  return result;
+}
+
+function planTokens(tokens: Token[]): Block[] {
+  const blocks: Block[] = [];
+  tokens.forEach((token) => planBlock(token, blocks));
+  return blocks;
+}
+
+function planBlock(token: Token, blocks: Block[]): void {
+  const paragraph = (style: Word.BuiltInStyleName, runs: Run[]) =>
+    blocks.push({ kind: "paragraph", style, runs, list: null });
+  switch (token.type) {
+    case "heading": {
+      const heading = token as Tokens.Heading;
+      const depth = Math.min(Math.max(heading.depth, 1), 6);
+      paragraph(`Heading${depth}` as Word.BuiltInStyleName, inlineRuns(heading.tokens));
+      return;
+    }
+    case "paragraph":
+    case "text":
+      paragraph(Word.BuiltInStyleName.normal, blockRuns(token));
+      return;
+    case "blockquote":
+      for (const child of (token as Tokens.Blockquote).tokens) {
+        if (child.type === "paragraph" || child.type === "text") {
+          paragraph(Word.BuiltInStyleName.quote, blockRuns(child));
+        } else if (child.type !== "space") {
+          planBlock(child, blocks);
+        }
+      }
+      return;
+    case "code":
+      for (const line of (token as Tokens.Code).text.split("\n")) {
+        paragraph(Word.BuiltInStyleName.normal, [{ text: line, code: true }]);
+      }
+      return;
+    case "list":
+      planList(token as Tokens.List, 0, blocks);
+      return;
+    case "table":
+      blocks.push(planTable(token as Tokens.Table));
+      return;
+    case "hr":
+    case "space":
+    case "def":
+      return;
+    default:
+      paragraph(Word.BuiltInStyleName.normal, blockRuns(token));
+  }
+}
+
+function planList(list: Tokens.List, level: number, blocks: Block[]): void {
+  list.items.forEach((item, index) => {
+    const runs: Run[] = item.task ? [{ text: item.checked ? "☑ " : "☐ " }] : [];
+    blocks.push({
+      kind: "paragraph",
+      style: Word.BuiltInStyleName.listParagraph,
+      runs,
+      list: { ordered: list.ordered, level, startsList: level === 0 && index === 0, configuresLevel: index === 0 },
+    });
+    let hasText = false;
+    for (const child of item.tokens) {
+      if (child.type === "list") {
+        planList(child as Tokens.List, level + 1, blocks);
+      } else if (child.type !== "space") {
+        if (hasText) {
+          runs.push({ text: LINE_BREAK });
+        }
+        runs.push(...blockRuns(child));
+        hasText = true;
+      }
+    }
+  });
+}
+
+function planTable(token: Tokens.Table): TableBlock {
+  const columns = token.header.length;
+  const cells = (row: Tokens.TableCell[]) =>
+    Array.from({ length: columns }, (_, index) => plainText(row[index]?.tokens ?? []));
+  return { kind: "table", values: [cells(token.header), ...token.rows.map(cells)] };
 }
 
 interface Inserted {
@@ -92,6 +220,9 @@ interface Inserted {
 
 class BlockWriter {
   private last: Word.Paragraph | Word.Table | null = null;
+  private list: Word.List | null = null;
+  /** The current list is one the inserted items joined, so items go after the last paragraph. */
+  private joinedList = false;
   private readonly inserted: Inserted[] = [];
   private tables = 0;
 
@@ -99,12 +230,6 @@ class BlockWriter {
     private readonly context: Word.RequestContext,
     private readonly target: BlockTarget
   ) {}
-
-  async writeBlocks(blocks: Token[]): Promise<void> {
-    for (const block of blocks) {
-      await this.writeBlock(block);
-    }
-  }
 
   /**
    * A paragraph inserted next to a list item joins that list, so every inserted paragraph that
@@ -127,102 +252,62 @@ class BlockWriter {
     };
   }
 
-  private async writeBlock(token: Token): Promise<void> {
-    switch (token.type) {
-      case "heading": {
-        const heading = token as Tokens.Heading;
-        const depth = Math.min(Math.max(heading.depth, 1), 6);
-        this.textParagraph(`Heading${depth}` as Word.BuiltInStyleName, inlineRuns(heading.tokens));
-        return;
-      }
-      case "paragraph":
-      case "text":
-        this.textParagraph(Word.BuiltInStyleName.normal, blockRuns(token));
-        return;
-      case "blockquote":
-        for (const child of (token as Tokens.Blockquote).tokens) {
-          if (child.type === "paragraph" || child.type === "text") {
-            this.textParagraph(Word.BuiltInStyleName.quote, blockRuns(child));
-          } else if (child.type !== "space") {
-            await this.writeBlock(child);
-          }
-        }
-        return;
-      case "code":
-        for (const line of (token as Tokens.Code).text.split("\n")) {
-          this.textParagraph(Word.BuiltInStyleName.normal, [{ text: line, code: true }]);
-        }
-        return;
-      case "list":
-        await this.writeList(token as Tokens.List, 0, null);
-        return;
-      case "table":
-        this.writeTable(token as Tokens.Table);
-        return;
-      case "hr":
-      case "space":
-      case "def":
-        return;
-      default:
-        this.textParagraph(Word.BuiltInStyleName.normal, blockRuns(token));
+  async write(block: Block): Promise<void> {
+    if (block.kind === "table") {
+      this.writeTable(block);
+      this.list = null;
+      return;
     }
-  }
-
-  private textParagraph(style: Word.BuiltInStyleName, runs: Run[]): void {
+    if (block.list) {
+      await this.writeListItem(block, block.list);
+      return;
+    }
+    this.list = null;
     const paragraph = this.newParagraph();
-    paragraph.styleBuiltIn = style;
-    writeRunsAtEnd(paragraph, runs);
+    paragraph.styleBuiltIn = block.style;
+    writeRunsAtEnd(paragraph, block.runs);
     this.inserted.push({ paragraph, isListItem: false });
   }
 
-  private async writeList(list: Tokens.List, level: number, parent: Word.List | null): Promise<void> {
-    let wordList = parent;
-    let levelConfigured = false;
-
-    for (const item of list.items) {
-      let paragraph: Word.Paragraph;
-      if (wordList === null) {
-        paragraph = this.newParagraph();
-        paragraph.load("isListItem");
-        await this.context.sync();
+  /**
+   * An item that does not start a list continues the current one. Without a current list, the
+   * blocks continue a list in the document: the item joins the list next to it, or starts one.
+   */
+  private async writeListItem(block: ParagraphBlock, placement: ListPlacement): Promise<void> {
+    let paragraph: Word.Paragraph;
+    let started = false;
+    if (placement.startsList || this.list === null) {
+      paragraph = this.newParagraph();
+      paragraph.load("isListItem");
+      await this.context.sync();
+      const joins = !placement.startsList && paragraph.isListItem;
+      if (joins) {
+        this.list = paragraph.list;
+      } else {
         if (paragraph.isListItem) {
           paragraph.detachFromList();
         }
-        wordList = paragraph.startNewList();
-      } else {
-        paragraph = wordList.insertParagraph("", "End");
-        this.last = paragraph;
+        this.list = paragraph.startNewList();
+        started = true;
       }
-      if (!levelConfigured) {
-        configureLevel(wordList, level, list.ordered);
-        levelConfigured = true;
-      }
-      paragraph.listItem.level = level;
-      this.inserted.push({ paragraph, isListItem: true });
-
-      const runs: Run[] = item.task ? [{ text: item.checked ? "☑ " : "☐ " }] : [];
-      let hasText = false;
-      for (const child of item.tokens) {
-        if (child.type === "list") {
-          await this.writeList(child as Tokens.List, level + 1, wordList);
-        } else if (child.type !== "space") {
-          if (hasText) {
-            runs.push({ text: LINE_BREAK });
-          }
-          runs.push(...blockRuns(child));
-          hasText = true;
-        }
-      }
-      writeRunsAtEnd(paragraph, runs);
+      this.joinedList = joins;
+    } else if (this.joinedList) {
+      paragraph = this.newParagraph();
+    } else {
+      paragraph = this.list.insertParagraph("", "End");
+      this.last = paragraph;
     }
+    if (started || (placement.configuresLevel && !this.joinedList)) {
+      configureLevel(this.list, placement.level, placement.ordered);
+    }
+    paragraph.listItem.level = placement.level;
+    this.inserted.push({ paragraph, isListItem: true });
+    writeRunsAtEnd(paragraph, block.runs);
   }
 
-  private writeTable(token: Tokens.Table): void {
-    const columns = token.header.length;
-    const cells = (row: Tokens.TableCell[]) =>
-      Array.from({ length: columns }, (_, index) => plainText(row[index]?.tokens ?? []));
-    const values = [cells(token.header), ...token.rows.map(cells)];
-
+  private writeTable(block: TableBlock): void {
+    const { values } = block;
+    const columns = values[0].length;
     let table: Word.Table;
     if (this.last) {
       table = this.last.insertTable(values.length, columns, "After", values);

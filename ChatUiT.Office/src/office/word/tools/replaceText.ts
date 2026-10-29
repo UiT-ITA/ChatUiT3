@@ -1,5 +1,6 @@
 import { optionalBoolean, optionalString, requireString, ToolArgumentError } from "../../../chat/tools/args";
 import type { OfficeToolDefinition } from "../../shared/officeTool";
+import { replaceTextWithDiff } from "../paragraphDiff";
 import { runWord } from "./shared";
 
 const MAX_SEARCH_LENGTH = 255;
@@ -8,7 +9,7 @@ export const replaceText: OfficeToolDefinition = {
   name: "word_replace_text",
   description:
     "Replace exact text (case-sensitive) with plain replacement text, in one paragraph or in the whole document. " +
-    `Replaces the first match, or every match when all is true.`,
+    `Replaces the first match, or every match when all is true. Only the words that differ are changed.`,
   parameters: {
     type: "object",
     properties: {
@@ -39,8 +40,7 @@ export const replaceText: OfficeToolDefinition = {
       await context.sync();
 
       const targets = all ? ranges.items : ranges.items.slice(0, 1);
-      targets.forEach((range) => range.insertText(replacement, "Replace"));
-      await context.sync();
+      await replaceTextWithDiff(context, targets, searchText, replacement);
       return { found: ranges.items.length, replaced: targets.length };
     });
   },
