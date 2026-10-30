@@ -1,27 +1,26 @@
 import React, { useState, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
-import { MdClose } from 'react-icons/md';
+import Chip from './Chip';
+import { useInputBase, type InputBaseProps } from './inputBase';
+import Stack from './Stack';
 import './TagField.css';
 
-interface TagFieldProps {
+interface TagFieldProps extends InputBaseProps {
   tags: string[];
   onChange?: (tags: string[]) => void;
+  // Shows the tags as plain chips without the input box
   readonly?: boolean;
   placeholder?: string;
-  disabled?: boolean;
 }
 
-const TagField: React.FC<TagFieldProps> = ({
-  tags,
-  onChange,
-  readonly = false,
-  placeholder,
-  disabled = false
-}) => {
+/** A text input that turns each entry into a removable chip. */
+const TagField: React.FC<TagFieldProps> = (props) => {
+  const { tags, onChange, readonly = false, placeholder, disabled = false } = props;
   const { t } = useTranslation();
   const [inputValue, setInputValue] = useState('');
   const inputRef = useRef<HTMLInputElement>(null);
-  
+  const { id, describedBy, invalid, boxClass, boxStyle, frame } = useInputBase(props);
+
   const defaultPlaceholder = placeholder || t('common.addTag');
 
   const addTag = (tag: string) => {
@@ -55,69 +54,49 @@ const TagField: React.FC<TagFieldProps> = ({
     }
   };
 
-  const handleContainerClick = () => {
-    if (!readonly && !disabled && inputRef.current) {
-      inputRef.current.focus();
-    }
-  };
-
   if (readonly) {
-    return (
-      <div className="tag-field readonly">
-        <div className="tag-list">
-          {tags.map((tag, index) => (
-            <span key={index} className="tag readonly t-caption-strong">
-              {tag}
-            </span>
-          ))}
-          {tags.length === 0 && (
-            //<span className="tag-empty t-caption">{t('common.noTags')}</span>
-            <span className="tag-empty t-caption">  </span>
-          )}
-        </div>
-      </div>
+    return frame(
+      <Stack direction="row" gap="xs" wrap align="center" style={boxStyle}>
+        {tags.map((tag, index) => (
+          <Chip key={index} size="small">{tag}</Chip>
+        ))}
+      </Stack>,
     );
   }
 
-  return (
-    <div 
-      className={`tag-field ${disabled ? 'disabled' : ''}`}
-      onClick={handleContainerClick}
+  return frame(
+    <div
+      className={boxClass('tag-field')}
+      style={boxStyle}
+      onClick={() => { if (!disabled) inputRef.current?.focus(); }}
     >
-      <div className="tag-list">
-        {tags.map((tag, index) => (
-          <span key={index} className="tag editable t-caption-strong">
-            {tag}
-            {!disabled && (
-              <button
-                type="button"
-                className="tag-remove"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  removeTag(tag);
-                }}
-                aria-label={`Remove ${tag} tag`}
-              >
-                <MdClose size="0.75rem" />
-              </button>
-            )}
-          </span>
-        ))}
-        {!disabled && (
-          <input
-            ref={inputRef}
-            type="text"
-            value={inputValue}
-            onChange={(e) => setInputValue(e.target.value)}
-            onKeyDown={handleInputKeyDown}
-            onBlur={handleInputBlur}
-            placeholder={tags.length === 0 ? defaultPlaceholder : ''}
-            className="tag-input t-body"
-            disabled={disabled}
-          />
-        )}
-      </div>
-    </div>
+      {tags.map((tag, index) => (
+        <Chip
+          key={index}
+          variant="solid"
+          size="small"
+          onRemove={disabled ? undefined : () => removeTag(tag)}
+          removeLabel={`Remove ${tag} tag`}
+        >
+          {tag}
+        </Chip>
+      ))}
+      {!disabled && (
+        <input
+          id={id}
+          ref={inputRef}
+          type="text"
+          value={inputValue}
+          onChange={(e) => setInputValue(e.target.value)}
+          onKeyDown={handleInputKeyDown}
+          onBlur={handleInputBlur}
+          placeholder={tags.length === 0 ? defaultPlaceholder : ''}
+          className="input-box__input tag-field__input t-body"
+          aria-invalid={invalid || undefined}
+          aria-describedby={describedBy}
+        />
+      )}
+    </div>,
   );
 };
 

@@ -1,0 +1,49 @@
+.card {
+  font-family: var(--font-sans);
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-md);
+  background: var(--surface);
+  color: var(--text);
+  text-align: left;
+  transition: border-color var(--dur-fast) var(--ease-standard), transform var(--dur-fast) var(--ease-standard);
+}
+
+.card--elevated {
+  box-shadow: var(--shadow-card);
+}
+
+.card--interactive {
+  cursor: pointer;
+}
+
+.card--interactive:hover:not(:disabled),
+.card--selected {
+  border-color: var(--accent);
+}
+
+.card--elevated.card--interactive:hover:not(:disabled) {
+  transform: translateY(-1px);
+}
+
+.card--selected {
+  box-shadow: 0 0 0 1px var(--accent);
+}
+
+.card:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.card--accent-start {
+  border-left: 4px solid var(--accent-2);
+}
+
+.card--accent-top {
+  border-top: 3px solid var(--accent-2);
+}
+
+.card--tone-warning { border-color: var(--warn); }
+.card--tone-danger { border-color: var(--danger); }

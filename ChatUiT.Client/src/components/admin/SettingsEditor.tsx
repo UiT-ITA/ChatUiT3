@@ -7,6 +7,8 @@ import { adminAssistantsSignal, adminModelsSignal, adminSettingsSignal, loadAdmi
 import { refreshAppDefaults } from '../../services/appSettingsService';
 import type { ModelDto } from '../../types/admin';
 import EditorHeader from '../layout/EditorHeader';
+import Select from '../common/Select';
+import Stack from '../common/Stack';
 import { hasChanges } from '../../utils/formChanges';
 
 const SettingsEditor: React.FC = () => {
@@ -50,15 +52,15 @@ const SettingsEditor: React.FC = () => {
     }
   };
 
-  const renderModelSelect = (value: string, onChange: (next: string) => void) => (
-    <select className="admin-select t-body" value={value} onChange={(e) => onChange(e.target.value)}>
+  const renderModelSelect = (label: string, description: string, value: string, onChange: (next: string) => void) => (
+    <Select label={label} description={description} value={value} onChange={onChange}>
       <option value="">{t('admin.settings.fields.none')}</option>
       {models.map((model: ModelDto) => (
         <option key={model.id} value={model.id}>
           {model.modelName} ({model.modelId})
         </option>
       ))}
-    </select>
+    </Select>
   );
 
   const dirty = hasChanges(
@@ -85,24 +87,16 @@ const SettingsEditor: React.FC = () => {
         <div className="admin-empty t-ui-plain">{t('admin.models.list.empty')}</div>
       )}
 
-      <div className="admin-field">
-        <label className="admin-label t-label">{t('admin.settings.fields.defaultModel')}</label>
-        {renderModelSelect(defaultModelId, setDefaultModelId)}
-        <div className="admin-field-help t-caption">{t('admin.settings.fields.defaultModelHelp')}</div>
-      </div>
+      <Stack gap="xl">
+        {renderModelSelect(t('admin.settings.fields.defaultModel'), t('admin.settings.fields.defaultModelHelp'), defaultModelId, setDefaultModelId)}
 
-      <div className="admin-field">
-        <label className="admin-label t-label">{t('admin.settings.fields.chatNamingModel')}</label>
-        {renderModelSelect(chatNamingModelId, setChatNamingModelId)}
-        <div className="admin-field-help t-caption">{t('admin.settings.fields.chatNamingModelHelp')}</div>
-      </div>
+        {renderModelSelect(t('admin.settings.fields.chatNamingModel'), t('admin.settings.fields.chatNamingModelHelp'), chatNamingModelId, setChatNamingModelId)}
 
-      <div className="admin-field">
-        <label className="admin-label t-label">{t('admin.settings.fields.defaultAssistant')}</label>
-        <select
-          className="admin-select t-body"
+        <Select
+          label={t('admin.settings.fields.defaultAssistant')}
+          description={t('admin.settings.fields.defaultAssistantHelp')}
           value={defaultAssistantId}
-          onChange={(e) => setDefaultAssistantId(e.target.value)}
+          onChange={setDefaultAssistantId}
         >
           <option value="">{t('admin.settings.fields.none')}</option>
           {assistants.map((assistant) => (
@@ -110,10 +104,8 @@ const SettingsEditor: React.FC = () => {
               {assistant.name}
             </option>
           ))}
-        </select>
-        <div className="admin-field-help t-caption">{t('admin.settings.fields.defaultAssistantHelp')}</div>
-      </div>
-
+        </Select>
+      </Stack>
     </div>
   );
 };

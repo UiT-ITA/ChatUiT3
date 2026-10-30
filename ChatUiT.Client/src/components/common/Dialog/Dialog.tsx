@@ -1,5 +1,10 @@
 import React, { useState, useEffect } from 'react';
-import { Icon, IconName } from '../Icon';
+import { useTranslation } from 'react-i18next';
+import type { IconName } from '../Icon';
+import Button from '../Button';
+import IconButton from '../IconButton';
+import NavItem from '../NavItem';
+import useMediaQuery from '../../../hooks/useMediaQuery';
 import './Dialog.css';
 
 // Main Dialog component
@@ -24,6 +29,8 @@ export const Dialog: React.FC<DialogProps> = ({
   preventBodyScroll = true,
   children
 }) => {
+  const { t } = useTranslation();
+  const mobile = useMediaQuery('(max-width: 48rem)');
   const [activePageId, setActivePageId] = useState<string | null>(null);
 
   // Analyze children to determine layout
@@ -102,9 +109,7 @@ export const Dialog: React.FC<DialogProps> = ({
         {/* Header */}
         <div className="dialog-header">
           <h2 className="dialog-title t-title">{title}</h2>
-          <button className="dialog-close-button" onClick={onClose}>
-            <Icon name="close" size={1.5} />
-          </button>
+          <IconButton icon="close" label={t('common.close')} onClick={onClose} />
         </div>
 
         {/* Content */}
@@ -114,14 +119,15 @@ export const Dialog: React.FC<DialogProps> = ({
               {dialogPages.map((page) => {
                 const { id, label, icon } = page.props;
                 return (
-                  <button
+                  <NavItem
                     key={id}
-                    className={`dialog-sidebar-button t-ui ${activePageId === id ? 'active' : ''}`}
+                    icon={icon}
+                    active={activePageId === id}
+                    indicator={mobile ? 'bottom' : 'start'}
                     onClick={() => setActivePageId(id)}
                   >
-                    {icon && <Icon name={icon} size={1.2} />}
-                    <span>{label}</span>
-                  </button>
+                    {label}
+                  </NavItem>
                 );
               })}
             </div>
@@ -135,7 +141,7 @@ export const Dialog: React.FC<DialogProps> = ({
         {/* Footer */}
         {hasFooter && (
           <div className="dialog-footer">
-            {dialogButtons}
+            {dialogButtons.map(button => React.cloneElement(button, { fullWidth: mobile }))}
           </div>
         )}
       </div>
@@ -164,6 +170,8 @@ interface DialogButtonProps {
   disabled?: boolean;
   loading?: boolean;
   autoFocus?: boolean;
+  // Set by Dialog on narrow screens
+  fullWidth?: boolean;
   children: React.ReactNode;
 }
 
@@ -173,16 +181,19 @@ export const DialogButton: React.FC<DialogButtonProps> = ({
   disabled = false,
   loading = false,
   autoFocus = false,
+  fullWidth = false,
   children
 }) => {
   return (
-    <button
-      className={`dialog-button dialog-button-${variant} t-ui`}
+    <Button
+      variant={variant}
+      fullWidth={fullWidth}
       onClick={onClick}
-      disabled={disabled || loading}
+      disabled={disabled}
+      loading={loading}
       autoFocus={autoFocus}
     >
-      {loading ? 'Loading...' : children}
-    </button>
+      {children}
+    </Button>
   );
 };

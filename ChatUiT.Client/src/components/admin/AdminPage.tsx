@@ -13,6 +13,9 @@ import InternalAgentEditor from './InternalAgentEditor';
 import { toolboxLabel, ADMIN_DOMAINS, ADMIN_DOMAIN_ICONS, ADMIN_SETTINGS_PAGES, type AdminDomain, type AdminSettingsPage } from '../../types/admin';
 import ClassificationBadge from '../common/ClassificationBadge';
 import { Icon } from '../common/Icon';
+import Button from '../common/Button';
+import { List, ListItem } from '../common/List';
+import Stack from '../common/Stack';
 
 const AdminPage: React.FC = () => {
   useSignals();
@@ -48,26 +51,24 @@ const AdminPage: React.FC = () => {
     <>
       {renderHeading(t('admin.tabs.endpoints'), t('admin.domains.endpoints'))}
       {endpoints === undefined ? renderLoading() : (
-        <div className="admin-list">
-          {endpoints.length === 0 && (
-            <div className="admin-list-empty t-ui-plain">{t('admin.endpoints.list.empty')}</div>
-          )}
-          {endpoints.map((endpoint) => (
-            <button
-              key={endpoint.id}
-              className="admin-list-row"
-              onClick={() => navigate(`/admin/endpoints/${endpoint.id}`)}
-            >
-              <div className="admin-row-main">
-                <div className="admin-row-title t-table-strong">{endpoint.url}</div>
-              </div>
-              <div className="admin-row-meta t-meta">{t(`admin.endpointType.${endpoint.endpointType}`)}</div>
-            </button>
-          ))}
-          <button className="admin-list-add t-ui" onClick={() => navigate('/admin/endpoints/new')}>
-            + {t('admin.endpoints.add.title')}
-          </button>
-        </div>
+        <Stack gap="sm">
+          <List bordered>
+            {endpoints.length === 0 && (
+              <div className="admin-list-empty t-ui-plain">{t('admin.endpoints.list.empty')}</div>
+            )}
+            {endpoints.map((endpoint) => (
+              <ListItem
+                key={endpoint.id}
+                onClick={() => navigate(`/admin/endpoints/${endpoint.id}`)}
+                title={endpoint.url}
+                trailing={t(`admin.endpointType.${endpoint.endpointType}`)}
+              />
+            ))}
+          </List>
+          <Button variant="dashed" startIcon="add" fullWidth onClick={() => navigate('/admin/endpoints/new')}>
+            {t('admin.endpoints.add.title')}
+          </Button>
+        </Stack>
       )}
     </>
   );
@@ -76,30 +77,25 @@ const AdminPage: React.FC = () => {
     <>
       {renderHeading(t('admin.tabs.models'), t('admin.domains.models'))}
       {models === undefined ? renderLoading() : (
-        <div className="admin-list">
-          {models.length === 0 && (
-            <div className="admin-list-empty t-ui-plain">{t('admin.models.list.empty')}</div>
-          )}
-          {models.map((model) => (
-            <button
-              key={model.id}
-              className="admin-list-row"
-              onClick={() => navigate(`/admin/models/${model.id}`)}
-            >
-              <div className="admin-row-main">
-                <div className="admin-row-title t-table-strong">{model.modelName}</div>
-                <div className="admin-row-sub t-caption">
-                  {endpoints?.find(e => e.id === model.endpointId)?.url ?? ''}
-                </div>
-              </div>
-              <ClassificationBadge classification={model.classification} />
-              <div className="admin-row-meta t-meta">{model.modelId}</div>
-            </button>
-          ))}
-          <button className="admin-list-add t-ui" onClick={() => navigate('/admin/models/new')}>
-            + {t('admin.models.add.title')}
-          </button>
-        </div>
+        <Stack gap="sm">
+          <List bordered>
+            {models.length === 0 && (
+              <div className="admin-list-empty t-ui-plain">{t('admin.models.list.empty')}</div>
+            )}
+            {models.map((model) => (
+              <ListItem
+                key={model.id}
+                onClick={() => navigate(`/admin/models/${model.id}`)}
+                title={model.modelName}
+                description={endpoints?.find(e => e.id === model.endpointId)?.url ?? ''}
+                trailing={<><ClassificationBadge classification={model.classification} />{model.modelId}</>}
+              />
+            ))}
+          </List>
+          <Button variant="dashed" startIcon="add" fullWidth onClick={() => navigate('/admin/models/new')}>
+            {t('admin.models.add.title')}
+          </Button>
+        </Stack>
       )}
     </>
   );
@@ -108,28 +104,24 @@ const AdminPage: React.FC = () => {
     <>
       {renderHeading(t('admin.tabs.assistants'), t('admin.domains.assistants'))}
       {assistants === undefined ? renderLoading() : (
-        <div className="admin-list">
-          {assistants.length === 0 && (
-            <div className="admin-list-empty t-ui-plain">{t('admin.assistants.list.empty')}</div>
-          )}
-          {assistants.map((assistant) => (
-            <button
-              key={assistant.id}
-              className="admin-list-row"
-              onClick={() => navigate(`/admin/assistants/${assistant.id}`)}
-            >
-              <div className="admin-row-main">
-                <div className="admin-row-title t-table-strong">{assistant.name}</div>
-                {assistant.description && (
-                  <div className="admin-row-sub t-caption">{assistant.description}</div>
-                )}
-              </div>
-            </button>
-          ))}
-          <button className="admin-list-add t-ui" onClick={() => navigate('/admin/assistants/new')}>
-            + {t('admin.assistants.add.title')}
-          </button>
-        </div>
+        <Stack gap="sm">
+          <List bordered>
+            {assistants.length === 0 && (
+              <div className="admin-list-empty t-ui-plain">{t('admin.assistants.list.empty')}</div>
+            )}
+            {assistants.map((assistant) => (
+              <ListItem
+                key={assistant.id}
+                onClick={() => navigate(`/admin/assistants/${assistant.id}`)}
+                title={assistant.name}
+                description={assistant.description}
+              />
+            ))}
+          </List>
+          <Button variant="dashed" startIcon="add" fullWidth onClick={() => navigate('/admin/assistants/new')}>
+            {t('admin.assistants.add.title')}
+          </Button>
+        </Stack>
       )}
     </>
   );
@@ -138,24 +130,20 @@ const AdminPage: React.FC = () => {
     <>
       {renderHeading(t('admin.tabs.tools'), t('admin.domains.tools'))}
       {tools === undefined ? renderLoading() : (
-        <div className="admin-list">
+        <List bordered>
           {tools.length === 0 && (
             <div className="admin-list-empty t-ui-plain">{t('admin.tools.list.empty')}</div>
           )}
           {tools.map((tool) => (
-            <button
+            <ListItem
               key={tool.id}
-              className="admin-list-row"
               onClick={() => navigate(`/admin/tools/${tool.id}`)}
-            >
-              <div className="admin-row-main">
-                <div className="admin-row-title t-table-strong">{toolboxLabel(tool, tools)}</div>
-                <div className="admin-row-sub t-caption">{tool.description}</div>
-              </div>
-              <ClassificationBadge classification={tool.classification} />
-            </button>
+              title={toolboxLabel(tool, tools)}
+              description={tool.description}
+              trailing={<ClassificationBadge classification={tool.classification} />}
+            />
           ))}
-        </div>
+        </List>
       )}
     </>
   );
@@ -165,23 +153,17 @@ const AdminPage: React.FC = () => {
     <>
       {renderHeading(t('admin.agents.title'), t('admin.agents.intro'))}
       {internalAgents === undefined ? renderLoading() : (
-        <div className="admin-list">
+        <List bordered>
           {internalAgents.map((agent) => (
-            <button
+            <ListItem
               key={agent.id}
-              className="admin-list-row"
               onClick={() => navigate(`/admin/agents/${agent.id}`)}
-            >
-              <div className="admin-row-main">
-                <div className="admin-row-title t-table-strong">{agent.name}</div>
-                <div className="admin-row-sub t-caption">{agent.description}</div>
-              </div>
-              <div className="admin-row-meta t-meta">
-                {agent.modelId ? modelNameById(agent.modelId) : t('admin.agents.meta.notSet')}
-              </div>
-            </button>
+              title={agent.name}
+              description={agent.description}
+              trailing={agent.modelId ? modelNameById(agent.modelId) : t('admin.agents.meta.notSet')}
+            />
           ))}
-        </div>
+        </List>
       )}
     </>
   );
@@ -199,24 +181,18 @@ const AdminPage: React.FC = () => {
   const renderOverview = () => (
     <>
       {renderHeading(t('contextColumn.admin'), t('admin.intro'))}
-      <div className="admin-list">
+      <List bordered>
         {ADMIN_DOMAINS.map((domain) => (
-          <button
+          <ListItem
             key={domain}
-            className="admin-list-row"
             onClick={() => navigate(domain === 'settings' ? `/admin/settings/${ADMIN_SETTINGS_PAGES[0]}` : `/admin/${domain}`)}
-          >
-            <Icon name={ADMIN_DOMAIN_ICONS[domain]} size={1.25} className="admin-row-icon" />
-            <div className="admin-row-main">
-              <div className="admin-row-title t-table-strong">{t(`admin.tabs.${domain}`)}</div>
-              <div className="admin-row-sub t-caption">{t(`admin.domains.${domain}`)}</div>
-            </div>
-            {domainCounts[domain] !== undefined && (
-              <div className="admin-row-meta t-meta">{domainCounts[domain]}</div>
-            )}
-          </button>
+            title={t(`admin.tabs.${domain}`)}
+            description={t(`admin.domains.${domain}`)}
+            leading={<Icon name={ADMIN_DOMAIN_ICONS[domain]} size="large" color="muted" />}
+            trailing={domainCounts[domain] !== undefined && domainCounts[domain]}
+          />
         ))}
-      </div>
+      </List>
     </>
   );
 

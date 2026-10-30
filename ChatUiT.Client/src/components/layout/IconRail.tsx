@@ -1,7 +1,10 @@
-import { useState, useRef, useEffect } from 'react';
+import { useState } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
-import { Icon, type IconName } from '../common/Icon';
+import type { IconName } from '../common/Icon';
+import IconButton from '../common/IconButton';
+import Popover from '../common/Popover';
+import { Menu, MenuItem, MenuDivider } from '../common/Menu';
 import { useAuth } from '../../hooks/useAuth';
 import { useSettings } from '../../hooks/useSettings';
 import { resolveMode } from '../../utils/themeUtils';
@@ -31,7 +34,6 @@ const IconRail = ({ isMobile }: IconRailProps) => {
   const [userMenuOpen, setUserMenuOpen] = useState(false);
   // A top bar too narrow for every icon keeps only the main sections and moves the rest into the menu
   const compact = useMediaQuery('(max-width: 27.5rem)') && !!isMobile;
-  const userMenuRef = useRef<HTMLDivElement>(null);
 
   const section = location.pathname.startsWith('/assistants') ? 'assistants'
     : location.pathname.startsWith('/admin') ? 'admin'
@@ -39,17 +41,6 @@ const IconRail = ({ isMobile }: IconRailProps) => {
     : location.pathname.startsWith('/help') ? 'help'
     : location.pathname.startsWith('/status') ? 'status'
     : 'chats';
-
-  useEffect(() => {
-    if (!userMenuOpen) return;
-    const handleClick = (e: MouseEvent) => {
-      if (userMenuRef.current && !userMenuRef.current.contains(e.target as Node)) {
-        setUserMenuOpen(false);
-      }
-    };
-    document.addEventListener('mousedown', handleClick);
-    return () => document.removeEventListener('mousedown', handleClick);
-  }, [userMenuOpen]);
 
   const toggleMode = () => {
     const darkNow = resolveMode(settings.mode) === 'dark';
@@ -84,99 +75,61 @@ const IconRail = ({ isMobile }: IconRailProps) => {
         />
       )}
 
-      <button className="rail-new-chat" onClick={() => go('/chat/new')} title={t('sidebar.newChat')}>
-        <Icon name="chatNew" size={1.25} />
-      </button>
+      <IconButton icon="chatNew" label={t('sidebar.newChat')} variant="primary" onClick={() => go('/chat/new')} />
 
       {!isMobile && <div className="rail-gap" />}
 
-      <button
-        className={`rail-button ${section === 'chats' ? 'active' : ''}`}
-        onClick={() => go('/')}
-        title={t('sidebar.chats')}
-      >
-        <Icon name="chat" size={1.25} />
-      </button>
-      <button
-        className={`rail-button ${section === 'assistants' ? 'active' : ''}`}
-        onClick={() => go('/assistants')}
-        title={t('sidebar.assistants')}
-      >
-        <Icon name="assistants" size={1.25} />
-      </button>
+      <IconButton icon="chat" label={t('sidebar.chats')} active={section === 'chats'} onClick={() => go('/')} />
+      <IconButton icon="assistants" label={t('sidebar.assistants')} active={section === 'assistants'} onClick={() => go('/assistants')} />
       {isAdmin && (
-        <button
-          className={`rail-button ${section === 'admin' ? 'active' : ''}`}
-          onClick={() => go('/admin')}
-          title={t('sidebar.admin')}
-        >
-          <Icon name="admin" size={1.25} />
-        </button>
+        <IconButton icon="admin" label={t('sidebar.admin')} active={section === 'admin'} onClick={() => go('/admin')} />
       )}
 
       <div className="rail-spacer" />
 
       {!compact && secondaryItems.map(item => (
-        <button
-          key={item.key}
-          className={`rail-button ${item.active ? 'active' : ''}`}
-          onClick={item.onClick}
-          title={item.title}
-        >
-          <Icon name={item.icon} size={1.25} />
-        </button>
+        <IconButton key={item.key} icon={item.icon} label={item.title} active={item.active} onClick={item.onClick} />
       ))}
 
-      <div className="rail-user" ref={userMenuRef}>
-        {compact ? (
-          <button
-            className={`rail-button ${userMenuOpen ? 'active' : ''}`}
-            onClick={() => setUserMenuOpen((open) => !open)}
-            title={t('navigation.menu')}
-            aria-expanded={userMenuOpen}
-          >
-            <Icon name="menu" size={1.25} />
-          </button>
+      <Popover
+        open={userMenuOpen}
+        onOpenChange={setUserMenuOpen}
+        placement={isMobile ? 'bottom-end' : 'right-end'}
+        panelWidth="medium"
+        trigger={compact ? (
+          <IconButton icon="menu" label={t('navigation.menu')} active={userMenuOpen} />
         ) : (
-          <button
-            className="rail-avatar t-label"
-            onClick={() => setUserMenuOpen((open) => !open)}
-            title={account?.name || t('sidebar.profile')}
-          >
-            {getInitials(account?.name)}
-          </button>
+          <IconButton
+            icon={<span className="rail-avatar t-label">{getInitials(account?.name)}</span>}
+            label={account?.name || t('sidebar.profile')}
+          />
         )}
-        {userMenuOpen && (
-          <div className="rail-user-menu">
-            <div className="rail-user-menu-header">
-              <div className="rail-user-menu-name t-body-strong">{account?.name || t('sidebar.profile')}</div>
-              {account?.username && <div className="rail-user-menu-email t-caption">{account.username}</div>}
-            </div>
-            {compact ? (
-              <div className="rail-user-menu-items">
-                {secondaryItems.map(item => (
-                  <button key={item.key} className="rail-user-menu-item t-body" onClick={item.onClick}>
-                    <Icon name={item.icon} size={1.125} />
-                    {item.menuLabel}
-                  </button>
-                ))}
-              </div>
-            ) : (
-              <div className="rail-user-menu-items">
-                <button className="t-body" onClick={() => go('/settings')}>{t('sidebar.settings')}</button>
-                <button className="t-body" onClick={() => go('/help')}>{t('sidebar.help')}</button>
-              </div>
-            )}
-            <div className="rail-user-menu-footer">
-              {isAuthenticated ? (
-                <button className="rail-user-menu-danger t-body" onClick={logout}>{t('sidebar.logout')}</button>
-              ) : (
-                <button className="t-body" onClick={login}>{t('sidebar.login')}</button>
-              )}
-            </div>
-          </div>
-        )}
-      </div>
+      >
+        <div className="rail-user-menu-header">
+          <div className="rail-user-menu-name t-body-strong">{account?.name || t('sidebar.profile')}</div>
+          {account?.username && <div className="rail-user-menu-email t-caption">{account.username}</div>}
+        </div>
+        <Menu>
+          {compact ? (
+            secondaryItems.map(item => (
+              <MenuItem key={item.key} icon={item.icon} onClick={item.onClick}>
+                {item.menuLabel}
+              </MenuItem>
+            ))
+          ) : (
+            <>
+              <MenuItem onClick={() => go('/settings')}>{t('sidebar.settings')}</MenuItem>
+              <MenuItem onClick={() => go('/help')}>{t('sidebar.help')}</MenuItem>
+            </>
+          )}
+          <MenuDivider />
+          {isAuthenticated ? (
+            <MenuItem danger onClick={logout}>{t('sidebar.logout')}</MenuItem>
+          ) : (
+            <MenuItem onClick={login}>{t('sidebar.login')}</MenuItem>
+          )}
+        </Menu>
+      </Popover>
     </nav>
   );
 };

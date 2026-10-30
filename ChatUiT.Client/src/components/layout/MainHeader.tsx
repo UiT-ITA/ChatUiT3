@@ -1,13 +1,15 @@
 import { useLocation, useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { useSignals } from '@preact/signals-react/runtime';
-import { Icon } from '../common/Icon';
+import Button from '../common/Button';
+import IconButton from '../common/IconButton';
 import { getChat } from '../../services/chatService';
 import { getAssistants } from '../../services/assistantService';
 import { conversationPanelOpenSignal, editorHeaderSignal } from '../../services/uiService';
 import useMediaQuery from '../../hooks/useMediaQuery';
 import type { SettingsCategory } from '../../types/settingsModels';
 import { isHelpSection } from '../help/helpSections';
+import Badge from '../common/Badge';
 
 const SETTINGS_TABS: SettingsCategory[] = ['appearance', 'personalization', 'dataControl'];
 
@@ -91,42 +93,35 @@ const MainHeader = ({ isMobile }: MainHeaderProps) => {
   return (
     <header className="main-header">
       {editor ? (
-        <button
-          className="main-header-back t-ui"
-          onClick={() => navigate(editor.backPath)}
-        >
-          <Icon name="back" size={1.125} />
-          <span className="main-header-back-label">{editor.backLabel}</span>
-        </button>
+        <Button variant="ghost" startIcon="back" shrink minWidth="0" onClick={() => navigate(editor.backPath)}>
+          {editor.backLabel}
+        </Button>
       ) : isMobile && (
-        <button
-          className="main-header-back t-ui"
-          onClick={() => navigate(sectionRoots[section])}
-        >
-          <Icon name="back" size={1.125} />
+        <Button variant="ghost" startIcon="back" shrink minWidth="0" onClick={() => navigate(sectionRoots[section])}>
           {sectionTitles[section]}
-        </button>
+        </Button>
       )}
       <div className="main-header-title t-title">{title}</div>
-      {chip && !isMobile && <span className="main-header-chip t-chip">{chip}</span>}
+      {chip && !isMobile && <Badge tone="accent" size="medium" maxWidth="12rem">{chip}</Badge>}
       {editor?.dirty && (
         <>
-          <button className="main-header-save t-ui" onClick={editor.onSave} disabled={editor.saveDisabled}>
+          <Button variant="primary" size="small" onClick={editor.onSave} disabled={editor.saveDisabled}>
             {editor.saveLabel}
-          </button>
-          <button className="main-header-cancel t-ui" onClick={editor.onCancel}>
+          </Button>
+          <Button variant="secondary" size="small" onClick={editor.onCancel}>
             {t('common.cancel')}
-          </button>
+          </Button>
         </>
       )}
       {showPanelToggle && (
-        <button
-          className={`main-header-action ${panelOpen ? 'active' : ''}`}
+        <IconButton
+          icon="sidebarToggle"
+          label={t('chat.togglePanel')}
+          variant="subtle"
+          size="small"
+          active={panelOpen}
           onClick={() => { conversationPanelOpenSignal.value = !panelOpen; }}
-          title={t('chat.togglePanel')}
-        >
-          <Icon name="sidebarToggle" size={1.0625} />
-        </button>
+        />
       )}
     </header>
   );

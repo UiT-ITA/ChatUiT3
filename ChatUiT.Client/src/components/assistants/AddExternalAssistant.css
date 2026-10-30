@@ -28,54 +28,6 @@
   align-items: center;
 }
 
-.add-external-assistant-input {
-  flex: 1;
-  background: var(--surface);
-  border: 1px solid var(--line);
-  border-radius: var(--radius-md);
-  min-height: 2.25rem;
-  padding: 0 0.75rem;
-  color: var(--text);
-  transition: border-color var(--dur-fast) var(--ease-standard);
-}
-
-.add-external-assistant-input:focus {
-  outline: none;
-  border-color: var(--accent);
-}
-
-.add-external-assistant-input::placeholder {
-  color: var(--text-3);
-}
-
-.add-external-assistant-input:disabled {
-  opacity: 0.6;
-  cursor: not-allowed;
-}
-
-.add-external-assistant-button {
-  background: transparent;
-  color: var(--text);
-  border: 2px solid var(--btn-bg);
-  border-radius: var(--radius-md);
-  height: 2.25rem;
-  padding: 0 0.875rem;
-  cursor: pointer;
-  white-space: nowrap;
-  transition: background var(--dur-base) var(--ease-standard);
-}
-
-.add-external-assistant-button:hover:not(:disabled) {
-  background: var(--panel-2);
-}
-
-.add-external-assistant-button:disabled {
-  border-color: var(--line);
-  color: var(--text-3);
-  opacity: 0.6;
-  cursor: not-allowed;
-}
-
 @media (max-width: 30rem) {
   .add-external-assistant-form {
     flex-direction: column;

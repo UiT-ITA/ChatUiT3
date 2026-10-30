@@ -1,0 +1,47 @@
+.select {
+  position: relative;
+}
+
+.select--inline {
+  min-width: 10rem;
+}
+
+.select__input {
+  appearance: none;
+  padding-right: 2rem;
+  cursor: pointer;
+}
+
+.select__chevron {
+  position: absolute;
+  top: 50%;
+  right: 0.75rem;
+  transform: translateY(-50%);
+  color: var(--text);
+  pointer-events: none;
+}
+
+/* SelectButton: a dropdown box that shows custom content */
+.select-button {
+  font-family: var(--font-sans);
+  position: relative;
+  padding-right: 2.5rem;
+  cursor: pointer;
+  text-align: left;
+}
+
+.select-button:disabled {
+  cursor: not-allowed;
+}
+
+.select-button__value {
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+  flex: 1;
+  min-width: 0;
+}
+
+.select-button__placeholder {
+  color: var(--text-3);
+}

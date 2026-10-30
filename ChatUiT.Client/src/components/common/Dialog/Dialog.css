@@ -76,23 +76,6 @@
   color: var(--text);
 }
 
-.dialog-close-button {
-  background: none;
-  border: none;
-  color: var(--text-3);
-  cursor: pointer;
-  padding: 0.25rem;
-  border-radius: var(--radius-sm);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  transition: color var(--dur-fast) var(--ease-standard);
-}
-
-.dialog-close-button:hover {
-  color: var(--danger);
-}
-
 /* Dialog Content */
 .dialog-content {
   display: flex;
@@ -110,36 +93,6 @@
   flex-direction: column;
   gap: 0.0625rem;
   flex-shrink: 0;
-}
-
-.dialog-sidebar-button {
-  background: none;
-  border: none;
-  border-left: 3px solid transparent;
-  color: var(--text-2);
-  cursor: pointer;
-  padding: 0.5625rem 1.125rem;
-  display: flex;
-  align-items: center;
-  gap: 0.625rem;
-  transition: background var(--dur-fast) var(--ease-standard), color var(--dur-fast) var(--ease-standard);
-  text-align: left;
-  width: 100%;
-}
-
-.dialog-sidebar-button:hover {
-  background: var(--panel-2);
-  color: var(--text);
-}
-
-.dialog-sidebar-button.active {
-  background: var(--sel);
-  color: var(--text);
-  border-left-color: var(--accent-2);
-}
-
-.dialog-sidebar-button span {
-  flex: 1;
 }
 
 /* Dialog Main Content */
@@ -164,57 +117,6 @@
   padding: 1rem 1.25rem;
   border-top: 1px solid var(--line);
   flex-shrink: 0;
-}
-
-/* Dialog Buttons */
-.dialog-button {
-  height: 2.25rem;
-  padding: 0 0.875rem;
-  border-radius: var(--radius-md);
-  cursor: pointer;
-  transition: background var(--dur-base) var(--ease-standard), color var(--dur-base) var(--ease-standard);
-  display: inline-flex;
-  align-items: center;
-  gap: 0.5rem;
-  min-width: 4rem;
-  justify-content: center;
-}
-
-.dialog-button:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
-}
-
-.dialog-button-primary {
-  background: var(--btn-bg);
-  color: var(--btn-fg);
-  border: 2px solid var(--btn-bg);
-}
-
-.dialog-button-primary:hover:not(:disabled) {
-  background: var(--btn-hover);
-  border-color: var(--btn-hover);
-}
-
-.dialog-button-secondary {
-  background: transparent;
-  color: var(--text);
-  border: 2px solid var(--btn-bg);
-}
-
-.dialog-button-secondary:hover:not(:disabled) {
-  background: var(--panel-2);
-}
-
-.dialog-button-danger {
-  background: transparent;
-  color: var(--danger);
-  border: 2px solid var(--danger);
-}
-
-.dialog-button-danger:hover:not(:disabled) {
-  background: var(--danger);
-  color: var(--uit-white);
 }
 
 /* Mobile Responsive */
@@ -258,19 +160,7 @@
     border-bottom: 1px solid var(--line);
   }
 
-  .dialog-sidebar-button {
-    white-space: nowrap;
-    padding: 0.5rem 1rem;
-    border-left: none;
-    flex-shrink: 0;
-    width: auto;
-    border-bottom: 2px solid transparent;
-  }
 
-  .dialog-sidebar-button.active {
-    border-left: none;
-    border-bottom: 2px solid var(--accent-2);
-  }
 
   .dialog-main {
     padding: 1rem;
@@ -283,10 +173,6 @@
   .dialog-footer {
     padding: 1rem;
     flex-direction: column-reverse;
-  }
-
-  .dialog-button {
-    width: 100%;
   }
 }
 

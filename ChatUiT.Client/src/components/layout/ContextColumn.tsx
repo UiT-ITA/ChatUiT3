@@ -2,7 +2,9 @@ import { useState, useEffect } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { useSignals } from '@preact/signals-react/runtime';
-import { Icon } from '../common/Icon';
+import Button from '../common/Button';
+import NavItem from '../common/NavItem';
+import SearchField from '../common/SearchField';
 import { ChatList } from '../chat/ChatList';
 import { AssistantList } from '../assistants/AssistantList';
 import { getChats } from '../../services/chatService';
@@ -90,71 +92,73 @@ const ContextColumn = ({ isMobile }: ContextColumnProps) => {
     switch (domain) {
       case 'endpoints':
         return adminEndpoints === undefined ? renderAdminLoading() : adminEndpoints.map((endpoint) => (
-          <button
+          <NavItem
             key={endpoint.id}
-            className={`context-nav-row context-list-row t-ui-plain ${activeAdminId === endpoint.id ? 'active' : ''}`}
+            level={2}
+            active={activeAdminId === endpoint.id}
             onClick={() => navigate(`/admin/endpoints/${endpoint.id}`)}
+            description={t(`admin.endpointType.${endpoint.endpointType}`)}
           >
-            <span className="context-list-row-title">{endpoint.url}</span>
-            <span className="context-list-row-meta t-caption">{t(`admin.endpointType.${endpoint.endpointType}`)}</span>
-          </button>
+            {endpoint.url}
+          </NavItem>
         ));
       case 'models':
         return adminModels === undefined ? renderAdminLoading() : adminModels.map((model) => (
-          <button
+          <NavItem
             key={model.id}
-            className={`context-nav-row context-list-row t-ui-plain ${activeAdminId === model.id ? 'active' : ''}`}
+            level={2}
+            active={activeAdminId === model.id}
             onClick={() => navigate(`/admin/models/${model.id}`)}
+            description={adminEndpoints?.find(endpoint => endpoint.id === model.endpointId)?.url ?? ''}
           >
-            <span className="context-list-row-title">{model.modelName}</span>
-            <span className="context-list-row-meta t-caption">{adminEndpoints?.find(endpoint => endpoint.id === model.endpointId)?.url ?? ''}</span>
-          </button>
+            {model.modelName}
+          </NavItem>
         ));
       case 'assistants':
         return adminAssistants === undefined ? renderAdminLoading() : adminAssistants.map((assistant) => (
-          <button
+          <NavItem
             key={assistant.id}
-            className={`context-nav-row context-list-row t-ui-plain ${activeAdminId === assistant.id ? 'active' : ''}`}
+            level={2}
+            active={activeAdminId === assistant.id}
             onClick={() => navigate(`/admin/assistants/${assistant.id}`)}
+            description={assistant.description}
           >
-            <span className="context-list-row-title">{assistant.name}</span>
-            {assistant.description && (
-              <span className="context-list-row-sub t-caption">{assistant.description}</span>
-            )}
-          </button>
+            {assistant.name}
+          </NavItem>
         ));
       case 'tools':
         return adminTools === undefined ? renderAdminLoading() : adminTools.map((tool) => (
-          <button
+          <NavItem
             key={tool.id}
-            className={`context-nav-row context-list-row t-ui-plain ${activeAdminId === tool.id ? 'active' : ''}`}
+            level={2}
+            active={activeAdminId === tool.id}
             onClick={() => navigate(`/admin/tools/${tool.id}`)}
           >
-            <span className="context-list-row-title">{toolboxLabel(tool, adminTools)}</span>
-          </button>
+            {toolboxLabel(tool, adminTools)}
+          </NavItem>
         ));
       case 'agents':
         return adminInternalAgents === undefined ? renderAdminLoading() : adminInternalAgents.map((agent) => (
-          <button
+          <NavItem
             key={agent.id}
-            className={`context-nav-row context-list-row t-ui-plain ${activeAdminId === agent.id ? 'active' : ''}`}
+            level={2}
+            active={activeAdminId === agent.id}
             onClick={() => navigate(`/admin/agents/${agent.id}`)}
+            description={agent.modelId ? adminModels?.find(model => model.id === agent.modelId)?.modelName ?? agent.modelId : t('admin.agents.meta.notSet')}
           >
-            <span className="context-list-row-title">{agent.name}</span>
-            <span className="context-list-row-meta t-caption">
-              {agent.modelId ? adminModels?.find(model => model.id === agent.modelId)?.modelName ?? agent.modelId : t('admin.agents.meta.notSet')}
-            </span>
-          </button>
+            {agent.name}
+          </NavItem>
         ));
       case 'settings':
         return ADMIN_SETTINGS_PAGES.map((page) => (
-          <button
+          <NavItem
             key={page}
-            className={`context-nav-row t-ui-plain ${activeAdminId === page ? 'active' : ''}`}
+            level={2}
+            active={activeAdminId === page}
             onClick={() => navigate(`/admin/settings/${page}`)}
           >
             {t(`admin.settings.pages.${page}`)}
-          </button>
+          </NavItem>
         ));
     }
   };
@@ -171,20 +175,12 @@ const ContextColumn = ({ isMobile }: ContextColumnProps) => {
       {section === 'chats' && (
         <>
           <div className="context-search-wrap">
-            <div className="context-search">
-              <Icon name="search" size={0.9375} className="context-search-icon" />
-              <input
-                value={query}
-                onChange={(e) => setQuery(e.target.value)}
-                placeholder={t('contextColumn.searchChats')}
-                className="t-ui-plain"
-              />
-              {query.length > 0 && (
-                <button className="context-search-clear" onClick={() => setQuery('')} title={t('common.clear')}>
-                  <Icon name="close" size={0.875} />
-                </button>
-              )}
-            </div>
+            <SearchField
+              size="small"
+              value={query}
+              onChange={setQuery}
+              placeholder={t('contextColumn.searchChats')}
+            />
           </div>
           <div className="context-column-scroll">
             <ChatList filter={query} />
@@ -194,32 +190,34 @@ const ContextColumn = ({ isMobile }: ContextColumnProps) => {
 
       {section === 'assistants' && (
         <div className="context-column-scroll">
-          <button
-            className={`context-nav-row t-ui ${activeAssistantId === undefined ? 'active' : ''}`}
-            onClick={() => navigate('/assistants')}
-          >
+          <NavItem active={activeAssistantId === undefined} onClick={() => navigate('/assistants')}>
             {t('assistants.overview')}
-          </button>
+          </NavItem>
           <AssistantList activeId={activeAssistantId} />
-          <button
-            className={`context-add-row t-ui ${activeAssistantId === 'new' ? 'active' : ''}`}
+          <Button
+            variant="dashed"
+            startIcon="add"
+            fullWidth
+            justify="start"
+            mt="sm"
+            active={activeAssistantId === 'new'}
             onClick={() => navigate('/assistants/new')}
           >
-            + {t('assistants.newAssistant')}
-          </button>
+            {t('assistants.newAssistant')}
+          </Button>
         </div>
       )}
 
       {section === 'settings' && (
         <div className="context-column-scroll">
           {SETTINGS_TABS.map((tabId) => (
-            <button
+            <NavItem
               key={tabId}
-              className={`context-nav-row t-ui ${activeSettingsTab === tabId ? 'active' : ''}`}
+              active={activeSettingsTab === tabId}
               onClick={() => navigate(`/settings/${tabId}`)}
             >
               {t(`settings.categories.${tabId}`)}
-            </button>
+            </NavItem>
           ))}
         </div>
       )}
@@ -232,23 +230,19 @@ const ContextColumn = ({ isMobile }: ContextColumnProps) => {
 
       {section === 'admin' && (
         <div className="context-column-scroll">
-          <button
-            className={`context-nav-row context-icon-row t-ui ${activeAdminTab === undefined ? 'active' : ''}`}
-            onClick={() => navigate('/admin')}
-          >
-            <Icon name="grid" size={1} className="context-icon-row-icon" />
+          <NavItem icon="grid" active={activeAdminTab === undefined} onClick={() => navigate('/admin')}>
             {t('assistants.overview')}
-          </button>
+          </NavItem>
 
           {ADMIN_DOMAINS.map((domain) => (
             <div key={domain}>
-              <button
-                className={`context-nav-row context-icon-row t-ui ${activeAdminTab === domain && activeAdminId === undefined ? 'active' : ''}`}
+              <NavItem
+                icon={ADMIN_DOMAIN_ICONS[domain]}
+                active={activeAdminTab === domain && activeAdminId === undefined}
                 onClick={() => navigate(domain === 'settings' ? `/admin/settings/${ADMIN_SETTINGS_PAGES[0]}` : `/admin/${domain}`)}
               >
-                <Icon name={ADMIN_DOMAIN_ICONS[domain]} size={1} className="context-icon-row-icon" />
                 {t(`admin.tabs.${domain}`)}
-              </button>
+              </NavItem>
               {activeAdminTab === domain && (
                 <div className="context-nav-children">
                   {renderAdminDomainItems(domain)}

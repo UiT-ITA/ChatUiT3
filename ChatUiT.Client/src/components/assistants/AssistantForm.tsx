@@ -1,7 +1,6 @@
 import React, { useState, useRef, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
-import { MdImage, MdPublic, MdPsychology, MdExpandMore, MdExpandLess } from 'react-icons/md';
 import { useSignals } from '@preact/signals-react/runtime';
 import { PROMPT_SNIPPET_IDS, type AssistantAccessPolicyDto, type AssistantFileDto, type CreateAssistantDto, type FullAssistantDto, type PromptSnippetId, type ReasoningEffort, type ChatToolDto, type UpdateAssistantDto, type UserRole } from '../../types/assistantModels';
 import { getModels } from '../../services/modelService';
@@ -15,6 +14,16 @@ import type { UserModelDto } from '../../types/modelModels';
 import { createAssistant, updateAssistant, fetchAssistantFile, getAssistants } from '../../services/assistantService';
 import TagField from '../common/TagField';
 import ClassificationBadge from '../common/ClassificationBadge';
+import SelectButton from '../common/SelectButton';
+import TextInput from '../common/TextInput';
+import TextArea from '../common/TextArea';
+import Checkbox, { CheckboxGroup } from '../common/Checkbox';
+import Field, { FieldDescription } from '../common/Field';
+import Grid from '../common/Grid';
+import Stack from '../common/Stack';
+import { Icon } from '../common/Icon';
+import { Listbox, ListboxOption } from '../common/Listbox';
+import Popover from '../common/Popover';
 import KnowledgeFileList, { type KnowledgeFileCategory, type KnowledgeFileItemData } from './KnowledgeFileList';
 import KnowledgeSourceList from './KnowledgeSourceList';
 import type { ChatFile } from '../../types/fileModels';
@@ -25,6 +34,8 @@ import { knowledgeFileTokens, knowledgeFilesTokens } from './knowledgeTokens';
 import EditorHeader from '../layout/EditorHeader';
 import { hasChanges } from '../../utils/formChanges';
 import './AssistantForm.css';
+import Badge from '../common/Badge';
+import Slider from '../common/Slider';
 
 const createEmptyKnowledgeFiles = (): Record<KnowledgeFileCategory, KnowledgeFileItemData[]> => ({
   alwaysLoaded: [],
@@ -148,7 +159,6 @@ const AssistantForm: React.FC<AssistantFormProps> = ({
 
   const [knowledgeFiles, setKnowledgeFiles] = useState<Record<KnowledgeFileCategory, KnowledgeFileItemData[]>>(initialState.knowledgeFiles);
   const [rejectedFiles, setRejectedFiles] = useState<RejectedKnowledgeFile[]>([]);
-  const modelDropdownRef = useRef<HTMLDivElement>(null);
 
   const [formData, setFormData] = useState<CreateAssistantDto>(initialState.formData);
 
@@ -285,24 +295,6 @@ const AssistantForm: React.FC<AssistantFormProps> = ({
     setFormData({ ...formData, modelId: selectableDefaultModelId });
   }
 
-  // Close dropdown when clicking outside
-  useEffect(() => {
-    const handleClickOutside = (event: MouseEvent) => {
-      if (modelDropdownRef.current && !modelDropdownRef.current.contains(event.target as Node)) {
-        setIsModelDropdownOpen(false);
-      }
-    };
-
-    if (isModelDropdownOpen) {
-      document.addEventListener('mousedown', handleClickOutside);
-    } else {
-      document.removeEventListener('mousedown', handleClickOutside);
-    }
-
-    return () => {
-      document.removeEventListener('mousedown', handleClickOutside);
-    };
-  }, [isModelDropdownOpen]);
 
   const handleChange = (field: keyof CreateAssistantDto, value: CreateAssistantDto[keyof CreateAssistantDto]) => {
     setFormData(prev => ({ ...prev, [field]: value }));
@@ -338,29 +330,27 @@ const AssistantForm: React.FC<AssistantFormProps> = ({
     const wider = selected && toolIsWiderThanPolicy(tool.id);
     return (
       <React.Fragment key={tool.id}>
-        <label className={`af-checkbox-label af-tool t-table${wider ? ' af-tool-wider' : ''}`}>
-          <input
-            type="checkbox"
-            checked={selected}
-            onChange={(e) => handleToolSelection(tool, e.target.checked)}
-            disabled={loading}
-          />
-          <span>
+        <Checkbox
+          checked={selected}
+          onChange={(checked) => handleToolSelection(tool, checked)}
+          disabled={loading}
+        >
+          <span className={wider ? 'af-tool-wider' : undefined}>
             <span className="af-tool-name t-table-strong">{tool.name}</span>
-            <ClassificationBadge classification={tool.classification} className="af-tool-classification" />
+            <ClassificationBadge classification={tool.classification} ml="sm" />
             <span className="af-tool-description"> — {tool.description}</span>
             {(tool.requiresConfirmation || wider) && (
-              <span className="af-tool-hints">
+              <Stack as="span" direction="row" gap="sm" wrap mt="2xs">
                 {tool.requiresConfirmation && (
-                  <span className="af-tool-hint t-meta">{t('assistants.form.toolHints.requiresConfirmation')}</span>
+                  <Badge>{t('assistants.form.toolHints.requiresConfirmation')}</Badge>
                 )}
                 {wider && (
-                  <span className="af-tool-hint af-tool-hint-warn t-meta">{t('assistants.form.toolHints.widerAccess')}</span>
+                  <Badge tone="warning">{t('assistants.form.toolHints.widerAccess')}</Badge>
                 )}
-              </span>
+              </Stack>
             )}
           </span>
-        </label>
+        </Checkbox>
         {selected && tool.children.length > 0 && (
           <div className="af-tool-children">{tool.children.map(renderToolbox)}</div>
         )}
@@ -559,18 +549,8 @@ const AssistantForm: React.FC<AssistantFormProps> = ({
     return hasChanges(comparableState({ formData, knowledgeFiles, selectedToolIds, access }), comparableState(saved));
   }, [formData, knowledgeFiles, selectedToolIds, access, initialState, selectableDefaultModelId]);
 
-  const renderCapabilityIcon = (capability: string, enabled: boolean, icon: React.ReactNode) => {
-    if (!enabled) return null;
-
-    return (
-      <span key={capability} className="af-capability-icon" title={capability}>
-        {icon}
-      </span>
-    );
-  };
-
   return (
-    <div className="assistant-form">
+    <Stack gap="xl">
       <EditorHeader
         backPath={backPath}
         backLabel={backLabel}
@@ -582,144 +562,134 @@ const AssistantForm: React.FC<AssistantFormProps> = ({
         onSave={() => { void handleSubmit(); }}
         onCancel={() => navigate(backPath)}
       />
-      <div className="af-grid">
-        <div className="af-field">
-          <label className="af-label t-label">{t('assistants.form.name')}</label>
-          <input
-            type="text"
-            value={formData.name}
-            onChange={(e) => handleChange('name', e.target.value)}
-            className="af-input t-body"
-            placeholder={t('assistants.form.namePlaceholder')}
-            disabled={loading}
-          />
-        </div>
-
-        <div className="af-field">
-          <label className="af-label t-label">{t('assistants.form.model')}</label>
-          <div className="af-model-dropdown" ref={modelDropdownRef}>
-            <button
-              type="button"
-              className="af-model-button t-body"
-              onClick={() => setIsModelDropdownOpen(!isModelDropdownOpen)}
-              disabled={loading}
-            >
-              <span className="af-model-button-text">
-                {selectedModel ? selectedModel.modelName : t('assistants.form.selectModel')}
-              </span>
-              {selectedModel && <ClassificationBadge classification={selectedModel.classification} />}
-              {isModelDropdownOpen ? <MdExpandLess size="1.25rem" /> : <MdExpandMore size="1.25rem" />}
-            </button>
-
-            {isModelDropdownOpen && (
-              <div className="af-model-list">
-                {models.map(model => {
-                  const modelScheme = knowledgeFiles.alwaysLoaded.length > 0
-                    ? parseScheme(model.capabilities.tokenCountingScheme)
-                    : null;
-                  const modelBudget = modelScheme
-                    ? alwaysLoadedBudget(model, modelScheme, getTokenizer(modelScheme).value)
-                    : undefined;
-                  return (
-                  <div
-                    key={model.id}
-                    className={`af-model-option ${formData.modelId === model.id ? 'selected' : ''}`}
-                    onClick={() => handleModelChange(model.id)}
-                  >
-                    <div className="af-model-option-header">
-                      <span className="af-model-name t-ui">{model.modelName}</span>
-                      <ClassificationBadge classification={model.classification} />
-                      <div className="af-model-capabilities">
-                        {renderCapabilityIcon('Vision', model.capabilities.vision, <MdImage size="1rem" />)}
-                        {renderCapabilityIcon('Tools', model.capabilities.tools, <MdPublic size="1rem" />)}
-                        {renderCapabilityIcon('Reasoning', model.capabilities.supportedEfforts.length > 0, <MdPsychology size="1rem" />)}
-                      </div>
-                    </div>
-                    <div className="af-model-description t-caption">{model.description}</div>
-                    <div className="af-model-specs t-meta">
-                      <span>Context: {model.capabilities.contextSize.toLocaleString()}</span>
-                      <span>Output: {model.capabilities.maxOutputTokens.toLocaleString()}</span>
-                      {model.capabilities.knowledgeCutoff && (
-                        <span>Knowledge: {model.capabilities.knowledgeCutoff}</span>
-                      )}
-                    </div>
-                    {modelBudget?.used !== undefined && modelBudget.used > modelBudget.limit && (
-                      <div className="af-model-budget t-meta">
-                        {t('assistants.knowledge.budget.modelTooSmall', {
-                          used: `${modelScheme!.isEstimate ? '≈ ' : ''}${formatTokens(modelBudget.used, i18n.language)}`,
-                          limit: formatTokens(modelBudget.limit, i18n.language)
-                        })}
-                      </div>
-                    )}
-                  </div>
-                  );
-                })}
-              </div>
-            )}
-          </div>
-          {pinWillGoInactive && (
-            <div className="af-note t-ui-plain">{t('assistants.form.modelNotDefaultEligible')}</div>
-          )}
-        </div>
-      </div>
-
-      <div className="af-field">
-        <label className="af-label t-label">{t('assistants.form.description')}</label>
-        <input
-          type="text"
-          value={formData.description}
-          onChange={(e) => handleChange('description', e.target.value)}
-          className="af-input t-body"
-          placeholder={t('assistants.form.description')}
+      <Grid minColumnWidth="12rem" gap="lg">
+        <TextInput
+          label={t('assistants.form.name')}
+          value={formData.name}
+          onChange={(value) => handleChange('name', value)}
+          placeholder={t('assistants.form.namePlaceholder')}
           disabled={loading}
         />
-      </div>
 
-      <div className="af-field">
-        <label className="af-label t-label">{t('assistants.form.tags')}</label>
+        <Popover
+          open={isModelDropdownOpen}
+          onOpenChange={setIsModelDropdownOpen}
+          placement="bottom-start"
+          offset="xs"
+          panelWidth="trigger"
+          width="full"
+          minWidth="0"
+          disabled={loading}
+          trigger={(
+            <SelectButton
+              label={t('assistants.form.model')}
+              description={pinWillGoInactive ? t('assistants.form.modelNotDefaultEligible') : undefined}
+              placeholder={t('assistants.form.selectModel')}
+              disabled={loading}
+            >
+              {selectedModel && (
+                <>
+                  <span className="af-model-button-text">{selectedModel.modelName}</span>
+                  <ClassificationBadge classification={selectedModel.classification} />
+                </>
+              )}
+            </SelectButton>
+          )}
+        >
+          <Listbox maxHeight="20rem">
+            {models.map(model => {
+              const modelScheme = knowledgeFiles.alwaysLoaded.length > 0
+                ? parseScheme(model.capabilities.tokenCountingScheme)
+                : null;
+              const modelBudget = modelScheme
+                ? alwaysLoadedBudget(model, modelScheme, getTokenizer(modelScheme).value)
+                : undefined;
+              return (
+                <ListboxOption
+                  key={model.id}
+                  selected={formData.modelId === model.id}
+                  onClick={() => handleModelChange(model.id)}
+                  description={(
+                    <>
+                      {model.description}
+                      <span className="af-model-specs t-meta">
+                        <span>Context: {model.capabilities.contextSize.toLocaleString()}</span>
+                        <span>Output: {model.capabilities.maxOutputTokens.toLocaleString()}</span>
+                        {model.capabilities.knowledgeCutoff && (
+                          <span>Knowledge: {model.capabilities.knowledgeCutoff}</span>
+                        )}
+                      </span>
+                      {modelBudget?.used !== undefined && modelBudget.used > modelBudget.limit && (
+                        <span className="af-model-budget t-meta">
+                          {t('assistants.knowledge.budget.modelTooSmall', {
+                            used: `${modelScheme!.isEstimate ? '≈ ' : ''}${formatTokens(modelBudget.used, i18n.language)}`,
+                            limit: formatTokens(modelBudget.limit, i18n.language)
+                          })}
+                        </span>
+                      )}
+                    </>
+                  )}
+                >
+                  <span className="af-model-name t-ui">{model.modelName}</span>
+                  <ClassificationBadge classification={model.classification} />
+                  <span className="af-model-capabilities">
+                    {model.capabilities.vision && <Icon name="image" color="accent" label="Vision" />}
+                    {model.capabilities.tools && <Icon name="globe" color="accent" label="Tools" />}
+                    {model.capabilities.supportedEfforts.length > 0 && <Icon name="brain" color="accent" label="Reasoning" />}
+                  </span>
+                </ListboxOption>
+              );
+            })}
+          </Listbox>
+        </Popover>
+      </Grid>
+
+      <TextInput
+        label={t('assistants.form.description')}
+        value={formData.description}
+        onChange={(value) => handleChange('description', value)}
+        placeholder={t('assistants.form.description')}
+        disabled={loading}
+      />
+
+      <Field label={t('assistants.form.tags')}>
         <TagField
           tags={formData.tags || []}
           onChange={(tags) => handleChange('tags', tags)}
           placeholder={t('assistants.form.tagsPlaceholder')}
           disabled={loading}
         />
-      </div>
+      </Field>
 
-      <div className="af-field">
-        <div className="af-label-row">
-          <label className="af-label t-label">{t('assistants.form.systemPrompt')}</label>
-          <span className="af-char-count t-meta">{(formData.systemPrompt || '').length} {t('assistants.form.characters')}</span>
-        </div>
-        <textarea
+      <Stack gap="sm">
+        <TextArea
+          label={t('assistants.form.systemPrompt')}
+          labelAside={<span className="af-char-count t-meta">{(formData.systemPrompt || '').length} {t('assistants.form.characters')}</span>}
           value={formData.systemPrompt}
-          onChange={(e) => handleChange('systemPrompt', e.target.value)}
-          className="af-textarea t-body"
+          onChange={(value) => handleChange('systemPrompt', value)}
           rows={6}
           placeholder={t('assistants.form.systemPromptPlaceholder')}
           disabled={loading}
         />
-        <div className="af-snippets">
+        <CheckboxGroup>
           {PROMPT_SNIPPET_IDS.map((id) => (
-            <label key={id} className="af-checkbox-label t-table">
-              <input
-                type="checkbox"
-                checked={selectedSnippets.includes(id)}
-                onChange={(e) => toggleSnippet(id, e.target.checked)}
-                disabled={loading}
-              />
-              <span>{t(`assistants.form.snippets.${id}`)}</span>
-            </label>
+            <Checkbox
+              key={id}
+              checked={selectedSnippets.includes(id)}
+              onChange={(checked) => toggleSnippet(id, checked)}
+              disabled={loading}
+            >
+              {t(`assistants.form.snippets.${id}`)}
+            </Checkbox>
           ))}
-        </div>
-      </div>
+        </CheckboxGroup>
+      </Stack>
 
-      <div className="af-field">
-        <label className="af-label t-label">{t('assistants.knowledge.title')}</label>
-        <div className="af-knowledge">
+      <Field label={t('assistants.knowledge.title')}>
+        <Stack gap="lg">
           {knowledgeSections.map((section) => (
             <KnowledgeFileList
               key={section.category}
-              category={section.category}
               title={section.title}
               description={section.description}
               emptyLabel={t('assistants.knowledge.noFilesAdded')}
@@ -757,38 +727,34 @@ const AssistantForm: React.FC<AssistantFormProps> = ({
             onToggle={toggleKnowledgeSource}
             disabled={loading}
           />
-        </div>
-      </div>
+        </Stack>
+      </Field>
 
       {systemAssistant && (
-        <div className="af-field">
-          <label className="af-label t-label">{t('assistants.form.access.title')}</label>
-          <div className="af-note t-ui-plain">{t('assistants.form.access.help')}</div>
-          <label className="af-checkbox-label t-table">
-            <input
-              type="checkbox"
-              checked={access === null}
-              onChange={(e) => setAccess(e.target.checked ? null : { allowedRoles: [], allowedGroupIds: [] })}
-              disabled={loading}
-            />
-            <span>{t('assistants.form.access.everyone')}</span>
-          </label>
+        <Field label={t('assistants.form.access.title')}>
+          <FieldDescription>{t('assistants.form.access.help')}</FieldDescription>
+          <Checkbox
+            checked={access === null}
+            onChange={(checked) => setAccess(checked ? null : { allowedRoles: [], allowedGroupIds: [] })}
+            disabled={loading}
+          >
+            {t('assistants.form.access.everyone')}
+          </Checkbox>
           {access !== null && (
             <div className="af-access">
               <div className="af-access-label t-meta">{t('assistants.form.access.roles')}</div>
-              <div className="af-tools">
+              <CheckboxGroup mt="sm">
                 {ALL_ROLES.map(role => (
-                  <label key={role} className="af-checkbox-label t-table">
-                    <input
-                      type="checkbox"
-                      checked={access.allowedRoles.includes(role)}
-                      onChange={(e) => toggleAccessRole(role, e.target.checked)}
-                      disabled={loading}
-                    />
-                    <span>{t(`roles.${role}`)}</span>
-                  </label>
+                  <Checkbox
+                    key={role}
+                    checked={access.allowedRoles.includes(role)}
+                    onChange={(checked) => toggleAccessRole(role, checked)}
+                    disabled={loading}
+                  >
+                    {t(`roles.${role}`)}
+                  </Checkbox>
                 ))}
-              </div>
+              </CheckboxGroup>
               <div className="af-access-label t-meta">{t('assistants.form.access.groups')}</div>
               <GroupPicker
                 value={access.allowedGroupIds}
@@ -796,97 +762,85 @@ const AssistantForm: React.FC<AssistantFormProps> = ({
                 disabled={loading}
               />
               {access.allowedRoles.length === 0 && access.allowedGroupIds.length === 0 && (
-                <div className="af-note af-note-warn t-ui-plain">{t('assistants.form.access.nobodyWarning')}</div>
+                <FieldDescription tone="warning">{t('assistants.form.access.nobodyWarning')}</FieldDescription>
               )}
             </div>
           )}
-        </div>
+        </Field>
       )}
 
-      <div className="af-grid">
-        <div className="af-field">
-          <label className="af-label t-label">{t('assistants.form.tools')}</label>
+      <Grid minColumnWidth="12rem" gap="lg">
+        <Field label={t('assistants.form.tools')}>
           {selectedModel?.capabilities.tools ? (
             availableTools.length > 0 ? (
-              <div className="af-tools">
+              <CheckboxGroup mt="sm">
                 {availableTools.map(renderToolbox)}
                 {selectedToolIds.filter(id => !availableToolIds.has(id)).map(id => (
-                  <label key={id} className="af-checkbox-label af-tool af-tool-unavailable t-table">
-                    <input
-                      type="checkbox"
-                      checked
-                      onChange={() => setToolSelection(selectedToolIds.filter(other => other !== id))}
-                      disabled={loading}
-                    />
-                    <span>
+                  <Checkbox
+                    key={id}
+                    checked
+                    onChange={() => setToolSelection(selectedToolIds.filter(other => other !== id))}
+                    disabled={loading}
+                  >
+                    <span className="af-tool-unavailable">
                       <span className="af-tool-name t-table-strong">{id}</span>
                       <span className="af-tool-description"> — {t('assistants.form.toolUnavailable')}</span>
                     </span>
-                  </label>
+                  </Checkbox>
                 ))}
-                {!systemAssistant && <div className="af-note t-ui-plain">{t('assistants.form.toolsSharingNote')}</div>}
-              </div>
+                {!systemAssistant && <FieldDescription>{t('assistants.form.toolsSharingNote')}</FieldDescription>}
+              </CheckboxGroup>
             ) : (
-              <div className="af-note t-ui-plain">{t('assistants.form.noTools')}</div>
+              <FieldDescription>{t('assistants.form.noTools')}</FieldDescription>
             )
           ) : (
-            <div className="af-note t-ui-plain">{t('assistants.form.modelNoTools')}</div>
+            <FieldDescription>{t('assistants.form.modelNoTools')}</FieldDescription>
           )}
-        </div>
+        </Field>
 
-        <div className="af-field">
+        <Stack gap="lg">
           {showsTemperature(selectedModel, formData.reasoningEffort) && (
-            <div className="af-slider-field">
-              <div className="af-label-row">
-                <label className="af-label t-label">{t('assistants.form.temperature')}</label>
-                <span className="af-char-count t-meta">{formData.temperature}</span>
-              </div>
-              <input
-                type="range"
-                min="0"
-                max="1"
-                step="0.1"
-                value={formData.temperature}
-                onChange={(e) => handleChange('temperature', parseFloat(e.target.value))}
-                className="af-slider"
-                disabled={loading}
-              />
-            </div>
+            <Slider
+              label={t('assistants.form.temperature')}
+              labelAside={<span className="af-char-count t-meta">{formData.temperature}</span>}
+              min={0}
+              max={1}
+              step={0.1}
+              value={formData.temperature}
+              onChange={(value) => handleChange('temperature', value)}
+              disabled={loading}
+              maxWidth="20rem"
+            />
           )}
 
           {/* Explains why the temperature control disappeared once reasoning was turned on. */}
           {selectedModel?.capabilities.temperature === 'SupportedWhenReasoningDisabled'
             && (formData.reasoningEffort ?? 'None') !== 'None' && (
-            <div className="af-note t-ui-plain">{t('assistants.form.temperatureUnavailableWithReasoning')}</div>
+            <FieldDescription>{t('assistants.form.temperatureUnavailableWithReasoning')}</FieldDescription>
           )}
 
           {supportedEfforts.length > 0 && (
-            <div className="af-slider-field">
-              <div className="af-label-row">
-                <label className="af-label t-label">{t('assistants.form.reasoningEffort')}</label>
-                <span className="af-char-count t-meta">{t(`assistants.form.reasoningLevels.${currentEffort.toLowerCase()}`)}</span>
-              </div>
-              <input
-                type="range"
-                min="0"
-                max={supportedEfforts.length - 1}
-                step="1"
-                value={Math.max(0, supportedEfforts.indexOf(currentEffort))}
-                onChange={(e) => handleChange('reasoningEffort', supportedEfforts[parseInt(e.target.value)])}
-                className="af-slider"
-                disabled={loading || supportedEfforts.length === 1}
-              />
-            </div>
+            <Slider
+              label={t('assistants.form.reasoningEffort')}
+              labelAside={<span className="af-char-count t-meta">{t(`assistants.form.reasoningLevels.${currentEffort.toLowerCase()}`)}</span>}
+              min={0}
+              max={supportedEfforts.length - 1}
+              step={1}
+              value={Math.max(0, supportedEfforts.indexOf(currentEffort))}
+              onChange={(value) => handleChange('reasoningEffort', supportedEfforts[value])}
+              disabled={loading || supportedEfforts.length === 1}
+              maxWidth="20rem"
+            />
           )}
-        </div>
-      </div>
+        </Stack>
+      </Grid>
 
       {footerExtra && (
         <div className="af-footer">
           {footerExtra}
         </div>
       )}
-    </div>
+    </Stack>
   );
 };
 

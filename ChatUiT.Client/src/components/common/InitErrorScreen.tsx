@@ -1,5 +1,7 @@
 import React from 'react';
 import { useTranslation } from 'react-i18next';
+import Button from './Button';
+import Stack from './Stack';
 import './InitErrorScreen.css';
 
 interface InitErrorScreenProps {
@@ -14,14 +16,14 @@ const InitErrorScreen: React.FC<InitErrorScreenProps> = ({ message, onRetry, onS
     <div className="init-error-container">
       <div className="init-error-title">{t('initError.title')}</div>
       {message && <div className="init-error-message t-caption">{message}</div>}
-      <div className="init-error-actions">
-        <button className="init-error-retry" onClick={onRetry}>
+      <Stack direction="row" gap="md" mt="sm">
+        <Button variant="primary" onClick={onRetry}>
           {t('initError.retry')}
-        </button>
-        <button className="init-error-signout" onClick={onSignOut}>
+        </Button>
+        <Button variant="subtle" onClick={onSignOut}>
           {t('initError.signOut')}
-        </button>
-      </div>
+        </Button>
+      </Stack>
     </div>
   );
 };

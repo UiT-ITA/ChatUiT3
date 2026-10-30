@@ -4,6 +4,8 @@ import { useSignals } from '@preact/signals-react/runtime';
 import { getUserProfile } from '../../services/userProfileService';
 import { getRecentAssistants, getCurrentAssistantId, setUserSelectedAssistantId, getRedEnabled } from '../../services/chatService';
 import AssistantRow from '../common/AssistantRow';
+import Card from '../common/Card';
+import Grid from '../common/Grid';
 import './NewChatWelcome.css';
 
 export default function NewChatWelcome() {
@@ -39,36 +41,37 @@ export default function NewChatWelcome() {
 
         <div className="tips-section">
           <div className="t-overline">{t('welcome.tips.title')}</div>
-          <div className="tips-container">
-            <div className="tip-card">
+          <Grid minColumnWidth="13.4375rem" gap="sm">
+            <Card accent="top" gap="2xs">
               <strong className="t-ui">{t('welcome.tips.selectAssistant.title')}</strong>
-              <p className="t-caption">{t('welcome.tips.selectAssistant.description')}</p>
-            </div>
-            <div className="tip-card">
+              <span className="tip-text t-caption">{t('welcome.tips.selectAssistant.description')}</span>
+            </Card>
+            <Card accent="top" gap="2xs">
               <strong className="t-ui">{t('welcome.tips.uploadFiles.title')}</strong>
-              <p className="t-caption">{t('welcome.tips.uploadFiles.description')}</p>
-            </div>
-            <div className="tip-card">
+              <span className="tip-text t-caption">{t('welcome.tips.uploadFiles.description')}</span>
+            </Card>
+            <Card accent="top" gap="2xs">
               <strong className="t-ui">{t('welcome.tips.askQuestions.title')}</strong>
-              <p className="t-caption">{t('welcome.tips.askQuestions.description')}</p>
-            </div>
-          </div>
+              <span className="tip-text t-caption">{t('welcome.tips.askQuestions.description')}</span>
+            </Card>
+          </Grid>
         </div>
 
         {recentAssistants.length > 0 && (
           <div className="tips-section recent-assistants">
             <div className="t-overline">{t('welcome.recentAssistants')}</div>
-            <div className="tips-container recent-assistants-list" role="listbox" aria-label={t('welcome.recentAssistants')}>
+            <Grid role="listbox" aria-label={t('welcome.recentAssistants')} minColumnWidth="13.4375rem" gap="sm">
               {recentAssistants.map(assistant => (
-                <AssistantRow
-                  key={assistant.id}
-                  assistant={assistant}
-                  selected={assistant.id === currentAssistantId}
-                  disabledReason={redEnabled && assistant.classification !== 'Red' ? t('chat.redToggle.assistantNotRed') : undefined}
-                  onSelect={a => setUserSelectedAssistantId(a.id)}
-                />
+                <Card key={assistant.id} accent="top" padding="none">
+                  <AssistantRow
+                    assistant={assistant}
+                    selected={assistant.id === currentAssistantId}
+                    disabledReason={redEnabled && assistant.classification !== 'Red' ? t('chat.redToggle.assistantNotRed') : undefined}
+                    onSelect={a => setUserSelectedAssistantId(a.id)}
+                  />
+                </Card>
               ))}
-            </div>
+            </Grid>
           </div>
         )}
       </div>

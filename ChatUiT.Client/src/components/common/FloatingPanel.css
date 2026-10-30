@@ -1,0 +1,15 @@
+/* The surface shared by every popover and menu that floats over the page */
+.floating-panel {
+  max-width: calc(100vw - 2rem);
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-top: 3px solid var(--accent-2);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-overlay);
+  animation: fade-in 140ms ease;
+}
+
+.floating-panel--small { width: 11rem; }
+.floating-panel--medium { width: 15.5rem; }
+.floating-panel--large { width: 17rem; }
+.floating-panel--xl { width: 30rem; }

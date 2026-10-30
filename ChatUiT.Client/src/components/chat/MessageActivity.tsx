@@ -8,6 +8,8 @@ import ToolCallBlock from './ToolCallBlock';
 import type { LiveActivity } from '../../services/chatService';
 import type { ActivityEntryDto, MessageActivityDto } from '../../types/chatModels';
 import { formatDuration } from '../../utils/durationUtils';
+import Button from '../common/Button';
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '../common/Collapsible';
 
 type Props = {
   /** The stored summary of a finished message. */
@@ -47,51 +49,54 @@ export default function MessageActivity({ activity, live, chatId, messageId, chi
   const toolCount = entries.filter(entry => entry.type === "Tool").length;
 
   return (
-    <div className={`activity ${isLive ? "live" : ""} ${needsInput ? "needs-input" : ""}`}>
-      <div className="message-meta">
-        {children}
+    <Collapsible open={open} onOpenChange={setOpen} width="full" minWidth="0">
+      <div className={`activity ${isLive ? "live" : ""} ${needsInput ? "needs-input" : ""}`}>
+        <div className="message-meta">
+          {children}
+          {hasActivity && (
+            <CollapsibleTrigger>
+              <Button
+                variant="ghost"
+                size="xs"
+                tone={needsInput ? 'warning' : 'default'}
+                startIcon={<Icon name={needsInput ? "info" : isLive ? "refresh" : "branch"} size="small" spin={isLive && !needsInput} />}
+              >
+                {isLive ? liveHeadline(live, liveElapsedMs, t) : doneHeadline(summary!, thinkingCount, toolCount, t)}
+              </Button>
+            </CollapsibleTrigger>
+          )}
+        </div>
         {hasActivity && (
-          <button
-            type="button"
-            className="activity-summary t-caption"
-            aria-expanded={open}
-            onClick={() => setOpen(current => !current)}
-          >
-            <Icon name={needsInput ? "info" : isLive ? "refresh" : "branch"} size={0.9} />
-            <span className="activity-headline">
-              {isLive ? liveHeadline(live, liveElapsedMs, t) : doneHeadline(summary!, thinkingCount, toolCount, t)}
-            </span>
-          </button>
+          <CollapsibleContent>
+            <div className="activity-body">
+              {summary && (
+                <div className="activity-facts t-meta">
+                  <span>{t('chat.activity.model')}: {summary.model}</span>
+                  {summary.effort !== "None" && (
+                    <span>{t('chat.activity.effort')}: {t(`assistants.form.reasoningLevels.${summary.effort.toLowerCase()}`)}</span>
+                  )}
+                  {summary.toolRounds > 0 && <span>{t('chat.activity.rounds', { count: summary.toolRounds })}</span>}
+                </div>
+              )}
+              {entries.length === 0 && !isLive && (
+                <div className="activity-empty t-caption">{t('chat.activity.nothingRecorded')}</div>
+              )}
+              {entries.map((entry, index) => (
+                <ActivityRow
+                  key={entry.toolCallId ?? index}
+                  entry={entry}
+                  nowMs={isLive ? liveElapsedMs : null}
+                  isLive={isLive}
+                  chatId={live?.chatId ?? chatId}
+                  messageId={messageId}
+                  deadlineMs={isLive && live.pendingToolCallId === entry.toolCallId ? live.pendingDeadlineMs : null}
+                />
+              ))}
+            </div>
+          </CollapsibleContent>
         )}
       </div>
-      {hasActivity && open && (
-      <div className="activity-body">
-        {summary && (
-          <div className="activity-facts t-meta">
-            <span>{t('chat.activity.model')}: {summary.model}</span>
-            {summary.effort !== "None" && (
-              <span>{t('chat.activity.effort')}: {t(`assistants.form.reasoningLevels.${summary.effort.toLowerCase()}`)}</span>
-            )}
-            {summary.toolRounds > 0 && <span>{t('chat.activity.rounds', { count: summary.toolRounds })}</span>}
-          </div>
-        )}
-        {entries.length === 0 && !isLive && (
-          <div className="activity-empty t-caption">{t('chat.activity.nothingRecorded')}</div>
-        )}
-        {entries.map((entry, index) => (
-          <ActivityRow
-            key={entry.toolCallId ?? index}
-            entry={entry}
-            nowMs={isLive ? liveElapsedMs : null}
-            isLive={isLive}
-            chatId={live?.chatId ?? chatId}
-            messageId={messageId}
-            deadlineMs={isLive && live.pendingToolCallId === entry.toolCallId ? live.pendingDeadlineMs : null}
-          />
-        ))}
-      </div>
-      )}
-    </div>
+    </Collapsible>
   );
 }
 

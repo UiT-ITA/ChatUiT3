@@ -7,6 +7,10 @@ import { adminEndpointsSignal, adminModelsSignal, loadAdminData } from '../../se
 import type { EndpointType } from '../../types/admin';
 import EditorHeader from '../layout/EditorHeader';
 import { Dialog, DialogButton } from '../common/Dialog';
+import Select from '../common/Select';
+import TextInput from '../common/TextInput';
+import Button from '../common/Button';
+import Stack from '../common/Stack';
 import { hasChanges } from '../../utils/formChanges';
 
 const PROVIDERS: EndpointType[] = ['AzureOpenAI', 'MicrosoftFoundry', 'Anthropic', 'OpenAI', 'LlamaCpp', 'Other'];
@@ -104,57 +108,46 @@ const EndpointEditor: React.FC<EndpointEditorProps> = ({ endpointId }) => {
       </h1>
       <div className="page-title-bar" />
 
-      <div className="admin-field">
-        <label className="admin-label t-label">{t('admin.endpoints.fields.url')}</label>
-        {endpointType === 'Anthropic' && (
-          <div className="admin-field-help t-caption">{t('admin.endpoints.fields.urlHelpAnthropic')}</div>
-        )}
-        {endpointType === 'MicrosoftFoundry' && (
-          <div className="admin-field-help t-caption">{t('admin.endpoints.fields.urlHelpFoundry')}</div>
-        )}
-        {endpointType === 'AzureOpenAI' && (
-          <div className="admin-field-help t-caption">{t('admin.endpoints.fields.urlHelpAzureOpenAI')}</div>
-        )}
-        <input
-          className="admin-input t-body"
+      <Stack gap="xl">
+        <TextInput
+          label={t('admin.endpoints.fields.url')}
+          description={
+            endpointType === 'Anthropic' ? t('admin.endpoints.fields.urlHelpAnthropic')
+              : endpointType === 'MicrosoftFoundry' ? t('admin.endpoints.fields.urlHelpFoundry')
+                : endpointType === 'AzureOpenAI' ? t('admin.endpoints.fields.urlHelpAzureOpenAI')
+                  : undefined
+          }
           value={url}
-          onChange={(e) => setUrl(e.target.value)}
+          onChange={setUrl}
           placeholder="https://..."
         />
-      </div>
 
-      <div className="admin-field">
-        <label className="admin-label t-label">{t('admin.endpoints.fields.apiKey')}</label>
-        <input
-          className="admin-input t-body"
+        <TextInput
+          label={t('admin.endpoints.fields.apiKey')}
           type="password"
           value={apiKey}
-          onChange={(e) => setApiKey(e.target.value)}
+          onChange={setApiKey}
           placeholder={endpoint ? '••••••••••••••••••••' : undefined}
         />
-      </div>
 
-      <div className="admin-field">
-        <label className="admin-label t-label">{t('admin.endpoints.fields.provider')}</label>
-        <select
-          className="admin-select t-body"
+        <Select
+          label={t('admin.endpoints.fields.provider')}
           value={endpointType}
-          onChange={(e) => setEndpointType(e.target.value as EndpointType)}
+          onChange={(value) => setEndpointType(value as EndpointType)}
         >
           {PROVIDERS.map((provider) => (
             <option key={provider} value={provider}>
               {t(`admin.endpointType.${provider}`)}
             </option>
           ))}
-        </select>
-      </div>
+        </Select>
+      </Stack>
 
       {endpoint && (
         <div className="admin-form-footer">
-          <div className="admin-footer-spacer" />
-          <button className="admin-delete-button t-ui" onClick={() => setConfirmDelete(true)}>
+          <Button variant="danger" ml="auto" onClick={() => setConfirmDelete(true)}>
             {t('admin.endpoints.actions.delete')}
-          </button>
+          </Button>
         </div>
       )}
 

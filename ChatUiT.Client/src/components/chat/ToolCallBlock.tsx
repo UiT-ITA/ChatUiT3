@@ -1,9 +1,14 @@
+import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { formatDuration } from '../../utils/durationUtils';
 import type { ActivityEntryDto, ToolCallStatus } from '../../types/chatModels';
 import { isAwaitingStatus } from '../../types/chatModels';
 import ToolConfirmationCard from './ToolConfirmationCard';
 import "./ToolCallBlock.css";
+import Badge from '../common/Badge';
+import Card from '../common/Card';
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '../common/Collapsible';
+import { ListItem } from '../common/List';
 
 type Props = {
   entry: ActivityEntryDto;
@@ -55,6 +60,12 @@ export default function ToolCallBlock({ entry, durationMs, isLive, chatId, messa
   const status: ToolCallStatus = entry.status ?? (entry.endedMs === null ? 'running' : entry.isError ? 'error' : 'completed');
   const awaiting = isAwaitingStatus(status);
   const needsUser = isLive && entry.endedMs === null && status === 'awaitingConfirmation';
+  const [expanded, setExpanded] = useState(needsUser);
+  const [prevNeedsUser, setPrevNeedsUser] = useState(needsUser);
+  if (needsUser !== prevNeedsUser) {
+    setPrevNeedsUser(needsUser);
+    setExpanded(needsUser);
+  }
   const isComplete = entry.endedMs !== null;
 
   const prettyArgs = prettyMaybeJson(entry.argumentsJson);
@@ -64,59 +75,69 @@ export default function ToolCallBlock({ entry, durationMs, isLive, chatId, messa
 
   const remainingMs = deadlineMs !== null && nowMs !== null ? deadlineMs - nowMs : null;
 
-  const stateClass = isComplete ? "complete" : "running";
-  const statusClass = awaiting ? "awaiting" : status === "rejected" || status === "timeout" ? "declined" : entry.isError ? "error" : "";
+  const statusTone = awaiting ? "awaiting" : status === "rejected" || status === "timeout" ? "declined" : entry.isError ? "error" : isComplete ? "complete" : "running";
 
   return (
-    <details className={`toolcall ${stateClass} ${statusClass}`} open={needsUser || undefined}>
-      <summary className="toolcall-summary t-ui-plain">
-        <span className="toolcall-title-clip">
-          <strong className="toolcall-name t-overline">{toolName}</strong>
-          {entry.execution === 'client' && <span className="toolcall-badge t-meta">{t('toolCall.execution.client')}</span>}
-          <span className="toolcall-args-inline t-meta">({argsPreview})</span>
-        </span>
-        <span className="toolcall-status t-overline">
-          {t(STATUS_KEYS[status])}
-          {durationMs !== null && !awaiting && <span className="toolcall-duration t-meta"> · {formatDuration(durationMs)}</span>}
-        </span>
-      </summary>
-      <div className="toolcall-body">
-        {needsUser && status === 'awaitingConfirmation' && entry.preview && entry.toolCallId && (
-          <ToolConfirmationCard
-            chatId={chatId}
-            messageId={messageId}
-            toolCallId={entry.toolCallId}
-            preview={entry.preview}
-            argumentsJson={entry.argumentsJson}
-            remainingMs={remainingMs}
+    <Collapsible open={expanded} onOpenChange={setExpanded} my="md">
+      <Card padding="none" gap="none" tone={awaiting ? 'warning' : 'default'}>
+        <CollapsibleTrigger>
+          <ListItem
+            density="compact"
+            title={(
+              <>
+                <strong className="toolcall-name t-overline">{toolName}</strong>
+                {entry.execution === 'client' && <Badge ml="xs">{t('toolCall.execution.client')}</Badge>}
+                <span className="toolcall-args-inline t-meta"> ({argsPreview})</span>
+              </>
+            )}
+            trailing={(
+              <span className={`toolcall-status toolcall-status--${statusTone} t-overline`}>
+                {t(STATUS_KEYS[status])}
+                {durationMs !== null && !awaiting && <span className="toolcall-duration t-meta"> · {formatDuration(durationMs)}</span>}
+              </span>
+            )}
           />
-        )}
-        {!needsUser && entry.preview && (
-          <div className="toolcall-section">
-            <div className="toolcall-title t-overline">{entry.preview.title}</div>
-            <dl className="toolcard-fields">
-              {entry.preview.fields.map((field, index) => (
-                <div key={index} className="toolcard-field">
-                  <dt className="t-overline">{field.label}</dt>
-                  <dd className={field.multiline ? 't-code toolcard-multiline' : 't-table'}>{field.value}</dd>
-                </div>
-              ))}
-            </dl>
+        </CollapsibleTrigger>
+        <CollapsibleContent>
+          <div className="toolcall-body">
+            {needsUser && status === 'awaitingConfirmation' && entry.preview && entry.toolCallId && (
+              <ToolConfirmationCard
+                chatId={chatId}
+                messageId={messageId}
+                toolCallId={entry.toolCallId}
+                preview={entry.preview}
+                argumentsJson={entry.argumentsJson}
+                remainingMs={remainingMs}
+              />
+            )}
+            {!needsUser && entry.preview && (
+              <div className="toolcall-section">
+                <div className="toolcall-title t-overline">{entry.preview.title}</div>
+                <dl className="toolcard-fields">
+                  {entry.preview.fields.map((field, index) => (
+                    <div key={index} className="toolcard-field">
+                      <dt className="t-overline">{field.label}</dt>
+                      <dd className={field.multiline ? 't-code toolcard-multiline' : 't-table'}>{field.value}</dd>
+                    </div>
+                  ))}
+                </dl>
+              </div>
+            )}
+            {prettyArgs && (
+              <div className="toolcall-section">
+                <div className="toolcall-title t-overline">{t('toolCall.arguments')}</div>
+                <pre className="toolcall-pre t-code">{prettyArgs}</pre>
+              </div>
+            )}
+            {prettyResult && (
+              <div className="toolcall-section">
+                <div className="toolcall-title t-overline">{t('toolCall.result')}</div>
+                <pre className="toolcall-pre t-code">{prettyResult}</pre>
+              </div>
+            )}
           </div>
-        )}
-        {prettyArgs && (
-          <div className="toolcall-section">
-            <div className="toolcall-title t-overline">{t('toolCall.arguments')}</div>
-            <pre className="toolcall-pre t-code">{prettyArgs}</pre>
-          </div>
-        )}
-        {prettyResult && (
-          <div className="toolcall-section">
-            <div className="toolcall-title t-overline">{t('toolCall.result')}</div>
-            <pre className="toolcall-pre t-code">{prettyResult}</pre>
-          </div>
-        )}
-      </div>
-    </details>
+        </CollapsibleContent>
+      </Card>
+    </Collapsible>
   );
 }

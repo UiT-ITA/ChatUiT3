@@ -1,9 +1,11 @@
-import { useState, useEffect, useRef } from "react";
-import { createPortal } from "react-dom";
+import { useState, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { useTranslation } from 'react-i18next';
 import { Icon, IconName } from "../common/Icon";
 import { Dialog, DialogButton } from "../common/Dialog";
+import IconButton from "../common/IconButton";
+import { Menu, MenuItem } from "../common/Menu";
+import TextInput from "../common/TextInput";
 import { getCurrentChatId, renameChat, setChatFavorite, deleteChat } from "../../services/chatService";
 import { removeCachedChat } from "../../hooks/useChatCache";
 import { useSignals } from "@preact/signals-react/runtime";
@@ -93,22 +95,6 @@ export function ChatItem({ chat, onNavigate }: ChatItemProps) {
     { key: 'delete', label: t('sidebar.delete'), icon: 'trash' },
   ];
 
-  useEffect(() => {
-    if (!menu) return;
-
-    const handleClick = () => setMenu(null);
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') setMenu(null);
-    };
-
-    document.addEventListener("mousedown", handleClick);
-    document.addEventListener("keydown", handleKeyDown);
-    return () => {
-      document.removeEventListener("mousedown", handleClick);
-      document.removeEventListener("keydown", handleKeyDown);
-    };
-  }, [menu]);
-
   const handleMenuClick = (option: ContextMenuOption) => {
     setMenu(null);
     switch (option.key) {
@@ -130,7 +116,7 @@ export function ChatItem({ chat, onNavigate }: ChatItemProps) {
     onNavigate?.();
   };
 
-  const handleMoreClick = (e: React.MouseEvent<HTMLSpanElement, MouseEvent>) => {
+  const handleMoreClick = (e: React.MouseEvent<HTMLButtonElement, MouseEvent>) => {
     e.stopPropagation();
 
     const chatItem = (e.target as HTMLElement).closest(".chat-item") as HTMLElement;
@@ -154,12 +140,15 @@ export function ChatItem({ chat, onNavigate }: ChatItemProps) {
         onClick={handleChatClick}
       >
         {isRenaming ? (
-          <input
-            className="chat-item-rename-input t-ui"
+          <TextInput
+            size="small"
+            grow
+            shrink
+            minWidth="0"
             value={draftName}
             autoFocus
             onFocus={e => e.target.select()}
-            onChange={e => setDraftName(e.target.value)}
+            onChange={value => setDraftName(value)}
             onClick={e => e.stopPropagation()}
             onMouseDown={e => e.stopPropagation()}
             onBlur={commitRename}
@@ -180,55 +169,41 @@ export function ChatItem({ chat, onNavigate }: ChatItemProps) {
             </span>
             {chat.redEnabled && (
               <span className="chat-item-lock" title={t('chat.redToggle.enabled')}>
-                <Icon name="lock" size={0.75} />
+                <Icon name="lock" size="xs" color="danger" />
               </span>
             )}
             {chat.isFavorite && (
               <span className="chat-item-star" title={t('sidebar.favorite')}>
-                <Icon name="star" size={0.75} />
+                <Icon name="star" size="xs" color="accent" />
               </span>
             )}
-            <span
-              className="chat-item-more"
-              onClick={handleMoreClick}
-              title={t('sidebar.moreOptions')}
-            >
-              <Icon name="moreVert" size={1} />
+            <span className="chat-item-more">
+              <IconButton
+                icon="moreVert"
+                label={t('sidebar.moreOptions')}
+                size="small"
+                onClick={handleMoreClick}
+              />
             </span>
           </>
         )}
       </div>
-      {menu &&
-        createPortal(
-          <ul
-            className="chat-context-menu"
-            // The document-level mousedown listener closes the menu. Without this
-            // guard it would unmount the list between mousedown and mouseup, so the click
-            // on a menu item would never be delivered.
-            onMouseDown={e => e.stopPropagation()}
-            style={{
-              position: 'fixed',
-              left: `${menu.x}px`,
-              top: `${menu.y}px`,
-              zIndex: 1000,
-            }}
-          >
-            {contextMenuOptions.map(option => (
-              <li
-                key={option.key}
-                onClick={e => {
-                  e.stopPropagation();
-                  handleMenuClick(option);
-                }}
-                className="chat-context-menu-item t-ui-plain"
-              >
-                <span className="menu-icon"><Icon name={option.icon} size={1} /></span>
-                <span>{option.label}</span>
-              </li>
-            ))}
-          </ul>,
-          document.body
-        )}
+      {menu && (
+        <Menu floating anchorPoint={menu} onClose={() => setMenu(null)}>
+          {contextMenuOptions.map(option => (
+            <MenuItem
+              key={option.key}
+              icon={option.icon}
+              onClick={e => {
+                e.stopPropagation();
+                handleMenuClick(option);
+              }}
+            >
+              {option.label}
+            </MenuItem>
+          ))}
+        </Menu>
+      )}
       <Dialog
         isOpen={confirmDelete}
         onClose={() => setConfirmDelete(false)}

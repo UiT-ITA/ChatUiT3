@@ -6,6 +6,7 @@ import { createAdminAssistant, updateAdminAssistant, deleteAdminAssistant } from
 import { adminAssistantsSignal, loadAdminData } from '../../services/adminDataService';
 import type { CreateAdminAssistantDto, UpdateAdminAssistantDto } from '../../types/admin';
 import AssistantForm from '../assistants/AssistantForm';
+import Button from '../common/Button';
 
 interface AdminAssistantEditorProps {
   assistantId?: string;
@@ -67,12 +68,9 @@ const AdminAssistantEditor: React.FC<AdminAssistantEditorProps> = ({ assistantId
         backPath="/admin/assistants"
         backLabel={t('admin.tabs.assistants')}
         footerExtra={assistant && (
-          <>
-            <div className="admin-footer-spacer" />
-            <button className="admin-delete-button t-ui" onClick={handleDelete}>
-              {t('common.delete')}
-            </button>
-          </>
+          <Button variant="danger" ml="auto" onClick={handleDelete}>
+            {t('common.delete')}
+          </Button>
         )}
       />
     </div>

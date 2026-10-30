@@ -5,6 +5,9 @@ import remarkGfm from 'remark-gfm';
 import type { ToolPreviewDto } from '../../types/chatModels';
 import { useToolCallActions } from '../../hooks/useToolCallActions';
 import { formatDuration } from '../../utils/durationUtils';
+import TextArea from '../common/TextArea';
+import Button from '../common/Button';
+import Card from '../common/Card';
 
 type Props = {
   chatId: string | null;
@@ -45,7 +48,7 @@ export default function ToolConfirmationCard({ chatId, messageId, toolCallId, pr
   const changed = editing && edited.trim() !== prettyJson(argumentsJson).trim();
 
   return (
-    <div className="toolcard toolcard-confirm">
+    <Card padding="md" mt="xs" mb="sm">
       <div className="toolcard-title t-table-strong">{preview.title || t('toolCall.confirm.title')}</div>
       {preview.summary && (
         <div className="toolcard-summary">
@@ -64,39 +67,40 @@ export default function ToolConfirmationCard({ chatId, messageId, toolCallId, pr
       )}
       {preview.allowEdit && (
         <div className="toolcard-edit">
-          <button type="button" className="toolcard-link t-caption" onClick={() => setEditing(current => !current)} disabled={busy}>
+          <Button variant="ghost" size="small" onClick={() => setEditing(current => !current)} disabled={busy}>
             {editing ? t('toolCall.hideArguments') : t('toolCall.editArguments')}
-          </button>
+          </Button>
           {editing && (
-            <textarea
-              className={`toolcard-textarea t-code ${editedIsValid ? '' : 'invalid'}`}
+            <TextArea
+              monospace
+              error={editedIsValid ? undefined : t('toolCall.invalidJson')}
+              mt="sm"
               value={edited}
-              onChange={event => setEdited(event.target.value)}
+              onChange={value => setEdited(value)}
               rows={Math.min(16, Math.max(4, edited.split('\n').length))}
               spellCheck={false}
               disabled={busy}
             />
           )}
-          {editing && !editedIsValid && <div className="toolcard-error t-caption">{t('toolCall.invalidJson')}</div>}
         </div>
       )}
       <div className="toolcard-actions">
-        <button
-          type="button"
-          className="toolcard-button primary t-ui"
+        <Button
+          variant="primary"
+          size="small"
           onClick={() => approve(changed ? edited : null)}
           disabled={busy || !canRespond || !editedIsValid}
         >
           {busy ? t('toolCall.working') : t('toolCall.approve')}
-        </button>
-        <button type="button" className="toolcard-button t-ui" onClick={() => reject()} disabled={busy || !canRespond}>
+        </Button>
+        <Button variant="subtle" size="small" onClick={() => reject()} disabled={busy || !canRespond}>
           {t('toolCall.reject')}
-        </button>
+        </Button>
         {remainingMs !== null && (
           <span className="toolcard-countdown t-meta">{t('chat.activity.timeLeft', { duration: formatDuration(Math.max(0, remainingMs)) })}</span>
         )}
       </div>
       {error && <div className="toolcard-error t-caption">{error}</div>}
-    </div>
+    </Card>
   );
 }

@@ -39,11 +39,6 @@
   white-space: nowrap;
 }
 
-.conversation-panel-file-icon {
-  color: var(--accent);
-  flex: 0 0 auto;
-}
-
 .conversation-panel-empty {
   color: var(--text-3);
 }

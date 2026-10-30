@@ -30,61 +30,13 @@
   margin: 0 0 0.25rem;
 }
 
-.rail-new-chat {
-  width: 2.375rem;
-  height: 2.375rem;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  background: var(--btn-bg);
-  color: var(--btn-fg);
-  border: 2px solid var(--btn-bg);
-  border-radius: var(--radius-md);
-  cursor: pointer;
-  transition: background var(--dur-base) var(--ease-standard);
-}
-
-.rail-new-chat:hover {
-  background: var(--btn-hover);
-  border-color: var(--btn-hover);
-}
-
 .rail-gap {
   height: 0.5rem;
   flex: 0 0 auto;
 }
 
-.rail-button {
-  width: 2.375rem;
-  height: 2.375rem;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  background: transparent;
-  color: var(--text-2);
-  border: none;
-  border-radius: var(--radius-md);
-  cursor: pointer;
-  transition: background var(--dur-fast) var(--ease-standard), color var(--dur-fast) var(--ease-standard);
-}
-
-.rail-button:hover {
-  color: var(--brand);
-  background: var(--panel-2);
-}
-
-.rail-button.active {
-  color: var(--brand);
-  background: var(--panel-2);
-}
-
 .rail-spacer {
   flex: 1;
-}
-
-.rail-user {
-  position: relative;
-  display: flex;
 }
 
 .rail-avatar {
@@ -95,33 +47,11 @@
   justify-content: center;
   background: var(--accent);
   color: var(--surface);
-  border: none;
   border-radius: var(--radius-md);
-  cursor: pointer;
 }
 
 [data-mode="dark"] .rail-avatar {
   color: var(--bg);
-}
-
-.rail-user-menu {
-  position: absolute;
-  bottom: 0;
-  left: 2.75rem;
-  width: 15.375rem;
-  background: var(--surface);
-  border: 1px solid var(--line);
-  border-top: 3px solid var(--accent-2);
-  box-shadow: var(--shadow-overlay);
-  z-index: 60;
-  animation: fade-in 140ms ease;
-}
-
-.icon-rail-mobile .rail-user-menu {
-  bottom: auto;
-  top: 2.75rem;
-  left: auto;
-  right: 0;
 }
 
 .rail-user-menu-header {
@@ -137,43 +67,4 @@
   margin-top: 0.125rem;
   overflow: hidden;
   text-overflow: ellipsis;
-}
-
-.rail-user-menu-items,
-.rail-user-menu-footer {
-  display: flex;
-  flex-direction: column;
-  padding: 0.375rem 0;
-}
-
-.rail-user-menu-footer {
-  border-top: 1px solid var(--line-soft);
-}
-
-.rail-user-menu button {
-  text-align: left;
-  padding: 0.4375rem 0.875rem;
-  background: transparent;
-  border: none;
-  cursor: pointer;
-  color: var(--text);
-}
-
-.rail-user-menu button:hover {
-  background: var(--sel);
-}
-
-.rail-user-menu .rail-user-menu-item {
-  display: flex;
-  align-items: center;
-  gap: 0.625rem;
-}
-
-.rail-user-menu-item svg {
-  color: var(--text-2);
-  flex: 0 0 auto;
-}
-
-.rail-user-menu .rail-user-menu-danger {
-  color: var(--danger);
 }

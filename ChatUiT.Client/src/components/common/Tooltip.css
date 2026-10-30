@@ -1,0 +1,22 @@
+.tooltip-anchor {
+  display: inline-flex;
+  align-items: center;
+}
+
+.tooltip {
+  position: fixed;
+  z-index: 1002;
+  padding: 0.5rem 0.75rem;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-md);
+  background: var(--surface);
+  box-shadow: var(--shadow-overlay);
+  color: var(--text);
+  line-height: 1.4;
+  text-align: left;
+  pointer-events: none;
+  animation: fade-in 140ms ease;
+}
+
+.tooltip--small { width: 11rem; }
+.tooltip--medium { width: 15rem; }

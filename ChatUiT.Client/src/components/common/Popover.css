@@ -1,0 +1,60 @@
+.popover {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  flex: 0 0 auto;
+}
+
+/* The panel lines up with the nearest positioned ancestor instead of the trigger */
+.popover--anchor-parent {
+  position: static;
+}
+
+.popover > :first-child {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.popover__panel {
+  position: absolute;
+  z-index: 1001;
+}
+
+/* As wide as the trigger */
+.popover__panel--match-trigger {
+  left: 0;
+  right: 0;
+  transform: none;
+}
+
+.popover__panel--top { bottom: calc(100% + var(--popover-offset)); }
+.popover__panel--bottom { top: calc(100% + var(--popover-offset)); }
+.popover__panel--left { right: calc(100% + var(--popover-offset)); }
+.popover__panel--right { left: calc(100% + var(--popover-offset)); }
+
+.popover__panel--top.popover__panel--align-start,
+.popover__panel--bottom.popover__panel--align-start { left: 0; }
+.popover__panel--top.popover__panel--align-end,
+.popover__panel--bottom.popover__panel--align-end { right: 0; }
+.popover__panel--top.popover__panel--align-center,
+.popover__panel--bottom.popover__panel--align-center { left: 50%; transform: translateX(-50%); }
+
+.popover__panel--left.popover__panel--align-start,
+.popover__panel--right.popover__panel--align-start { top: 0; }
+.popover__panel--left.popover__panel--align-end,
+.popover__panel--right.popover__panel--align-end { bottom: 0; }
+.popover__panel--left.popover__panel--align-center,
+.popover__panel--right.popover__panel--align-center { top: 50%; transform: translateY(-50%); }
+
+.popover__title {
+  padding: 0.625rem 0.875rem 0.5rem;
+  border-bottom: 1px solid var(--line);
+  color: var(--text-3);
+}
+
+.popover__body {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-md);
+  padding: 0.75rem 0.875rem;
+}

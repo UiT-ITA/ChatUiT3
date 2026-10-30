@@ -6,10 +6,6 @@
   padding: 0 0.25rem;
 }
 
-.chat-classification.composer-popover {
-  padding: 0;
-}
-
 /* The levels, with the conversation's own level marked */
 .chat-classification-levels {
   list-style: none;
@@ -35,56 +31,13 @@
   color: var(--text);
 }
 
-.chat-classification-level.current .classification-badge {
-  color: var(--text);
-}
-
 /* Switch that allows red data in a chat. Once the chat is started it is locked. */
 .chat-red-toggle {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 0.75rem;
-  margin-top: 0.75rem;
   padding-top: 0.75rem;
   border-top: 1px solid var(--line);
-  color: var(--text);
 }
 
 .chat-red-toggle-hint {
   margin-top: 0.375rem;
   color: var(--text-3);
-}
-
-.chat-red-toggle-pill {
-  flex: 0 0 auto;
-  display: flex;
-  align-items: center;
-  justify-content: flex-start;
-  width: 2.375rem;
-  height: 1.25rem;
-  padding: 0.125rem;
-  border: 1px solid var(--line);
-  background: var(--panel-2);
-  border-radius: 10px;
-  cursor: pointer;
-  transition: background var(--dur-base) var(--ease-standard);
-}
-
-.chat-red-toggle-pill.on {
-  border-color: var(--status-critical);
-  background: var(--status-critical);
-  justify-content: flex-end;
-}
-
-.chat-red-toggle-pill:disabled {
-  cursor: default;
-}
-
-.chat-red-toggle-knob {
-  width: 0.875rem;
-  height: 0.875rem;
-  border-radius: 50%;
-  background: var(--surface);
-  display: block;
 }

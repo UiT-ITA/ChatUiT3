@@ -1,5 +1,6 @@
 import { useTranslation } from 'react-i18next';
 import type { KnowledgeSourceDto } from '../../types/assistantModels';
+import Checkbox, { CheckboxGroup } from '../common/Checkbox';
 import './KnowledgeFileList.css';
 
 interface KnowledgeSourceListProps {
@@ -36,36 +37,34 @@ const KnowledgeSourceList = ({ sources, selectedIds, onToggle, disabled = false 
           <div className="knowledge-file-list__empty t-ui-plain">{t('assistants.knowledge.sources.none')}</div>
         )}
         {[...groups].map(([group, groupSources]) => (
-          <div key={group} className="af-tools">
+          <CheckboxGroup key={group} mt="sm">
             <span className="t-table-strong">{group}</span>
             {groupSources.map((source) => (
-              <label key={source.id} className="af-checkbox-label af-tool t-table">
-                <input
-                  type="checkbox"
-                  checked={selectedIds.includes(source.id)}
-                  onChange={(e) => onToggle(source.id, e.target.checked)}
-                  disabled={disabled}
-                />
+              <Checkbox
+                key={source.id}
+                checked={selectedIds.includes(source.id)}
+                onChange={(checked) => onToggle(source.id, checked)}
+                disabled={disabled}
+              >
                 <span>
                   <span className="af-tool-name t-table-strong">{source.displayName}</span>
                   <span className="af-tool-description"> — {source.description}</span>
                 </span>
-              </label>
+              </Checkbox>
             ))}
-          </div>
+          </CheckboxGroup>
         ))}
         {unknownIds.length > 0 && (
-          <div className="af-tools">
+          <CheckboxGroup mt="sm">
             {unknownIds.map((id) => (
-              <label key={id} className="af-checkbox-label af-tool af-tool-unavailable t-table">
-                <input type="checkbox" checked onChange={() => onToggle(id, false)} disabled={disabled} />
-                <span>
+              <Checkbox key={id} checked onChange={() => onToggle(id, false)} disabled={disabled}>
+                <span className="af-tool-unavailable">
                   <span className="af-tool-name t-table-strong">{id}</span>
                   <span className="af-tool-description"> — {t('assistants.knowledge.sources.unavailable')}</span>
                 </span>
-              </label>
+              </Checkbox>
             ))}
-          </div>
+          </CheckboxGroup>
         )}
       </div>
     </section>

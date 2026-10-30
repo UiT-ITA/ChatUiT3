@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import type { ChatFileDto, CreateChatFileDto } from '../../types/chatModels';
 import { Icon } from '../common/Icon';
+import IconButton from '../common/IconButton';
 import { getFileExtension } from '../../utils/fileUtils';
 import type { ChatFile } from '../../types/fileModels';
 import { fetchChatFile } from '../../services/chatService';
@@ -108,13 +109,16 @@ const FileThumbnail = ({ file, chatId, onRemove, showRemoveButton = false }: Fil
         onClick={() => void handleFileClick()}
       >
         {showRemoveButton && (
-          <button
-            className="remove-btn"
-            onClick={handleRemove}
-            title={t('files.removeFile')}
-          >
-            <Icon name="close" size={0.8} />
-          </button>
+          <span className="file-thumbnail-remove">
+            <IconButton
+              icon="close"
+              label={t('files.removeFile')}
+              variant={isImage && imageSource ? 'subtle' : 'ghost'}
+              shape={isImage && imageSource ? 'round' : 'square'}
+              size="small"
+              onClick={handleRemove}
+            />
+          </span>
         )}
 
         {isImage && imageSource ? (
@@ -126,7 +130,7 @@ const FileThumbnail = ({ file, chatId, onRemove, showRemoveButton = false }: Fil
         ) : (
           <div className="file-thumbnail-content">
             <div className="file-thumbnail-icon-wrapper">
-              <Icon name="file" className="file-thumbnail-icon" />
+              <Icon name="file" color="accent" />
             </div>
             <div className="file-thumbnail-info">
               <div className="file-thumbnail-name t-caption-strong" title={filename}>

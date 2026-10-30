@@ -6,6 +6,7 @@ import { helpActiveHeadingSignal } from '../../services/uiService';
 import { HELP_SECTIONS, type HelpSectionId } from './helpSections';
 import { parseHeadings } from './helpHeadings';
 import { useHelpDoc } from './useHelpDoc';
+import NavItem from '../common/NavItem';
 import './HelpSectionNav.css';
 
 interface HelpSectionNavProps {
@@ -34,23 +35,24 @@ const HelpSectionNav = ({ activeSection }: HelpSectionNavProps) => {
         const isActive = id === activeSection;
         return (
           <div key={id} className={`help-nav-section ${isActive ? 'active' : ''}`}>
-            <button
-              className={`context-nav-row help-nav-row t-ui ${isActive ? 'active' : ''}`}
+            <NavItem
+              active={isActive}
+              leading={<span className="help-nav-number t-meta">{index + 1}</span>}
               onClick={() => navigate(`/help/${id}`)}
             >
-              <span className="help-nav-number t-meta">{index + 1}</span>
-              <span className="help-nav-title">{t(`help.sections.${id}`)}</span>
-            </button>
+              {t(`help.sections.${id}`)}
+            </NavItem>
             {isActive && headings.length > 0 && (
               <ol className="help-nav-headings">
                 {headings.map((heading) => (
                   <li key={heading.id}>
-                    <button
-                      className={`help-nav-heading t-ui-plain ${activeHeading === heading.id ? 'active' : ''}`}
+                    <NavItem
+                      level={2}
+                      active={activeHeading === heading.id}
                       onClick={() => navigate(`/help/${id}#${heading.id}`)}
                     >
                       {heading.text}
-                    </button>
+                    </NavItem>
                   </li>
                 ))}
               </ol>

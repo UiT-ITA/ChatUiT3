@@ -5,10 +5,11 @@ import { useTranslation } from 'react-i18next';
 import { sendMessage, sendNewChatMessage, deleteChat, getCurrentChatId, getCurrentAssistantId, getChat, cancelGeneration, forgetChat, getActivitySignal } from '../../services/chatService';
 import { removeCachedChat } from '../../hooks/useChatCache';
 import { FileProcessingService } from '../../services/fileProcessingService';
-import { Icon } from '../common/Icon';
 import AssistantSelector from '../common/AssistantSelector';
+import useNarrowerThan from '../../hooks/useNarrowerThan';
 import ChatClassification from './ChatClassification';
-import ComposerPopover from './ComposerPopover';
+import Popover, { PopoverBody } from '../common/Popover';
+import IconButton from '../common/IconButton';
 import ContextRing from './ContextRing';
 import ContextUsageDetails from './ContextUsageDetails';
 import FileThumbnail from './FileThumbnail';
@@ -18,6 +19,7 @@ import { useNavigate, useLocation } from 'react-router-dom';
 import { addNotification } from '../../services/notificationService';
 import { getContextUsage, setDraft } from '../../services/contextUsageService';
 import { formatTokens, formatTokensCompact } from '../../utils/tokenCounting';
+import TextArea from '../common/TextArea';
 
 const DRAFT_COUNT_DEBOUNCE_MS = 150;
 
@@ -38,6 +40,9 @@ export default function ChatInput() {
   const [isDragOver, setIsDragOver] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const composerRef = useRef<HTMLFormElement>(null);
+  // Below 30rem the toolbar shows only icons and its popovers span the toolbar
+  const narrow = useNarrowerThan(composerRef, 30);
   const draftDebounceRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
 
   // What was last sent per chat, so a cancel can put it straight back in the composer.
@@ -303,6 +308,7 @@ export default function ChatInput() {
     <div className="chat-input">
       <div className="composer">
         <form
+          ref={composerRef}
           className="composer-card"
           onSubmit={handleSendMessage}
           onDragEnter={handleDragOver}
@@ -324,64 +330,75 @@ export default function ChatInput() {
             </div>
           )}
 
-          <textarea
+          <TextArea
             ref={textareaRef}
-            className="composer-textarea t-body-lg"
-            rows={2}
+            variant="unstyled"
+            size="large"
+            autoResize
+            minRows={2}
+            maxRows={6}
             placeholder={t('chat.messagePlaceholder')}
             onKeyDown={handleKeyDown}
             onPaste={handlePaste}
-            onChange={(e) => {
-              setCharCount(e.target.value.length);
-              scheduleDraftCount(e.target.value);
+            onChange={(value) => {
+              setCharCount(value.length);
+              scheduleDraftCount(value);
             }}
           />
 
           <div className="composer-toolbar">
-            <button
-              type="button"
-              className="composer-tool-button"
+            <IconButton
+              icon="attach"
+              label={t('chat.attachFile')}
+              variant="subtle"
+              size="small"
               onClick={handleFileUpload}
-              title={t('chat.attachFile')}
-            >
-              <Icon name="attach" size={1.0625} className="icon" />
-            </button>
-            <AssistantSelector className="composer-assistant" />
-            <ChatClassification />
+            />
+            <AssistantSelector compact={narrow} />
+            <ChatClassification popoverAnchor={narrow ? 'parent' : 'trigger'} />
             <div className="composer-spacer" />
             {usage.available ? (
-              <ComposerPopover
-                className="composer-token composer-popover--panel"
-                label={t('chat.contextHint', {
-                  used: formatTokens(usage.total, i18n.language),
-                  limit: formatTokensCompact(usage.contextSize, i18n.language),
-                })}
-                trigger={<ContextRing fraction={usage.contextSize > 0 ? usage.total / usage.contextSize : 0} level={usage.level} />}
+              <Popover
+                openOn="hover"
+                placement="top-end"
+                anchor={narrow ? 'parent' : 'trigger'}
+                panelWidth="large"
+                trigger={(
+                  <IconButton
+                    icon={<ContextRing fraction={usage.contextSize > 0 ? usage.total / usage.contextSize : 0} level={usage.level} />}
+                    label={t('chat.contextHint', {
+                      used: formatTokens(usage.total, i18n.language),
+                      limit: formatTokensCompact(usage.contextSize, i18n.language),
+                    })}
+                    size="small"
+                  />
+                )}
+                title={t('chat.panel.context')}
               >
-                <div className="composer-popover-title t-overline">{t('chat.panel.context')}</div>
-                <ContextUsageDetails usage={usage} />
-              </ComposerPopover>
+                <PopoverBody>
+                  <ContextUsageDetails usage={usage} />
+                </PopoverBody>
+              </Popover>
             ) : charCount > 0 && (
               <div className="composer-char-count t-meta">{t('chat.charCount', { count: charCount })}</div>
             )}
             {isGenerating ? (
-              <button
-                type="button"
-                className="composer-send composer-cancel t-ui"
+              <IconButton
+                icon="stop"
+                label={t('chat.cancelGeneration')}
+                variant="primary"
+                size="small"
                 onClick={handleCancel}
                 disabled={isCancelling || generatingMessage?.optimistic}
-                title={t('chat.cancelGeneration')}
-              >
-                <Icon name="stop" size={0.9375} className="icon" />
-              </button>
+              />
             ) : (
-              <button
+              <IconButton
                 type="submit"
-                className="composer-send t-ui"
-                title={t('chat.sendMessage')}
-              >
-                <Icon name="send" size={0.9375} className="icon" />
-              </button>
+                icon="send"
+                label={t('chat.sendMessage')}
+                variant="primary"
+                size="small"
+              />
             )}
           </div>
 

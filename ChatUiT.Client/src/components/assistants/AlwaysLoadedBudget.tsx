@@ -1,6 +1,9 @@
 import { useTranslation } from 'react-i18next';
 import { formatTokens } from '../../utils/tokenCounting';
+import Button from '../common/Button';
 import './AlwaysLoadedBudget.css';
+import Alert from '../common/Alert';
+import Stack from '../common/Stack';
 
 const WARN_FRACTION = 0.8;
 
@@ -54,31 +57,33 @@ const AlwaysLoadedBudget = ({ used, unavailable, limit, isEstimate, blocked, rej
       </p>
 
       {over && (
-        <p className="always-loaded-budget__notice always-loaded-budget__notice--danger t-ui-plain" role="alert">
+        <Alert tone="danger" role="alert">
           {t(blocked ? 'assistants.knowledge.budget.overBlocked' : 'assistants.knowledge.budget.overAllowed', {
             used: approx + number(used),
             limit: number(limit)
           })}
-        </p>
+        </Alert>
       )}
 
       {rejected.length > 0 && (
-        <div className="always-loaded-budget__notice always-loaded-budget__notice--warn" role="alert">
-          {rejected.map((file) => (
-            <div key={file.id} className="always-loaded-budget__rejected">
-              <div className="t-ui">{t('assistants.knowledge.budget.rejectedTitle', { name: file.name })}</div>
-              <div className="t-ui-plain">
-                {t('assistants.knowledge.budget.rejected', {
-                  tokens: approx + number(file.tokens),
-                  remaining: number(Math.max(0, file.remaining))
-                })}
+        <Alert tone="warning" role="alert">
+          <Stack gap="sm">
+            {rejected.map((file) => (
+              <div key={file.id} className="always-loaded-budget__rejected">
+                <div className="t-ui">{t('assistants.knowledge.budget.rejectedTitle', { name: file.name })}</div>
+                <div className="t-ui-plain">
+                  {t('assistants.knowledge.budget.rejected', {
+                    tokens: approx + number(file.tokens),
+                    remaining: number(Math.max(0, file.remaining))
+                  })}
+                </div>
               </div>
-            </div>
-          ))}
-          <button type="button" className="always-loaded-budget__dismiss t-ui" onClick={onDismissRejected}>
-            {t('common.close')}
-          </button>
-        </div>
+            ))}
+            <Button variant="subtle" size="small" alignSelf="end" onClick={onDismissRejected}>
+              {t('common.close')}
+            </Button>
+          </Stack>
+        </Alert>
       )}
     </div>
   );
