@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { useSignals } from '@preact/signals-react/runtime';
-import { createModel, updateModel, deleteModel, getModelCatalog } from '../../services/adminService';
+import { createModel, updateModel, deleteModel, getModelCatalog, getEndpointDeployments } from '../../services/adminService';
 import { adminEndpointsSignal, adminModelsSignal, loadAdminData } from '../../services/adminDataService';
 import type {
   UserRole,
@@ -13,6 +13,7 @@ import type {
   ApiProtocol,
   ModelDto,
   EndpointDto,
+  EndpointDeploymentDto,
 } from '../../types/admin';
 import { API_PROTOCOLS, REASONING_EFFORT_ORDER, TOKEN_COUNTING_SCHEME_OPTIONS } from '../../types/admin';
 import { DATA_CLASSIFICATIONS, type DataClassification } from '../../types/modelModels';
@@ -88,12 +89,27 @@ const ModelEditor: React.FC<ModelEditorProps> = ({ modelId: editId }) => {
   const [knowledgeCutoffMonth, setKnowledgeCutoffMonth] = useState<string>(initial.knowledgeCutoffMonth);
   const [saving, setSaving] = useState(false);
   const [catalog, setCatalog] = useState<CatalogModelDto[]>([]);
+  // The catalog entry last applied, or '' for custom values
+  const [presetId, setPresetId] = useState('');
+  // The deployments listed for endpointId; empty when the endpoint cannot list them
+  const [deployments, setDeployments] = useState<{ endpointId: string; items: EndpointDeploymentDto[] }>({ endpointId: '', items: [] });
 
   useEffect(() => {
     loadAdminData();
     // A failed catalog fetch must not block the form — it only prefills.
     getModelCatalog().then(setCatalog).catch(() => setCatalog([]));
   }, []);
+
+  useEffect(() => {
+    if (!endpointId) return;
+    let cancelled = false;
+    getEndpointDeployments(endpointId)
+      .then(items => { if (!cancelled) setDeployments({ endpointId, items }); })
+      .catch(() => { if (!cancelled) setDeployments({ endpointId, items: [] }); });
+    return () => { cancelled = true; };
+  }, [endpointId]);
+
+  const endpointDeployments = deployments.endpointId === endpointId ? deployments.items : [];
 
   const [synced, setSynced] = useState({ model, endpointCount: endpoints.length });
   if (model !== synced.model || endpoints.length !== synced.endpointCount) {
@@ -110,6 +126,7 @@ const ModelEditor: React.FC<ModelEditorProps> = ({ modelId: editId }) => {
     setClassification(next.classification);
     setCapabilities(next.capabilities);
     setKnowledgeCutoffMonth(next.knowledgeCutoffMonth);
+    setPresetId('');
   }
 
   if (editId && models === undefined) {
@@ -131,11 +148,13 @@ const ModelEditor: React.FC<ModelEditorProps> = ({ modelId: editId }) => {
 
   const updateCaps = <K extends keyof ModelCapabilities>(key: K, value: ModelCapabilities[K]) => {
     setCapabilities(prev => ({ ...prev, [key]: value }));
+    setPresetId('');
   };
 
   // Kept in the canonical ascending order so the assistant form's slider and the server's
   // clamping both see the same ladder without re-sorting.
   const toggleEffort = (level: ReasoningEffortLevel, checked: boolean) => {
+    setPresetId('');
     setCapabilities(prev => {
       const next = new Set(prev.supportedEfforts);
       if (checked) next.add(level);
@@ -147,16 +166,31 @@ const ModelEditor: React.FC<ModelEditorProps> = ({ modelId: editId }) => {
     });
   };
 
-  // Prefill from a known model. Everything stays editable afterwards, so an admin can still
-  // register a preview or self-hosted model the catalog has never heard of.
-  const applyCatalogEntry = (entry: CatalogModelDto) => {
-    setModelId(entry.modelId);
+  // Overwrites every value the preset sets. The model id is filled only when empty; the endpoint is never touched.
+  const applyCatalogEntry = (entry: CatalogModelDto, currentModelId: string) => {
+    setPresetId(entry.modelId);
+    if (!currentModelId) setModelId(entry.modelId);
     setApiProtocol(entry.apiProtocol);
     setCapabilities(entry.capabilities);
     const cutoff = entry.capabilities.knowledgeCutoff;
     setKnowledgeCutoffMonth(typeof cutoff === 'string' && cutoff.length >= 7 ? cutoff.slice(0, 7) : '');
-    if (!modelName) setModelName(entry.displayName);
-    if (!description) setDescription(entry.description);
+    setModelName(entry.displayName);
+    setDescription(entry.description);
+  };
+
+  const findCatalogEntry = (id: string) =>
+    catalog.find(c => c.modelId.toLowerCase() === id.toLowerCase());
+
+  // A listed deployment applies the preset for the model it runs. Without a list, a typed name that equals a preset id applies that preset.
+  const handleModelIdChange = (value: string) => {
+    setModelId(value);
+    const entry = endpointDeployments.length > 0
+      ? (() => {
+          const deployment = endpointDeployments.find(d => d.name === value);
+          return deployment ? findCatalogEntry(deployment.model) : undefined;
+        })()
+      : findCatalogEntry(value);
+    if (entry) applyCatalogEntry(entry, value);
   };
 
   const canSave =
@@ -226,58 +260,6 @@ const ModelEditor: React.FC<ModelEditorProps> = ({ modelId: editId }) => {
       </h1>
       <div className="page-title-bar" />
 
-      {catalog.length > 0 && (
-        <div className="admin-field">
-          <label className="admin-label t-label">{t('admin.models.fields.knownModel')}</label>
-          <select
-            className="admin-select t-body"
-            value={catalog.some(c => c.modelId === modelId) ? modelId : ''}
-            onChange={(e) => {
-              const entry = catalog.find(c => c.modelId === e.target.value);
-              if (entry) applyCatalogEntry(entry);
-            }}
-          >
-            <option value="">{t('admin.models.fields.knownModelCustom')}</option>
-            {catalog.map(entry => (
-              <option key={entry.modelId} value={entry.modelId}>
-                {entry.displayName} ({t(`admin.endpointType.${entry.provider}`)})
-              </option>
-            ))}
-          </select>
-          <div className="af-note t-ui-plain">{t('admin.models.fields.knownModelHint')}</div>
-        </div>
-      )}
-
-      <div className="admin-field-grid">
-        <div className="admin-field">
-          <label className="admin-label t-label">{t('admin.models.fields.modelId')}</label>
-          <input
-            className="admin-input t-body"
-            value={modelId}
-            onChange={(e) => setModelId(e.target.value)}
-            placeholder="gpt-5.4, claude-opus-5, DeepSeek-V4-Flash …"
-          />
-        </div>
-        <div className="admin-field">
-          <label className="admin-label t-label">{t('admin.models.fields.modelName')}</label>
-          <input
-            className="admin-input t-body"
-            value={modelName}
-            onChange={(e) => setModelName(e.target.value)}
-          />
-        </div>
-      </div>
-
-      <div className="admin-field" style={{ marginTop: '1.375rem' }}>
-        <label className="admin-label t-label">{t('admin.models.fields.description')}</label>
-        <textarea
-          className="admin-textarea t-body"
-          value={description}
-          onChange={(e) => setDescription(e.target.value)}
-          rows={3}
-        />
-      </div>
-
       <div className="admin-field-grid">
         <div className="admin-field">
           <label className="admin-label t-label">{t('admin.models.fields.endpoint')}</label>
@@ -294,11 +276,63 @@ const ModelEditor: React.FC<ModelEditorProps> = ({ modelId: editId }) => {
           </select>
         </div>
         <div className="admin-field">
+          <label className="admin-label t-label">{t('admin.models.fields.modelId')}</label>
+          <input
+            className="admin-input t-body"
+            value={modelId}
+            onChange={(e) => handleModelIdChange(e.target.value)}
+            list="model-editor-deployments"
+            placeholder="gpt-5.4, claude-opus-5, DeepSeek-V4-Flash …"
+          />
+          <datalist id="model-editor-deployments">
+            {endpointDeployments.map(d => (
+              <option key={d.name} value={d.name}>{d.model !== d.name ? d.model : undefined}</option>
+            ))}
+          </datalist>
+        </div>
+      </div>
+
+      {catalog.length > 0 && (
+        <div className="admin-field" style={{ marginTop: '1.375rem' }}>
+          <label className="admin-label t-label">{t('admin.models.fields.knownModel')}</label>
+          <select
+            className="admin-select t-body"
+            value={presetId}
+            onChange={(e) => {
+              const entry = catalog.find(c => c.modelId === e.target.value);
+              if (entry) applyCatalogEntry(entry, modelId);
+              else setPresetId('');
+            }}
+          >
+            <option value="">{t('admin.models.fields.knownModelCustom')}</option>
+            {catalog.map(entry => (
+              <option key={entry.modelId} value={entry.modelId}>
+                {entry.displayName} ({t(`admin.endpointType.${entry.provider}`)})
+              </option>
+            ))}
+          </select>
+          <div className="af-note t-ui-plain">{t('admin.models.fields.knownModelHint')}</div>
+        </div>
+      )}
+
+      <div className="admin-field-grid">
+        <div className="admin-field">
+          <label className="admin-label t-label">{t('admin.models.fields.modelName')}</label>
+          <input
+            className="admin-input t-body"
+            value={modelName}
+            onChange={(e) => setModelName(e.target.value)}
+          />
+        </div>
+        <div className="admin-field">
           <label className="admin-label t-label">{t('admin.models.fields.apiProtocol')}</label>
           <select
             className="admin-select t-body"
             value={apiProtocol}
-            onChange={(e) => setApiProtocol(e.target.value as ApiProtocol | '')}
+            onChange={(e) => {
+              setApiProtocol(e.target.value as ApiProtocol | '');
+              setPresetId('');
+            }}
           >
             <option value="" disabled>{t('admin.models.fields.apiProtocolNone')}</option>
             {API_PROTOCOLS.map(protocol => (
@@ -309,6 +343,16 @@ const ModelEditor: React.FC<ModelEditorProps> = ({ modelId: editId }) => {
             {apiProtocol === '' ? t('admin.models.fields.apiProtocolRequired') : t('admin.models.fields.apiProtocolHint')}
           </div>
         </div>
+      </div>
+
+      <div className="admin-field" style={{ marginTop: '1.375rem' }}>
+        <label className="admin-label t-label">{t('admin.models.fields.description')}</label>
+        <textarea
+          className="admin-textarea t-body"
+          value={description}
+          onChange={(e) => setDescription(e.target.value)}
+          rows={3}
+        />
       </div>
 
       <div className="admin-field">
@@ -461,7 +505,10 @@ const ModelEditor: React.FC<ModelEditorProps> = ({ modelId: editId }) => {
             className="admin-input t-body"
             type="month"
             value={knowledgeCutoffMonth}
-            onChange={(e) => setKnowledgeCutoffMonth(e.target.value)}
+            onChange={(e) => {
+              setKnowledgeCutoffMonth(e.target.value);
+              setPresetId('');
+            }}
           />
         </div>
         <div className="admin-field">
