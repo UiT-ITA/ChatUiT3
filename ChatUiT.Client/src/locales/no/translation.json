@@ -321,6 +321,11 @@
     "update": "Oppdater",
     "defaultAssistant": "Assistent",
     "noDescriptionAvailable": "Ingen beskrivelse tilgjengelig",
+    "view": {
+      "label": "Visning",
+      "cards": "Kort",
+      "list": "Liste"
+    },
     "shareDescription": "Del \"{{name}}\" med andre:",
     "shareLink": "Delingslenke",
     "assistantId": "Assistent-ID",

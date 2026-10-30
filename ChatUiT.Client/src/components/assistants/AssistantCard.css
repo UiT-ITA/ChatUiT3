@@ -1,3 +1,10 @@
+/* Three columns, wrapping on narrow screens. auto-fill keeps a card at a third when there are fewer than three. */
+.assistant-card-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(max(13.4375rem, calc((100% - 2 * var(--space-sm)) / 3)), 1fr));
+  gap: var(--space-sm);
+}
+
 .assistant-card {
   outline: none;
 }

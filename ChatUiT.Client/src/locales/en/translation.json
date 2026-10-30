@@ -321,6 +321,11 @@
     "update": "Update",
     "defaultAssistant": "Assistant",
     "noDescriptionAvailable": "No description available",
+    "view": {
+      "label": "View",
+      "cards": "Cards",
+      "list": "List"
+    },
     "shareDescription": "Share \"{{name}}\" with others:",
     "shareLink": "Share Link",
     "assistantId": "Assistant ID",

@@ -60,7 +60,7 @@ export default function NewChatWelcome() {
         {recentAssistants.length > 0 && (
           <div className="tips-section recent-assistants">
             <div className="t-overline">{t('welcome.recentAssistants')}</div>
-            <div role="listbox" aria-label={t('welcome.recentAssistants')} className="recent-assistant-cards">
+            <div role="listbox" aria-label={t('welcome.recentAssistants')} className="assistant-card-grid">
               {recentAssistants.map(assistant => (
                 <AssistantCard
                   key={assistant.id}

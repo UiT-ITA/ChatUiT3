@@ -23,10 +23,14 @@ interface AssistantCardProps {
   /** Shown but not selectable, with this text as the reason. */
   disabledReason?: string;
   onSelect: (assistant: AssistantDto) => void;
+  /** Shows a pin, for the assistant the user pinned as default. */
+  isDefault?: boolean;
+  /** Shows a hidden icon, for an assistant hidden from the picker. */
+  hidden?: boolean;
 }
 
 /** A selectable assistant with its description and a list of its model, classification and capabilities. */
-export default function AssistantCard({ assistant, selected, disabledReason, onSelect }: AssistantCardProps) {
+export default function AssistantCard({ assistant, selected, disabledReason, onSelect, isDefault = false, hidden = false }: AssistantCardProps) {
   useSignals();
   const { t } = useTranslation();
   const models = getModels().value ?? [];
@@ -64,6 +68,14 @@ export default function AssistantCard({ assistant, selected, disabledReason, onS
             {t(`assistants.picker.categories.${assistant.type}`)}
           </span>
         </div>
+        {isDefault && (
+          <Icon
+            name={assistant.canBeDefault ? 'pin' : 'pinOutline'}
+            color="muted"
+            label={assistant.canBeDefault ? t('assistants.actions.isDefault') : t('assistants.defaultInactiveNote')}
+          />
+        )}
+        {hidden && <Icon name="hidden" color="muted" label={t('assistants.actions.showInSelector')} />}
         <IconButton
           icon={<Icon name={assistant.isFavorite ? 'star' : 'starOutline'} color={assistant.isFavorite ? 'accent' : 'muted'} />}
           label={assistant.isFavorite

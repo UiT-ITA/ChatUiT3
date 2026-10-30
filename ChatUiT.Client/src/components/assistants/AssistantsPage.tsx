@@ -6,7 +6,8 @@ import './AssistantsPage.css';
 import { getAssistants, deleteAssistant, toggleVisibility, addSharedAssistant, invalidateAssistants, removeSharedAssistant, setDefaultAssistant, clearDefaultAssistant } from '../../services/assistantService';
 import { getModels } from '../../services/modelService';
 import { setUserSelectedAssistantId } from '../../services/chatService';
-import type { FullAssistantDto, AssistantSummaryDto } from '../../types/assistantModels';
+import type { AssistantDto, FullAssistantDto, AssistantSummaryDto } from '../../types/assistantModels';
+import AssistantCard from './AssistantCard';
 import AssistantForm from './AssistantForm';
 import AddExternalAssistant from './AddExternalAssistant';
 import ShareModal from './ShareModal';
@@ -16,8 +17,10 @@ import { FieldDescription } from '../common/Field';
 import { List, ListItem } from '../common/List';
 import { Icon } from '../common/Icon';
 import { ConfirmDialog } from '../common/Dialog';
+import SegmentedControl from '../common/SegmentedControl';
+import { useSettings } from '../../hooks/useSettings';
 
-type AssistantVariant = 'owned' | 'system' | 'shared';
+type AssistantVariant = AssistantDto['type'];
 
 const AssistantsPage: React.FC = () => {
   useSignals();
@@ -27,6 +30,7 @@ const AssistantsPage: React.FC = () => {
   const [searchParams, setSearchParams] = useSearchParams();
   const assistantList = getAssistants();
   const models = getModels().value ?? [];
+  const { settings, updateSetting } = useSettings();
   const [shareModalAssistant, setShareModalAssistant] = useState<FullAssistantDto | null>(null);
   const [pendingRemoval, setPendingRemoval] = useState<{ id: string; shared: boolean } | null>(null);
   const [shownId, setShownId] = useState(assistantId);
@@ -317,11 +321,26 @@ const AssistantsPage: React.FC = () => {
   const renderOverviewGroup = (
     title: string,
     assistants: (FullAssistantDto | AssistantSummaryDto)[],
+    type: AssistantVariant,
     emptyKey: string
   ) => (
     <div className="assistants-overview-group">
       <div className="t-overline">{title}</div>
-      {assistants.length > 0 ? (
+      {assistants.length > 0 && settings.assistantView === 'cards' && (
+        <div className="assistant-card-grid">
+          {assistants.map((assistant) => (
+            <AssistantCard
+              key={assistant.id}
+              assistant={{ ...assistant, type } as AssistantDto}
+              selected={false}
+              isDefault={defaultAssistantId === assistant.id}
+              hidden={!assistant.isVisible}
+              onSelect={a => navigate(`/assistants/${a.id}`)}
+            />
+          ))}
+        </div>
+      )}
+      {assistants.length > 0 && settings.assistantView === 'list' && (
         <List bordered>
           {assistants.map((assistant) => {
             const model = models.find(m => m.id === assistant.modelId);
@@ -348,7 +367,8 @@ const AssistantsPage: React.FC = () => {
             );
           })}
         </List>
-      ) : (
+      )}
+      {assistants.length === 0 && (
         <div className="assistants-overview-empty t-ui-plain">{t(emptyKey)}</div>
       )}
     </div>
@@ -362,15 +382,27 @@ const AssistantsPage: React.FC = () => {
             <h1 className="t-page-title">{t('assistants.title')}</h1>
             <div className="page-title-bar" />
           </div>
-          <Button variant="primary" onClick={() => navigate('/assistants/new')}>
-            {t('assistants.create')}
-          </Button>
+          <div className="assistants-header-actions">
+            <SegmentedControl
+              label={t('assistants.view.label')}
+              size="small"
+              value={settings.assistantView}
+              onChange={view => void updateSetting('assistantView', view)}
+              options={[
+                { value: 'cards', label: t('assistants.view.cards'), leading: <Icon name="grid" size="small" /> },
+                { value: 'list', label: t('assistants.view.list'), leading: <Icon name="menu" size="small" /> },
+              ]}
+            />
+            <Button variant="primary" onClick={() => navigate('/assistants/new')}>
+              {t('assistants.create')}
+            </Button>
+          </div>
         </div>
         <p className="assistants-intro t-body-lg">{t('assistants.intro')}</p>
 
-        {renderOverviewGroup(t('assistants.myAssistants'), owned, 'assistants.emptyStates.noPersonalAssistants')}
-        {renderOverviewGroup(t('assistants.systemAssistants'), system, 'assistants.emptyStates.noSystemAssistants')}
-        {renderOverviewGroup(t('assistants.sharedAssistants'), shared, 'assistants.emptyStates.noSharedAssistants')}
+        {renderOverviewGroup(t('assistants.myAssistants'), owned, 'owned', 'assistants.emptyStates.noPersonalAssistants')}
+        {renderOverviewGroup(t('assistants.systemAssistants'), system, 'system', 'assistants.emptyStates.noSystemAssistants')}
+        {renderOverviewGroup(t('assistants.sharedAssistants'), shared, 'shared', 'assistants.emptyStates.noSharedAssistants')}
 
         <AddExternalAssistant />
       </div>
