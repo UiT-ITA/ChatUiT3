@@ -5,6 +5,12 @@
   min-width: 25rem;
   overflow: hidden;
   background: var(--bg);
+  position: relative;
+}
+
+/* Groups the rail and the context column for hover without adding a box */
+.sidebar-shell {
+  display: contents;
 }
 
 .main-column {
@@ -47,6 +53,6 @@
   display: none;
 }
 
-.layout.mobile-layout.show-detail > .context-column {
+.layout.mobile-layout.show-detail .context-column {
   display: none;
 }

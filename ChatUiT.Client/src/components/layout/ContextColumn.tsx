@@ -15,15 +15,19 @@ import { toolboxLabel, ADMIN_DOMAINS, ADMIN_DOMAIN_ICONS, ADMIN_SETTINGS_PAGES, 
 import type { SettingsCategory } from '../../types/settingsModels';
 import { HELP_SECTIONS, isHelpSection } from '../help/helpSections';
 import HelpSectionNav from '../help/HelpSectionNav';
+import { cx } from '../common/layout';
 import './ContextColumn.css';
 
 interface ContextColumnProps {
   isMobile?: boolean;
+  // Hidden, and shown over the main column while peek is true
+  collapsed?: boolean;
+  peek?: boolean;
 }
 
 const SETTINGS_TABS: SettingsCategory[] = ['appearance', 'personalization', 'dataControl'];
 
-const ContextColumn = ({ isMobile }: ContextColumnProps) => {
+const ContextColumn = ({ isMobile, collapsed, peek }: ContextColumnProps) => {
   useSignals();
   const { t } = useTranslation();
   const location = useLocation();
@@ -163,7 +167,7 @@ const ContextColumn = ({ isMobile }: ContextColumnProps) => {
     }
   };
 
-  const className = isMobile ? 'context-column context-column-mobile' : 'context-column';
+  const className = cx('context-column', isMobile && 'context-column-mobile', collapsed && 'context-column-collapsed', peek && 'context-column-peek');
 
   return (
     <aside className={className}>

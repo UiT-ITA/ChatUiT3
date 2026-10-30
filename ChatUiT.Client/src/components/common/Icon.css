@@ -13,6 +13,8 @@
 .icon--rotate-180 { transform: rotate(180deg); }
 .icon--rotate-270 { transform: rotate(270deg); }
 
+.icon--mirror { transform: scaleX(-1); }
+
 .icon--spin {
   animation: icon-spin 1.4s linear infinite;
 }

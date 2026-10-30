@@ -43,6 +43,26 @@
   padding: 0.375rem 0.5rem 0.25rem;
 }
 
+/* Collapsed: taken out of the row and hidden behind its left edge, next to the icon rail */
+.context-column-collapsed {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 3.75rem;
+  z-index: 100;
+  visibility: hidden;
+  clip-path: inset(0 100% 0 0);
+  transition: clip-path var(--dur-base) var(--ease-standard), visibility 0s var(--dur-base);
+}
+
+/* Shown over the main column; the negative right inset leaves room for the shadow */
+.context-column-peek {
+  visibility: visible;
+  clip-path: inset(0 -3rem 0 0);
+  box-shadow: var(--shadow-overlay);
+  transition: clip-path var(--dur-base) var(--ease-standard), visibility 0s;
+}
+
 /* Mobile: the column IS the list view — full width under the top bar */
 .context-column-mobile {
   width: 100%;

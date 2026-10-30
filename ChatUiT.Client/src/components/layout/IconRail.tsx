@@ -75,20 +75,18 @@ const IconRail = ({ isMobile }: IconRailProps) => {
         />
       )}
 
-      <IconButton icon="chatNew" label={t('sidebar.newChat')} variant="primary" onClick={() => go('/chat/new')} />
-
       {!isMobile && <div className="rail-gap" />}
 
-      <IconButton icon="chat" label={t('sidebar.chats')} active={section === 'chats'} onClick={() => go('/')} />
-      <IconButton icon="assistants" label={t('sidebar.assistants')} active={section === 'assistants'} onClick={() => go('/assistants')} />
+      <IconButton iconSize="xl" icon="chatNew" label={t('sidebar.chats')} active={section === 'chats'} onClick={() => go('/')} />
+      <IconButton iconSize="xl" icon="assistants" label={t('sidebar.assistants')} active={section === 'assistants'} onClick={() => go('/assistants')} />
       {isAdmin && (
-        <IconButton icon="admin" label={t('sidebar.admin')} active={section === 'admin'} onClick={() => go('/admin')} />
+        <IconButton iconSize="xl" icon="admin" label={t('sidebar.admin')} active={section === 'admin'} onClick={() => go('/admin')} />
       )}
 
       <div className="rail-spacer" />
 
       {!compact && secondaryItems.map(item => (
-        <IconButton key={item.key} icon={item.icon} label={item.title} active={item.active} onClick={item.onClick} />
+        <IconButton iconSize="xl" key={item.key} icon={item.icon} label={item.title} active={item.active} onClick={item.onClick} />
       ))}
 
       <Popover
@@ -97,7 +95,7 @@ const IconRail = ({ isMobile }: IconRailProps) => {
         placement={isMobile ? 'bottom-end' : 'right-end'}
         panelWidth="medium"
         trigger={compact ? (
-          <IconButton icon="menu" label={t('navigation.menu')} active={userMenuOpen} />
+          <IconButton iconSize="xl" icon="menu" label={t('navigation.menu')} active={userMenuOpen} />
         ) : (
           <IconButton
             icon={<span className="rail-avatar t-label">{getInitials(account?.name)}</span>}

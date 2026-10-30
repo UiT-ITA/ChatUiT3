@@ -37,7 +37,9 @@
     "delete": "Delete",
     "status": "Status (dev)",
     "darkMode": "Dark mode",
-    "lightMode": "Light mode"
+    "lightMode": "Light mode",
+    "collapseSidebar": "Collapse sidebar",
+    "expandSidebar": "Expand sidebar"
   },
   "chat": {
     "sendMessage": "Send message",
