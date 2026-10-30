@@ -56,6 +56,19 @@ public static class ModelCatalog
             TokenCountingScheme = TokenCountingSchemes.O200kTile
         }),
 
+        new("gpt-6.1-terra", "GPT-6.1 Terra", "Fast, efficient model for visual reasoning, computer use and natural writing.", EndpointType.MicrosoftFoundry, ApiProtocol.OpenAiResponses, new ModelCapabilities
+        {
+            SupportsVision = true,
+            SupportsFunctionCalling = true,
+            Temperature = TemperatureSupport.SupportedWhenReasoningDisabled,
+            SupportedEfforts = Efforts(ReasoningEffort.None, ReasoningEffort.Low, ReasoningEffort.Medium, ReasoningEffort.High, ReasoningEffort.XHigh, ReasoningEffort.Max),
+            MaxContextTokens = 1_050_000,
+            MaxOutputTokens = 128_000,
+            DefaultMaxOutputTokens = 32_000,
+            KnowledgeCutoff = new DateTime(2026, 6, 1),
+            TokenCountingScheme = TokenCountingSchemes.O200kTile
+        }),
+
         new("gpt-6-sol", "GPT-6 Sol", "Built for complex coding and agentic workflows.", EndpointType.MicrosoftFoundry, ApiProtocol.OpenAiResponses, new ModelCapabilities
         {
             SupportsVision = true,
