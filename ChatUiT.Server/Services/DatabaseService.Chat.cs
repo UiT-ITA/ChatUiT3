@@ -57,10 +57,16 @@ public partial class DatabaseService
             ? await ReadContentBlockMapByChatAsync(userId, chatId)
             : await ReadContentBlockMapByOwnersAsync(userId, chatId, messageDocuments.Select(m => m.Id).ToList());
 
+        var key = await GetContentKeyAsync(userId, chatDocument);
+        if (key != null)
+        {
+            await EncryptBlocksAsync(userId, contentBlocksById.Values, key);
+        }
+
         var messages = new List<ChatMessage>(messageDocuments.Count);
         foreach (var messageDocument in messageDocuments)
         {
-            messages.Add(MapChatMessage(messageDocument, contentBlocksById, includeFileContent));
+            messages.Add(MapChatMessage(messageDocument, contentBlocksById, includeFileContent, key));
         }
 
         return new Chat
@@ -100,8 +106,13 @@ public partial class DatabaseService
 
         var ownerIds = file.Chunks.Select(chunk => chunk.Id).ToList();
         var contentBlocksById = await ReadContentBlockMapByOwnersAsync(userId, chatId, ownerIds);
+        var key = await GetContentKeyAsync(userId, chatId);
+        if (key != null)
+        {
+            await EncryptBlocksAsync(userId, contentBlocksById.Values, key);
+        }
 
-        return ReadFiles(new[] { file }, contentBlocksById, includeContent: true).FirstOrDefault();
+        return ReadFiles(new[] { file }, contentBlocksById, includeContent: true, key).FirstOrDefault();
     }
 
     public async Task AddChatAsync(string userId, Chat chat)
@@ -216,7 +227,10 @@ public partial class DatabaseService
         }
         catch (CosmosException ex) when (ex.StatusCode == System.Net.HttpStatusCode.NotFound)
         {
+            return;
         }
+
+        await EncryptChatContentAsync(userId, chatId, await _chatKeys.GetUserKeyAsync(userId));
     }
 
     public async Task UpdateChatAsync(string userId, string chatId, string? newTitle, string? newAssistantId = null)
@@ -260,6 +274,8 @@ public partial class DatabaseService
         var messageId = string.IsNullOrWhiteSpace(message.Id) ? Guid.NewGuid().ToString() : message.Id;
         var timestamp = message.Timestamp == default ? DateTime.UtcNow : message.Timestamp;
 
+        var key = await GetContentKeyAsync(userId, chatId);
+
         // Content blocks are written before the message document so a partially saved
         // message is never visible; on failure the already-written blocks are removed.
         var writtenBlockIds = new List<string>();
@@ -273,10 +289,10 @@ public partial class DatabaseService
                 Role = message.Role,
                 Timestamp = timestamp,
                 Status = message.Status,
-                ContentBlockIds = await WriteTextContentAsync(userId, chatId, messageId, message.Content, writtenBlockIds),
-                ActivityBlockIds = await WriteTextContentAsync(userId, chatId, messageId, SerializeActivity(message.Activity), writtenBlockIds),
-                TranscriptBlockIds = await WriteTextContentAsync(userId, chatId, messageId, SerializeTranscript(message.Transcript), writtenBlockIds),
-                Files = await WriteFilesAsync(userId, chatId, message.Files, writtenBlockIds),
+                ContentBlockIds = await WriteTextContentAsync(userId, chatId, messageId, message.Content, key, writtenBlockIds),
+                ActivityBlockIds = await WriteTextContentAsync(userId, chatId, messageId, SerializeActivity(message.Activity), key, writtenBlockIds),
+                TranscriptBlockIds = await WriteTextContentAsync(userId, chatId, messageId, SerializeTranscript(message.Transcript), key, writtenBlockIds),
+                Files = await WriteFilesAsync(userId, chatId, message.Files, key, writtenBlockIds),
                 AssistantId = message.AssistantId,
                 AssistantName = message.AssistantName,
                 TokenCounts = message.TokenCounts ?? new Dictionary<string, int>(),
@@ -312,6 +328,7 @@ public partial class DatabaseService
         var role = message.Role;
         var status = message.Status;
         var replaceFiles = message.Files != null && message.Files.Count > 0;
+        var key = await GetContentKeyAsync(userId, chatId);
 
         // Write the new blocks and replace the message document first; the old blocks
         // are only deleted once the replacement is safely stored. On failure the new
@@ -319,14 +336,14 @@ public partial class DatabaseService
         var writtenBlockIds = new List<string>();
         try
         {
-            var contentBlockIds = await WriteTextContentAsync(userId, chatId, message.Id, message.Content, writtenBlockIds);
-            var activityBlockIds = await WriteTextContentAsync(userId, chatId, message.Id, SerializeActivity(message.Activity), writtenBlockIds);
-            var transcriptBlockIds = await WriteTextContentAsync(userId, chatId, message.Id, SerializeTranscript(message.Transcript), writtenBlockIds);
+            var contentBlockIds = await WriteTextContentAsync(userId, chatId, message.Id, message.Content, key, writtenBlockIds);
+            var activityBlockIds = await WriteTextContentAsync(userId, chatId, message.Id, SerializeActivity(message.Activity), key, writtenBlockIds);
+            var transcriptBlockIds = await WriteTextContentAsync(userId, chatId, message.Id, SerializeTranscript(message.Transcript), key, writtenBlockIds);
 
             var files = existingMessage.Files;
             if (replaceFiles)
             {
-                files = await WriteFilesAsync(userId, chatId, message.Files, writtenBlockIds);
+                files = await WriteFilesAsync(userId, chatId, message.Files, key, writtenBlockIds);
             }
 
             var replacement = new ChatMessageDocument
@@ -486,18 +503,19 @@ public partial class DatabaseService
     private ChatMessage MapChatMessage(
         ChatMessageDocument messageDocument,
         IReadOnlyDictionary<string, ContentBlockDocument> contentBlocksById,
-        bool includeFileContent)
+        bool includeFileContent,
+        byte[]? key)
     {
         return new ChatMessage
         {
             Id = messageDocument.Id,
             Role = messageDocument.Role,
             Timestamp = messageDocument.Timestamp,
-            Content = ReadTextContent(messageDocument.ContentBlockIds, contentBlocksById),
-            Activity = DeserializeActivity(ReadTextContent(messageDocument.ActivityBlockIds, contentBlocksById)),
-            Transcript = DeserializeTranscript(ReadTextContent(messageDocument.TranscriptBlockIds, contentBlocksById)),
+            Content = ReadTextContent(messageDocument.ContentBlockIds, contentBlocksById, key),
+            Activity = DeserializeActivity(ReadTextContent(messageDocument.ActivityBlockIds, contentBlocksById, key)),
+            Transcript = DeserializeTranscript(ReadTextContent(messageDocument.TranscriptBlockIds, contentBlocksById, key)),
             Status = messageDocument.Status,
-            Files = ReadFiles(messageDocument.Files, contentBlocksById, includeFileContent),
+            Files = ReadFiles(messageDocument.Files, contentBlocksById, includeFileContent, key),
             AssistantId = messageDocument.AssistantId,
             AssistantName = messageDocument.AssistantName,
             TokenCounts = messageDocument.TokenCounts ?? new Dictionary<string, int>(),
@@ -553,6 +571,13 @@ public partial class DatabaseService
             return null;
         }
     }
+
+    /// <summary>The user's content key when the chat is red, otherwise null.</summary>
+    private async Task<byte[]?> GetContentKeyAsync(string userId, string chatId)
+        => await GetContentKeyAsync(userId, await ReadItemOrDefaultAsync<ChatDocument>(_chatContainer!, chatId, userId));
+
+    private async Task<byte[]?> GetContentKeyAsync(string userId, ChatDocument? chatDocument)
+        => chatDocument is { RedEnabled: true } ? await _chatKeys.GetUserKeyAsync(userId) : null;
 
     private async Task TouchChatAsync(string userId, string chatId, DateTime updatedAt, AiChatStatus? status)
     {

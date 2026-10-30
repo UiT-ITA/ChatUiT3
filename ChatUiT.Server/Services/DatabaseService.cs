@@ -5,6 +5,7 @@ using System.Linq;
 using System.Net;
 using System.Threading.Tasks;
 using ChatUiT.Server.Models;
+using ChatUiT.Server.Services.Encryption;
 using Microsoft.Azure.Cosmos;
 
 namespace ChatUiT.Server.Services;
@@ -30,9 +31,13 @@ public partial class DatabaseService : IDatabaseService
     private readonly Container? _toolPolicyContainer;
     private readonly Container? _internalAgentsContainer;
     private readonly Task _initializationTask;
+    private readonly IChatKeyService _chatKeys;
+    private readonly ILogger<DatabaseService> _logger;
 
-    public DatabaseService(IConfiguration configuration)
+    public DatabaseService(IConfiguration configuration, IChatKeyService chatKeys, ILogger<DatabaseService> logger)
     {
+        _chatKeys = chatKeys;
+        _logger = logger;
         _options = configuration.GetSection(ConfigurationSectionName).Get<CosmosChatStorageOptions>() ?? new CosmosChatStorageOptions();
         _options.ConnectionString ??= configuration.GetConnectionString("CosmosDBConnection");
         _options.ConnectionString ??= configuration.GetConnectionString("CosmosNoSql");
