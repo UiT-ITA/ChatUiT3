@@ -1,3 +1,5 @@
+using Azure.Core;
+
 namespace ChatUiT.Server.Services.AiProviders;
 
 using ChatUiT.Server.Models;
@@ -10,7 +12,7 @@ using ChatUiT.Server.Services.AiProviders.Protocols;
 /// </summary>
 public sealed class AzureOpenAiProvider : OpenAiV1HostProvider
 {
-    public AzureOpenAiProvider(IApiProtocolRegistry protocols) : base(protocols)
+    public AzureOpenAiProvider(IApiProtocolRegistry protocols, TokenCredential credential) : base(protocols, credential)
     {
     }
 

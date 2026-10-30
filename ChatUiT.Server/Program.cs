@@ -1,3 +1,5 @@
+using Azure.Core;
+using Azure.Identity;
 using ChatUiT.Server.Hubs;
 using ChatUiT.Server.Models;
 using ChatUiT.Server.Services;
@@ -102,6 +104,8 @@ builder.Services.AddOpenApi();
 builder.Services.AddSignalR();
 
 // Register services
+// The app's Entra identity: the managed identity in Azure, the developer's az login locally.
+builder.Services.AddSingleton<TokenCredential>(new CachingTokenCredential(new DefaultAzureCredential()));
 builder.Services.AddScoped<UserService>();
 builder.Services.AddSingleton<StreamingService>();
 builder.Services.AddSingleton<IChatKeyService, ChatKeyService>();
@@ -139,6 +143,8 @@ var app = builder.Build();
 // Built now so an invalid agent id or a duplicate id stops startup.
 app.Services.GetRequiredService<IInternalAgentRegistry>();
 app.Services.GetRequiredService<IKnowledgeSourceRegistry>();
+// Builds the database service, which starts the Cosmos DB check.
+app.Services.GetRequiredService<IDatabaseService>();
 
 // The AzureOpenAI configuration is only used to seed an endpoint into the database on first
 // run. Everything at request time reads endpoints from the database instead.

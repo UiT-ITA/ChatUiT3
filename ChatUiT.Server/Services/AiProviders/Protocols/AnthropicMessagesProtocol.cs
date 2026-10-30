@@ -8,6 +8,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using Anthropic;
 using Anthropic.Models.Messages;
+using Azure.Core;
 using Microsoft.Extensions.Logging;
 
 namespace ChatUiT.Server.Services.AiProviders.Protocols;
@@ -59,7 +60,7 @@ public sealed class AnthropicMessagesProtocol : IApiProtocol
                 : NamingTokenBudget,
             includeTools: false);
 
-        using var client = CreateClient(target);
+        using var client = await CreateClientAsync(target, cancellationToken);
         var message = await client.Messages.Create(parameters, cancellationToken);
 
         var text = new StringBuilder();
@@ -79,9 +80,16 @@ public sealed class AnthropicMessagesProtocol : IApiProtocol
     /// edited in the admin panel while the server runs, so a client kept between calls would
     /// go on using the URL and key it was created with until the next restart.
     /// </summary>
-    private static IAnthropicClient CreateClient(ProtocolTarget target)
+    private static async Task<IAnthropicClient> CreateClientAsync(ProtocolTarget target, CancellationToken cancellationToken)
     {
-        var client = new AnthropicClient { ApiKey = target.ApiKey };
+        // With a credential: sends only the bearer token. ApiKey = null turns off the SDK's ANTHROPIC_API_KEY fallback.
+        var client = target.Credential == null
+            ? new AnthropicClient { ApiKey = target.ApiKey }
+            : new AnthropicClient
+            {
+                ApiKey = null,
+                AuthToken = (await target.Credential.GetTokenAsync(new TokenRequestContext([AzureAiAuth.Scope]), cancellationToken)).Token
+            };
 
         // A null URL means "the default Anthropic API" rather than a misconfiguration to
         // reject; the SDK appends /v1/messages to whatever base it is given.
@@ -477,7 +485,7 @@ public sealed class AnthropicMessagesProtocol : IApiProtocol
         {
             var parameters = BuildParams(_request, _messages, _request.Parameters.MaxOutputTokens, includeTools: true, _allowThinking, allowToolCalls);
 
-            using var client = CreateClient(_target);
+            using var client = await CreateClientAsync(_target, cancellationToken);
 
             // Content blocks arrive as a start event, deltas, and a stop event, all keyed by
             // index. They are kept in index order because the turn is replayed to the model
