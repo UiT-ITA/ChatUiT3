@@ -1,0 +1,112 @@
+/* The box shared by TextInput, TextArea, Select, SearchField and SelectButton */
+.input-box {
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+  min-width: 0;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-md);
+  background: var(--surface);
+  color: var(--text);
+  transition: border-color var(--dur-fast) var(--ease-standard);
+}
+
+.input-box--full-width {
+  width: 100%;
+}
+
+.input-box:focus-within,
+.input-box:focus {
+  border-color: var(--accent);
+}
+
+.input-box--invalid,
+.input-box--invalid:focus-within,
+.input-box--invalid:focus {
+  border-color: var(--danger);
+}
+
+.input-box--disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.input-box--monospace {
+  background: var(--code-bg);
+}
+
+.input-box--small {
+  min-height: 2rem;
+  padding: 0 0.5rem;
+}
+
+.input-box--medium {
+  min-height: 2.75rem;
+  padding: 0 0.75rem;
+}
+
+.input-box--large {
+  min-height: 3.25rem;
+  padding: 0 1rem;
+}
+
+/* The native element inside the box */
+.input-box__input {
+  flex: 1;
+  min-width: 0;
+  align-self: stretch;
+  padding: 0;
+  border: none;
+  background: transparent;
+  color: inherit;
+  outline: none;
+}
+
+.input-box__input::placeholder {
+  color: var(--text-3);
+}
+
+.input-box__input:disabled {
+  cursor: not-allowed;
+}
+
+.input-box__adornment {
+  display: flex;
+  align-items: center;
+  flex: 0 0 auto;
+  color: var(--text-3);
+}
+
+/* A textarea is the box itself */
+.input-box--textarea {
+  display: block;
+  padding-top: 0.625rem;
+  padding-bottom: 0.625rem;
+  line-height: 1.6;
+  outline: none;
+}
+
+.input-box--textarea::placeholder {
+  color: var(--text-3);
+}
+
+/* Hides the browser's own clear button on search inputs */
+.input-box__input::-webkit-search-cancel-button {
+  appearance: none;
+}
+
+/* A textarea that grows with its content */
+.input-box--auto-resize {
+  field-sizing: content;
+}
+
+/* No box: for an input inside another frame */
+.input-box--unstyled,
+.input-box--unstyled:focus,
+.input-box--unstyled:focus-within,
+.input-box--unstyled:focus-visible {
+  border-color: transparent;
+  background: transparent;
+  box-shadow: none;
+  outline: none;
+}

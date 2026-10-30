@@ -86,39 +86,12 @@
   margin-bottom: 0.625rem;
 }
 
-.tips-container {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(13.4375rem, 1fr));
-  gap: 0.625rem;
-}
-
-.tip-card {
-  text-align: left;
-  padding: 0.75rem 0.875rem;
-  background: transparent;
-  border: 1px solid var(--line);
-  border-top: 3px solid var(--accent-2);
-  border-radius: 0 0 var(--radius-md) var(--radius-md);
-  color: var(--text);
-}
-
-.tip-card strong {
-  display: block;
-}
-
-.tip-card p {
+.tip-text {
   color: var(--text-3);
-  margin-top: 0.1875rem;
 }
 
 .recent-assistants {
   margin-top: 1.625rem;
-}
-
-.recent-assistants-list .assistant-option {
-  border: 1px solid var(--line);
-  border-top: 3px solid var(--accent-2);
-  border-radius: 0 0 var(--radius-md) var(--radius-md);
 }
 
 @media (max-width: 50rem) {

@@ -39,7 +39,7 @@ function ConversationPanel({ chatId }: ConversationPanelProps) {
         <div className="conversation-panel-files">
           {files.map((file) => (
             <div key={file.id} className="conversation-panel-file t-caption">
-              <Icon name="file" size={0.875} className="conversation-panel-file-icon" />
+              <Icon name="file" size="small" color="accent" />
               <span>{file.sourceFilename}</span>
             </div>
           ))}

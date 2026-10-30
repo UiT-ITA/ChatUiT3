@@ -4,8 +4,10 @@
   align-items: center;
   justify-content: center;
   gap: 0.75rem;
+  height: 100vh;
   max-height: 90vh;
   background: var(--bg);
+  color: var(--text-3);
 }
 
 .loading-container.loading-small {

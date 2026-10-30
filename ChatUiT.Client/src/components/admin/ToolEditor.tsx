@@ -12,6 +12,10 @@ import { ConfirmDialog } from '../common/Dialog';
 import { hasChanges } from '../../utils/formChanges';
 import AgentFunctionRows from './AgentFunctionRows';
 import ClassificationBadge from '../common/ClassificationBadge';
+import Checkbox, { CheckboxGroup } from '../common/Checkbox';
+import Field, { FieldDescription } from '../common/Field';
+import Stack from '../common/Stack';
+import Button from '../common/Button';
 
 const ALL_ROLES: UserRole[] = ['User', 'Admin', 'Beta', 'Super', 'External'];
 
@@ -136,100 +140,84 @@ const ToolEditor: React.FC<ToolEditorProps> = ({ toolId }) => {
       <h1 className="t-page-title">{toolboxLabel(tool, tools)}</h1>
       <div className="page-title-bar" />
 
-      <div className="admin-field">
-        <div className="admin-label t-label">{t('admin.tools.fields.id')}</div>
-        <div className="t-code">{tool.id}</div>
-      </div>
+      <Stack gap="xl">
+        <Field label={t('admin.tools.fields.id')}>
+          <div className="t-code">{tool.id}</div>
+        </Field>
 
-      <div className="admin-field">
-        <div className="admin-label t-label">{t('admin.tools.fields.description')}</div>
-        <div className="t-body">{tool.description}</div>
-      </div>
+        <Field label={t('admin.tools.fields.description')}>
+          <div className="t-body">{tool.description}</div>
+        </Field>
 
-      <div className="admin-field">
-        <div className="admin-label t-label">{t('admin.models.fields.classification')}</div>
-        <div><ClassificationBadge classification={tool.classification} /></div>
-      </div>
+        <Field label={t('admin.models.fields.classification')}>
+          <div><ClassificationBadge classification={tool.classification} /></div>
+        </Field>
 
-      <div className="admin-field">
-        <div className="admin-label t-label">{t('admin.tools.fields.requiresConfirmation')}</div>
-        <div className="t-body">{tool.requiresConfirmation ? t('common.yes', { defaultValue: 'Yes' }) : t('common.no', { defaultValue: 'No' })}</div>
-      </div>
+        <Field label={t('admin.tools.fields.requiresConfirmation')}>
+          <div className="t-body">{tool.requiresConfirmation ? t('common.yes', { defaultValue: 'Yes' }) : t('common.no', { defaultValue: 'No' })}</div>
+        </Field>
 
-      {tool.requiredScopes.length > 0 && (
-        <div className="admin-field">
-          <div className="admin-label t-label">{t('admin.tools.fields.requiredScopes')}</div>
-          <div className="t-code">{tool.requiredScopes.join(', ')}</div>
-        </div>
-      )}
+        {tool.requiredScopes.length > 0 && (
+          <Field label={t('admin.tools.fields.requiredScopes')}>
+            <div className="t-code">{tool.requiredScopes.join(', ')}</div>
+          </Field>
+        )}
 
-      {tool.functions && tool.functions.length > 0 && (
-        <div className="admin-field">
-          <div className="admin-label t-label">{t('admin.tools.fields.functions')}</div>
-          <div className="admin-field-help t-caption">{t('admin.tools.fields.functionsHelp')}</div>
-          <AgentFunctionRows functions={tool.functions} showClassification />
-        </div>
-      )}
+        {tool.functions && tool.functions.length > 0 && (
+          <Field label={t('admin.tools.fields.functions')} description={t('admin.tools.fields.functionsHelp')}>
+            <AgentFunctionRows functions={tool.functions} showClassification />
+          </Field>
+        )}
 
-      {tool.parametersSchema && (
-        <div className="admin-field">
-          <div className="admin-label t-label">{t('admin.tools.fields.schema')}</div>
-          <pre className="toolcall-pre t-code" style={{ maxHeight: '16rem', overflow: 'auto' }}>
-            {JSON.stringify(tool.parametersSchema, null, 2)}
-          </pre>
-        </div>
-      )}
+        {tool.parametersSchema && (
+          <Field label={t('admin.tools.fields.schema')}>
+            <pre className="toolcall-pre t-code" style={{ maxHeight: '16rem', overflow: 'auto' }}>
+              {JSON.stringify(tool.parametersSchema, null, 2)}
+            </pre>
+          </Field>
+        )}
 
-      <div className="admin-field" style={{ marginTop: '1.375rem' }}>
-        <div className="admin-label t-label">{t('admin.tools.fields.defaultPolicy')}</div>
-        <div className="t-body">{describePolicy(tool.defaultPolicy)}</div>
-        <div className="admin-field-help t-caption">
-          {tool.isOverridden
+        <Field
+          label={t('admin.tools.fields.defaultPolicy')}
+          description={tool.isOverridden
             ? t('admin.tools.fields.overridden', { date: tool.updatedAt ? new Date(tool.updatedAt).toLocaleString() : '' })
             : t('admin.tools.fields.usingDefault')}
-        </div>
-      </div>
+        >
+          <div className="t-body">{describePolicy(tool.defaultPolicy)}</div>
+        </Field>
 
-      <div className="admin-field">
-        <label className="admin-checkbox-label t-body">
-          <input type="checkbox" checked={enabled} onChange={e => setEnabled(e.target.checked)} />
+        <Checkbox checked={enabled} onChange={setEnabled} description={t('admin.tools.fields.enabledHelp')}>
           {t('admin.tools.fields.enabled')}
-        </label>
-        <div className="admin-field-help t-caption">{t('admin.tools.fields.enabledHelp')}</div>
-      </div>
+        </Checkbox>
 
-      <div className="admin-field">
-        <label className="admin-label t-label">{t('admin.tools.fields.allowedRoles')}</label>
-        <div className="admin-checkbox-group">
-          {ALL_ROLES.map(role => (
-            <label key={role} className="admin-checkbox-label t-body">
-              <input
-                type="checkbox"
+        <Field label={t('admin.tools.fields.allowedRoles')}>
+          <CheckboxGroup>
+            {ALL_ROLES.map(role => (
+              <Checkbox
+                key={role}
                 checked={allowedRoles.includes(role)}
-                onChange={e => toggleRole(role, e.target.checked)}
-              />
-              {t(`roles.${role}`)}
-            </label>
-          ))}
-        </div>
-      </div>
+                onChange={checked => toggleRole(role, checked)}
+              >
+                {t(`roles.${role}`)}
+              </Checkbox>
+            ))}
+          </CheckboxGroup>
+        </Field>
 
-      <div className="admin-field">
-        <label className="admin-label t-label">{t('admin.tools.fields.allowedGroups')}</label>
-        <div className="admin-field-help t-caption">{t('admin.tools.fields.allowedGroupsHelp')}</div>
-        <GroupPicker value={allowedGroupIds} onChange={setAllowedGroupIds} disabled={saving} />
-      </div>
+        <Field label={t('admin.tools.fields.allowedGroups')} description={t('admin.tools.fields.allowedGroupsHelp')}>
+          <GroupPicker value={allowedGroupIds} onChange={setAllowedGroupIds} disabled={saving} />
+        </Field>
 
-      {nobody && (
-        <div className="admin-field-help t-caption" style={{ color: 'var(--warn)' }}>{t('admin.tools.fields.nobodyWarning')}</div>
-      )}
+        {nobody && (
+          <FieldDescription tone="warning">{t('admin.tools.fields.nobodyWarning')}</FieldDescription>
+        )}
+      </Stack>
 
       {tool.isOverridden && (
         <div className="admin-form-footer">
-          <div className="admin-footer-spacer" />
-          <button className="admin-delete-button t-ui" onClick={() => setConfirmReset(true)} disabled={saving}>
+          <Button variant="danger" ml="auto" onClick={() => setConfirmReset(true)} disabled={saving}>
             {t('admin.tools.actions.reset')}
-          </button>
+          </Button>
         </div>
       )}
 

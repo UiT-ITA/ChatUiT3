@@ -80,15 +80,6 @@ a:hover {
   50%, 100% { opacity: 0; }
 }
 
-/* Global loading container */
-.loading-container {
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  height: 100vh;
-  color: var(--text-3);
-}
-
 /* Custom Scrollbars */
 ::-webkit-scrollbar {
   width: 0.625rem;

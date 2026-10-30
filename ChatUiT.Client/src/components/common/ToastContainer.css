@@ -34,20 +34,6 @@
   line-height: 1.35;
 }
 
-.toast .toast-close {
-  border: none;
-  background: transparent;
-  color: inherit;
-  cursor: pointer;
-  padding: 0 0.25rem;
-  line-height: 1;
-  opacity: 0.7;
-}
-
-.toast .toast-close:hover {
-  opacity: 1;
-}
-
 /* Level variants — accent bar carries the status colour */
 .toast-info {
   border-top-color: var(--accent);

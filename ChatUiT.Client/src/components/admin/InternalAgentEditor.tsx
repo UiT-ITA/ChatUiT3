@@ -8,6 +8,10 @@ import { clampEffort } from '../../types/admin';
 import type { ReasoningEffortLevel } from '../../types/admin';
 import AgentFunctionRows from './AgentFunctionRows';
 import EditorHeader from '../layout/EditorHeader';
+import Select from '../common/Select';
+import Checkbox from '../common/Checkbox';
+import Field, { FieldDescription } from '../common/Field';
+import Stack from '../common/Stack';
 import { hasChanges } from '../../utils/formChanges';
 
 interface InternalAgentEditorProps {
@@ -88,30 +92,26 @@ const InternalAgentEditor: React.FC<InternalAgentEditorProps> = ({ agentId }) =>
       <h1 className="t-page-title">{agent.name}</h1>
       <div className="page-title-bar" />
 
-      <div className="admin-field">
-        <div className="admin-label t-label">{t('admin.agents.fields.id')}</div>
-        <div className="t-code">{agent.id}</div>
-      </div>
+      <Stack gap="xl">
+        <Field label={t('admin.agents.fields.id')}>
+          <div className="t-code">{agent.id}</div>
+        </Field>
 
-      <div className="admin-field">
-        <div className="admin-label t-label">{t('admin.agents.fields.description')}</div>
-        <div className="t-body">{agent.description}</div>
-      </div>
+        <Field label={t('admin.agents.fields.description')}>
+          <div className="t-body">{agent.description}</div>
+        </Field>
 
-      {agent.functions.length > 0 && (
-        <div className="admin-field">
-          <div className="admin-label t-label">{t('admin.agents.fields.functions')}</div>
-          <div className="admin-field-help t-caption">{t('admin.agents.fields.functionsHelp')}</div>
-          <AgentFunctionRows functions={agent.functions} />
-        </div>
-      )}
+        {agent.functions.length > 0 && (
+          <Field label={t('admin.agents.fields.functions')} description={t('admin.agents.fields.functionsHelp')}>
+            <AgentFunctionRows functions={agent.functions} />
+          </Field>
+        )}
 
-      <div className="admin-field" style={{ marginTop: '1.375rem' }}>
-        <label className="admin-label t-label">{t('admin.agents.fields.model')}</label>
-        <select
-          className="admin-select t-body"
+        <Select
+          label={t('admin.agents.fields.model')}
+          description={agent.modelId ? t('admin.agents.fields.modelHelp') : t('admin.agents.fields.notSetHelp')}
           value={modelId}
-          onChange={e => setModelId(e.target.value)}
+          onChange={setModelId}
           disabled={saving}
         >
           <option value="">{t('admin.agents.fields.chooseModel')}</option>
@@ -120,19 +120,14 @@ const InternalAgentEditor: React.FC<InternalAgentEditorProps> = ({ agentId }) =>
               {model.modelName} ({model.modelId})
             </option>
           ))}
-        </select>
-        <div className="admin-field-help t-caption">
-          {agent.modelId ? t('admin.agents.fields.modelHelp') : t('admin.agents.fields.notSetHelp')}
-        </div>
-      </div>
+        </Select>
 
-      {supportedEfforts.length > 0 && (
-        <div className="admin-field">
-          <label className="admin-label t-label">{t('admin.agents.fields.reasoningEffort')}</label>
-          <select
-            className="admin-select t-body"
+        {supportedEfforts.length > 0 && (
+          <Select
+            label={t('admin.agents.fields.reasoningEffort')}
+            description={t('admin.agents.fields.reasoningEffortHelp')}
             value={currentEffort}
-            onChange={e => setReasoningEffort(e.target.value as ReasoningEffortLevel)}
+            onChange={(value) => setReasoningEffort(value as ReasoningEffortLevel)}
             disabled={saving || supportedEfforts.length === 1}
           >
             {supportedEfforts.map(level => (
@@ -140,30 +135,24 @@ const InternalAgentEditor: React.FC<InternalAgentEditorProps> = ({ agentId }) =>
                 {t(`assistants.form.reasoningLevels.${level.toLowerCase()}`)}
               </option>
             ))}
-          </select>
-          <div className="admin-field-help t-caption">{t('admin.agents.fields.reasoningEffortHelp')}</div>
-        </div>
-      )}
+          </Select>
+        )}
 
-      <div className="admin-field">
-        <label className="admin-checkbox-label t-table">
-          <input
-            type="checkbox"
-            checked={exposedInApi}
-            onChange={e => setExposedInApi(e.target.checked)}
-            disabled={saving}
-          />
+        <Checkbox
+          checked={exposedInApi}
+          onChange={setExposedInApi}
+          disabled={saving}
+          description={t('admin.agents.fields.exposedInApiHelp', { id: agent.id })}
+        >
           {t('admin.agents.fields.exposedInApi')}
-        </label>
-        <div className="admin-field-help t-caption">{t('admin.agents.fields.exposedInApiHelp', { id: agent.id })}</div>
-      </div>
+        </Checkbox>
 
-      {agent.updatedAt && (
-        <div className="admin-field-help t-caption">
-          {t('admin.agents.fields.updated', { date: new Date(agent.updatedAt).toLocaleString() })}
-        </div>
-      )}
-
+        {agent.updatedAt && (
+          <FieldDescription>
+            {t('admin.agents.fields.updated', { date: new Date(agent.updatedAt).toLocaleString() })}
+          </FieldDescription>
+        )}
+      </Stack>
     </div>
   );
 };

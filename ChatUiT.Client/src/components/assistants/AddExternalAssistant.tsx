@@ -1,6 +1,8 @@
 import React, { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { addSharedAssistant } from '../../services/assistantService';
+import TextInput from '../common/TextInput';
+import Button from '../common/Button';
 import './AddExternalAssistant.css';
 
 const AddExternalAssistant: React.FC = () => {
@@ -29,21 +31,21 @@ const AddExternalAssistant: React.FC = () => {
         {t('assistants.addSharedAssistantDescription')}
       </p>
       <div className="add-external-assistant-form">
-        <input
-          type="text"
+        <TextInput
           value={externalId}
-          onChange={(e) => setExternalId(e.target.value)}
+          onChange={setExternalId}
           placeholder={t('assistants.addExternal.placeholder')}
-          className="add-external-assistant-input t-ui-plain"
+          grow
           disabled={loading}
         />
-        <button
+        <Button
+          variant="secondary"
+          size="large"
           onClick={handleAdd}
           disabled={!externalId.trim() || loading}
-          className="add-external-assistant-button t-ui"
         >
           {loading ? t('assistants.addExternal.adding') : t('assistants.addExternal.add')}
-        </button>
+        </Button>
       </div>
     </div>
   );

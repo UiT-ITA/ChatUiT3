@@ -1,0 +1,22 @@
+.icon {
+  flex: 0 0 auto;
+}
+
+.icon--secondary { color: var(--text-2); }
+.icon--muted { color: var(--text-3); }
+.icon--accent { color: var(--accent); }
+.icon--danger { color: var(--danger); }
+.icon--warning { color: var(--warn); }
+.icon--success { color: var(--status-success); }
+
+.icon--rotate-90 { transform: rotate(90deg); }
+.icon--rotate-180 { transform: rotate(180deg); }
+.icon--rotate-270 { transform: rotate(270deg); }
+
+.icon--spin {
+  animation: icon-spin 1.4s linear infinite;
+}
+
+@keyframes icon-spin {
+  to { transform: rotate(360deg); }
+}

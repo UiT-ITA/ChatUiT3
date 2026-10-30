@@ -4,6 +4,7 @@ import { getAssistants } from "../../services/assistantService";
 import { getModels } from "../../services/modelService";
 import { useSignals } from "@preact/signals-react/runtime";
 import type { AssistantDto, FullAssistantDto, AssistantSummaryDto } from "../../types/assistantModels";
+import NavItem from '../common/NavItem';
 
 interface AssistantListProps {
   activeId?: string;
@@ -37,20 +38,18 @@ export function AssistantList({ activeId, onNavigate }: AssistantListProps) {
       ].filter(Boolean).join(' · ');
 
       return (
-        <button
+        <NavItem
           key={assistant.id}
-          className={`context-nav-row context-list-row t-ui ${assistant.id === activeId ? 'active' : ''}`}
+          active={assistant.id === activeId}
+          description={assistant.description || undefined}
+          meta={meta || undefined}
           onClick={() => {
             navigate(`/assistants/${assistant.id}`);
             onNavigate?.();
           }}
         >
-          <span className="context-list-row-title">{assistant.name}</span>
-          {assistant.description && (
-            <span className="context-list-row-sub t-caption">{assistant.description}</span>
-          )}
-          {meta && <span className="context-list-row-meta t-meta">{meta}</span>}
-        </button>
+          {assistant.name}
+        </NavItem>
       );
     });
   };

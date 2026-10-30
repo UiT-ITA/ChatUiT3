@@ -10,7 +10,8 @@ import remarkGfm from 'remark-gfm';
 import remarkMath from 'remark-math';
 import rehypeKatex from 'rehype-katex';
 import 'katex/dist/katex.min.css';
-import { Icon } from '../common/Icon';
+import Button from '../common/Button';
+import IconButton from '../common/IconButton';
 import FileThumbnail from './FileThumbnail';
 import MessageActivity from './MessageActivity';
 import { useSettings } from '../../hooks/useSettings';
@@ -142,13 +143,15 @@ function ChatMessage({ chatId, message, fallbackAssistantName, onStreamingChunk 
             <div className="code-block-wrapper">
               <div className="code-block-header">
                 <span className="language-name t-overline">Mermaid Diagram</span>
-                <button
-                  className="copy-code-button t-caption-strong"
+                <Button
+                  variant="ghost"
+                  size="small"
+                  startIcon="copy"
                   onClick={() => handleCopyCode(codeText)}
                   title={t('chat.actions.copyCode')}
                 >
-                  <Icon name="copy" size={1} /> {t('chat.actions.copyCode')}
-                </button>
+                  {t('chat.actions.copyCode')}
+                </Button>
               </div>
               {isStreaming ? (
                 <CodeHighlighter code={codeText} language="text" themeName={codeblockTheme} />
@@ -166,13 +169,15 @@ function ChatMessage({ chatId, message, fallbackAssistantName, onStreamingChunk 
           <div className="code-block-wrapper">
             <div className="code-block-header">
               <span className="language-name t-overline">{language}</span>
-              <button
-                className="copy-code-button t-caption-strong"
+              <Button
+                variant="ghost"
+                size="small"
+                startIcon="copy"
                 onClick={() => handleCopyCode(codeText)}
                 title={t('chat.actions.copyCode')}
               >
-                <Icon name="copy" size={1} /> {t('chat.actions.copyCode')}
-              </button>
+                {t('chat.actions.copyCode')}
+              </Button>
             </div>
             <CodeHighlighter code={codeText} language={language} themeName={codeblockTheme} />
           </div>
@@ -243,31 +248,19 @@ function ChatMessage({ chatId, message, fallbackAssistantName, onStreamingChunk 
               {new Date(message.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
             </span>
             <div className="message-actions">
-              <button className="message-action-button" title={t('chat.actions.retry')} onClick={handleRetry}>
-                <Icon name="refresh" size={1.25} />
-              </button>
-              <button className="message-action-button" title={t('chat.actions.edit')} onClick={handleEdit}>
-                <Icon name="edit" size={1.25} />
-              </button>
-              <button className="message-action-button" title={t('chat.actions.copy')} onClick={handleCopyMessage}>
-                <Icon name={isCopied ? "check" : "copy"} size={1.25} />
-              </button>
+              <IconButton icon="refresh" label={t('chat.actions.retry')} size="small" onClick={handleRetry} />
+              <IconButton icon="edit" label={t('chat.actions.edit')} size="small" onClick={handleEdit} />
+              <IconButton icon={isCopied ? "check" : "copy"} label={t('chat.actions.copy')} size="small" onClick={handleCopyMessage} />
             </div>
           </>
         ) : (
           <>
             <div className="message-actions">
-              <button className="message-action-button" title={t('chat.actions.copy')} onClick={handleCopyMessage}>
-                <Icon name={isCopied ? "check" : "copy"} size={1.25} />
-              </button>
+              <IconButton icon={isCopied ? "check" : "copy"} label={t('chat.actions.copy')} size="small" onClick={handleCopyMessage} />
               {!isSystem && (
                 <>
-                  <button className="message-action-button" title={t('chat.actions.branch')} onClick={handleBranch}>
-                    <Icon name="branch" size={1.25} />
-                  </button>
-                  <button className="message-action-button" title={t('chat.actions.retry')} onClick={handleRetry}>
-                    <Icon name="refresh" size={1.25} />
-                  </button>
+                  <IconButton icon="branch" label={t('chat.actions.branch')} size="small" onClick={handleBranch} />
+                  <IconButton icon="refresh" label={t('chat.actions.retry')} size="small" onClick={handleRetry} />
                 </>
               )}
             </div>

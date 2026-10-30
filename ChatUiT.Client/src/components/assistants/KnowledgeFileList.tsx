@@ -5,16 +5,14 @@ import type { ChatFile } from '../../types/fileModels';
 import { SUPPORTED_IMPORT_ACCEPT, isValidFileType } from '../../utils/fileUtils';
 import FilePreviewModal from '../chat/FilePreviewModal';
 import { addNotification } from '../../services/notificationService';
-import KnowledgeFileItem, {
-  type KnowledgeFileCategory,
-  type KnowledgeFileItemData
-} from './KnowledgeFileItem';
+import Button from '../common/Button';
+import KnowledgeFileItem, { type KnowledgeFileItemData } from './KnowledgeFileItem';
 import './KnowledgeFileList.css';
+import Badge from '../common/Badge';
 
 export type { KnowledgeFileCategory, KnowledgeFileItemData } from './KnowledgeFileItem';
 
 interface KnowledgeFileListProps {
-  category: KnowledgeFileCategory;
   title: string;
   description: string;
   emptyLabel: string;
@@ -35,7 +33,6 @@ interface KnowledgeFileListProps {
 }
 
 const KnowledgeFileList = ({
-  category,
   title,
   description,
   emptyLabel,
@@ -129,22 +126,20 @@ const KnowledgeFileList = ({
             <h3 className="knowledge-file-list__title t-body-strong">
               {title}
               {unavailable && (
-                <span className="knowledge-file-list__badge t-meta">
-                  {t('assistants.knowledge.notAvailableYet')}
-                </span>
+                <Badge ml="sm">{t('assistants.knowledge.notAvailableYet')}</Badge>
               )}
             </h3>
             <p className="knowledge-file-list__description t-ui-plain">{description}</p>
           </div>
 
-          <button
-            type="button"
-            className="knowledge-file-list__add-button t-ui"
+          <Button
+            variant="subtle"
+            size="small"
             onClick={handleAddClick}
             disabled={isDisabled}
           >
             {t('assistants.knowledge.addFiles')}
-          </button>
+          </Button>
         </div>
 
         {status}
@@ -164,7 +159,6 @@ const KnowledgeFileList = ({
             <KnowledgeFileItem
               key={item.id}
               item={item}
-              category={category}
               onPreview={item.ChatFile || (onLoadFile && item.fileId) ? () => void handlePreview(item) : undefined}
               onRemove={onItemRemove ? () => onItemRemove(item.id) : undefined}
               allowDescription={allowItemDescription}

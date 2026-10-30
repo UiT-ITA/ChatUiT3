@@ -20,6 +20,14 @@ import { API_PROTOCOLS, REASONING_EFFORT_ORDER, TOKEN_COUNTING_SCHEME_OPTIONS } 
 import { DATA_CLASSIFICATIONS, type DataClassification } from '../../types/modelModels';
 import EditorHeader from '../layout/EditorHeader';
 import { Icon } from '../common/Icon';
+import Select from '../common/Select';
+import TextInput from '../common/TextInput';
+import TextArea from '../common/TextArea';
+import Checkbox, { CheckboxGroup } from '../common/Checkbox';
+import Field from '../common/Field';
+import Button from '../common/Button';
+import Stack from '../common/Stack';
+import Grid from '../common/Grid';
 import { ConfirmDialog } from '../common/Dialog';
 import { hasChanges } from '../../utils/formChanges';
 import ModelCombobox, { type ModelComboboxOption } from './ModelCombobox';
@@ -306,12 +314,11 @@ const ModelEditor: React.FC<ModelEditorProps> = ({ modelId: editId }) => {
       </h1>
       <div className="page-title-bar" />
 
-      <div className="admin-field">
-        <label className="admin-label t-label">{t('admin.models.fields.endpoint')}</label>
-        <select
-          className="admin-select t-body"
+      <Stack gap="xl">
+        <Select
+          label={t('admin.models.fields.endpoint')}
           value={endpointId}
-          onChange={(e) => setEndpointId(e.target.value)}
+          onChange={setEndpointId}
         >
           {endpointId === '' && (
             <option value="" disabled>{t('admin.models.fields.endpointNone')}</option>
@@ -321,31 +328,28 @@ const ModelEditor: React.FC<ModelEditorProps> = ({ modelId: editId }) => {
               {ep.url} ({t(`admin.endpointType.${ep.endpointType}`)})
             </option>
           ))}
-        </select>
-      </div>
+        </Select>
 
-      {endpointId && (
-        <div className="admin-field">
-          <label className="admin-label t-label">{t('admin.models.fields.modelId')}</label>
-          <ModelCombobox
-            value={modelId}
-            options={modelOptions}
-            placeholder={t('admin.models.fields.modelIdPlaceholder')}
-            addedLabel={t('admin.models.fields.modelIdAdded')}
-            otherLabel={t('admin.models.fields.modelIdOther')}
-            onChange={handleModelIdChange}
-          />
-        </div>
-      )}
+        {endpointId && (
+          <Field label={t('admin.models.fields.modelId')}>
+            <ModelCombobox
+              value={modelId}
+              options={modelOptions}
+              placeholder={t('admin.models.fields.modelIdPlaceholder')}
+              addedLabel={t('admin.models.fields.modelIdAdded')}
+              otherLabel={t('admin.models.fields.modelIdOther')}
+              onChange={handleModelIdChange}
+            />
+          </Field>
+        )}
 
-      {endpointId && catalog.length > 0 && (
-        <div className="admin-field">
-          <label className="admin-label t-label">{t('admin.models.fields.knownModel')}</label>
-          <select
-            className="admin-select t-body"
+        {endpointId && catalog.length > 0 && (
+          <Select
+            label={t('admin.models.fields.knownModel')}
+            description={t('admin.models.fields.knownModelHint')}
             value={presetId}
-            onChange={(e) => {
-              const entry = catalog.find(c => c.modelId === e.target.value);
+            onChange={(value) => {
+              const entry = catalog.find(c => c.modelId === value);
               if (entry) applyCatalogEntry(entry, modelId);
               else setPresetId('');
             }}
@@ -356,29 +360,23 @@ const ModelEditor: React.FC<ModelEditorProps> = ({ modelId: editId }) => {
                 {entry.displayName} ({t(`admin.endpointType.${entry.provider}`)})
               </option>
             ))}
-          </select>
-          <div className="af-note t-ui-plain">{t('admin.models.fields.knownModelHint')}</div>
-        </div>
-      )}
+          </Select>
+        )}
 
-      {showDetails && (
-        <>
-          <div className="admin-field-grid">
-            <div className="admin-field">
-              <label className="admin-label t-label">{t('admin.models.fields.modelName')}</label>
-              <input
-                className="admin-input t-body"
+        {showDetails && (
+          <>
+            <Grid minColumnWidth="12rem" gap="lg">
+              <TextInput
+                label={t('admin.models.fields.modelName')}
                 value={modelName}
-                onChange={(e) => setModelName(e.target.value)}
+                onChange={setModelName}
               />
-            </div>
-            <div className="admin-field">
-              <label className="admin-label t-label">{t('admin.models.fields.apiProtocol')}</label>
-              <select
-                className="admin-select t-body"
+              <Select
+                label={t('admin.models.fields.apiProtocol')}
+                description={apiProtocol === '' ? t('admin.models.fields.apiProtocolRequired') : t('admin.models.fields.apiProtocolHint')}
                 value={apiProtocol}
-                onChange={(e) => {
-                  setApiProtocol(e.target.value as ApiProtocol | '');
+                onChange={(value) => {
+                  setApiProtocol(value as ApiProtocol | '');
                   setPresetId('');
                 }}
               >
@@ -386,185 +384,139 @@ const ModelEditor: React.FC<ModelEditorProps> = ({ modelId: editId }) => {
                 {API_PROTOCOLS.map(protocol => (
                   <option key={protocol} value={protocol}>{t(`admin.apiProtocol.${protocol}`)}</option>
                 ))}
-              </select>
-              <div className="af-note t-ui-plain">
-                {apiProtocol === '' ? t('admin.models.fields.apiProtocolRequired') : t('admin.models.fields.apiProtocolHint')}
-              </div>
-            </div>
-          </div>
+              </Select>
+            </Grid>
 
-          <div className="admin-field" style={{ marginTop: '1.375rem' }}>
-            <label className="admin-label t-label">{t('admin.models.fields.description')}</label>
-            <textarea
-              className="admin-textarea t-body"
+            <TextArea
+              label={t('admin.models.fields.description')}
               value={description}
-              onChange={(e) => setDescription(e.target.value)}
+              onChange={setDescription}
               rows={3}
             />
-          </div>
 
-          <div className="admin-field">
-            <label className="admin-label t-label">{t('admin.models.fields.classification')}</label>
-            <select
-              className="admin-select t-body"
+            <Select
+              label={t('admin.models.fields.classification')}
               value={classification}
-              onChange={(e) => setClassification(e.target.value as DataClassification)}
+              onChange={(value) => setClassification(value as DataClassification)}
             >
               {DATA_CLASSIFICATIONS.map(level => (
                 <option key={level} value={level}>{t(`classification.${level}`)}</option>
               ))}
-            </select>
-          </div>
+            </Select>
 
-          <div className="admin-field">
-            <label className="admin-label t-label">{t('admin.models.fields.allowedRoles')}</label>
-            <div className="admin-checkbox-group">
-              {ALL_ROLES.map(role => (
-                <label key={role} className="admin-checkbox-label t-table">
-                  <input
-                    type="checkbox"
+            <Field
+              label={t('admin.models.fields.allowedRoles')}
+              description={allowedRoles.length === 0 ? t('admin.models.fields.allowedRolesRequired') : undefined}
+            >
+              <CheckboxGroup>
+                {ALL_ROLES.map(role => (
+                  <Checkbox
+                    key={role}
                     checked={allowedRoles.includes(role)}
-                    onChange={(e) => toggleRole(role, e.target.checked)}
-                  />
-                  {t(`roles.${role}`)}
-                </label>
-              ))}
-            </div>
-            {allowedRoles.length === 0 && (
-              <div className="af-note t-ui-plain">{t('admin.models.fields.allowedRolesRequired')}</div>
-            )}
-          </div>
+                    onChange={(checked) => toggleRole(role, checked)}
+                  >
+                    {t(`roles.${role}`)}
+                  </Checkbox>
+                ))}
+              </CheckboxGroup>
+            </Field>
 
-          <div className="admin-field">
-            <label className="admin-checkbox-label t-table">
-              <input
-                type="checkbox"
-                checked={allowedAsDefault}
-                onChange={(e) => setAllowedAsDefault(e.target.checked)}
-              />
+            <Checkbox checked={allowedAsDefault} onChange={setAllowedAsDefault} description={t('admin.models.fields.allowedAsDefaultHelp')}>
               {t('admin.models.fields.allowedAsDefault')}
-            </label>
-            <div className="admin-field-help t-caption">{t('admin.models.fields.allowedAsDefaultHelp')}</div>
-          </div>
+            </Checkbox>
 
-          <div className="admin-field">
-            <label className="admin-checkbox-label t-table">
-              <input
-                type="checkbox"
-                checked={exposedInApi}
-                onChange={(e) => setExposedInApi(e.target.checked)}
-              />
+            <Checkbox checked={exposedInApi} onChange={setExposedInApi} description={t('admin.models.fields.exposedInApiHelp')}>
               {t('admin.models.fields.exposedInApi')}
-            </label>
-            <div className="admin-field-help t-caption">{t('admin.models.fields.exposedInApiHelp')}</div>
-          </div>
+            </Checkbox>
 
-          <div className="t-overline">{t('admin.models.fields.capabilities')}</div>
-
-          <div className="admin-field">
-            <div className="admin-checkbox-group">
-              <label className="admin-checkbox-label t-table">
-                <input
-                  type="checkbox"
+            <Stack gap="sm">
+              <div className="t-overline">{t('admin.models.fields.capabilities')}</div>
+              <CheckboxGroup>
+                <Checkbox
                   checked={capabilities.supportsVision}
-                  onChange={(e) => updateCaps('supportsVision', e.target.checked)}
-                />
-                {t('admin.models.fields.supportsVision')}
-              </label>
-              <label className="admin-checkbox-label t-table">
-                <input
-                  type="checkbox"
+                  onChange={(checked) => updateCaps('supportsVision', checked)}
+                >
+                  {t('admin.models.fields.supportsVision')}
+                </Checkbox>
+                <Checkbox
                   checked={capabilities.supportsFunctionCalling}
-                  onChange={(e) => updateCaps('supportsFunctionCalling', e.target.checked)}
-                />
-                {t('admin.models.fields.supportsFunctionCalling')}
-              </label>
-            </div>
-          </div>
+                  onChange={(checked) => updateCaps('supportsFunctionCalling', checked)}
+                >
+                  {t('admin.models.fields.supportsFunctionCalling')}
+                </Checkbox>
+              </CheckboxGroup>
+            </Stack>
 
-          <div className="admin-field">
-            <label className="admin-label t-label">{t('admin.models.fields.temperature')}</label>
-            <select
-              className="admin-select t-body"
+            <Select
+              label={t('admin.models.fields.temperature')}
+              description={t('admin.models.fields.temperatureHint')}
               value={capabilities.temperature}
-              onChange={(e) => updateCaps('temperature', e.target.value as TemperatureSupport)}
+              onChange={(value) => updateCaps('temperature', value as TemperatureSupport)}
             >
               {TEMPERATURE_OPTIONS.map(option => (
                 <option key={option} value={option}>
                   {t(`admin.models.temperatureSupport.${option}`)}
                 </option>
               ))}
-            </select>
-            <div className="af-note t-ui-plain">{t('admin.models.fields.temperatureHint')}</div>
-          </div>
+            </Select>
 
-          <div className="admin-field">
-            <label className="admin-label t-label">{t('admin.models.fields.supportedEfforts')}</label>
-            <div className="admin-checkbox-group">
-              {REASONING_EFFORT_ORDER.map(level => (
-                <label key={level} className="admin-checkbox-label t-table">
-                  <input
-                    type="checkbox"
+            <Field label={t('admin.models.fields.supportedEfforts')} description={t('admin.models.fields.supportedEffortsHint')}>
+              <CheckboxGroup>
+                {REASONING_EFFORT_ORDER.map(level => (
+                  <Checkbox
+                    key={level}
                     checked={capabilities.supportedEfforts.includes(level)}
-                    onChange={(e) => toggleEffort(level, e.target.checked)}
-                  />
-                  {t(`assistants.form.reasoningLevels.${level.toLowerCase()}`)}
-                </label>
-              ))}
-            </div>
-            <div className="af-note t-ui-plain">{t('admin.models.fields.supportedEffortsHint')}</div>
-          </div>
+                    onChange={(checked) => toggleEffort(level, checked)}
+                  >
+                    {t(`assistants.form.reasoningLevels.${level.toLowerCase()}`)}
+                  </Checkbox>
+                ))}
+              </CheckboxGroup>
+            </Field>
 
-          <div className="admin-field-grid">
-            <div className="admin-field">
-              <label className="admin-label t-label">{t('admin.models.fields.maxContextTokens')}</label>
-              <input
-                className="admin-input t-body"
+            <Grid minColumnWidth="12rem" gap="lg">
+              <TextInput
+                label={t('admin.models.fields.maxContextTokens')}
                 type="number"
                 min={1}
                 value={capabilities.maxContextTokens}
-                onChange={(e) => updateCaps('maxContextTokens', parseInt(e.target.value || '0', 10))}
+                onChange={(value) => updateCaps('maxContextTokens', parseInt(value || '0', 10))}
               />
-            </div>
-            <div className="admin-field">
-              <label className="admin-label t-label">{t('admin.models.fields.maxOutputTokens')}</label>
-              <input
-                className="admin-input t-body"
+              <TextInput
+                label={t('admin.models.fields.maxOutputTokens')}
                 type="number"
                 min={1}
                 value={capabilities.maxOutputTokens}
-                onChange={(e) => updateCaps('maxOutputTokens', parseInt(e.target.value || '0', 10))}
+                onChange={(value) => updateCaps('maxOutputTokens', parseInt(value || '0', 10))}
               />
-            </div>
-            <div className="admin-field">
-              <label className="admin-label t-label">{t('admin.models.fields.defaultMaxOutputTokens')}</label>
-              <input
-                className="admin-input t-body"
+              <TextInput
+                label={t('admin.models.fields.defaultMaxOutputTokens')}
                 type="number"
                 min={1}
                 max={capabilities.maxOutputTokens || undefined}
                 value={capabilities.defaultMaxOutputTokens}
-                onChange={(e) => updateCaps('defaultMaxOutputTokens', parseInt(e.target.value || '0', 10))}
+                onChange={(value) => updateCaps('defaultMaxOutputTokens', parseInt(value || '0', 10))}
               />
-            </div>
-            <div className="admin-field">
-              <label className="admin-label t-label">{t('admin.models.fields.knowledgeCutoff')}</label>
-              <input
-                className="admin-input t-body"
+              <TextInput
+                label={t('admin.models.fields.knowledgeCutoff')}
                 type="month"
                 value={knowledgeCutoffMonth}
-                onChange={(e) => {
-                  setKnowledgeCutoffMonth(e.target.value);
+                onChange={(value) => {
+                  setKnowledgeCutoffMonth(value);
                   setPresetId('');
                 }}
               />
-            </div>
-            <div className="admin-field">
-              <label className="admin-label t-label">{t('admin.models.fields.tokenCountingScheme')}</label>
-              <select
-                className="admin-select t-body"
+              <Select
+                label={t('admin.models.fields.tokenCountingScheme')}
+                description={(() => {
+                  const selected = TOKEN_COUNTING_SCHEME_OPTIONS.find(o => o.id === capabilities.tokenCountingScheme);
+                  if (selected) return t(`admin.tokenCountingSchemes.${selected.labelKey}.hint`);
+                  return capabilities.tokenCountingScheme
+                    ? t('admin.models.fields.tokenCountingSchemeCustom')
+                    : t('admin.models.fields.tokenCountingSchemeHint');
+                })()}
                 value={capabilities.tokenCountingScheme ?? ''}
-                onChange={(e) => updateCaps('tokenCountingScheme', e.target.value || null)}
+                onChange={(value) => updateCaps('tokenCountingScheme', value || null)}
               >
                 <option value="">{t('admin.models.fields.tokenCountingSchemeNone')}</option>
                 {/* The fit is in the label because browsers show no tooltip for options in an open list. */}
@@ -577,43 +529,33 @@ const ModelEditor: React.FC<ModelEditorProps> = ({ modelId: editId }) => {
                 {capabilities.tokenCountingScheme && !TOKEN_COUNTING_SCHEME_OPTIONS.some(o => o.id === capabilities.tokenCountingScheme) && (
                   <option value={capabilities.tokenCountingScheme}>{capabilities.tokenCountingScheme}</option>
                 )}
-              </select>
-              <div className="af-note t-ui-plain">
-                {(() => {
-                  const selected = TOKEN_COUNTING_SCHEME_OPTIONS.find(o => o.id === capabilities.tokenCountingScheme);
-                  if (selected) return t(`admin.tokenCountingSchemes.${selected.labelKey}.hint`);
-                  return capabilities.tokenCountingScheme
-                    ? t('admin.models.fields.tokenCountingSchemeCustom')
-                    : t('admin.models.fields.tokenCountingSchemeHint');
-                })()}
-              </div>
-            </div>
-          </div>
-        </>
-      )}
+              </Select>
+            </Grid>
+          </>
+        )}
+      </Stack>
 
       {model && (
         <div className="admin-form-footer">
-          <button
-            className="admin-test-button t-ui"
+          <Button
+            variant="secondary"
             onClick={handleTest}
             disabled={testing || dirty}
             title={dirty ? t('admin.models.test.saveFirst') : undefined}
           >
             {testing ? t('admin.models.test.running') : t('admin.models.test.button')}
-          </button>
+          </Button>
           {testResult?.success && (
             <span className="admin-test-success" title={testResult.response ?? undefined}>
-              <Icon name="check" size={1.5} />
+              <Icon name="check" size="xl" color="success" />
             </span>
           )}
           {testResult && !testResult.success && (
             <span className="admin-test-error t-caption">{testResult.error}</span>
           )}
-          <div className="admin-footer-spacer" />
-          <button className="admin-delete-button t-ui" onClick={() => setConfirmDelete(true)}>
+          <Button variant="danger" ml="auto" onClick={() => setConfirmDelete(true)}>
             {t('admin.models.actions.delete')}
-          </button>
+          </Button>
         </div>
       )}
 

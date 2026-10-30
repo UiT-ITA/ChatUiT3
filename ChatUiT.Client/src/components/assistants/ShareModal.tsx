@@ -2,7 +2,11 @@ import React from 'react';
 import { useTranslation } from 'react-i18next';
 import type { FullAssistantDto } from '../../types/assistantModels';
 import { Dialog } from '../common/Dialog';
-import { Icon } from '../common/Icon';
+import Field from '../common/Field';
+import TextInput from '../common/TextInput';
+import IconButton from '../common/IconButton';
+import Stack from '../common/Stack';
+import useMediaQuery from '../../hooks/useMediaQuery';
 import './ShareModal.css';
 
 interface ShareModalProps {
@@ -21,6 +25,7 @@ const ShareModal: React.FC<ShareModalProps> = ({
   onCopyGuid
 }) => {
   const { t } = useTranslation();
+  const isMobile = useMediaQuery('(max-width: 768px)');
   
   if (!isOpen || !assistant) return null;
 
@@ -38,43 +43,45 @@ const ShareModal: React.FC<ShareModalProps> = ({
           {t('assistants.shareDescription', { name: assistant.name })}
         </p>
         
-        <div className="share-option">
-          <label className="share-label t-label">{t('assistants.shareLink')}:</label>
-          <div className="share-link-container">
-            <input
-              type="text"
+        <Field label={`${t('assistants.shareLink')}:`}>
+          <Stack direction={isMobile ? 'column' : 'row'} gap={isMobile ? 'md' : 'sm'} align={isMobile ? 'stretch' : 'center'}>
+            <TextInput
+              monospace
               value={shareUrl}
               readOnly
-              className="share-input t-code"
+              grow
+              onFocus={(e) => e.currentTarget.select()}
             />
-            <button
+            <IconButton
+              icon="copy"
+              label={t('assistants.actions.copyLink')}
+              variant="primary"
+              size="large"
               onClick={() => onCopyLink(assistant.id)}
-              className="share-copy-button t-ui"
-              title={t('assistants.actions.copyLink')}
-            >
-              <Icon name="copy" size={1} />
-            </button>
-          </div>
-        </div>
+              width={isMobile ? 'full' : undefined}
+            />
+          </Stack>
+        </Field>
 
-        <div className="share-option">
-          <label className="share-label t-label">{t('assistants.assistantId')}:</label>
-          <div className="share-link-container">
-            <input
-              type="text"
+        <Field label={`${t('assistants.assistantId')}:`}>
+          <Stack direction={isMobile ? 'column' : 'row'} gap={isMobile ? 'md' : 'sm'} align={isMobile ? 'stretch' : 'center'}>
+            <TextInput
+              monospace
               value={assistant.id}
               readOnly
-              className="share-input t-code"
+              grow
+              onFocus={(e) => e.currentTarget.select()}
             />
-            <button
+            <IconButton
+              icon="copy"
+              label={t('assistants.actions.copyId')}
+              variant="primary"
+              size="large"
               onClick={() => onCopyGuid(assistant.id)}
-              className="share-copy-button t-ui"
-              title={t('assistants.actions.copyId')}
-            >
-              <Icon name="copy" size={1} />
-            </button>
-          </div>
-        </div>
+              width={isMobile ? 'full' : undefined}
+            />
+          </Stack>
+        </Field>
       </div>
     </Dialog>
   );

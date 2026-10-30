@@ -1,7 +1,11 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { resolveAdminGroups, searchAdminGroups } from '../../services/adminService';
 import type { DirectoryGroupDto } from '../../types/admin';
+import Combobox from './Combobox';
+import { Icon } from './Icon';
+import Chip from './Chip';
+import Stack from './Stack';
 import './GroupPicker.css';
 
 interface GroupPickerProps {
@@ -24,9 +28,7 @@ const GroupPicker: React.FC<GroupPickerProps> = ({ value, onChange, disabled = f
   // Results are tagged with the text they answer, so a stale list is never shown for a newer query.
   const [results, setResults] = useState<{ text: string; groups: DirectoryGroupDto[] }>({ text: '', groups: [] });
   const [error, setError] = useState<string | null>(null);
-  const [open, setOpen] = useState(false);
   const [, setResolvedTick] = useState(0);
-  const rootRef = useRef<HTMLDivElement>(null);
 
   // Names for ids that arrived from storage rather than from a search.
   useEffect(() => {
@@ -60,20 +62,10 @@ const GroupPicker: React.FC<GroupPickerProps> = ({ value, onChange, disabled = f
     return () => { cancelled = true; window.clearTimeout(timer); };
   }, [query, t]);
 
-  useEffect(() => {
-    if (!open) return;
-    const onClickOutside = (event: MouseEvent) => {
-      if (rootRef.current && !rootRef.current.contains(event.target as Node)) setOpen(false);
-    };
-    document.addEventListener('mousedown', onClickOutside);
-    return () => document.removeEventListener('mousedown', onClickOutside);
-  }, [open]);
-
   const add = (group: DirectoryGroupDto) => {
     nameCache.set(group.id, group);
     if (!value.includes(group.id)) onChange([...value, group.id]);
     setQuery('');
-    setOpen(false);
   };
 
   const remove = (id: string) => onChange(value.filter(candidate => candidate !== id));
@@ -85,46 +77,41 @@ const GroupPicker: React.FC<GroupPickerProps> = ({ value, onChange, disabled = f
   const candidates = (current ?? []).filter(group => !value.includes(group.id));
 
   return (
-    <div className="group-picker" ref={rootRef}>
+    <div className="group-picker">
       {value.length > 0 && (
-        <div className="group-picker-selected">
+        <Stack direction="row" gap="xs" wrap>
           {value.map(id => {
             const name = labelFor(id);
             return (
-              <span key={id} className={`group-picker-chip t-body${name === null ? ' group-picker-chip-unknown' : ''}`} title={id}>
-                <span className="group-picker-chip-name">{name ?? id}</span>
+              <Chip key={id} title={id} onRemove={() => remove(id)} removeLabel={t('groupPicker.remove')} disabled={disabled}>
+                <span className={name === null ? 'group-picker-chip-unknown' : undefined}>{name ?? id}</span>
                 {name === null && nameCache.has(id) && <span className="group-picker-chip-note t-meta">{t('groupPicker.unknownGroup')}</span>}
-                <button type="button" className="group-picker-chip-remove" onClick={() => remove(id)} disabled={disabled} aria-label={t('groupPicker.remove')}>
-                  ×
-                </button>
-              </span>
+              </Chip>
             );
           })}
-        </div>
+        </Stack>
       )}
-      <div className="group-picker-search">
-        <input
-          className="admin-input t-body"
-          value={query}
-          placeholder={t('groupPicker.placeholder')}
-          onChange={e => { setQuery(e.target.value); setError(null); setOpen(true); }}
-          onFocus={() => setOpen(true)}
-          disabled={disabled}
-        />
-        {open && text.length >= 2 && (
-          <div className="group-picker-results">
-            {searching && <div className="group-picker-status t-caption">{t('groupPicker.searching')}</div>}
-            {!searching && error && <div className="group-picker-status group-picker-error t-caption">{error}</div>}
-            {!searching && !error && candidates.length === 0 && <div className="group-picker-status t-caption">{t('groupPicker.noResults')}</div>}
-            {candidates.map(group => (
-              <button key={group.id} type="button" className="group-picker-result" onClick={() => add(group)}>
-                <span className="group-picker-result-name t-body">{group.displayName ?? group.id}</span>
-                <span className="group-picker-result-meta t-caption">{[group.mail, group.description].filter(Boolean).join(' · ') || group.id}</span>
-              </button>
-            ))}
-          </div>
-        )}
-      </div>
+      <Combobox
+        inputValue={query}
+        onInputChange={next => { setQuery(next); setError(null); }}
+        placeholder={t('groupPicker.placeholder')}
+        leading={<Icon name="search" size="small" />}
+        disabled={disabled}
+        openWhen={text.length >= 2}
+        items={searching || error ? [] : candidates}
+        status={
+          searching ? t('groupPicker.searching')
+            : error ? <span className="group-picker-error">{error}</span>
+              : candidates.length === 0 ? t('groupPicker.noResults')
+                : undefined
+        }
+        getKey={group => group.id}
+        renderItem={group => ({
+          label: group.displayName ?? group.id,
+          description: [group.mail, group.description].filter(Boolean).join(' · ') || group.id,
+        })}
+        onSelect={add}
+      />
     </div>
   );
 };

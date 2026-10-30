@@ -2,7 +2,7 @@ import React from "react";
 import { useSignals } from "@preact/signals-react/runtime";
 import { notifications, removeNotification } from "../../services/notificationService";
 import type { NotifyLevel } from "../../types/notification";
-import { Icon } from "./Icon";
+import IconButton from "./IconButton";
 import "./ToastContainer.css";
 
 function levelClass(level: NotifyLevel) {
@@ -27,9 +27,7 @@ const ToastContainer: React.FC = () => {
       {list.value.map(n => (
         <div key={n.id} className={`toast ${levelClass(n.level)}`}>
           <div className="toast-message t-body">{n.message}</div>
-          <button className="toast-close" aria-label="Close" onClick={() => removeNotification(n.id)}>
-            <Icon name="close" size={1} />
-          </button>
+          <IconButton icon="close" label="Close" size="small" onClick={() => removeNotification(n.id)} />
         </div>
       ))}
     </div>

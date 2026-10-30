@@ -2,7 +2,6 @@ import React, { useEffect, useState } from 'react';
 import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
 import { useSignals } from '@preact/signals-react/runtime';
 import { useTranslation } from 'react-i18next';
-import { MdImage, MdPublic, MdPsychology, MdVisibility, MdVisibilityOff, MdPushPin, MdOutlinePushPin } from 'react-icons/md';
 import './AssistantsPage.css';
 import { getAssistants, deleteAssistant, toggleVisibility, addSharedAssistant, invalidateAssistants, removeSharedAssistant, setDefaultAssistant, clearDefaultAssistant } from '../../services/assistantService';
 import { getModels } from '../../services/modelService';
@@ -12,6 +11,10 @@ import AssistantForm from './AssistantForm';
 import AddExternalAssistant from './AddExternalAssistant';
 import ShareModal from './ShareModal';
 import TagField from '../common/TagField';
+import Button from '../common/Button';
+import { FieldDescription } from '../common/Field';
+import { List, ListItem } from '../common/List';
+import { Icon } from '../common/Icon';
 import { ConfirmDialog } from '../common/Dialog';
 
 type AssistantVariant = 'owned' | 'system' | 'shared';
@@ -171,8 +174,10 @@ const AssistantsPage: React.FC = () => {
 
     const headerActions = (
       <div className="assistant-detail-actions">
-        <button
-          className="assistant-action-button t-ui"
+        <Button
+          variant="subtle"
+          size="small"
+          startIcon={isDefault && assistant.canBeDefault ? 'pin' : 'pinOutline'}
           onClick={() => handleToggleDefault(assistant.id, isDefault)}
           disabled={!isDefault && !assistant.canBeDefault}
           title={
@@ -183,46 +188,50 @@ const AssistantsPage: React.FC = () => {
                 : t('assistants.actions.cannotBeDefault')
           }
         >
-          {isDefault && assistant.canBeDefault ? <MdPushPin size="1.125rem" /> : <MdOutlinePushPin size="1.125rem" />}
           {isDefault ? t('assistants.actions.clearDefault') : t('assistants.actions.setAsDefault')}
-        </button>
-        <button
-          className="assistant-action-button t-ui"
+        </Button>
+        <Button
+          variant="subtle"
+          size="small"
+          startIcon={assistant.isVisible ? 'visible' : 'hidden'}
           onClick={() => handleToggleVisibility(assistant.id)}
           title={assistant.isVisible ? t('assistants.actions.hideFromSelector') : t('assistants.actions.showInSelector')}
         >
-          {assistant.isVisible ? <MdVisibility size="1.125rem" /> : <MdVisibilityOff size="1.125rem" />}
           {assistant.isVisible ? t('assistants.actions.hideFromSelector') : t('assistants.actions.showInSelector')}
-        </button>
-        <button
-          className="assistant-action-button t-ui"
+        </Button>
+        <Button
+          variant="subtle"
+          size="small"
           onClick={() => handleUseInChat(assistant.id)}
         >
           {t('assistants.useInNewChat')}
-        </button>
+        </Button>
         {variant === 'owned' && (
           <>
-            <button
-              className="assistant-action-button t-ui"
+            <Button
+              variant="subtle"
+              size="small"
               onClick={() => setShareModalAssistant(assistant as FullAssistantDto)}
             >
               {t('assistants.actions.shareAssistant')}
-            </button>
-            <button
-              className="assistant-action-button danger t-ui"
+            </Button>
+            <Button
+              variant="danger"
+              size="small"
               onClick={() => setPendingRemoval({ id: assistant.id, shared: false })}
             >
               {t('assistants.actions.deleteAssistant')}
-            </button>
+            </Button>
           </>
         )}
         {variant === 'shared' && (
-          <button
-            className="assistant-action-button danger t-ui"
+          <Button
+            variant="danger"
+            size="small"
             onClick={() => setPendingRemoval({ id: assistant.id, shared: true })}
           >
             {t('common.delete')}
-          </button>
+          </Button>
         )}
       </div>
     );
@@ -235,7 +244,7 @@ const AssistantsPage: React.FC = () => {
           {headerActions}
 
           {isDefaultInactive && (
-            <div className="af-note t-ui-plain">{t('assistants.defaultInactiveNote')}</div>
+            <FieldDescription>{t('assistants.defaultInactiveNote')}</FieldDescription>
           )}
 
           {variant === 'owned' ? (
@@ -263,9 +272,9 @@ const AssistantsPage: React.FC = () => {
                 <div className="t-overline">{t('assistants.form.model')}</div>
                 <div className="assistant-readonly-model t-body">
                   <span className="assistant-readonly-model-name t-body-strong">{model?.modelName || '—'}</span>
-                  {model?.capabilities.vision && <span className="af-capability-icon" title={t('assistants.capabilities.vision')}><MdImage size="1rem" /></span>}
-                  {model?.capabilities.tools && <span className="af-capability-icon" title={t('assistants.capabilities.tools')}><MdPublic size="1rem" /></span>}
-                  {(model?.capabilities.supportedEfforts.length ?? 0) > 0 && <span className="af-capability-icon" title={t('assistants.capabilities.reasoning')}><MdPsychology size="1rem" /></span>}
+                  {model?.capabilities.vision && <Icon name="image" color="accent" label={t('assistants.capabilities.vision')} />}
+                  {model?.capabilities.tools && <Icon name="globe" color="accent" label={t('assistants.capabilities.tools')} />}
+                  {(model?.capabilities.supportedEfforts.length ?? 0) > 0 && <Icon name="brain" color="accent" label={t('assistants.capabilities.reasoning')} />}
                 </div>
                 {model?.description && <div className="assistant-readonly-note t-caption">{model.description}</div>}
               </div>
@@ -313,35 +322,32 @@ const AssistantsPage: React.FC = () => {
     <div className="assistants-overview-group">
       <div className="t-overline">{title}</div>
       {assistants.length > 0 ? (
-        <div className="assistants-overview-list">
+        <List bordered>
           {assistants.map((assistant) => {
             const model = models.find(m => m.id === assistant.modelId);
             return (
-              <button
+              <ListItem
                 key={assistant.id}
-                className="assistants-overview-row"
                 onClick={() => navigate(`/assistants/${assistant.id}`)}
-              >
-                <span className="assistants-overview-name t-table-strong">{assistant.name}</span>
-                <span className="assistants-overview-desc t-caption">{assistant.description || ''}</span>
-                <span className="assistants-overview-model t-meta">{model?.modelName || ''}</span>
-                {defaultAssistantId === assistant.id && (
-                  <span
-                    className="assistants-overview-default"
-                    title={assistant.canBeDefault ? t('assistants.actions.isDefault') : t('assistants.defaultInactiveNote')}
-                  >
-                    {assistant.canBeDefault ? <MdPushPin size="1rem" /> : <MdOutlinePushPin size="1rem" />}
-                  </span>
+                title={assistant.name}
+                description={assistant.description || undefined}
+                trailing={(
+                  <>
+                    {model?.modelName}
+                    {defaultAssistantId === assistant.id && (
+                      <Icon
+                        name={assistant.canBeDefault ? 'pin' : 'pinOutline'}
+                        color="muted"
+                        label={assistant.canBeDefault ? t('assistants.actions.isDefault') : t('assistants.defaultInactiveNote')}
+                      />
+                    )}
+                    {!assistant.isVisible && <Icon name="hidden" color="muted" label={t('assistants.actions.showInSelector')} />}
+                  </>
                 )}
-                {!assistant.isVisible && (
-                  <span className="assistants-overview-hidden" title={t('assistants.actions.showInSelector')}>
-                    <MdVisibilityOff size="1rem" />
-                  </span>
-                )}
-              </button>
+              />
             );
           })}
-        </div>
+        </List>
       ) : (
         <div className="assistants-overview-empty t-ui-plain">{t(emptyKey)}</div>
       )}
@@ -356,9 +362,9 @@ const AssistantsPage: React.FC = () => {
             <h1 className="t-page-title">{t('assistants.title')}</h1>
             <div className="page-title-bar" />
           </div>
-          <button onClick={() => navigate('/assistants/new')} className="create-assistant-button t-ui">
+          <Button variant="primary" onClick={() => navigate('/assistants/new')}>
             {t('assistants.create')}
-          </button>
+          </Button>
         </div>
         <p className="assistants-intro t-body-lg">{t('assistants.intro')}</p>
 

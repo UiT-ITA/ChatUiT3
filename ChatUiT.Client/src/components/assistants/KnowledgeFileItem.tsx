@@ -1,7 +1,9 @@
-import { MdInsertDriveFile } from 'react-icons/md';
 import { Icon } from '../common/Icon';
+import IconButton from '../common/IconButton';
+import TextInput from '../common/TextInput';
 import type { ChatFile } from '../../types/fileModels';
-import './KnowledgeFileItem.css';
+import Card from '../common/Card';
+import { ListItem } from '../common/List';
 
 export type KnowledgeFileCategory = 'alwaysLoaded' | 'selectiveLoaded' | 'ragLoaded';
 
@@ -19,7 +21,6 @@ export interface KnowledgeFileItemData {
 
 interface KnowledgeFileItemProps {
   item: KnowledgeFileItemData;
-  category: KnowledgeFileCategory;
   onPreview?: () => void;
   onRemove?: () => void;
   allowDescription?: boolean;
@@ -31,7 +32,6 @@ interface KnowledgeFileItemProps {
 
 const KnowledgeFileItem = ({
   item,
-  category,
   onPreview,
   onRemove,
   allowDescription = false,
@@ -43,59 +43,30 @@ const KnowledgeFileItem = ({
   const isDescriptionMissing = allowDescription && !item.description?.trim();
 
   return (
-    <article className={[
-      'knowledge-file-item',
-      `knowledge-file-item--${category}`
-    ].join(' ')}>
-      <div className="knowledge-file-item__content">
-        <button
-          type="button"
-          className="knowledge-file-item__preview"
-          onClick={onPreview}
-          disabled={disabled || !onPreview}
-        >
-          <div className="knowledge-file-item__icon" aria-hidden="true">
-            <MdInsertDriveFile size={16} />
-          </div>
-
-          <div className="knowledge-file-item__name t-body-strong">
-            {item.name}
-          </div>
-
-          {tokenLabel && (
-            <span className="knowledge-file-item__tokens t-meta">{tokenLabel}</span>
-          )}
-        </button>
-
-        {allowDescription && (
-          <input
-            type="text"
-            value={item.description ?? ''}
-            onChange={(event) => onDescriptionChange?.(event.target.value)}
-            className={[
-              'knowledge-file-item__description-input',
-              't-ui-plain',
-              ...(isDescriptionMissing ? ['knowledge-file-item__description-input--invalid'] : [])
-            ].join(' ')}
-            placeholder={descriptionPlaceholder}
-            disabled={disabled}
-            required
-            aria-invalid={isDescriptionMissing}
-          />
+    <Card padding="xs" gap="xs">
+      <ListItem
+        density="compact"
+        leading={<Icon name="file" color="muted" />}
+        title={item.name}
+        trailing={tokenLabel}
+        onClick={onPreview}
+        disabled={disabled || !onPreview}
+        actions={onRemove && !disabled && (
+          <IconButton icon="trash" label="Remove file" size="small" onClick={onRemove} />
         )}
-      </div>
-      {onRemove && (
-        <button
-          type="button"
-          className="knowledge-file-item__remove"
-          onClick={onRemove}
+      />
+      {allowDescription && (
+        <TextInput
+          size="small"
+          value={item.description ?? ''}
+          onChange={(value) => onDescriptionChange?.(value)}
+          invalid={isDescriptionMissing}
+          placeholder={descriptionPlaceholder}
           disabled={disabled}
-          title="Remove file"
-        >
-          <Icon name="trash" size={1} />
-        </button>
+          required
+        />
       )}
-    </article>
+    </Card>
   );
 };
 

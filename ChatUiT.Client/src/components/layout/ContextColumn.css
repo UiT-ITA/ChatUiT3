@@ -25,126 +25,11 @@
   padding: 0 0.75rem 0.625rem;
 }
 
-.context-search {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  border: 1px solid var(--line);
-  background: var(--panel);
-  border-radius: var(--radius-md);
-  padding: 0 0.625rem;
-  height: 2.125rem;
-}
-
-.context-search-icon {
-  color: var(--text-3);
-  flex: 0 0 auto;
-}
-
-.context-search input {
-  flex: 1;
-  min-width: 0;
-  border: none;
-  background: transparent;
-  outline: none;
-  color: var(--text);
-}
-
-.context-search input::placeholder {
-  color: var(--text-3);
-}
-
-.context-search-clear {
-  background: transparent;
-  border: none;
-  cursor: pointer;
-  color: var(--text-3);
-  display: flex;
-  padding: 0;
-}
-
-.context-search-clear:hover {
-  color: var(--text);
-}
-
 .context-column-scroll {
   flex: 1;
   overflow-y: auto;
   overflow-x: hidden;
   padding: 0 0.5rem 1rem;
-}
-
-/* Generic nav/list row in the column */
-.context-nav-row {
-  display: block;
-  width: 100%;
-  text-align: left;
-  padding: 0.5rem 0.625rem;
-  background: transparent;
-  border: none;
-  border-left: 3px solid transparent;
-  border-radius: 0 3px 3px 0;
-  cursor: pointer;
-  color: var(--text);
-  margin-bottom: 0.0625rem;
-}
-
-.context-nav-row:hover {
-  background: var(--panel);
-}
-
-.context-nav-row.active {
-  background: var(--sel);
-  border-left-color: var(--accent-2);
-}
-
-/* Rich list row: title + optional description + mono meta */
-.context-list-row {
-  display: flex;
-  flex-direction: column;
-  align-items: stretch;
-  gap: 0.0625rem;
-}
-
-.context-list-row-title {
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-.context-list-row-sub {
-  color: var(--text-3);
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-.context-list-row-meta {
-  color: var(--text-3);
-  margin-top: 0.125rem;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-/* Dashed "add new" row */
-.context-add-row {
-  display: block;
-  width: 100%;
-  margin-top: 0.5rem;
-  text-align: left;
-  padding: 0.5625rem 0.625rem;
-  background: transparent;
-  border: 1px dashed var(--line);
-  border-radius: var(--radius-md);
-  cursor: pointer;
-  color: var(--accent);
-  transition: background var(--dur-fast) var(--ease-standard);
-}
-
-.context-add-row:hover,
-.context-add-row.active {
-  background: var(--tint);
 }
 
 .context-column-note {
@@ -164,18 +49,6 @@
   flex: 1;
   min-height: 0;
   border-right: none;
-}
-
-/* Nav row with a leading icon (admin domains) */
-.context-icon-row {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-}
-
-.context-icon-row-icon {
-  flex: 0 0 auto;
-  color: var(--text-2);
 }
 
 /* Items of the open admin domain, indented so their text lines up with the domain name after its icon */

@@ -12,6 +12,7 @@ import { atomDark, oneLight } from 'react-syntax-highlighter/dist/esm/styles/pri
 import 'katex/dist/katex.min.css';
 import { Icon } from '../common/Icon';
 import type { IconName } from '../common/Icon';
+import Button from '../common/Button';
 import { useSettings } from '../../hooks/useSettings';
 import { getCodeblockTheme } from '../../utils/themeUtils';
 import { helpActiveHeadingSignal } from '../../services/uiService';
@@ -20,12 +21,16 @@ import { parseHeadings, slugify } from './helpHeadings';
 import { useHelpDoc } from './useHelpDoc';
 import '../chat/ChatMessageMarkdown.css';
 import './HelpPage.css';
+import Card from '../common/Card';
+import Stack from '../common/Stack';
+import Badge from '../common/Badge';
+import Alert from '../common/Alert';
 
 /**
  * Blockquotes whose first paragraph is one of these markers render as callouts.
  * `[!NOT_IMPLEMENTED]` is a badge for a feature that is documented but not wired up yet.
  */
-const CALLOUTS: Record<string, { kind: string; icon: IconName }> = {
+const CALLOUTS: Record<string, { kind: 'tip' | 'note' | 'warning' | 'not-implemented'; icon: IconName }> = {
   '[!TIP]': { kind: 'tip', icon: 'check' },
   '[!NOTE]': { kind: 'note', icon: 'info' },
   '[!WARNING]': { kind: 'warning', icon: 'shield' },
@@ -181,7 +186,7 @@ const HelpPage = () => {
                 <span /><span /><span />
               </span>
               <span className="help-screenshot-body">
-                <Icon name="file" size={1.5} />
+                <Icon name="file" size="xl" />
                 <span className="t-caption">{alt}</span>
               </span>
             </span>
@@ -197,20 +202,15 @@ const HelpPage = () => {
         }
         if (callout.kind === 'not-implemented') {
           return (
-            <div className="help-not-implemented t-caption-strong">
-              <Icon name={callout.icon} size={0.875} />
-              {t('help.notImplemented')}
+            <div className="help-not-implemented">
+              <Badge variant="solid" tone="warning" size="medium" icon={callout.icon}>{t('help.notImplemented')}</Badge>
             </div>
           );
         }
         return (
-          <aside className={`help-callout help-callout-${callout.kind}`}>
-            <div className="help-callout-label t-caption-strong">
-              <Icon name={callout.icon} size={0.9375} />
-              {t(`help.callouts.${callout.kind}`)}
-            </div>
-            <div className="help-callout-body">{rest}</div>
-          </aside>
+          <Alert tone={callout.kind} icon={callout.icon} title={t(`help.callouts.${callout.kind}`)} my="xl">
+            {rest}
+          </Alert>
         );
       },
       code({ className, children }) {
@@ -238,13 +238,15 @@ const HelpPage = () => {
           <div className="code-block-wrapper">
             <div className="code-block-header">
               <span className="language-name t-overline">{language}</span>
-              <button
-                className="copy-code-button t-caption-strong"
+              <Button
+                variant="ghost"
+                size="small"
+                startIcon="copy"
                 onClick={() => copyCode(codeText)}
                 title={t('chat.actions.copyCode')}
               >
-                <Icon name="copy" size={1} /> {t('chat.actions.copyCode')}
-              </button>
+                {t('chat.actions.copyCode')}
+              </Button>
             </div>
             <SyntaxHighlighter style={codeStyle} language={language}>
               {codeText}
@@ -286,16 +288,18 @@ const HelpPage = () => {
             </div>
 
             {nextSection && (
-              <button className="help-next" onClick={() => navigate(`/help/${nextSection}`)}>
-                <span className="help-next-text">
-                  <span className="help-next-label t-overline">
-                    {t('help.next', { n: sectionIndex + 2 })}
-                  </span>
-                  <span className="help-next-title t-title">{t(`help.sections.${nextSection}`)}</span>
-                  <span className="help-next-description t-caption">{t(`help.descriptions.${nextSection}`)}</span>
-                </span>
-                <Icon name="arrowUp" size={1.25} className="help-next-arrow" />
-              </button>
+              <Card as="button" elevated accent="start" padding="lg" mt="2xl" width="full" onClick={() => navigate(`/help/${nextSection}`)}>
+                <Stack direction="row" align="center" justify="between" gap="lg">
+                  <Stack gap="2xs">
+                    <span className="help-next-label t-overline">
+                      {t('help.next', { n: sectionIndex + 2 })}
+                    </span>
+                    <span className="t-title">{t(`help.sections.${nextSection}`)}</span>
+                    <span className="help-next-description t-caption">{t(`help.descriptions.${nextSection}`)}</span>
+                  </Stack>
+                  <Icon name="arrowUp" size="large" color="accent" rotate={90} />
+                </Stack>
+              </Card>
             )}
           </>
         )}

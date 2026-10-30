@@ -1,18 +1,20 @@
 import { useState } from 'react';
 import { useSignals } from '@preact/signals-react/runtime';
 import { useTranslation } from 'react-i18next';
-import { Icon, type IconName } from './Icon';
+import type { IconName } from './Icon';
+import IconButton from './IconButton';
 import { getSelectableAssistants, getCurrentAssistantId, setUserSelectedAssistantId, getRedEnabled } from '../../services/chatService';
 import { getModels } from '../../services/modelService';
 import AssistantRow from './AssistantRow';
+import SearchField from './SearchField';
+import Popover from './Popover';
+import { Menu, MenuItem } from './Menu';
 import { CAPABILITIES, capabilitiesOf, type Capability } from './assistantCapabilities';
 import type { AssistantDto } from '../../types/assistantModels';
 import type { UserModelDto } from '../../types/modelModels';
 import './AssistantDropdown.css';
 
 interface AssistantDropdownProps {
-  isOpen: boolean;
-  direction: 'above' | 'below';
   onClose?: () => void;
 }
 
@@ -26,12 +28,12 @@ const CATEGORIES: { key: Category; icon: IconName }[] = [
   { key: 'shared', icon: 'people' },
 ];
 
-export default function AssistantDropdown({ isOpen, direction, onClose }: AssistantDropdownProps) {
+/** The content of the assistant picker: search, filters, categories and the list. */
+export default function AssistantDropdown({ onClose }: AssistantDropdownProps) {
   useSignals();
   const { t } = useTranslation();
   const [category, setCategory] = useState<Category>('all');
   const [query, setQuery] = useState('');
-  const [filterOpen, setFilterOpen] = useState(false);
   const [capabilityFilter, setCapabilityFilter] = useState<Capability[]>([]);
 
   const selectableAssistants = getSelectableAssistants().value || [];
@@ -91,79 +93,50 @@ export default function AssistantDropdown({ isOpen, direction, onClose }: Assist
     }
   };
 
-  if (!isOpen) {
-    // The component stays mounted, so transient state has to be reset by hand.
-    if (filterOpen) setFilterOpen(false);
-    return null;
-  }
-
-  const dropdownClass = direction === 'above' ? 'assistant-dropdown-above' : 'assistant-dropdown-below';
-
   return (
-    <div className={`assistant-dropdown ${dropdownClass}`}>
+    <div className="assistant-dropdown">
       <div className="ap-search-wrap">
-        <div className="ap-search">
-          <Icon name="search" size={0.9375} className="ap-search-icon" />
-          <input
-            value={query}
-            onChange={(e) => setQuery(e.target.value)}
-            placeholder={t('assistants.picker.searchPlaceholder')}
-            className="t-ui-plain"
-            autoFocus
-          />
-          {query.length > 0 && (
-            <button
-              type="button"
-              className="ap-search-clear"
-              onClick={() => setQuery('')}
-              title={t('common.clear')}
-            >
-              <Icon name="close" size={0.875} />
-            </button>
-          )}
-        </div>
-        <div className="ap-filter">
-          <button
-            type="button"
-            className={`ap-filter-button ${capabilityFilter.length > 0 ? 'active' : ''}`}
-            onClick={() => setFilterOpen(open => !open)}
-            title={t('assistants.picker.filterTitle')}
-          >
-            <Icon name="filter" size={1.125} />
-          </button>
-          {filterOpen && (
-            <div className="ap-filter-popover">
-              <div className="ap-filter-title t-overline">{t('assistants.picker.filterTitle')}</div>
-              {CAPABILITIES.map(({ key, icon }) => (
-                <button
-                  type="button"
-                  key={key}
-                  className={`ap-filter-option t-ui ${capabilityFilter.includes(key) ? 'active' : ''}`}
-                  onClick={() => toggleCapabilityFilter(key)}
-                >
-                  <Icon name={icon} size={1} className="ap-filter-option-icon" />
-                  <span className="ap-filter-option-label">{t(`assistants.capabilities.${key}`)}</span>
-                  {capabilityFilter.includes(key) && <Icon name="check" size={0.9375} />}
-                </button>
-              ))}
-            </div>
-          )}
-        </div>
+        <SearchField
+          size="medium"
+          value={query}
+          onChange={setQuery}
+          placeholder={t('assistants.picker.searchPlaceholder')}
+          autoFocus
+        />
+        <Popover
+          placement="bottom-end"
+          trigger={<IconButton icon="filter" label={t('assistants.picker.filterTitle')} active={capabilityFilter.length > 0} />}
+          title={t('assistants.picker.filterTitle')}
+        >
+          <Menu>
+            {CAPABILITIES.map(({ key, icon }) => (
+              <MenuItem
+                key={key}
+                icon={icon}
+                selected={capabilityFilter.includes(key)}
+                onClick={() => toggleCapabilityFilter(key)}
+              >
+                {t(`assistants.capabilities.${key}`)}
+              </MenuItem>
+            ))}
+          </Menu>
+        </Popover>
       </div>
 
-      <div className="ap-body" onMouseDown={() => setFilterOpen(false)}>
+      <div className="ap-body">
         <div className="ap-rail">
           {CATEGORIES.map(({ key, icon }, index) => (
             <div key={key} className="ap-rail-slot">
               {index === 1 && <div className="ap-rail-divider" />}
-              <button
-                type="button"
-                className={`ap-rail-item ${category === key ? 'active' : ''}`}
+              <IconButton
+                icon={icon}
+                label={t(`assistants.picker.categories.${key}`)}
+                size="large"
+                active={category === key}
+                mx="xs"
+                my="2xs"
                 onClick={() => setCategory(key)}
-                title={t(`assistants.picker.categories.${key}`)}
-              >
-                <Icon name={icon} size={1.125} />
-              </button>
+              />
             </div>
           ))}
         </div>
