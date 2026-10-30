@@ -144,6 +144,11 @@
       "assistantNotRed": "Denne samtalen tillater røde data, så bare røde assistenter kan brukes."
     }
   },
+  "assistantCard": {
+    "model": "Modell",
+    "classification": "Klassifisering",
+    "capabilities": "Egenskaper"
+  },
   "welcome": {
     "header": "Velkommen til ChatUiT",
     "greeting": "Hei, {{name}}.",

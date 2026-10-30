@@ -1,8 +1,32 @@
-.ap-row-meta {
+.ap-row {
+  align-items: flex-start;
+}
+
+.ap-row-leading,
+.ap-row-line {
   display: flex;
   align-items: center;
+  height: 2rem;
+}
+
+.ap-row-line {
   gap: 0.5rem;
+  width: 100%;
   min-width: 0;
+}
+
+.ap-row-name {
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.ap-row-end {
+  justify-content: center;
+  min-width: 2rem;
+  margin-left: auto;
 }
 
 .ap-row-sep {
@@ -20,4 +44,3 @@
   text-overflow: ellipsis;
   white-space: nowrap;
 }
-

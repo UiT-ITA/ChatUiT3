@@ -144,6 +144,11 @@
       "assistantNotRed": "This conversation allows red data, so only red assistants can be used."
     }
   },
+  "assistantCard": {
+    "model": "Model",
+    "classification": "Classification",
+    "capabilities": "Capabilities"
+  },
   "welcome": {
     "header": "Welcome to ChatUiT",
     "greeting": "Hello, {{name}}.",

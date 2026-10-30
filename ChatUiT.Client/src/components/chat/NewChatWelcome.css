@@ -94,6 +94,13 @@
   margin-top: 1.625rem;
 }
 
+/* Three columns lined up with the tips, wrapping like the tips on narrow screens. auto-fill keeps a card at a third when there are fewer than three. */
+.recent-assistant-cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(max(13.4375rem, calc((100% - 2 * var(--space-sm)) / 3)), 1fr));
+  gap: var(--space-sm);
+}
+
 @media (max-width: 50rem) {
   .welcome-container {
     padding: 1.75rem 1rem 1rem;

@@ -3,7 +3,7 @@ import { useAuth } from '../../hooks/useAuth';
 import { useSignals } from '@preact/signals-react/runtime';
 import { getUserProfile } from '../../services/userProfileService';
 import { getRecentAssistants, getCurrentAssistantId, setUserSelectedAssistantId, getRedEnabled } from '../../services/chatService';
-import AssistantRow from '../common/AssistantRow';
+import AssistantCard from '../assistants/AssistantCard';
 import Card from '../common/Card';
 import Grid from '../common/Grid';
 import './NewChatWelcome.css';
@@ -60,18 +60,17 @@ export default function NewChatWelcome() {
         {recentAssistants.length > 0 && (
           <div className="tips-section recent-assistants">
             <div className="t-overline">{t('welcome.recentAssistants')}</div>
-            <Grid role="listbox" aria-label={t('welcome.recentAssistants')} minColumnWidth="13.4375rem" gap="sm">
+            <div role="listbox" aria-label={t('welcome.recentAssistants')} className="recent-assistant-cards">
               {recentAssistants.map(assistant => (
-                <Card key={assistant.id} accent="top" padding="none">
-                  <AssistantRow
-                    assistant={assistant}
-                    selected={assistant.id === currentAssistantId}
-                    disabledReason={redEnabled && assistant.classification !== 'Red' ? t('chat.redToggle.assistantNotRed') : undefined}
-                    onSelect={a => setUserSelectedAssistantId(a.id)}
-                  />
-                </Card>
+                <AssistantCard
+                  key={assistant.id}
+                  assistant={assistant}
+                  selected={assistant.id === currentAssistantId}
+                  disabledReason={redEnabled && assistant.classification !== 'Red' ? t('chat.redToggle.assistantNotRed') : undefined}
+                  onSelect={a => setUserSelectedAssistantId(a.id)}
+                />
               ))}
-            </Grid>
+            </div>
           </div>
         )}
       </div>
