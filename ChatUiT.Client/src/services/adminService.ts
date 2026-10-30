@@ -1,6 +1,7 @@
 import apiService from './apiService';
 import type { DirectoryGroupDto,
   EndpointDto,
+  ModelTestResultDto,
   CreateEndpointDto,
   UpdateEndpointDto,
   ModelDto,
@@ -48,6 +49,10 @@ export async function updateModel(id: string, data: UpdateModelDto): Promise<Mod
 
 export async function deleteModel(id: string): Promise<void> {
   return apiService.delete<void>(`/api/admin/models/${id}`);
+}
+
+export async function testModel(id: string): Promise<ModelTestResultDto> {
+  return apiService.post<ModelTestResultDto>(`/api/admin/models/${id}/test`, {});
 }
 
 export async function getAdminAssistants(): Promise<AdminAssistantDto[]> {

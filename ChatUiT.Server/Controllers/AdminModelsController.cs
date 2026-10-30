@@ -2,6 +2,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using ChatUiT.Server.Models;
 using ChatUiT.Server.Services;
+using ChatUiT.Server.Services.AiProviders;
 using ChatUiT.Server.Services.ApiCatalog;
 using ChatUiT.Server.Services.TokenCounting;
 
@@ -14,11 +15,13 @@ public class AdminModelsController : ControllerBase
 {
     private readonly IModelService _modelService;
     private readonly IApiCatalogService _catalog;
+    private readonly IAiProviderRegistry _providers;
 
-    public AdminModelsController(IModelService modelService, IApiCatalogService catalog)
+    public AdminModelsController(IModelService modelService, IApiCatalogService catalog, IAiProviderRegistry providers)
     {
         _modelService = modelService;
         _catalog = catalog;
+        _providers = providers;
     }
 
     [HttpGet]
@@ -181,6 +184,65 @@ public class AdminModelsController : ControllerBase
             return StatusCode(500, $"Internal server error: {ex.Message}");
         }
     }
+
+    // Sends one test message to the saved model through its endpoint and reports whether text came back.
+    [HttpPost("{id}/test")]
+    public async Task<ActionResult<ModelTestResultDto>> TestModel(string id, CancellationToken cancellationToken)
+    {
+        var resolved = await _modelService.GetModelWithEndpointAsync(id);
+        if (resolved == null)
+        {
+            if (await _modelService.GetModelByIdAsync(id) == null)
+            {
+                return NotFound($"Model with id {id} not found");
+            }
+
+            return Ok(new ModelTestResultDto { Success = false, Error = "The model's endpoint does not exist." });
+        }
+
+        var (endpoint, model) = resolved.Value;
+        if (!_providers.Supports(endpoint.EndpointType))
+        {
+            return Ok(new ModelTestResultDto { Success = false, Error = $"No AI provider is registered for endpoint type {endpoint.EndpointType}." });
+        }
+
+        var request = new AiRequest
+        {
+            Model = model,
+            Endpoint = endpoint,
+            Messages = AiInputItem.From(new List<ChatMessage>
+            {
+                new() { Role = AiChatRole.User, Content = TestPrompt }
+            }),
+            Parameters = ChatParameterResolver.Resolve(model.Capabilities, new ChatSettings { Model = model })
+        };
+
+        try
+        {
+            var text = new System.Text.StringBuilder();
+            var conversation = _providers.For(endpoint.EndpointType).StartConversation(request);
+            await foreach (var streamEvent in conversation.StreamTurnAsync(allowToolCalls: false, cancellationToken))
+            {
+                if (streamEvent is AiStreamEvent.Text textEvent)
+                {
+                    text.Append(textEvent.Delta);
+                }
+            }
+
+            if (string.IsNullOrWhiteSpace(text.ToString()))
+            {
+                return Ok(new ModelTestResultDto { Success = false, Error = "The model returned no text." });
+            }
+
+            return Ok(new ModelTestResultDto { Success = true, Response = text.ToString().Trim() });
+        }
+        catch (Exception ex)
+        {
+            return Ok(new ModelTestResultDto { Success = false, Error = ex.Message });
+        }
+    }
+
+    private const string TestPrompt = "This is a connection test. Reply with the single word OK.";
 
     private static ModelDto ToDto(Model model) => new()
     {

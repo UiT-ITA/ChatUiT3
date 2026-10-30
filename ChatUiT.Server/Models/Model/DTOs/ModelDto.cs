@@ -164,3 +164,10 @@ public class UpdateModelDto
 
     public DataClassification Classification { get; set; } = DataClassification.Green;
 }
+
+public class ModelTestResultDto
+{
+    public bool Success { get; set; }
+    public string? Response { get; set; }
+    public string? Error { get; set; }
+}

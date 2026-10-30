@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { useSignals } from '@preact/signals-react/runtime';
-import { createModel, updateModel, deleteModel, getModelCatalog } from '../../services/adminService';
+import { createModel, updateModel, deleteModel, getModelCatalog, testModel } from '../../services/adminService';
 import { adminEndpointsSignal, adminModelsSignal, loadAdminData } from '../../services/adminDataService';
 import type {
   UserRole,
@@ -13,10 +13,12 @@ import type {
   ApiProtocol,
   ModelDto,
   EndpointDto,
+  ModelTestResultDto,
 } from '../../types/admin';
 import { API_PROTOCOLS, REASONING_EFFORT_ORDER, TOKEN_COUNTING_SCHEME_OPTIONS } from '../../types/admin';
 import { DATA_CLASSIFICATIONS, type DataClassification } from '../../types/modelModels';
 import EditorHeader from '../layout/EditorHeader';
+import { Icon } from '../common/Icon';
 import { hasChanges } from '../../utils/formChanges';
 
 const ALL_ROLES: UserRole[] = ['User', 'Admin', 'Beta', 'Super', 'External'];
@@ -51,7 +53,10 @@ function formStateFor(model: ModelDto | undefined, endpoints: EndpointDto[]) {
     modelId: model?.modelId ?? '',
     modelName: model?.modelName ?? '',
     description: model?.description ?? '',
-    endpointId: model?.endpointId ?? (endpoints[0]?.id ?? ''),
+    // An existing model whose endpoint was deleted starts empty, so the admin must pick one.
+    endpointId: model
+      ? (endpoints.some(ep => ep.id === model.endpointId) ? model.endpointId : '')
+      : (endpoints[0]?.id ?? ''),
     // A new model is available to everyone; an existing one keeps exactly the roles
     // it was saved with, so opening the form can never widen access on its own.
     allowedRoles: model ? (model.allowedRoles ?? []) : [...ALL_ROLES],
@@ -88,6 +93,8 @@ const ModelEditor: React.FC<ModelEditorProps> = ({ modelId: editId }) => {
   const [knowledgeCutoffMonth, setKnowledgeCutoffMonth] = useState<string>(initial.knowledgeCutoffMonth);
   const [saving, setSaving] = useState(false);
   const [catalog, setCatalog] = useState<CatalogModelDto[]>([]);
+  const [testing, setTesting] = useState(false);
+  const [testResult, setTestResult] = useState<ModelTestResultDto | null>(null);
 
   useEffect(() => {
     loadAdminData();
@@ -110,6 +117,7 @@ const ModelEditor: React.FC<ModelEditorProps> = ({ modelId: editId }) => {
     setClassification(next.classification);
     setCapabilities(next.capabilities);
     setKnowledgeCutoffMonth(next.knowledgeCutoffMonth);
+    setTestResult(null);
   }
 
   if (editId && models === undefined) {
@@ -194,6 +202,19 @@ const ModelEditor: React.FC<ModelEditorProps> = ({ modelId: editId }) => {
       navigate('/admin/models');
     } finally {
       setSaving(false);
+    }
+  };
+
+  const handleTest = async () => {
+    if (!model || testing) return;
+    setTesting(true);
+    setTestResult(null);
+    try {
+      setTestResult(await testModel(model.id));
+    } catch (error) {
+      setTestResult({ success: false, error: error instanceof Error ? error.message : String(error) });
+    } finally {
+      setTesting(false);
     }
   };
 
@@ -286,6 +307,9 @@ const ModelEditor: React.FC<ModelEditorProps> = ({ modelId: editId }) => {
             value={endpointId}
             onChange={(e) => setEndpointId(e.target.value)}
           >
+            {endpointId === '' && (
+              <option value="" disabled>{t('admin.models.fields.endpointNone')}</option>
+            )}
             {endpoints.map(ep => (
               <option key={ep.id} value={ep.id}>
                 {ep.url} ({t(`admin.endpointType.${ep.endpointType}`)})
@@ -497,6 +521,22 @@ const ModelEditor: React.FC<ModelEditorProps> = ({ modelId: editId }) => {
 
       {model && (
         <div className="admin-form-footer">
+          <button
+            className="admin-test-button t-ui"
+            onClick={handleTest}
+            disabled={testing || dirty}
+            title={dirty ? t('admin.models.test.saveFirst') : undefined}
+          >
+            {testing ? t('admin.models.test.running') : t('admin.models.test.button')}
+          </button>
+          {testResult?.success && (
+            <span className="admin-test-success" title={testResult.response ?? undefined}>
+              <Icon name="check" size={1.5} />
+            </span>
+          )}
+          {testResult && !testResult.success && (
+            <span className="admin-test-error t-caption">{testResult.error}</span>
+          )}
           <div className="admin-footer-spacer" />
           <button className="admin-delete-button t-ui" onClick={handleDelete}>
             {t('admin.models.actions.delete')}

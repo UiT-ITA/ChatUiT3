@@ -521,7 +521,13 @@
         "delete": {
           "title": "Slett endepunkt",
           "confirm": "Er du sikker på at du vil slette dette endepunktet?",
-          "blocked": "Dette endepunktet brukes av én eller flere modeller og kan ikke slettes."
+          "blocked": "Dette endepunktet brukes av én eller flere modeller og kan ikke slettes.",
+          "modelsIntro_one": "Denne modellen bruker endepunktet:",
+          "modelsIntro_other": "Disse {{count}} modellene bruker endepunktet:",
+          "noModels": "Ingen modeller bruker dette endepunktet.",
+          "endpoint": "Slett endepunkt",
+          "endpointOnly": "Slett kun endepunkt",
+          "endpointAndModels": "Slett endepunkt og modeller"
         }
       },
       "fields": {
@@ -584,6 +590,11 @@
       "list": {
         "empty": "Ingen modeller konfigurert."
       },
+      "test": {
+        "button": "Test",
+        "running": "Tester...",
+        "saveFirst": "Lagre endringene før du tester."
+      },
       "actions": {
         "edit": "Rediger",
         "delete": "Slett"
@@ -602,6 +613,7 @@
         "modelName": "Modellnavn",
         "description": "Beskrivelse",
         "endpoint": "Endepunkt",
+        "endpointNone": "Velg endepunkt",
         "allowedRoles": "Tillatte roller",
         "capabilities": "Egenskaper",
         "supportsVision": "Støtter visjon",

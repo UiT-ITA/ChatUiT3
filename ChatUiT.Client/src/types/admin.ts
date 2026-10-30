@@ -196,6 +196,12 @@ export interface ModelCapabilities {
   tokenCountingScheme: string | null;
 }
 
+export interface ModelTestResultDto {
+  success: boolean;
+  response?: string | null;
+  error?: string | null;
+}
+
 export interface ModelDto {
   id: string;
   modelId: string;      // Provider model identifier (e.g. "gpt-5.4")
