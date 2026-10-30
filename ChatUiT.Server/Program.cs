@@ -8,6 +8,7 @@ using ChatUiT.Server.Services.Agents;
 using ChatUiT.Server.Services.ApiCatalog;
 using ChatUiT.Server.Services.ResponsesApi;
 using ChatUiT.Server.Services.Directory;
+using ChatUiT.Server.Services.Encryption;
 using ChatUiT.Server.Services.Knowledge;
 using ChatUiT.Server.Services.Tools;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
@@ -103,6 +104,7 @@ builder.Services.AddSignalR();
 // Register services
 builder.Services.AddScoped<UserService>();
 builder.Services.AddSingleton<StreamingService>();
+builder.Services.AddSingleton<IChatKeyService, ChatKeyService>();
 builder.Services.AddSingleton<IDatabaseService, DatabaseService>();
 builder.Services.AddSingleton<IModelService, ModelService>();
 builder.Services.AddSingleton<ISettingsService, SettingsService>();

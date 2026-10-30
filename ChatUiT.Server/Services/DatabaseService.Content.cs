@@ -1,5 +1,7 @@
 using ChatUiT.Server.Models;
+using ChatUiT.Server.Services.Encryption;
 using Microsoft.Azure.Cosmos;
+using System.Security.Cryptography;
 using System.Text;
 
 namespace ChatUiT.Server.Services;
@@ -16,7 +18,7 @@ public partial class DatabaseService
         }
     }
 
-    private async Task<List<string>> WriteTextContentAsync(string userId, string chatId, string ownerId, string? content, ICollection<string>? writtenBlockIds = null)
+    private async Task<List<string>> WriteTextContentAsync(string userId, string chatId, string ownerId, string? content, byte[]? key, ICollection<string>? writtenBlockIds = null)
     {
         if (_contentContainer == null)
         {
@@ -40,8 +42,8 @@ public partial class DatabaseService
                 OwnerId = ownerId,
                 ContentType = StoredContentType.Text,
                 ChunkIndex = index,
-                IsEncrypted = false,
-                Payload = chunks[index]
+                IsEncrypted = key != null,
+                Payload = key == null ? chunks[index] : ChatContentCipher.Encrypt(key, Encoding.UTF8.GetBytes(chunks[index]))
             };
 
             await _contentContainer.CreateItemAsync(document, new Microsoft.Azure.Cosmos.PartitionKey(userId));
@@ -52,7 +54,7 @@ public partial class DatabaseService
         return blockIds;
     }
 
-    private async Task<List<string>> WriteBinaryContentAsync(string userId, string chatId, string ownerId, byte[] bytes, ICollection<string>? writtenBlockIds = null)
+    private async Task<List<string>> WriteBinaryContentAsync(string userId, string chatId, string ownerId, byte[] bytes, byte[]? key, ICollection<string>? writtenBlockIds = null)
     {
         if (_contentContainer == null)
         {
@@ -78,8 +80,8 @@ public partial class DatabaseService
                 OwnerId = ownerId,
                 ContentType = StoredContentType.Binary,
                 ChunkIndex = index,
-                IsEncrypted = false,
-                Payload = chunks[index]
+                IsEncrypted = key != null,
+                Payload = key == null ? chunks[index] : ChatContentCipher.Encrypt(key, Convert.FromBase64String(chunks[index]))
             };
 
             await _contentContainer.CreateItemAsync(document, new Microsoft.Azure.Cosmos.PartitionKey(userId));
@@ -90,7 +92,7 @@ public partial class DatabaseService
         return blockIds;
     }
 
-    private async Task<List<StoredFileDocument>> WriteFilesAsync(string userId, string chatId, IReadOnlyCollection<ChatFile>? files, ICollection<string>? writtenBlockIds = null)
+    private async Task<List<StoredFileDocument>> WriteFilesAsync(string userId, string chatId, IReadOnlyCollection<ChatFile>? files, byte[]? key, ICollection<string>? writtenBlockIds = null)
     {
         if (files == null || files.Count == 0)
         {
@@ -119,14 +121,14 @@ public partial class DatabaseService
 
                 if (chunk.Type.Equals("text", StringComparison.OrdinalIgnoreCase))
                 {
-                    storedChunk.ContentBlockIds = await WriteTextContentAsync(userId, chatId, storedChunk.Id, chunk.Text, writtenBlockIds);
+                    storedChunk.ContentBlockIds = await WriteTextContentAsync(userId, chatId, storedChunk.Id, chunk.Text, key, writtenBlockIds);
                 }
                 else if (chunk.Type.Equals("image", StringComparison.OrdinalIgnoreCase))
                 {
                     var imageBytes = string.IsNullOrWhiteSpace(chunk.Base64)
                         ? Array.Empty<byte>()
                         : Convert.FromBase64String(chunk.Base64);
-                    storedChunk.ContentBlockIds = await WriteBinaryContentAsync(userId, chatId, storedChunk.Id, imageBytes, writtenBlockIds);
+                    storedChunk.ContentBlockIds = await WriteBinaryContentAsync(userId, chatId, storedChunk.Id, imageBytes, key, writtenBlockIds);
                 }
 
                 storedFile.Chunks.Add(storedChunk);
@@ -141,7 +143,8 @@ public partial class DatabaseService
     private List<ChatFile> ReadFiles(
         IReadOnlyCollection<StoredFileDocument>? files,
         IReadOnlyDictionary<string, ContentBlockDocument> contentBlocksById,
-        bool includeContent)
+        bool includeContent,
+        byte[]? key)
     {
         if (files == null || files.Count == 0)
         {
@@ -171,11 +174,11 @@ public partial class DatabaseService
                 {
                     if (chunk.Type.Equals("text", StringComparison.OrdinalIgnoreCase))
                     {
-                        chatChunk.Text = ReadTextContent(chunk.ContentBlockIds, contentBlocksById);
+                        chatChunk.Text = ReadTextContent(chunk.ContentBlockIds, contentBlocksById, key);
                     }
                     else if (chunk.Type.Equals("image", StringComparison.OrdinalIgnoreCase))
                     {
-                        chatChunk.Base64 = Convert.ToBase64String(ReadBinaryContent(chunk.ContentBlockIds, contentBlocksById));
+                        chatChunk.Base64 = Convert.ToBase64String(ReadBinaryContent(chunk.ContentBlockIds, contentBlocksById, key));
                     }
                 }
 
@@ -190,7 +193,8 @@ public partial class DatabaseService
 
     private string ReadTextContent(
         IReadOnlyCollection<string> contentBlockIds,
-        IReadOnlyDictionary<string, ContentBlockDocument> contentBlocksById)
+        IReadOnlyDictionary<string, ContentBlockDocument> contentBlocksById,
+        byte[]? key = null)
     {
         if (contentBlockIds.Count == 0)
         {
@@ -203,17 +207,31 @@ public partial class DatabaseService
             return string.Empty;
         }
 
-        if (documents.Any(x => x.IsEncrypted))
+        var parts = new List<string>(documents.Count);
+        foreach (var document in documents)
         {
-            throw new NotSupportedException("Encrypted text content is not implemented yet.");
+            if (!document.IsEncrypted)
+            {
+                parts.Add(document.Payload);
+                continue;
+            }
+
+            var bytes = TryDecrypt(document, key);
+            if (bytes == null)
+            {
+                return string.Empty;
+            }
+
+            parts.Add(Encoding.UTF8.GetString(bytes));
         }
 
-        return string.Concat(documents.Select(x => x.Payload));
+        return string.Concat(parts);
     }
 
     private byte[] ReadBinaryContent(
         IReadOnlyCollection<string> contentBlockIds,
-        IReadOnlyDictionary<string, ContentBlockDocument> contentBlocksById)
+        IReadOnlyDictionary<string, ContentBlockDocument> contentBlocksById,
+        byte[]? key = null)
     {
         if (contentBlockIds.Count == 0)
         {
@@ -226,7 +244,87 @@ public partial class DatabaseService
             return Array.Empty<byte>();
         }
 
-        return Convert.FromBase64String(string.Concat(documents.Select(x => x.Payload)));
+        var parts = new List<byte[]>(documents.Count);
+        foreach (var document in documents)
+        {
+            var bytes = document.IsEncrypted ? TryDecrypt(document, key) : Convert.FromBase64String(document.Payload);
+            if (bytes == null)
+            {
+                return Array.Empty<byte>();
+            }
+
+            parts.Add(bytes);
+        }
+
+        var result = new byte[parts.Sum(part => part.Length)];
+        var offset = 0;
+        foreach (var part in parts)
+        {
+            part.CopyTo(result, offset);
+            offset += part.Length;
+        }
+
+        return result;
+    }
+
+    // Null when the block does not decrypt; the text or image it belongs to then reads as empty.
+    private byte[]? TryDecrypt(ContentBlockDocument block, byte[]? key)
+    {
+        if (key == null)
+        {
+            throw new InvalidOperationException("Encrypted content was read without the user's key.");
+        }
+
+        try
+        {
+            return ChatContentCipher.Decrypt(key, block.Payload);
+        }
+        catch (Exception ex) when (ex is CryptographicException or FormatException)
+        {
+            _logger.LogError(ex, "Content block {BlockId} could not be decrypted.", block.Id);
+            return null;
+        }
+    }
+
+    /// <summary>Encrypts the plaintext blocks among <paramref name="blocks"/> in place. Blocks deleted meanwhile are skipped.</summary>
+    private async Task EncryptBlocksAsync(string userId, IEnumerable<ContentBlockDocument> blocks, byte[] key)
+    {
+        foreach (var block in blocks.Where(b => !b.IsEncrypted).ToList())
+        {
+            var plaintext = block.ContentType == StoredContentType.Text
+                ? Encoding.UTF8.GetBytes(block.Payload)
+                : Convert.FromBase64String(block.Payload);
+            block.Payload = ChatContentCipher.Encrypt(key, plaintext);
+            block.IsEncrypted = true;
+
+            try
+            {
+                await _contentContainer!.ReplaceItemAsync(block, block.Id, new PartitionKey(userId));
+            }
+            catch (CosmosException ex) when (ex.StatusCode == System.Net.HttpStatusCode.NotFound)
+            {
+            }
+        }
+    }
+
+    /// <summary>Encrypts every content block of the chat that is not encrypted yet, one block at a time.</summary>
+    private async Task EncryptChatContentAsync(string userId, string chatId, byte[] key)
+    {
+        var plaintextBlockIds = await QueryItemsAsync<IdOnlyDocument>(
+            _contentContainer!,
+            new QueryDefinition("SELECT c.id FROM c WHERE c.userId = @userId AND c.chatId = @chatId AND c.isEncrypted = false")
+                .WithParameter("@userId", userId)
+                .WithParameter("@chatId", chatId),
+            userId);
+
+        foreach (var blockId in plaintextBlockIds)
+        {
+            var block = await ReadItemOrDefaultAsync<ContentBlockDocument>(_contentContainer!, blockId.Id, userId);
+            if (block != null)
+            {
+                await EncryptBlocksAsync(userId, new[] { block }, key);
+            }
+        }
     }
 
     private List<ContentBlockDocument> GetOrderedContentBlocks(
