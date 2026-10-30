@@ -1,0 +1,106 @@
+/* Three columns, wrapping on narrow screens. auto-fill keeps a card at a third when there are fewer than three. */
+.assistant-card-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(max(13.4375rem, calc((100% - 2 * var(--space-sm)) / 3)), 1fr));
+  gap: var(--space-sm);
+}
+
+.assistant-card {
+  outline: none;
+}
+
+.assistant-card:focus-visible {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 1px var(--accent);
+}
+
+.assistant-card--disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.assistant-card-top {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.assistant-card-heading {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.assistant-card-name,
+.assistant-card-model,
+.assistant-card-type {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.assistant-card-name {
+  font-size: var(--fs-base);
+  font-weight: 700;
+}
+
+.assistant-card-type {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.375rem;
+  font-size: var(--fs-caption);
+  color: var(--text-3);
+}
+
+.assistant-card-model {
+  font-family: var(--font-mono);
+  font-size: var(--fs-overline);
+  color: var(--text-3);
+}
+
+/* Holds three lines, also when empty, so cards in a row line up */
+.assistant-card-description {
+  margin: 0;
+  min-height: calc(3 * 1.5em);
+  font-size: var(--fs-caption);
+  line-height: 1.5;
+  color: var(--text-2);
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  overflow-wrap: anywhere;
+}
+
+.assistant-card-specs {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: center;
+  column-gap: 0.75rem;
+  row-gap: 0.5rem;
+  margin: auto 0 0;
+  padding-top: 0.75rem;
+  border-top: 1px solid var(--line);
+  font-size: var(--fs-caption);
+}
+
+.assistant-card-specs dt {
+  color: var(--text-3);
+}
+
+.assistant-card-specs dd {
+  display: flex;
+  justify-content: flex-end;
+  min-width: 0;
+  margin: 0;
+  color: var(--text-2);
+}
+
+.assistant-card-cap-icons {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+}

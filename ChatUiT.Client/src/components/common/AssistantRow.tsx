@@ -40,14 +40,15 @@ export default function AssistantRow({ assistant, selected, disabledReason, onSe
 
   return (
     <ListboxOption
+      className="ap-row"
       selected={selected}
       disabled={disabledReason !== undefined}
       title={disabledReason}
       aria-describedby={descriptionId}
       onClick={() => onSelect(assistant)}
-      leading={<Icon name={ROW_ICON[assistant.type] ?? 'assistants'} color="muted" />}
+      leading={<span className="ap-row-leading"><Icon name={ROW_ICON[assistant.type] ?? 'assistants'} color="muted" /></span>}
       description={(
-        <span className="ap-row-meta">
+        <span className="ap-row-line">
           {modelName && (
             <>
               <span className="ap-row-model t-meta">{modelName}</span>
@@ -70,14 +71,17 @@ export default function AssistantRow({ assistant, selected, disabledReason, onSe
               </Stack>
             </>
           )}
-          <Tooltip content={description} focusable>
+          <Tooltip content={description} focusable className="ap-row-end">
             <Icon name="info" color="muted" label={description} />
           </Tooltip>
           <span id={descriptionId} hidden>{description}</span>
         </span>
       )}
-      trailing={(
+    >
+      <span className="ap-row-line">
+        <span className="ap-row-name t-body-strong">{assistant.name}</span>
         <IconButton
+          className="ap-row-end"
           icon={<Icon name={assistant.isFavorite ? 'star' : 'starOutline'} color={assistant.isFavorite ? 'accent' : 'muted'} />}
           label={assistant.isFavorite
             ? t('assistants.actions.removeFavorite')
@@ -90,9 +94,7 @@ export default function AssistantRow({ assistant, selected, disabledReason, onSe
             void toggleFavorite(assistant.id);
           }}
         />
-      )}
-    >
-      <span className="t-body-strong">{assistant.name}</span>
+      </span>
     </ListboxOption>
   );
 }

@@ -30,6 +30,14 @@
   margin-bottom: 0.875rem;
 }
 
+.assistants-header-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 0.75rem;
+}
+
 .assistants-header .page-title-bar {
   margin-bottom: 0;
 }

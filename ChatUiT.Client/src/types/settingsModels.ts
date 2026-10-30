@@ -11,6 +11,9 @@ export interface AppSettings {
   chatRetentionPeriod: '1week' | '1month' | '3months' | '1year' | 'forever';
   autoDeleteOldChats: boolean;
   exportFormat: 'json' | 'markdown' | 'txt';
+
+  // How the assistant page shows assistants
+  assistantView: 'cards' | 'list';
 }
 
 export const DEFAULT_SETTINGS: AppSettings = {
@@ -24,6 +27,8 @@ export const DEFAULT_SETTINGS: AppSettings = {
   chatRetentionPeriod: 'forever',
   autoDeleteOldChats: false,
   exportFormat: 'json',
+
+  assistantView: 'cards',
 };
 
 export type SettingsCategory = 'appearance' | 'personalization' | 'dataControl';
