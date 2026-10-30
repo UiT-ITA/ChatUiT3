@@ -9,13 +9,6 @@ public class EndpointDto
     public string EndpointType { get; set; } = string.Empty;
 }
 
-/// <summary>A deployment on an endpoint: the name requests use and the model it runs.</summary>
-public class EndpointDeploymentDto
-{
-    public string Name { get; set; } = string.Empty;
-    public string Model { get; set; } = string.Empty;
-}
-
 public class CreateEndpointDto
 {
     [Required]

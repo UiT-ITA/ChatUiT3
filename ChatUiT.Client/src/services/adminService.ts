@@ -1,7 +1,6 @@
 import apiService from './apiService';
 import type { DirectoryGroupDto,
   EndpointDto,
-  EndpointDeploymentDto,
   ModelTestResultDto,
   CreateEndpointDto,
   UpdateEndpointDto,
@@ -22,10 +21,6 @@ import type { DirectoryGroupDto,
 
 export async function getEndpoints(): Promise<EndpointDto[]> {
   return apiService<EndpointDto[]>('/api/admin/endpoints');
-}
-
-export async function getEndpointDeployments(id: string): Promise<EndpointDeploymentDto[]> {
-  return apiService<EndpointDeploymentDto[]>(`/api/admin/endpoints/${id}/deployments`);
 }
 
 export async function createEndpoint(data: CreateEndpointDto): Promise<EndpointDto> {

@@ -57,11 +57,6 @@ export interface EndpointDto {
   endpointType: EndpointType;
 }
 
-export interface EndpointDeploymentDto {
-  name: string;
-  model: string;
-}
-
 export interface CreateEndpointDto {
   url: string;
   apiKey: string;
