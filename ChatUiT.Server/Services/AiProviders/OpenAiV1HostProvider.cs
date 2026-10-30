@@ -1,6 +1,7 @@
 using System;
 using System.Threading;
 using System.Threading.Tasks;
+using Azure.Core;
 
 namespace ChatUiT.Server.Services.AiProviders;
 
@@ -15,10 +16,12 @@ using ChatUiT.Server.Services.AiProviders.Protocols;
 public abstract class OpenAiV1HostProvider : IAiProvider
 {
     private readonly IApiProtocolRegistry _protocols;
+    private readonly TokenCredential _credential;
 
-    protected OpenAiV1HostProvider(IApiProtocolRegistry protocols)
+    protected OpenAiV1HostProvider(IApiProtocolRegistry protocols, TokenCredential credential)
     {
         _protocols = protocols;
+        _credential = credential;
     }
 
     public abstract EndpointType EndpointType { get; }
@@ -52,6 +55,7 @@ public abstract class OpenAiV1HostProvider : IAiProvider
             $"A {EndpointType} endpoint does not serve {protocol}, but model '{request.Model.ModelId}' is set to it. " +
             "Move the model to an endpoint that serves that protocol, or change its API protocol.");
 
-        return (_protocols.For(protocol), new ProtocolTarget(baseUrl + path, request.Endpoint.ApiKey));
+        var credential = request.Endpoint.AuthMethod == EndpointAuthMethod.ManagedIdentity ? _credential : null;
+        return (_protocols.For(protocol), new ProtocolTarget(baseUrl + path, request.Endpoint.ApiKey, credential));
     }
 }

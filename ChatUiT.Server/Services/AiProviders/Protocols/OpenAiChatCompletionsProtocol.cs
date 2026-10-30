@@ -1,5 +1,6 @@
 using System;
 using System.ClientModel;
+using System.ClientModel.Primitives;
 using System.Collections.Generic;
 using System.Linq;
 using System.Runtime.CompilerServices;
@@ -83,10 +84,10 @@ public sealed class OpenAiChatCompletionsProtocol : IApiProtocol
             throw new InvalidOperationException("OpenAI Chat Completions needs a base URL; the host provider did not supply one.");
         }
 
-        return new ChatClient(
-            model: request.Model.ModelId,
-            credential: new ApiKeyCredential(target.ApiKey),
-            options: new OpenAIClientOptions { Endpoint = new Uri(target.BaseUrl) });
+        var options = new OpenAIClientOptions { Endpoint = new Uri(target.BaseUrl) };
+        return target.Credential == null
+            ? new ChatClient(model: request.Model.ModelId, credential: new ApiKeyCredential(target.ApiKey), options: options)
+            : new ChatClient(model: request.Model.ModelId, authenticationPolicy: new BearerTokenPolicy(target.Credential, AzureAiAuth.Scope), options: options);
     }
 
     /// <param name="loadedToolIds">

@@ -1,8 +1,11 @@
+using System.Net.Http.Headers;
 using System.Text.Json;
+using Azure.Core;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using ChatUiT.Server.Models;
 using ChatUiT.Server.Services;
+using ChatUiT.Server.Services.AiProviders.Protocols;
 
 namespace ChatUiT.Server.Controllers;
 
@@ -15,12 +18,39 @@ public class AdminEndpointsController : ControllerBase
     private readonly IModelService _modelService;
     private readonly IHttpClientFactory _httpClientFactory;
     private readonly ILogger<AdminEndpointsController> _logger;
+    private readonly TokenCredential _credential;
 
-    public AdminEndpointsController(IModelService modelService, IHttpClientFactory httpClientFactory, ILogger<AdminEndpointsController> logger)
+    public AdminEndpointsController(IModelService modelService, IHttpClientFactory httpClientFactory, ILogger<AdminEndpointsController> logger, TokenCredential credential)
     {
         _modelService = modelService;
         _httpClientFactory = httpClientFactory;
         _logger = logger;
+        _credential = credential;
+    }
+
+    private static EndpointDto ToDto(ModelEndpoint endpoint) => new()
+    {
+        Id = endpoint.Id,
+        Url = endpoint.Url,
+        EndpointType = endpoint.EndpointType.ToString(),
+        AuthMethod = endpoint.AuthMethod.ToString()
+    };
+
+    /// <summary>Parses the auth method; blank means <paramref name="blankMeans"/>. Returns an error message when it is invalid or the endpoint type does not accept it.</summary>
+    private static string? TryParseAuthMethod(string value, EndpointType endpointType, EndpointAuthMethod blankMeans, out EndpointAuthMethod authMethod)
+    {
+        authMethod = blankMeans;
+        if (!string.IsNullOrWhiteSpace(value) && !Enum.TryParse(value, out authMethod))
+        {
+            return $"Invalid auth method: {value}";
+        }
+
+        if (authMethod == EndpointAuthMethod.ManagedIdentity && !ModelEndpoint.SupportsManagedIdentity(endpointType))
+        {
+            return $"A {endpointType} endpoint does not accept managed identity. Use an API key.";
+        }
+
+        return null;
     }
 
     [HttpGet]
@@ -29,12 +59,7 @@ public class AdminEndpointsController : ControllerBase
         try
         {
             var endpoints = await _modelService.GetAllEndpointsAsync();
-            var endpointDtos = endpoints.Select(e => new EndpointDto
-            {
-                Id = e.Id,
-                Url = e.Url,
-                EndpointType = e.EndpointType.ToString()
-            }).ToList();
+            var endpointDtos = endpoints.Select(ToDto).ToList();
 
             return Ok(endpointDtos);
         }
@@ -55,14 +80,7 @@ public class AdminEndpointsController : ControllerBase
                 return NotFound($"Endpoint with id {id} not found");
             }
 
-            var endpointDto = new EndpointDto
-            {
-                Id = endpoint.Id,
-                Url = endpoint.Url,
-                EndpointType = endpoint.EndpointType.ToString()
-            };
-
-            return Ok(endpointDto);
+            return Ok(ToDto(endpoint));
         }
         catch (Exception ex)
         {
@@ -95,7 +113,15 @@ public class AdminEndpointsController : ControllerBase
         {
             using var request = new HttpRequestMessage(HttpMethod.Get,
                 endpointUri.GetLeftPart(UriPartial.Authority) + "/openai/deployments?api-version=2022-12-01");
-            request.Headers.Add("api-key", endpoint.ApiKey);
+            if (endpoint.AuthMethod == EndpointAuthMethod.ManagedIdentity)
+            {
+                var token = await _credential.GetTokenAsync(new TokenRequestContext([AzureAiAuth.Scope]), timeout.Token);
+                request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", token.Token);
+            }
+            else
+            {
+                request.Headers.Add("api-key", endpoint.ApiKey);
+            }
             using var response = await _httpClientFactory.CreateClient().SendAsync(request, timeout.Token);
             if (!response.IsSuccessStatusCode)
             {
@@ -122,7 +148,7 @@ public class AdminEndpointsController : ControllerBase
 
             return Ok(deployments.OrderBy(d => d.Name, StringComparer.OrdinalIgnoreCase).ToList());
         }
-        catch (Exception ex) when (ex is HttpRequestException or JsonException or InvalidOperationException or OperationCanceledException && !ct.IsCancellationRequested)
+        catch (Exception ex) when (ex is HttpRequestException or JsonException or Azure.Identity.AuthenticationFailedException or InvalidOperationException or OperationCanceledException && !ct.IsCancellationRequested)
         {
             _logger.LogWarning(ex, "Listing deployments for endpoint {EndpointId} failed", id);
             return Ok(new List<EndpointDeploymentDto>());
@@ -139,24 +165,29 @@ public class AdminEndpointsController : ControllerBase
                 return BadRequest($"Invalid endpoint type: {createDto.EndpointType}");
             }
 
+            var authError = TryParseAuthMethod(createDto.AuthMethod, endpointType, EndpointAuthMethod.ApiKey, out var authMethod);
+            if (authError != null)
+            {
+                return BadRequest(authError);
+            }
+
+            if (authMethod == EndpointAuthMethod.ApiKey && string.IsNullOrWhiteSpace(createDto.ApiKey))
+            {
+                return BadRequest("An API key is required.");
+            }
+
             var endpoint = new ModelEndpoint
             {
                 Url = createDto.Url,
-                ApiKey = createDto.ApiKey,
-                EndpointType = endpointType
+                ApiKey = authMethod == EndpointAuthMethod.ApiKey ? createDto.ApiKey : string.Empty,
+                EndpointType = endpointType,
+                AuthMethod = authMethod
             };
 
             var createdId = await _modelService.CreateEndpointAsync(endpoint);
             endpoint.Id = createdId;
 
-            var endpointDto = new EndpointDto
-            {
-                Id = endpoint.Id,
-                Url = endpoint.Url,
-                EndpointType = endpoint.EndpointType.ToString()
-            };
-
-            return CreatedAtAction(nameof(GetEndpoint), new { id = createdId }, endpointDto);
+            return CreatedAtAction(nameof(GetEndpoint), new { id = createdId }, ToDto(endpoint));
         }
         catch (Exception ex)
         {
@@ -185,13 +216,28 @@ public class AdminEndpointsController : ControllerBase
                 return NotFound($"Endpoint with id {id} not found");
             }
 
+            var authError = TryParseAuthMethod(updateDto.AuthMethod, endpointType, existing.AuthMethod, out var authMethod);
+            if (authError != null)
+            {
+                return BadRequest(authError);
+            }
+
+            // An empty api key means "leave the existing key alone". Managed identity stores no key.
+            var apiKey = authMethod == EndpointAuthMethod.ManagedIdentity
+                ? string.Empty
+                : string.IsNullOrWhiteSpace(updateDto.ApiKey) ? existing.ApiKey : updateDto.ApiKey;
+            if (authMethod == EndpointAuthMethod.ApiKey && string.IsNullOrWhiteSpace(apiKey))
+            {
+                return BadRequest("An API key is required.");
+            }
+
             var endpoint = new ModelEndpoint
             {
                 Id = updateDto.Id,
                 Url = updateDto.Url,
-                // An empty api key means "leave the existing key alone"
-                ApiKey = string.IsNullOrWhiteSpace(updateDto.ApiKey) ? existing.ApiKey : updateDto.ApiKey,
-                EndpointType = endpointType
+                ApiKey = apiKey,
+                EndpointType = endpointType,
+                AuthMethod = authMethod
             };
 
             var updated = await _modelService.UpdateEndpointAsync(endpoint);
@@ -200,14 +246,7 @@ public class AdminEndpointsController : ControllerBase
                 return NotFound($"Endpoint with id {id} not found");
             }
 
-            var endpointDto = new EndpointDto
-            {
-                Id = endpoint.Id,
-                Url = endpoint.Url,
-                EndpointType = endpoint.EndpointType.ToString()
-            };
-
-            return Ok(endpointDto);
+            return Ok(ToDto(endpoint));
         }
         catch (Exception ex)
         {

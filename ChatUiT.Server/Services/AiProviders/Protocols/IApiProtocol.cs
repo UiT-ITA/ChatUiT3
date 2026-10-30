@@ -1,6 +1,7 @@
 using System;
 using System.Threading;
 using System.Threading.Tasks;
+using Azure.Core;
 
 namespace ChatUiT.Server.Services.AiProviders.Protocols;
 
@@ -9,9 +10,17 @@ using ChatUiT.Server.Models;
 /// <summary>
 /// Where a protocol adapter sends its requests: the base URL the host provider composed for
 /// this protocol, and the key from the endpoint row. A null URL means the SDK default (only
-/// the Anthropic adapter has one); the OpenAI adapters require a URL.
+/// the Anthropic adapter has one); the OpenAI adapters require a URL. When
+/// <paramref name="Credential"/> is set, requests carry an Entra bearer token for
+/// <see cref="AzureAiAuth.Scope"/> instead of the key.
 /// </summary>
-public sealed record ProtocolTarget(string? BaseUrl, string ApiKey);
+public sealed record ProtocolTarget(string? BaseUrl, string ApiKey, TokenCredential? Credential = null);
+
+public static class AzureAiAuth
+{
+    /// <summary>The token scope Microsoft Foundry and Azure OpenAI accept for OpenAI and Anthropic requests.</summary>
+    public const string Scope = "https://ai.azure.com/.default";
+}
 
 /// <summary>
 /// One wire protocol. Adapters translate an <see cref="AiRequest"/> into the SDK's shapes

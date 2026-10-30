@@ -4,12 +4,15 @@ import { useTranslation } from 'react-i18next';
 import { useSignals } from '@preact/signals-react/runtime';
 import { createEndpoint, updateEndpoint, deleteEndpoint, deleteModel } from '../../services/adminService';
 import { adminEndpointsSignal, adminModelsSignal, loadAdminData } from '../../services/adminDataService';
-import type { EndpointType } from '../../types/admin';
+import type { EndpointAuthMethod, EndpointType } from '../../types/admin';
 import EditorHeader from '../layout/EditorHeader';
 import { Dialog, DialogButton } from '../common/Dialog';
 import { hasChanges } from '../../utils/formChanges';
 
 const PROVIDERS: EndpointType[] = ['AzureOpenAI', 'MicrosoftFoundry', 'Anthropic', 'OpenAI', 'LlamaCpp', 'Other'];
+/** The endpoint types that accept the app's Entra identity. */
+const MANAGED_IDENTITY_PROVIDERS: EndpointType[] = ['AzureOpenAI', 'MicrosoftFoundry'];
+const AUTH_METHODS: EndpointAuthMethod[] = ['ApiKey', 'ManagedIdentity'];
 
 interface EndpointEditorProps {
   endpointId?: string;
@@ -25,6 +28,7 @@ const EndpointEditor: React.FC<EndpointEditorProps> = ({ endpointId }) => {
   const [url, setUrl] = useState(endpoint?.url ?? '');
   const [apiKey, setApiKey] = useState('');
   const [endpointType, setEndpointType] = useState<EndpointType>(endpoint?.endpointType ?? 'AzureOpenAI');
+  const [authMethod, setAuthMethod] = useState<EndpointAuthMethod>(endpoint?.authMethod ?? 'ApiKey');
   const [saving, setSaving] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [deleting, setDeleting] = useState(false);
@@ -40,6 +44,7 @@ const EndpointEditor: React.FC<EndpointEditorProps> = ({ endpointId }) => {
     setUrl(endpoint?.url ?? '');
     setApiKey('');
     setEndpointType(endpoint?.endpointType ?? 'AzureOpenAI');
+    setAuthMethod(endpoint?.authMethod ?? 'ApiKey');
   }
 
   if (endpointId && endpoints === undefined) {
@@ -55,9 +60,9 @@ const EndpointEditor: React.FC<EndpointEditorProps> = ({ endpointId }) => {
     setSaving(true);
     try {
       if (endpoint) {
-        await updateEndpoint(endpoint.id, { id: endpoint.id, url, apiKey, endpointType });
+        await updateEndpoint(endpoint.id, { id: endpoint.id, url, apiKey, endpointType, authMethod });
       } else {
-        await createEndpoint({ url, apiKey, endpointType });
+        await createEndpoint({ url, apiKey, endpointType, authMethod });
       }
       await loadAdminData(true);
       navigate('/admin/endpoints');
@@ -84,9 +89,16 @@ const EndpointEditor: React.FC<EndpointEditorProps> = ({ endpointId }) => {
   };
 
   const dirty = hasChanges(
-    { url, apiKey, endpointType },
-    { url: endpoint?.url ?? '', apiKey: '', endpointType: endpoint?.endpointType ?? 'AzureOpenAI' },
+    { url, apiKey, endpointType, authMethod },
+    { url: endpoint?.url ?? '', apiKey: '', endpointType: endpoint?.endpointType ?? 'AzureOpenAI', authMethod: endpoint?.authMethod ?? 'ApiKey' },
   );
+  // A key is needed when none is stored: a new endpoint, or one that used managed identity until now.
+  const needsApiKey = authMethod === 'ApiKey' && (!endpoint || endpoint.authMethod === 'ManagedIdentity');
+
+  const handleEndpointTypeChange = (value: EndpointType) => {
+    setEndpointType(value);
+    if (!MANAGED_IDENTITY_PROVIDERS.includes(value)) setAuthMethod('ApiKey');
+  };
 
   return (
     <div className="admin-form">
@@ -95,7 +107,7 @@ const EndpointEditor: React.FC<EndpointEditorProps> = ({ endpointId }) => {
         backLabel={t('admin.tabs.endpoints')}
         dirty={dirty}
         saveLabel={saving ? t('assistants.saving') : (endpoint ? t('common.save') : t('common.create'))}
-        saveDisabled={!url || (!endpoint && !apiKey) || saving}
+        saveDisabled={!url || (needsApiKey && !apiKey) || saving}
         onSave={handleSave}
         onCancel={() => navigate('/admin/endpoints')}
       />
@@ -124,22 +136,11 @@ const EndpointEditor: React.FC<EndpointEditorProps> = ({ endpointId }) => {
       </div>
 
       <div className="admin-field">
-        <label className="admin-label t-label">{t('admin.endpoints.fields.apiKey')}</label>
-        <input
-          className="admin-input t-body"
-          type="password"
-          value={apiKey}
-          onChange={(e) => setApiKey(e.target.value)}
-          placeholder={endpoint ? '••••••••••••••••••••' : undefined}
-        />
-      </div>
-
-      <div className="admin-field">
         <label className="admin-label t-label">{t('admin.endpoints.fields.provider')}</label>
         <select
           className="admin-select t-body"
           value={endpointType}
-          onChange={(e) => setEndpointType(e.target.value as EndpointType)}
+          onChange={(e) => handleEndpointTypeChange(e.target.value as EndpointType)}
         >
           {PROVIDERS.map((provider) => (
             <option key={provider} value={provider}>
@@ -148,6 +149,39 @@ const EndpointEditor: React.FC<EndpointEditorProps> = ({ endpointId }) => {
           ))}
         </select>
       </div>
+
+      {MANAGED_IDENTITY_PROVIDERS.includes(endpointType) && (
+        <div className="admin-field">
+          <label className="admin-label t-label">{t('admin.endpoints.fields.authMethod')}</label>
+          {authMethod === 'ManagedIdentity' && (
+            <div className="admin-field-help t-caption">{t('admin.endpoints.fields.authMethodHelpManagedIdentity')}</div>
+          )}
+          <select
+            className="admin-select t-body"
+            value={authMethod}
+            onChange={(e) => setAuthMethod(e.target.value as EndpointAuthMethod)}
+          >
+            {AUTH_METHODS.map((method) => (
+              <option key={method} value={method}>
+                {t(`admin.endpointAuthMethod.${method}`)}
+              </option>
+            ))}
+          </select>
+        </div>
+      )}
+
+      {authMethod === 'ApiKey' && (
+        <div className="admin-field">
+          <label className="admin-label t-label">{t('admin.endpoints.fields.apiKey')}</label>
+          <input
+            className="admin-input t-body"
+            type="password"
+            value={apiKey}
+            onChange={(e) => setApiKey(e.target.value)}
+            placeholder={needsApiKey ? undefined : '••••••••••••••••••••'}
+          />
+        </div>
+      )}
 
       {endpoint && (
         <div className="admin-form-footer">

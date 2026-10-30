@@ -1,3 +1,5 @@
+using Azure.Core;
+
 namespace ChatUiT.Server.Services.AiProviders;
 
 using ChatUiT.Server.Models;
@@ -12,7 +14,7 @@ using ChatUiT.Server.Services.AiProviders.Protocols;
 /// </summary>
 public sealed class MicrosoftFoundryProvider : OpenAiV1HostProvider
 {
-    public MicrosoftFoundryProvider(IApiProtocolRegistry protocols) : base(protocols)
+    public MicrosoftFoundryProvider(IApiProtocolRegistry protocols, TokenCredential credential) : base(protocols, credential)
     {
     }
 

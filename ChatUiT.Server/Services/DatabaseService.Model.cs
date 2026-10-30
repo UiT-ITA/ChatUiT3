@@ -174,7 +174,8 @@ public partial class DatabaseService
             Id = document.Id,
             Url = document.Url,
             ApiKey = document.ApiKey,
-            EndpointType = document.EndpointType
+            EndpointType = document.EndpointType,
+            AuthMethod = document.AuthMethod
         };
     }
 
@@ -186,7 +187,8 @@ public partial class DatabaseService
             PartitionKey = ConfigurationPartitionKeyValue,
             Url = endpoint.Url,
             ApiKey = endpoint.ApiKey,
-            EndpointType = endpoint.EndpointType
+            EndpointType = endpoint.EndpointType,
+            AuthMethod = endpoint.AuthMethod
         };
     }
 

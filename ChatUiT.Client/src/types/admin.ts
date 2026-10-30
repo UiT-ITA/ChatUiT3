@@ -51,10 +51,14 @@ export const TOKEN_COUNTING_SCHEME_OPTIONS: TokenCountingSchemeOption[] = [
   { id: 'word-count', labelKey: 'word_count', isEstimate: true },
 ];
 
+/** How the server authenticates to an endpoint. ManagedIdentity uses the app's Entra identity and stores no key. */
+export type EndpointAuthMethod = 'ApiKey' | 'ManagedIdentity';
+
 export interface EndpointDto {
   id: string;
   url: string;
   endpointType: EndpointType;
+  authMethod: EndpointAuthMethod;
 }
 
 export interface EndpointDeploymentDto {
@@ -66,6 +70,7 @@ export interface CreateEndpointDto {
   url: string;
   apiKey: string;
   endpointType: EndpointType;
+  authMethod: EndpointAuthMethod;
 }
 
 export interface UpdateEndpointDto {
@@ -73,6 +78,7 @@ export interface UpdateEndpointDto {
   url: string;
   apiKey: string;
   endpointType: EndpointType;
+  authMethod: EndpointAuthMethod;
 }
 
 export type { UserRole } from './assistantModels';

@@ -540,10 +540,16 @@
         "url": "URL",
         "apiKey": "API Key",
         "provider": "Provider",
+        "authMethod": "Authentication",
+        "authMethodHelpManagedIdentity": "The server signs in with its own Entra identity (managed identity in Azure, your az login locally). No key is stored. The identity needs the Cognitive Services User role on the resource.",
         "urlHelpAnthropic": "Use the base URL only, without /v1 — for example https://<resource>.services.ai.azure.com/anthropic. The /v1/messages part is added automatically, so a trailing /v1 makes the request fail.",
         "urlHelpFoundry": "The resource base URL only — for example https://<resource>.services.ai.azure.com. Do not add /openai/v1 or /anthropic; the path is chosen per model from its API protocol.",
         "urlHelpAzureOpenAI": "The resource base URL only — for example https://<resource>.openai.azure.com. Serves OpenAI Responses and Chat Completions under /openai/v1; Anthropic models need a Microsoft Foundry or Anthropic endpoint."
       }
+    },
+    "endpointAuthMethod": {
+      "ApiKey": "API key",
+      "ManagedIdentity": "Managed identity"
     },
     "endpointType": {
       "AzureOpenAI": "Azure OpenAI",
