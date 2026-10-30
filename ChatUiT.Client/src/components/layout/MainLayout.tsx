@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { Outlet, useLocation } from 'react-router-dom';
 import IconRail from './IconRail';
 import ContextColumn from './ContextColumn';
@@ -23,7 +24,17 @@ import './MainLayout.css';
  */
 const MainLayout: React.FC = () => {
   const isMobile = useMediaQuery('(max-width: 800px)');
+  const autoCollapsed = useMediaQuery('(max-width: 1023px)');
+  const [collapsed, setCollapsed] = useState(false);
+  const [peek, setPeek] = useState(false);
   const location = useLocation();
+
+  // Collapsed: the context column is hidden and shows over the main column while the pointer is on the rail or the column
+  const sidebarCollapsed = !isMobile && (autoCollapsed || collapsed);
+  const toggleSidebar = () => {
+    setCollapsed(value => !value);
+    setPeek(false);
+  };
 
   const pathParts = location.pathname.split('/').filter(Boolean);
   // Section roots ("/", "/chat", "/assistants", "/settings", "/admin") show the list;
@@ -36,11 +47,17 @@ const MainLayout: React.FC = () => {
     <div
       className={`layout ${isMobile ? 'mobile-layout' : ''} ${isDetail ? 'show-detail' : 'show-list'}`}
     >
-      <IconRail isMobile={isMobile} />
-      <ContextColumn isMobile={isMobile} />
+      <div className="sidebar-shell" onMouseEnter={() => setPeek(true)} onMouseLeave={() => setPeek(false)}>
+        <IconRail isMobile={isMobile} />
+        <ContextColumn isMobile={isMobile} collapsed={sidebarCollapsed} peek={sidebarCollapsed && peek} />
+      </div>
       <ToastContainer />
       <main className="main-column">
-        <MainHeader isMobile={isMobile} />
+        <MainHeader
+          isMobile={isMobile}
+          sidebarCollapsed={collapsed}
+          onToggleSidebar={isMobile || autoCollapsed ? undefined : toggleSidebar}
+        />
         <ChatSurface hidden={!isChatRoute} />
         <Outlet />
       </main>

@@ -74,6 +74,8 @@ interface IconProps extends LayoutProps {
   // Accessible name. Without it the icon is decorative and hidden from screen readers.
   label?: string;
   rotate?: 0 | 90 | 180 | 270;
+  // Flips the icon horizontally
+  mirror?: boolean;
   // Turns the icon continuously, for a working state
   spin?: boolean;
   className?: string;
@@ -81,13 +83,13 @@ interface IconProps extends LayoutProps {
 }
 
 /** The app's icon. Every icon in the app goes through this component. */
-export const Icon: React.FC<IconProps> = ({ name, size = 'medium', color = 'inherit', label, rotate = 0, spin = false, className, ...props }) => {
+export const Icon: React.FC<IconProps> = ({ name, size = 'medium', color = 'inherit', label, rotate = 0, mirror = false, spin = false, className, ...props }) => {
   const [style, rest] = splitLayoutProps(props);
   const IconComponent = iconMap[name];
   return (
     <IconComponent
       size={`var(--icon-${size})`}
-      className={cx('icon', color !== 'inherit' && `icon--${color}`, rotate !== 0 && `icon--rotate-${rotate}`, spin && 'icon--spin', className)}
+      className={cx('icon', color !== 'inherit' && `icon--${color}`, rotate !== 0 && `icon--rotate-${rotate}`, mirror && 'icon--mirror', spin && 'icon--spin', className)}
       style={style}
       title={label}
       aria-label={label}

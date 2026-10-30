@@ -37,7 +37,9 @@
     "delete": "Slett",
     "status": "Status (dev)",
     "darkMode": "Mørk modus",
-    "lightMode": "Lys modus"
+    "lightMode": "Lys modus",
+    "collapseSidebar": "Skjul sidepanel",
+    "expandSidebar": "Vis sidepanel"
   },
   "chat": {
     "sendMessage": "Send melding",

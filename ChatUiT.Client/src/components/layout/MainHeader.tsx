@@ -3,6 +3,7 @@ import { useTranslation } from 'react-i18next';
 import { useSignals } from '@preact/signals-react/runtime';
 import Button from '../common/Button';
 import IconButton from '../common/IconButton';
+import { Icon } from '../common/Icon';
 import { getChat } from '../../services/chatService';
 import { getAssistants } from '../../services/assistantService';
 import { conversationPanelOpenSignal, editorHeaderSignal } from '../../services/uiService';
@@ -15,14 +16,18 @@ const SETTINGS_TABS: SettingsCategory[] = ['appearance', 'personalization', 'dat
 
 interface MainHeaderProps {
   isMobile?: boolean;
+  sidebarCollapsed?: boolean;
+  // Shows the sidebar collapse/expand button when set
+  onToggleSidebar?: () => void;
 }
 
 /**
  * The thin header at the top of the main column — present in every section,
- * as in the design. Shows the current title, an optional context chip, the
- * conversation-panel toggle on chat pages, and a back-to-list button on mobile.
+ * as in the design. Shows the sidebar toggle on wide screens, the current title,
+ * an optional context chip, the conversation-panel toggle on chat pages, and a
+ * back-to-list button on mobile.
  */
-const MainHeader = ({ isMobile }: MainHeaderProps) => {
+const MainHeader = ({ isMobile, sidebarCollapsed, onToggleSidebar }: MainHeaderProps) => {
   useSignals();
   const { t } = useTranslation();
   const location = useLocation();
@@ -92,6 +97,16 @@ const MainHeader = ({ isMobile }: MainHeaderProps) => {
 
   return (
     <header className="main-header">
+      {onToggleSidebar && (
+        <IconButton
+          icon="sidebarToggle"
+          iconSize="large"
+          label={t(sidebarCollapsed ? 'sidebar.expandSidebar' : 'sidebar.collapseSidebar')}
+          variant="ghost"
+          size="small"
+          onClick={onToggleSidebar}
+        />
+      )}
       {editor ? (
         <Button variant="ghost" startIcon="back" shrink minWidth="0" onClick={() => navigate(editor.backPath)}>
           {editor.backLabel}
@@ -115,11 +130,10 @@ const MainHeader = ({ isMobile }: MainHeaderProps) => {
       )}
       {showPanelToggle && (
         <IconButton
-          icon="sidebarToggle"
+          icon={<Icon name="sidebarToggle" size="large" mirror />}
           label={t('chat.togglePanel')}
-          variant="subtle"
+          variant="ghost"
           size="small"
-          active={panelOpen}
           onClick={() => { conversationPanelOpenSignal.value = !panelOpen; }}
         />
       )}
