@@ -521,7 +521,13 @@
         "delete": {
           "title": "Delete Endpoint",
           "confirm": "Are you sure you want to delete this endpoint?",
-          "blocked": "This endpoint is in use by one or more models and cannot be deleted."
+          "blocked": "This endpoint is in use by one or more models and cannot be deleted.",
+          "modelsIntro_one": "This model uses the endpoint:",
+          "modelsIntro_other": "These {{count}} models use the endpoint:",
+          "noModels": "No models use this endpoint.",
+          "endpoint": "Delete endpoint",
+          "endpointOnly": "Delete only endpoint",
+          "endpointAndModels": "Delete endpoint and models"
         }
       },
       "fields": {
@@ -584,6 +590,11 @@
       "list": {
         "empty": "No models configured."
       },
+      "test": {
+        "button": "Test",
+        "running": "Testing...",
+        "saveFirst": "Save your changes before testing."
+      },
       "actions": {
         "edit": "Edit",
         "delete": "Delete"
@@ -602,6 +613,7 @@
         "modelName": "Model name",
         "description": "Description",
         "endpoint": "Endpoint",
+        "endpointNone": "Choose endpoint",
         "allowedRoles": "Allowed roles",
         "capabilities": "Capabilities",
         "supportsVision": "Supports Vision",

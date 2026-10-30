@@ -2,10 +2,11 @@ import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { useSignals } from '@preact/signals-react/runtime';
-import { createEndpoint, updateEndpoint, deleteEndpoint } from '../../services/adminService';
-import { adminEndpointsSignal, loadAdminData } from '../../services/adminDataService';
+import { createEndpoint, updateEndpoint, deleteEndpoint, deleteModel } from '../../services/adminService';
+import { adminEndpointsSignal, adminModelsSignal, loadAdminData } from '../../services/adminDataService';
 import type { EndpointType } from '../../types/admin';
 import EditorHeader from '../layout/EditorHeader';
+import { Dialog, DialogButton } from '../common/Dialog';
 import { hasChanges } from '../../utils/formChanges';
 
 const PROVIDERS: EndpointType[] = ['AzureOpenAI', 'MicrosoftFoundry', 'Anthropic', 'OpenAI', 'LlamaCpp', 'Other'];
@@ -25,6 +26,9 @@ const EndpointEditor: React.FC<EndpointEditorProps> = ({ endpointId }) => {
   const [apiKey, setApiKey] = useState('');
   const [endpointType, setEndpointType] = useState<EndpointType>(endpoint?.endpointType ?? 'AzureOpenAI');
   const [saving, setSaving] = useState(false);
+  const [confirmDelete, setConfirmDelete] = useState(false);
+  const [deleting, setDeleting] = useState(false);
+  const connectedModels = endpointId ? (adminModelsSignal.value ?? []).filter(m => m.endpointId === endpointId) : [];
 
   useEffect(() => {
     loadAdminData();
@@ -62,12 +66,21 @@ const EndpointEditor: React.FC<EndpointEditorProps> = ({ endpointId }) => {
     }
   };
 
-  const handleDelete = async () => {
-    if (!endpoint) return;
-    if (!window.confirm(t('admin.endpoints.dialog.delete.confirm'))) return;
-    await deleteEndpoint(endpoint.id);
-    await loadAdminData(true);
-    navigate('/admin/endpoints');
+  const handleDelete = async (withModels: boolean) => {
+    if (!endpoint || deleting) return;
+    setDeleting(true);
+    try {
+      if (withModels) {
+        for (const model of connectedModels) {
+          await deleteModel(model.id);
+        }
+      }
+      await deleteEndpoint(endpoint.id);
+      await loadAdminData(true);
+      navigate('/admin/endpoints');
+    } finally {
+      setDeleting(false);
+    }
   };
 
   const dirty = hasChanges(
@@ -139,11 +152,50 @@ const EndpointEditor: React.FC<EndpointEditorProps> = ({ endpointId }) => {
       {endpoint && (
         <div className="admin-form-footer">
           <div className="admin-footer-spacer" />
-          <button className="admin-delete-button t-ui" onClick={handleDelete}>
+          <button className="admin-delete-button t-ui" onClick={() => setConfirmDelete(true)}>
             {t('admin.endpoints.actions.delete')}
           </button>
         </div>
       )}
+
+      <Dialog
+        isOpen={confirmDelete}
+        onClose={() => setConfirmDelete(false)}
+        title={t('admin.endpoints.dialog.delete.title')}
+        size="medium"
+      >
+        <p className="t-body">{t('admin.endpoints.dialog.delete.confirm')}</p>
+        {connectedModels.length > 0 ? (
+          <>
+            <p className="t-body">{t('admin.endpoints.dialog.delete.modelsIntro', { count: connectedModels.length })}</p>
+            <ul className="t-body">
+              {connectedModels.map(m => (
+                <li key={m.id}>{m.modelName} ({m.modelId})</li>
+              ))}
+            </ul>
+          </>
+        ) : (
+          <p className="t-body">{t('admin.endpoints.dialog.delete.noModels')}</p>
+        )}
+        <DialogButton variant="secondary" onClick={() => setConfirmDelete(false)} disabled={deleting}>
+          {t('common.cancel')}
+        </DialogButton>
+        <DialogButton
+          variant="danger"
+          onClick={() => handleDelete(false)}
+          disabled={deleting}
+          autoFocus={connectedModels.length === 0}
+        >
+          {connectedModels.length > 0
+            ? t('admin.endpoints.dialog.delete.endpointOnly')
+            : t('admin.endpoints.dialog.delete.endpoint')}
+        </DialogButton>
+        {connectedModels.length > 0 && (
+          <DialogButton variant="danger" onClick={() => handleDelete(true)} disabled={deleting} autoFocus>
+            {t('admin.endpoints.dialog.delete.endpointAndModels')}
+          </DialogButton>
+        )}
+      </Dialog>
     </div>
   );
 };

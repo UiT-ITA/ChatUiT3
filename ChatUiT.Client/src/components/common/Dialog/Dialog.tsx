@@ -163,6 +163,7 @@ interface DialogButtonProps {
   onClick: () => void;
   disabled?: boolean;
   loading?: boolean;
+  autoFocus?: boolean;
   children: React.ReactNode;
 }
 
@@ -171,6 +172,7 @@ export const DialogButton: React.FC<DialogButtonProps> = ({
   onClick,
   disabled = false,
   loading = false,
+  autoFocus = false,
   children
 }) => {
   return (
@@ -178,6 +180,7 @@ export const DialogButton: React.FC<DialogButtonProps> = ({
       className={`dialog-button dialog-button-${variant} t-ui`}
       onClick={onClick}
       disabled={disabled || loading}
+      autoFocus={autoFocus}
     >
       {loading ? 'Loading...' : children}
     </button>
