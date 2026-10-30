@@ -13,6 +13,7 @@ import Button from '../common/Button';
 import Stack from '../common/Stack';
 import Card from '../common/Card';
 import SegmentedControl from '../common/SegmentedControl';
+import { ConfirmDialog } from '../common/Dialog';
 import './SettingsPage.css';
 
 interface ProfileFieldProps {
@@ -65,6 +66,7 @@ const SettingsPage: React.FC = () => {
   const { t } = useTranslation();
   const { tab } = useParams<{ tab?: string }>();
   const { settings, updateSetting, exportData, deleteAllData } = useSettings();
+  const [confirmDeleteAll, setConfirmDeleteAll] = useState(false);
   useSignals();
   const profile = getUserProfile().value;
 
@@ -233,13 +235,22 @@ const SettingsPage: React.FC = () => {
               <Button variant="secondary" onClick={() => exportData(settings.exportFormat)}>
                 {t('settings.dataControl.exportData.button')}
               </Button>
-              <Button variant="danger" onClick={deleteAllData}>
+              <Button variant="danger" onClick={() => setConfirmDeleteAll(true)}>
                 {t('settings.dataControl.deleteAll.button')}
               </Button>
             </div>
           </>
         )}
       </div>
+
+      <ConfirmDialog
+        isOpen={confirmDeleteAll}
+        title={t('settings.dataControl.deleteAll.title')}
+        message={t('settings.dataControl.deleteAll.confirm')}
+        confirmLabel={t('settings.dataControl.deleteAll.button')}
+        onConfirm={deleteAllData}
+        onCancel={() => setConfirmDeleteAll(false)}
+      />
     </div>
   );
 };

@@ -21,6 +21,8 @@ public partial class DatabaseService
 
     private sealed class CosmosChatStorageOptions
     {
+        /// <summary>The account URI. When set, the app connects with its Entra identity and <see cref="ConnectionString"/> is ignored.</summary>
+        public string? AccountEndpoint { get; set; }
         public string? ConnectionString { get; set; }
         public string DatabaseName { get; set; } = "UserData";
         public string ConfigurationDatabaseName { get; set; } = "Configuration";
@@ -361,6 +363,10 @@ public partial class DatabaseService
         [JsonProperty("endpointType")]
         [JsonConverter(typeof(StringEnumConverter))]
         public EndpointType EndpointType { get; set; }
+
+        [JsonProperty("authMethod")]
+        [JsonConverter(typeof(StringEnumConverter))]
+        public EndpointAuthMethod AuthMethod { get; set; } = EndpointAuthMethod.ApiKey;
     }
 
     private sealed class AssistantDocument

@@ -180,6 +180,11 @@
     "createAssistant": "Opprett assistent",
     "editAssistant": "Rediger assistent",
     "deleteConfirmation": "Er du sikker på at du vil slette denne assistenten?",
+    "removeShared": {
+      "title": "Fjern delt assistent",
+      "confirm": "Fjerne denne delte assistenten fra listen din? Selve assistenten slettes ikke.",
+      "button": "Fjern"
+    },
     "myAssistants": "Mine assistenter",
     "systemAssistants": "Systemassistenter",
     "sharedAssistants": "Delte assistenter",
@@ -410,7 +415,8 @@
       },
       "deleteAll": {
         "title": "Slett alle samtaler",
-        "button": "Slett alt"
+        "button": "Slett alt",
+        "confirm": "Er du sikker på at du vil slette alle data? Dette kan ikke angres."
       }
     }
   },
@@ -534,10 +540,16 @@
         "url": "URL",
         "apiKey": "API-nøkkel",
         "provider": "Tilbyder",
+        "authMethod": "Autentisering",
+        "authMethodHelpManagedIdentity": "Serveren logger inn med sin egen Entra-identitet (administrert identitet i Azure, din az login lokalt). Ingen nøkkel lagres. Identiteten trenger rollen Cognitive Services User på ressursen.",
         "urlHelpAnthropic": "Bruk kun grunn-URL-en, uten /v1 – for eksempel https://<ressurs>.services.ai.azure.com/anthropic. Delen /v1/messages legges til automatisk, så en avsluttende /v1 gjør at forespørselen feiler.",
         "urlHelpFoundry": "Kun ressursens grunn-URL – for eksempel https://<ressurs>.services.ai.azure.com. Ikke legg til /openai/v1 eller /anthropic; stien velges per modell ut fra API-protokollen.",
         "urlHelpAzureOpenAI": "Kun ressursens grunn-URL – for eksempel https://<ressurs>.openai.azure.com. Betjener OpenAI Responses og Chat Completions under /openai/v1; Anthropic-modeller trenger et Microsoft Foundry- eller Anthropic-endepunkt."
       }
+    },
+    "endpointAuthMethod": {
+      "ApiKey": "API-nøkkel",
+      "ManagedIdentity": "Administrert identitet"
     },
     "endpointType": {
       "AzureOpenAI": "Azure OpenAI",

@@ -22,10 +22,24 @@ public enum EndpointType
     MicrosoftFoundry
 }
 
+/// <summary>How the app authenticates to an endpoint.</summary>
+public enum EndpointAuthMethod
+{
+    /// <summary>The key stored on the endpoint row.</summary>
+    ApiKey,
+    /// <summary>An Entra bearer token for the app's own identity. No key is stored. Azure endpoint types only.</summary>
+    ManagedIdentity
+}
+
 public class ModelEndpoint
 {
     public string Id { get; set; } = Guid.NewGuid().ToString();
     public string Url { get; set; } = string.Empty;
     public string ApiKey { get; set; } = string.Empty;
     public EndpointType EndpointType { get; set; } = EndpointType.AzureOpenAI;
+    public EndpointAuthMethod AuthMethod { get; set; } = EndpointAuthMethod.ApiKey;
+
+    /// <summary>The endpoint types that accept an Entra token.</summary>
+    public static bool SupportsManagedIdentity(EndpointType endpointType) =>
+        endpointType is EndpointType.AzureOpenAI or EndpointType.MicrosoftFoundry;
 }

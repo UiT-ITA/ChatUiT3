@@ -101,9 +101,10 @@ public sealed class OpenAiResponsesProtocol : IApiProtocol
             throw new InvalidOperationException("OpenAI Responses needs a base URL; the host provider did not supply one.");
         }
 
-        return new ResponsesClient(
-            credential: new ApiKeyCredential(target.ApiKey),
-            options: new ResponsesClientOptions { Endpoint = new Uri(target.BaseUrl) });
+        var options = new ResponsesClientOptions { Endpoint = new Uri(target.BaseUrl) };
+        return target.Credential == null
+            ? new ResponsesClient(credential: new ApiKeyCredential(target.ApiKey), options: options)
+            : new ResponsesClient(authenticationPolicy: new BearerTokenPolicy(target.Credential, AzureAiAuth.Scope), options: options);
     }
 
     /// <summary>

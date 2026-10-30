@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { useSignals } from '@preact/signals-react/runtime';
@@ -7,6 +7,7 @@ import { adminAssistantsSignal, loadAdminData } from '../../services/adminDataSe
 import type { CreateAdminAssistantDto, UpdateAdminAssistantDto } from '../../types/admin';
 import AssistantForm from '../assistants/AssistantForm';
 import Button from '../common/Button';
+import { ConfirmDialog } from '../common/Dialog';
 
 interface AdminAssistantEditorProps {
   assistantId?: string;
@@ -18,6 +19,13 @@ const AdminAssistantEditor: React.FC<AdminAssistantEditorProps> = ({ assistantId
   const navigate = useNavigate();
   const assistants = adminAssistantsSignal.value;
   const assistant = assistantId ? assistants?.find(a => a.id === assistantId) : undefined;
+  const [confirmDelete, setConfirmDelete] = useState(false);
+  const [deleting, setDeleting] = useState(false);
+  const [shownId, setShownId] = useState(assistantId);
+  if (assistantId !== shownId) {
+    setShownId(assistantId);
+    setConfirmDelete(false);
+  }
 
   useEffect(() => {
     loadAdminData();
@@ -44,11 +52,17 @@ const AdminAssistantEditor: React.FC<AdminAssistantEditorProps> = ({ assistantId
   };
 
   const handleDelete = async () => {
-    if (!assistant) return;
-    if (!window.confirm(t('admin.assistants.dialog.delete.confirm'))) return;
-    await deleteAdminAssistant(assistant.id);
-    await loadAdminData(true);
-    navigate('/admin/assistants');
+    if (!assistant || deleting) return;
+    setDeleting(true);
+    try {
+      await deleteAdminAssistant(assistant.id);
+      await loadAdminData(true);
+      navigate('/admin/assistants');
+    } catch (error) {
+      console.error('Failed to delete assistant:', error);
+    } finally {
+      setDeleting(false);
+    }
   };
 
   return (
@@ -68,10 +82,20 @@ const AdminAssistantEditor: React.FC<AdminAssistantEditorProps> = ({ assistantId
         backPath="/admin/assistants"
         backLabel={t('admin.tabs.assistants')}
         footerExtra={assistant && (
-          <Button variant="danger" ml="auto" onClick={handleDelete}>
+          <Button variant="danger" ml="auto" onClick={() => setConfirmDelete(true)}>
             {t('common.delete')}
           </Button>
         )}
+      />
+
+      <ConfirmDialog
+        isOpen={confirmDelete}
+        title={t('assistants.actions.deleteAssistant')}
+        message={t('admin.assistants.dialog.delete.confirm')}
+        confirmLabel={t('common.delete')}
+        busy={deleting}
+        onConfirm={handleDelete}
+        onCancel={() => setConfirmDelete(false)}
       />
     </div>
   );
