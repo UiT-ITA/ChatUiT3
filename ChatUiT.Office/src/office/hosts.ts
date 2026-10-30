@@ -3,6 +3,7 @@
 import type { HostAdapter } from "../chat/host";
 import type { ClientToolDefinition } from "../chat/tools/types";
 import { isSetSupported, type OfficeApp, type OfficeToolDefinition, type RequirementSet } from "./shared/officeTool";
+import { callAsync } from "./shared/callAsync";
 import { excelApp } from "./excel/adapter";
 import { getOfficeLoginHint } from "./shared/loginHint";
 import { outlookApp } from "./outlook/adapter";
@@ -61,9 +62,12 @@ export function resolveHost(host: Office.HostType | null): HostResult {
   };
 }
 
-/** The file's path or URL. Empty for a file that was never saved. */
+/** The file's path or URL, read from the app on every call. Empty for a file that was never saved. */
 async function documentUrlKey(): Promise<string | null> {
-  return Office.context.document.url || null;
+  const properties = await callAsync<Office.FileProperties>((callback) =>
+    Office.context.document.getFilePropertiesAsync(callback)
+  );
+  return properties.url || null;
 }
 
 /** The selected email's thread. Null for a new email. */
