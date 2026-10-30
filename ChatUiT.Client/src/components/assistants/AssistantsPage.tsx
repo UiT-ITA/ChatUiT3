@@ -12,6 +12,7 @@ import AssistantForm from './AssistantForm';
 import AddExternalAssistant from './AddExternalAssistant';
 import ShareModal from './ShareModal';
 import TagField from '../common/TagField';
+import { ConfirmDialog } from '../common/Dialog';
 
 type AssistantVariant = 'owned' | 'system' | 'shared';
 
@@ -24,6 +25,12 @@ const AssistantsPage: React.FC = () => {
   const assistantList = getAssistants();
   const models = getModels().value ?? [];
   const [shareModalAssistant, setShareModalAssistant] = useState<FullAssistantDto | null>(null);
+  const [pendingRemoval, setPendingRemoval] = useState<{ id: string; shared: boolean } | null>(null);
+  const [shownId, setShownId] = useState(assistantId);
+  if (assistantId !== shownId) {
+    setShownId(assistantId);
+    setPendingRemoval(null);
+  }
 
   const isNew = assistantId === 'new';
 
@@ -69,8 +76,7 @@ const AssistantsPage: React.FC = () => {
   };
 
   const handleDeleteAssistant = async (id: string) => {
-    if (!window.confirm(t('assistants.deleteConfirmation'))) return;
-
+    setPendingRemoval(null);
     try {
       await deleteAssistant(id);
       navigate('/assistants');
@@ -80,8 +86,7 @@ const AssistantsPage: React.FC = () => {
   };
 
   const handleRemoveSharedAssistant = async (id: string) => {
-    if (!window.confirm(t('assistants.deleteConfirmation'))) return;
-
+    setPendingRemoval(null);
     try {
       await removeSharedAssistant(id);
       await invalidateAssistants();
@@ -205,7 +210,7 @@ const AssistantsPage: React.FC = () => {
             </button>
             <button
               className="assistant-action-button danger t-ui"
-              onClick={() => handleDeleteAssistant(assistant.id)}
+              onClick={() => setPendingRemoval({ id: assistant.id, shared: false })}
             >
               {t('assistants.actions.deleteAssistant')}
             </button>
@@ -214,7 +219,7 @@ const AssistantsPage: React.FC = () => {
         {variant === 'shared' && (
           <button
             className="assistant-action-button danger t-ui"
-            onClick={() => handleRemoveSharedAssistant(assistant.id)}
+            onClick={() => setPendingRemoval({ id: assistant.id, shared: true })}
           >
             {t('common.delete')}
           </button>
@@ -281,6 +286,19 @@ const AssistantsPage: React.FC = () => {
           onClose={() => setShareModalAssistant(null)}
           onCopyLink={handleCopyLink}
           onCopyGuid={handleCopyGuid}
+        />
+
+        <ConfirmDialog
+          isOpen={pendingRemoval !== null}
+          title={pendingRemoval?.shared ? t('assistants.removeShared.title') : t('assistants.actions.deleteAssistant')}
+          message={pendingRemoval?.shared ? t('assistants.removeShared.confirm') : t('assistants.deleteConfirmation')}
+          confirmLabel={pendingRemoval?.shared ? t('assistants.removeShared.button') : t('common.delete')}
+          onConfirm={() => {
+            if (!pendingRemoval) return;
+            if (pendingRemoval.shared) handleRemoveSharedAssistant(pendingRemoval.id);
+            else handleDeleteAssistant(pendingRemoval.id);
+          }}
+          onCancel={() => setPendingRemoval(null)}
         />
       </div>
     );

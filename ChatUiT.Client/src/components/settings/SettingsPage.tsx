@@ -5,6 +5,7 @@ import { useTranslation } from 'react-i18next';
 import { useSettings } from '../../hooks/useSettings';
 import type { SettingsCategory } from '../../types/settingsModels';
 import { getUserProfile, updateUserProfile, type UserProfile } from '../../services/userProfileService';
+import { ConfirmDialog } from '../common/Dialog';
 import './SettingsPage.css';
 
 interface ProfileFieldProps {
@@ -60,6 +61,7 @@ const SettingsPage: React.FC = () => {
   const { t } = useTranslation();
   const { tab } = useParams<{ tab?: string }>();
   const { settings, updateSetting, exportData, deleteAllData } = useSettings();
+  const [confirmDeleteAll, setConfirmDeleteAll] = useState(false);
   useSignals();
   const profile = getUserProfile().value;
 
@@ -236,7 +238,7 @@ const SettingsPage: React.FC = () => {
                 {t('settings.dataControl.exportData.button')}
               </button>
               <button
-                onClick={deleteAllData}
+                onClick={() => setConfirmDeleteAll(true)}
                 className="settings-button-danger t-ui"
               >
                 {t('settings.dataControl.deleteAll.button')}
@@ -245,6 +247,15 @@ const SettingsPage: React.FC = () => {
           </>
         )}
       </div>
+
+      <ConfirmDialog
+        isOpen={confirmDeleteAll}
+        title={t('settings.dataControl.deleteAll.title')}
+        message={t('settings.dataControl.deleteAll.confirm')}
+        confirmLabel={t('settings.dataControl.deleteAll.button')}
+        onConfirm={deleteAllData}
+        onCancel={() => setConfirmDeleteAll(false)}
+      />
     </div>
   );
 };

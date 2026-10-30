@@ -8,6 +8,7 @@ import { refreshTools } from '../../services/toolService';
 import { toolboxLabel, type UserRole, type AdminToolDto, type ToolAccessPolicyDto } from '../../types/admin';
 import GroupPicker from '../common/GroupPicker';
 import EditorHeader from '../layout/EditorHeader';
+import { ConfirmDialog } from '../common/Dialog';
 import { hasChanges } from '../../utils/formChanges';
 import AgentFunctionRows from './AgentFunctionRows';
 import ClassificationBadge from '../common/ClassificationBadge';
@@ -42,6 +43,12 @@ const ToolEditor: React.FC<ToolEditorProps> = ({ toolId }) => {
   const [allowedRoles, setAllowedRoles] = useState<UserRole[]>(initial.allowedRoles);
   const [allowedGroupIds, setAllowedGroupIds] = useState<string[]>(initial.allowedGroupIds);
   const [saving, setSaving] = useState(false);
+  const [confirmReset, setConfirmReset] = useState(false);
+  const [shownToolId, setShownToolId] = useState(toolId);
+  if (toolId !== shownToolId) {
+    setShownToolId(toolId);
+    setConfirmReset(false);
+  }
 
   useEffect(() => {
     loadAdminData();
@@ -94,11 +101,12 @@ const ToolEditor: React.FC<ToolEditorProps> = ({ toolId }) => {
 
   const handleReset = async () => {
     if (saving || !tool.isOverridden) return;
-    if (!window.confirm(t('admin.tools.actions.resetConfirm'))) return;
     setSaving(true);
     try {
       await resetAdminToolPolicy(tool.id);
       await finish();
+    } catch (error) {
+      console.error('Failed to reset tool policy:', error);
     } finally {
       setSaving(false);
     }
@@ -219,11 +227,21 @@ const ToolEditor: React.FC<ToolEditorProps> = ({ toolId }) => {
       {tool.isOverridden && (
         <div className="admin-form-footer">
           <div className="admin-footer-spacer" />
-          <button className="admin-delete-button t-ui" onClick={handleReset} disabled={saving}>
+          <button className="admin-delete-button t-ui" onClick={() => setConfirmReset(true)} disabled={saving}>
             {t('admin.tools.actions.reset')}
           </button>
         </div>
       )}
+
+      <ConfirmDialog
+        isOpen={confirmReset}
+        title={t('admin.tools.actions.reset')}
+        message={t('admin.tools.actions.resetConfirm')}
+        confirmLabel={t('admin.tools.actions.reset')}
+        busy={saving}
+        onConfirm={handleReset}
+        onCancel={() => setConfirmReset(false)}
+      />
     </div>
   );
 };
