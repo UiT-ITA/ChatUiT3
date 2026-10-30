@@ -609,6 +609,9 @@
         }
       },
       "fields": {
+        "modelIdAdded": "Allerede lagt til som modell på dette endepunktet",
+        "modelIdOther": "Andre",
+        "modelIdPlaceholder": "Skriv inn deployment-navnet eller velg fra listen",
         "modelId": "Modell-ID",
         "modelName": "Modellnavn",
         "description": "Beskrivelse",
