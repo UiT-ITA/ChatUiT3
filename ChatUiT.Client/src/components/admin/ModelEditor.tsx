@@ -20,6 +20,7 @@ import { API_PROTOCOLS, REASONING_EFFORT_ORDER, TOKEN_COUNTING_SCHEME_OPTIONS } 
 import { DATA_CLASSIFICATIONS, type DataClassification } from '../../types/modelModels';
 import EditorHeader from '../layout/EditorHeader';
 import { Icon } from '../common/Icon';
+import { ConfirmDialog } from '../common/Dialog';
 import { hasChanges } from '../../utils/formChanges';
 import ModelCombobox, { type ModelComboboxOption } from './ModelCombobox';
 
@@ -101,6 +102,8 @@ const ModelEditor: React.FC<ModelEditorProps> = ({ modelId: editId }) => {
   const [deployments, setDeployments] = useState<{ endpointId: string; items: EndpointDeploymentDto[] }>({ endpointId: '', items: [] });
   const [testing, setTesting] = useState(false);
   const [testResult, setTestResult] = useState<ModelTestResultDto | null>(null);
+  const [confirmDelete, setConfirmDelete] = useState(false);
+  const [deleting, setDeleting] = useState(false);
 
   useEffect(() => {
     loadAdminData();
@@ -145,6 +148,7 @@ const ModelEditor: React.FC<ModelEditorProps> = ({ modelId: editId }) => {
     setKnowledgeCutoffMonth(next.knowledgeCutoffMonth);
     setPresetId('');
     setTestResult(null);
+    setConfirmDelete(false);
   }
 
   if (editId && models === undefined) {
@@ -268,11 +272,17 @@ const ModelEditor: React.FC<ModelEditorProps> = ({ modelId: editId }) => {
   };
 
   const handleDelete = async () => {
-    if (!model) return;
-    if (!window.confirm(t('admin.models.dialog.delete.confirm'))) return;
-    await deleteModel(model.id);
-    await loadAdminData(true);
-    navigate('/admin/models');
+    if (!model || deleting) return;
+    setDeleting(true);
+    try {
+      await deleteModel(model.id);
+      await loadAdminData(true);
+      navigate('/admin/models');
+    } catch (error) {
+      console.error('Failed to delete model:', error);
+    } finally {
+      setDeleting(false);
+    }
   };
 
   const dirty = hasChanges(
@@ -601,11 +611,21 @@ const ModelEditor: React.FC<ModelEditorProps> = ({ modelId: editId }) => {
             <span className="admin-test-error t-caption">{testResult.error}</span>
           )}
           <div className="admin-footer-spacer" />
-          <button className="admin-delete-button t-ui" onClick={handleDelete}>
+          <button className="admin-delete-button t-ui" onClick={() => setConfirmDelete(true)}>
             {t('admin.models.actions.delete')}
           </button>
         </div>
       )}
+
+      <ConfirmDialog
+        isOpen={confirmDelete}
+        title={t('admin.models.dialog.delete.title')}
+        message={t('admin.models.dialog.delete.confirm')}
+        confirmLabel={t('admin.models.actions.delete')}
+        busy={deleting}
+        onConfirm={handleDelete}
+        onCancel={() => setConfirmDelete(false)}
+      />
     </div>
   );
 };

@@ -127,9 +127,7 @@ export class SettingsService {
 
   static deleteAllData(): void {
     // Local browser storage only — nothing stored server-side is deleted.
-    if (confirm('Are you sure you want to delete all data? This action cannot be undone.')) {
-      localStorage.clear();
-      window.location.reload();
-    }
+    localStorage.clear();
+    window.location.reload();
   }
 }

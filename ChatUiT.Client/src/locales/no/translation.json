@@ -180,6 +180,11 @@
     "createAssistant": "Opprett assistent",
     "editAssistant": "Rediger assistent",
     "deleteConfirmation": "Er du sikker på at du vil slette denne assistenten?",
+    "removeShared": {
+      "title": "Fjern delt assistent",
+      "confirm": "Fjerne denne delte assistenten fra listen din? Selve assistenten slettes ikke.",
+      "button": "Fjern"
+    },
     "myAssistants": "Mine assistenter",
     "systemAssistants": "Systemassistenter",
     "sharedAssistants": "Delte assistenter",
@@ -410,7 +415,8 @@
       },
       "deleteAll": {
         "title": "Slett alle samtaler",
-        "button": "Slett alt"
+        "button": "Slett alt",
+        "confirm": "Er du sikker på at du vil slette alle data? Dette kan ikke angres."
       }
     }
   },
