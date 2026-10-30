@@ -1,3 +1,4 @@
+using System.Text.Json;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using ChatUiT.Server.Models;
@@ -12,10 +13,14 @@ namespace ChatUiT.Server.Controllers;
 public class AdminEndpointsController : ControllerBase
 {
     private readonly IModelService _modelService;
+    private readonly IHttpClientFactory _httpClientFactory;
+    private readonly ILogger<AdminEndpointsController> _logger;
 
-    public AdminEndpointsController(IModelService modelService)
+    public AdminEndpointsController(IModelService modelService, IHttpClientFactory httpClientFactory, ILogger<AdminEndpointsController> logger)
     {
         _modelService = modelService;
+        _httpClientFactory = httpClientFactory;
+        _logger = logger;
     }
 
     [HttpGet]
@@ -62,6 +67,65 @@ public class AdminEndpointsController : ControllerBase
         catch (Exception ex)
         {
             return StatusCode(500, $"Internal server error: {ex.Message}");
+        }
+    }
+
+    /// <summary>
+    /// The endpoint's deployments, without failed ones. Returns an empty list when the endpoint type
+    /// is not supported or the call fails.
+    /// </summary>
+    [HttpGet("{id}/deployments")]
+    public async Task<ActionResult<List<EndpointDeploymentDto>>> GetDeployments(string id, CancellationToken ct)
+    {
+        var endpoint = await _modelService.GetEndpointByIdAsync(id);
+        if (endpoint == null)
+        {
+            return NotFound($"Endpoint with id {id} not found");
+        }
+
+        if (endpoint.EndpointType != EndpointType.MicrosoftFoundry
+            || !Uri.TryCreate(endpoint.Url, UriKind.Absolute, out var endpointUri))
+        {
+            return Ok(new List<EndpointDeploymentDto>());
+        }
+
+        using var timeout = CancellationTokenSource.CreateLinkedTokenSource(ct);
+        timeout.CancelAfter(TimeSpan.FromSeconds(10));
+        try
+        {
+            using var request = new HttpRequestMessage(HttpMethod.Get,
+                endpointUri.GetLeftPart(UriPartial.Authority) + "/openai/deployments?api-version=2022-12-01");
+            request.Headers.Add("api-key", endpoint.ApiKey);
+            using var response = await _httpClientFactory.CreateClient().SendAsync(request, timeout.Token);
+            if (!response.IsSuccessStatusCode)
+            {
+                _logger.LogWarning("Listing deployments for endpoint {EndpointId} returned {StatusCode}", id, (int)response.StatusCode);
+                return Ok(new List<EndpointDeploymentDto>());
+            }
+
+            using var document = JsonDocument.Parse(await response.Content.ReadAsStringAsync(timeout.Token));
+            var deployments = new List<EndpointDeploymentDto>();
+            if (document.RootElement.TryGetProperty("data", out var data) && data.ValueKind == JsonValueKind.Array)
+            {
+                foreach (var item in data.EnumerateArray())
+                {
+                    var name = item.TryGetProperty("id", out var idProp) ? idProp.GetString() : null;
+                    var model = item.TryGetProperty("model", out var modelProp) ? modelProp.GetString() : null;
+                    var status = item.TryGetProperty("status", out var statusProp) ? statusProp.GetString() : null;
+                    if (string.IsNullOrEmpty(name) || string.Equals(status, "failed", StringComparison.OrdinalIgnoreCase))
+                    {
+                        continue;
+                    }
+                    deployments.Add(new EndpointDeploymentDto { Name = name, Model = model ?? string.Empty });
+                }
+            }
+
+            return Ok(deployments.OrderBy(d => d.Name, StringComparer.OrdinalIgnoreCase).ToList());
+        }
+        catch (Exception ex) when (ex is HttpRequestException or JsonException or InvalidOperationException or OperationCanceledException && !ct.IsCancellationRequested)
+        {
+            _logger.LogWarning(ex, "Listing deployments for endpoint {EndpointId} failed", id);
+            return Ok(new List<EndpointDeploymentDto>());
         }
     }
 

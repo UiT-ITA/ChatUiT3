@@ -609,6 +609,9 @@
         }
       },
       "fields": {
+        "modelIdAdded": "Already added as a model on this endpoint",
+        "modelIdOther": "Other",
+        "modelIdPlaceholder": "Type the deployment name or pick one from the list",
         "modelId": "Model ID",
         "modelName": "Model name",
         "description": "Description",
