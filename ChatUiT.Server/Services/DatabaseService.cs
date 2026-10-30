@@ -10,6 +10,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using Azure.Core;
 using ChatUiT.Server.Models;
+using ChatUiT.Server.Services.Encryption;
 using Microsoft.Azure.Cosmos;
 
 namespace ChatUiT.Server.Services;
@@ -37,12 +38,14 @@ public partial class DatabaseService : IDatabaseService
     private readonly Container? _internalAgentsContainer;
     private readonly object _initializationLock = new();
     private Task _initializationTask;
+    private readonly IChatKeyService _chatKeys;
     private readonly ILogger<DatabaseService> _logger;
     private readonly TokenCredential _credential;
     private readonly bool _usesManagedIdentity;
 
-    public DatabaseService(IConfiguration configuration, TokenCredential credential, ILogger<DatabaseService> logger)
+    public DatabaseService(IConfiguration configuration, IChatKeyService chatKeys, TokenCredential credential, ILogger<DatabaseService> logger)
     {
+        _chatKeys = chatKeys;
         _logger = logger;
         _credential = credential;
         _options = configuration.GetSection(ConfigurationSectionName).Get<CosmosChatStorageOptions>() ?? new CosmosChatStorageOptions();
