@@ -44,7 +44,7 @@ public sealed class TokenCountingService : ITokenCountingService
 
     public async Task<IReadOnlyList<string>> GetActiveSchemeIdsAsync()
     {
-        var models = await _modelService.GetAllModelsAsync();
+        var models = await _modelService.GetModelsAsync<LanguageModel>();
         return models
             .Select(m => TokenCountingSchemes.IdFor(m.Capabilities))
             .OfType<string>()

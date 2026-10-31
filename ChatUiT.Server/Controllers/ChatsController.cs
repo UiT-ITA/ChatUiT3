@@ -20,7 +20,7 @@ public class ChatsController : ControllerBase
     private readonly IChatService _chatService;
     private readonly UserService _userService;
     private readonly ILogger<ChatsController> _logger;
-    private readonly IHubContext<ChatHub, IChatHubClient> _hubContext;
+    private readonly IHubContext<AppHub, IAppHubClient> _hubContext;
     private readonly IAssistantService _assistantService;
     private readonly IModelService _modelService;
     private readonly IUserTokenProviderFactory _tokenProviders;
@@ -29,7 +29,7 @@ public class ChatsController : ControllerBase
         IChatService chatService,
         UserService userService,
         ILogger<ChatsController> logger,
-        IHubContext<ChatHub, IChatHubClient> hubContext,
+        IHubContext<AppHub, IAppHubClient> hubContext,
         IAssistantService assistantService,
         IModelService modelService,
         IUserTokenProviderFactory tokenProviders)
@@ -62,7 +62,7 @@ public class ChatsController : ControllerBase
             return true;
         }
 
-        return await _modelService.GetModelForUserAsync(modelId, _userService.GetUserRoles(User)) != null;
+        return await _modelService.GetModelForUserAsync<LanguageModel>(modelId, _userService.GetUserRoles(User)) != null;
     }
 
     /// <summary>

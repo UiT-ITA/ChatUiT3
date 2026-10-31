@@ -1,16 +1,18 @@
 import React, { useEffect } from 'react';
-import { useParams, useNavigate, Navigate } from 'react-router-dom';
+import { useParams, useNavigate, useSearchParams, Navigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { useSignals } from '@preact/signals-react/runtime';
 import './AdminPage.css';
 import { adminEndpointsSignal, adminModelsSignal, adminAssistantsSignal, adminToolsSignal, adminInternalAgentsSignal, loadAdminData } from '../../services/adminDataService';
 import EndpointEditor from './EndpointEditor';
-import ModelEditor from './ModelEditor';
+import LanguageModelEditor from './LanguageModelEditor';
+import ImageModelEditor from './ImageModelEditor';
 import AdminAssistantEditor from './AdminAssistantEditor';
 import SettingsEditor from './SettingsEditor';
 import ToolEditor from './ToolEditor';
 import InternalAgentEditor from './InternalAgentEditor';
-import { toolboxLabel, ADMIN_DOMAINS, ADMIN_DOMAIN_ICONS, ADMIN_SETTINGS_PAGES, type AdminDomain, type AdminSettingsPage } from '../../types/admin';
+import { toolboxLabel, ADMIN_DOMAINS, ADMIN_DOMAIN_ICONS, ADMIN_SETTINGS_PAGES, type AdminDomain, type AdminSettingsPage, type ModelDto } from '../../types/admin';
+import { MODEL_TYPES, type ModelType } from '../../types/modelModels';
 import ClassificationBadge from '../common/ClassificationBadge';
 import { Icon } from '../common/Icon';
 import Button from '../common/Button';
@@ -21,6 +23,7 @@ const AdminPage: React.FC = () => {
   useSignals();
   const { t } = useTranslation();
   const { tab, id } = useParams<{ tab?: string; id?: string }>();
+  const [searchParams] = useSearchParams();
   const navigate = useNavigate();
 
   const endpoints = adminEndpointsSignal.value;
@@ -73,32 +76,60 @@ const AdminPage: React.FC = () => {
     </>
   );
 
+  // What a model row shows after its name: the classification and id for a language model, the API and id for an image model
+  const modelTrailing = (model: ModelDto) => model.type === 'Language'
+    ? <><ClassificationBadge classification={model.classification} />{model.modelId}</>
+    : <>{t(`admin.imageApi.${model.imageApi}`)} · {model.modelId}</>;
+
+  // One section per model type. Voice has no API yet, so it has no add button.
+  const renderModelSection = (type: ModelType, all: ModelDto[]) => {
+    const ofType = all.filter(model => model.type === type);
+    return (
+      <Stack key={type} gap="sm" className="admin-section">
+        <h2 className="t-overline">{t(`admin.modelTypes.${type}.title`)}</h2>
+        <List bordered>
+          {ofType.length === 0 && (
+            <div className="admin-list-empty t-ui-plain">{t(`admin.modelTypes.${type}.empty`)}</div>
+          )}
+          {ofType.map((model) => (
+            <ListItem
+              key={model.id}
+              onClick={() => navigate(`/admin/models/${model.id}`)}
+              title={model.modelName}
+              description={endpoints?.find(e => e.id === model.endpointId)?.url ?? ''}
+              trailing={modelTrailing(model)}
+            />
+          ))}
+        </List>
+        {type !== 'Voice' && (
+          <Button variant="dashed" startIcon="add" fullWidth onClick={() => navigate(`/admin/models/new?type=${type}`)}>
+            {t(`admin.modelTypes.${type}.add`)}
+          </Button>
+        )}
+      </Stack>
+    );
+  };
+
   const renderModels = () => (
     <>
       {renderHeading(t('admin.tabs.models'), t('admin.domains.models'))}
-      {models === undefined ? renderLoading() : (
-        <Stack gap="sm">
-          <List bordered>
-            {models.length === 0 && (
-              <div className="admin-list-empty t-ui-plain">{t('admin.models.list.empty')}</div>
-            )}
-            {models.map((model) => (
-              <ListItem
-                key={model.id}
-                onClick={() => navigate(`/admin/models/${model.id}`)}
-                title={model.modelName}
-                description={endpoints?.find(e => e.id === model.endpointId)?.url ?? ''}
-                trailing={<><ClassificationBadge classification={model.classification} />{model.modelId}</>}
-              />
-            ))}
-          </List>
-          <Button variant="dashed" startIcon="add" fullWidth onClick={() => navigate('/admin/models/new')}>
-            {t('admin.models.add.title')}
-          </Button>
-        </Stack>
-      )}
+      {models === undefined ? renderLoading() : MODEL_TYPES.map(type => renderModelSection(type, models))}
     </>
   );
+
+  // A new model opens the editor for the type in the query; an existing one the editor for its own type
+  const renderModelEditor = (modelId: string) => {
+    if (modelId === 'new') {
+      const type = searchParams.get('type');
+      if (type === 'Language') return <LanguageModelEditor />;
+      if (type === 'Image') return <ImageModelEditor />;
+      return <Navigate to="/admin/models" replace />;
+    }
+    if (models === undefined) return renderLoading();
+    const model = models.find(m => m.id === modelId);
+    if (!model) return <div className="admin-empty t-ui-plain">{t('common.notFound')}</div>;
+    return model.type === 'Image' ? <ImageModelEditor modelId={modelId} /> : <LanguageModelEditor modelId={modelId} />;
+  };
 
   const renderAssistants = () => (
     <>
@@ -207,7 +238,7 @@ const AdminPage: React.FC = () => {
       return <EndpointEditor endpointId={id === 'new' ? undefined : id} />;
     }
     if (tab === 'models' && id) {
-      return <ModelEditor modelId={id === 'new' ? undefined : id} />;
+      return renderModelEditor(id);
     }
     if (tab === 'assistants' && id) {
       return <AdminAssistantEditor assistantId={id === 'new' ? undefined : id} />;

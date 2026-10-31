@@ -26,7 +26,7 @@ public class ChatService : IChatService
 
     private readonly AiConversationRunner _conversationRunner;
     private readonly IAiProviderRegistry _providers;
-    private readonly IHubContext<ChatHub, IChatHubClient> _hubContext;
+    private readonly IHubContext<AppHub, IAppHubClient> _hubContext;
     private readonly ILogger<ChatService> _logger;
     private readonly IDatabaseService _databaseService;
     private readonly StreamingService _streamingService;
@@ -44,7 +44,7 @@ public class ChatService : IChatService
     public ChatService(
         AiConversationRunner conversationRunner,
         IAiProviderRegistry providers,
-        IHubContext<ChatHub, IChatHubClient> hubContext,
+        IHubContext<AppHub, IAppHubClient> hubContext,
         ILogger<ChatService> logger,
         IDatabaseService databaseService,
         StreamingService streamingService,
@@ -364,7 +364,7 @@ public class ChatService : IChatService
             var resolved = await ResolveAssistantForChatAsync(userId, effectiveAssistantId, promptUser, tools.Access, pinnedFileIds);
 
             var modelId = resolved.Assistant.ChatSettings.Model.Id;
-            var modelWithEndpoint = await _modelService.GetModelWithEndpointAsync(modelId);
+            var modelWithEndpoint = await _modelService.GetModelWithEndpointAsync<LanguageModel>(modelId);
             if (modelWithEndpoint == null)
             {
                 await _hubContext.Clients.Group(userId).Notify(NotifyLevel.Error, "Selected model is unavailable or misconfigured.");
@@ -673,7 +673,7 @@ public class ChatService : IChatService
     // (always-loaded and pinned) lead the history as synthetic user messages; earlier assistant
     // messages replay their transcripts.
     private async Task<AiRequest> BuildAiRequestAsync(
-        Model model,
+        LanguageModel model,
         ModelEndpoint endpoint,
         ResolvedAssistant resolved,
         List<Models.ChatMessage> messages,
@@ -906,7 +906,7 @@ public class ChatService : IChatService
             return null;
         }
 
-        var resolved = await _modelService.GetModelWithEndpointAsync(settings.ChatNamingModelId);
+        var resolved = await _modelService.GetModelWithEndpointAsync<LanguageModel>(settings.ChatNamingModelId);
         if (resolved == null)
         {
             _logger.LogWarning("Configured chat naming model {ModelId} could not be resolved to a model and endpoint.", settings.ChatNamingModelId);

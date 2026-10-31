@@ -15,7 +15,7 @@ namespace ChatUiT.Server.Services.ApiCatalog;
 /// </summary>
 /// <param name="PublicId">The id clients send as <c>model</c>: the agent's id, or the model's <see cref="Model.ModelId"/>.</param>
 /// <param name="Created">When it was last configured, for <c>GET /models</c>.</param>
-public sealed record ApiTarget(string PublicId, DateTime Created, Model Model, ModelEndpoint Endpoint, InternalAgent? Agent);
+public sealed record ApiTarget(string PublicId, DateTime Created, LanguageModel Model, ModelEndpoint Endpoint, InternalAgent? Agent);
 
 public interface IApiCatalogService
 {
@@ -26,7 +26,7 @@ public interface IApiCatalogService
     Task<IReadOnlyList<ApiTarget>> GetUsableAsync(UserAccess access);
 
     /// <summary>Why the model cannot be exposed under its <see cref="Model.ModelId"/>, or null.</summary>
-    Task<string?> ModelExposureProblemAsync(Model model);
+    Task<string?> ModelExposureProblemAsync(LanguageModel model);
 }
 
 /// <summary>
@@ -85,7 +85,7 @@ public sealed partial class ApiCatalogService : IApiCatalogService
         return null;
     }
 
-    public async Task<string?> ModelExposureProblemAsync(Model model)
+    public async Task<string?> ModelExposureProblemAsync(LanguageModel model)
     {
         if (!PublicIdPattern().IsMatch(model.ModelId))
         {
@@ -97,7 +97,7 @@ public sealed partial class ApiCatalogService : IApiCatalogService
             return $"The model id '{model.ModelId}' is an internal agent's id in the API.";
         }
 
-        var other = (await _models.GetAllModelsAsync()).FirstOrDefault(m => m.ExposedInApi && m.Id != model.Id && m.ModelId == model.ModelId);
+        var other = (await _models.GetModelsAsync<LanguageModel>()).FirstOrDefault(m => m.ExposedInApi && m.Id != model.Id && m.ModelId == model.ModelId);
         return other == null ? null : $"'{other.ModelName}' is already exposed in the API with the model id '{model.ModelId}'.";
     }
 
@@ -108,7 +108,7 @@ public sealed partial class ApiCatalogService : IApiCatalogService
             return await ResolveAgentAsync(agent, access);
         }
 
-        var model = (await _models.GetAllModelsAsync()).FirstOrDefault(m => m.ExposedInApi && m.ModelId == publicId);
+        var model = (await _models.GetModelsAsync<LanguageModel>()).FirstOrDefault(m => m.ExposedInApi && m.ModelId == publicId);
         return model == null ? null : await ResolveModelAsync(model, access);
     }
 
@@ -123,7 +123,7 @@ public sealed partial class ApiCatalogService : IApiCatalogService
             }
         }
 
-        foreach (var model in (await _models.GetAllModelsAsync()).Where(m => m.ExposedInApi))
+        foreach (var model in (await _models.GetModelsAsync<LanguageModel>()).Where(m => m.ExposedInApi))
         {
             if (await ResolveModelAsync(model, access) is { } target)
             {
@@ -147,10 +147,10 @@ public sealed partial class ApiCatalogService : IApiCatalogService
         return new ApiTarget(agent.Id, setting.UpdatedAt, resolved.Model, resolved.Endpoint, agent);
     }
 
-    private async Task<ApiTarget?> ResolveModelAsync(Model model, UserAccess access)
+    private async Task<ApiTarget?> ResolveModelAsync(LanguageModel model, UserAccess access)
     {
         if (!PublicIdPattern().IsMatch(model.ModelId) || !model.AllowedRoles.Any(access.Roles.Contains)
-            || await _models.GetModelWithEndpointAsync(model.Id) is not { } found
+            || await _models.GetModelWithEndpointAsync<LanguageModel>(model.Id) is not { } found
             || !_providers.Supports(found.endpoint.EndpointType))
         {
             return null;

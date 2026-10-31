@@ -1,5 +1,6 @@
 using ChatUiT.Server.Models;
 using Microsoft.Azure.Cosmos;
+using Newtonsoft.Json.Linq;
 
 namespace ChatUiT.Server.Services;
 
@@ -91,7 +92,7 @@ public partial class DatabaseService
     {
         await EnsureInitializedAsync();
 
-        var documents = await QueryItemsAsync<ModelDocument>(
+        var documents = await QueryItemsAsync<JObject>(
             _modelContainer!,
             new QueryDefinition("SELECT * FROM c WHERE c.partitionKey = @partitionKey")
                 .WithParameter("@partitionKey", ConfigurationPartitionKey),
@@ -104,7 +105,7 @@ public partial class DatabaseService
     {
         await EnsureInitializedAsync();
 
-        var document = await ReadItemOrDefaultAsync<ModelDocument>(
+        var document = await ReadItemOrDefaultAsync<JObject>(
             _modelContainer!,
             modelId,
             ConfigurationPartitionKey);
@@ -119,12 +120,13 @@ public partial class DatabaseService
         var modelId = string.IsNullOrWhiteSpace(model.Id) ? Guid.NewGuid().ToString() : model.Id;
         var document = MapModelDocument(model, modelId);
 
-        await _modelContainer!.CreateItemAsync(document, new PartitionKey(ConfigurationPartitionKey));
+        await _modelContainer!.CreateItemAsync(JObject.FromObject(document), new PartitionKey(ConfigurationPartitionKey));
 
         model.Id = modelId;
         return modelId;
     }
 
+    /// <summary>False when no model has the id. Throws when the stored model is of another type.</summary>
     public async Task<bool> UpdateModelAsync(Model model)
     {
         await EnsureInitializedAsync();
@@ -134,18 +136,19 @@ public partial class DatabaseService
             return false;
         }
 
-        var existingDocument = await ReadItemOrDefaultAsync<ModelDocument>(
-            _modelContainer!,
-            model.Id,
-            ConfigurationPartitionKey);
-
-        if (existingDocument == null)
+        var existing = await GetModelByIdAsync(model.Id);
+        if (existing == null)
         {
             return false;
         }
 
+        if (existing.Type != model.Type)
+        {
+            throw new InvalidOperationException($"Model {model.Id} is a {existing.Type} model and cannot be saved as a {model.Type} model.");
+        }
+
         var document = MapModelDocument(model, model.Id);
-        await _modelContainer!.ReplaceItemAsync(document, document.Id, new PartitionKey(ConfigurationPartitionKey));
+        await _modelContainer!.ReplaceItemAsync(JObject.FromObject(document), document.Id, new PartitionKey(ConfigurationPartitionKey));
         return true;
     }
 
@@ -153,7 +156,7 @@ public partial class DatabaseService
     {
         await EnsureInitializedAsync();
 
-        var existingDocument = await ReadItemOrDefaultAsync<ModelDocument>(
+        var existingDocument = await ReadItemOrDefaultAsync<IdOnlyDocument>(
             _modelContainer!,
             modelId,
             ConfigurationPartitionKey);
@@ -163,7 +166,7 @@ public partial class DatabaseService
             return false;
         }
 
-        await _modelContainer!.DeleteItemAsync<ModelDocument>(modelId, new PartitionKey(ConfigurationPartitionKey));
+        await _modelContainer!.DeleteItemAsync<IdOnlyDocument>(modelId, new PartitionKey(ConfigurationPartitionKey));
         return true;
     }
 
@@ -192,46 +195,88 @@ public partial class DatabaseService
         };
     }
 
-    private static Model MapModel(ModelDocument document)
+    /// <summary>Reads a stored model row as the document class for its <c>type</c>.</summary>
+    private static Model MapModel(JObject row)
     {
-        return new Model
+        var id = row.Value<string>("id");
+        var type = row.Value<string>("type");
+        if (string.IsNullOrEmpty(type))
         {
-            Id = document.Id,
-            ModelId = document.ModelId,
-            ModelName = document.ModelName,
-            Description = document.Description,
-            EndpointId = document.EndpointId,
-            AllowedRoles = document.AllowedRoles,
-            AllowedAsDefault = document.AllowedAsDefault,
-            ExposedInApi = document.ExposedInApi,
-            Capabilities = MapModelCapabilities(document.Capabilities),
-            ApiProtocol = document.ApiProtocol,
-            Classification = document.Classification
+            throw new InvalidOperationException($"Model row {id} has no type.");
+        }
+
+        if (!Enum.TryParse<ModelType>(type, out var modelType))
+        {
+            throw new InvalidOperationException($"Model row {id} has the unknown type '{type}'.");
+        }
+
+        return modelType switch
+        {
+            ModelType.Language => MapLanguageModel(row.ToObject<LanguageModelDocument>()!),
+            ModelType.Image => MapImageModel(row.ToObject<ImageModelDocument>()!),
+            _ => throw new NotSupportedException($"Model row {id} is a {modelType} model, which cannot be stored yet.")
         };
     }
 
     private static ModelDocument MapModelDocument(Model model, string modelId)
     {
-        return new ModelDocument
+        ModelDocument document = model switch
         {
-            Id = modelId,
-            PartitionKey = ConfigurationPartitionKeyValue,
-            ModelId = model.ModelId,
-            ModelName = model.ModelName,
-            Description = model.Description,
-            EndpointId = model.EndpointId,
-            AllowedRoles = model.AllowedRoles,
+            LanguageModel language => MapLanguageModelDocument(language),
+            ImageModel image => MapImageModelDocument(image),
+            _ => throw new NotSupportedException($"{model.Type} models cannot be stored yet.")
+        };
+
+        document.Id = modelId;
+        document.PartitionKey = ConfigurationPartitionKeyValue;
+        document.Type = model.Type;
+        document.ModelId = model.ModelId;
+        document.ModelName = model.ModelName;
+        document.Description = model.Description;
+        document.EndpointId = model.EndpointId;
+        document.AllowedRoles = model.AllowedRoles;
+        return document;
+    }
+
+    private static void MapCommonFields(ModelDocument document, Model model)
+    {
+        model.Id = document.Id;
+        model.ModelId = document.ModelId;
+        model.ModelName = document.ModelName;
+        model.Description = document.Description;
+        model.EndpointId = document.EndpointId;
+        model.AllowedRoles = document.AllowedRoles;
+    }
+
+    private static LanguageModel MapLanguageModel(LanguageModelDocument document)
+    {
+        var model = new LanguageModel
+        {
+            AllowedAsDefault = document.AllowedAsDefault,
+            ExposedInApi = document.ExposedInApi,
+            Capabilities = MapLanguageModelCapabilities(document.Capabilities),
+            ApiProtocol = document.ApiProtocol,
+            Classification = document.Classification
+        };
+        MapCommonFields(document, model);
+        return model;
+    }
+
+    private static LanguageModelDocument MapLanguageModelDocument(LanguageModel model)
+    {
+        return new LanguageModelDocument
+        {
             AllowedAsDefault = model.AllowedAsDefault,
             ExposedInApi = model.ExposedInApi,
-            Capabilities = MapModelCapabilitiesDocument(model.Capabilities),
+            Capabilities = MapLanguageModelCapabilitiesDocument(model.Capabilities),
             ApiProtocol = model.ApiProtocol,
             Classification = model.Classification
         };
     }
 
-    private static ModelCapabilities MapModelCapabilities(ModelCapabilitiesDocument document)
+    private static LanguageModelCapabilities MapLanguageModelCapabilities(LanguageModelCapabilitiesDocument document)
     {
-        return new ModelCapabilities
+        return new LanguageModelCapabilities
         {
             SupportsVision = document.SupportsVision,
             SupportsFunctionCalling = document.SupportsFunctionCalling,
@@ -245,9 +290,9 @@ public partial class DatabaseService
         };
     }
 
-    private static ModelCapabilitiesDocument MapModelCapabilitiesDocument(ModelCapabilities capabilities)
+    private static LanguageModelCapabilitiesDocument MapLanguageModelCapabilitiesDocument(LanguageModelCapabilities capabilities)
     {
-        return new ModelCapabilitiesDocument
+        return new LanguageModelCapabilitiesDocument
         {
             SupportsVision = capabilities.SupportsVision,
             SupportsFunctionCalling = capabilities.SupportsFunctionCalling,
@@ -258,6 +303,96 @@ public partial class DatabaseService
             DefaultMaxOutputTokens = capabilities.DefaultMaxOutputTokens,
             KnowledgeCutoff = capabilities.KnowledgeCutoff,
             TokenCountingScheme = capabilities.TokenCountingScheme
+        };
+    }
+
+    private static ImageModel MapImageModel(ImageModelDocument document)
+    {
+        var model = new ImageModel
+        {
+            ImageApi = document.ImageApi,
+            Capabilities = MapImageModelCapabilities(document.Capabilities)
+        };
+        MapCommonFields(document, model);
+        return model;
+    }
+
+    private static ImageModelDocument MapImageModelDocument(ImageModel model)
+    {
+        return new ImageModelDocument
+        {
+            ImageApi = model.ImageApi,
+            Capabilities = MapImageModelCapabilitiesDocument(model.Capabilities)
+        };
+    }
+
+    private static ImageModelCapabilities MapImageModelCapabilities(ImageModelCapabilitiesDocument document)
+    {
+        return new ImageModelCapabilities
+        {
+            SizePresets = document.SizePresets.Select(s => new ImageSize(s.Width, s.Height)).ToList(),
+            SupportsAutoSize = document.SupportsAutoSize,
+            SupportsCustomSize = document.SupportsCustomSize,
+            SizeMultiple = document.SizeMultiple,
+            MinSide = document.MinSide,
+            MaxSide = document.MaxSide,
+            MinPixels = document.MinPixels,
+            MaxPixels = document.MaxPixels,
+            MaxAspectRatio = document.MaxAspectRatio,
+            SupportsAutoAspectRatio = document.SupportsAutoAspectRatio,
+            Qualities = document.Qualities,
+            MaxImagesPerRequest = document.MaxImagesPerRequest,
+            OutputFormats = document.OutputFormats,
+            SupportsCompression = document.SupportsCompression,
+            Backgrounds = document.Backgrounds,
+            ModerationLevels = document.ModerationLevels,
+            MaxPartialImages = document.MaxPartialImages,
+            SupportsWebGrounding = document.SupportsWebGrounding,
+            MaxPromptCharacters = document.MaxPromptCharacters,
+            Editing = document.Editing == null ? null : new ImageEditCapabilities
+            {
+                MaxInputImages = document.Editing.MaxInputImages,
+                InputFormats = document.Editing.InputFormats,
+                MaxInputImageBytes = document.Editing.MaxInputImageBytes,
+                SupportsMask = document.Editing.SupportsMask,
+                SupportsMarkup = document.Editing.SupportsMarkup,
+                AcceptsGenerationSettings = document.Editing.AcceptsGenerationSettings
+            }
+        };
+    }
+
+    private static ImageModelCapabilitiesDocument MapImageModelCapabilitiesDocument(ImageModelCapabilities capabilities)
+    {
+        return new ImageModelCapabilitiesDocument
+        {
+            SizePresets = capabilities.SizePresets.Select(s => new ImageSizeDocument { Width = s.Width, Height = s.Height }).ToList(),
+            SupportsAutoSize = capabilities.SupportsAutoSize,
+            SupportsCustomSize = capabilities.SupportsCustomSize,
+            SizeMultiple = capabilities.SizeMultiple,
+            MinSide = capabilities.MinSide,
+            MaxSide = capabilities.MaxSide,
+            MinPixels = capabilities.MinPixels,
+            MaxPixels = capabilities.MaxPixels,
+            MaxAspectRatio = capabilities.MaxAspectRatio,
+            SupportsAutoAspectRatio = capabilities.SupportsAutoAspectRatio,
+            Qualities = capabilities.Qualities,
+            MaxImagesPerRequest = capabilities.MaxImagesPerRequest,
+            OutputFormats = capabilities.OutputFormats,
+            SupportsCompression = capabilities.SupportsCompression,
+            Backgrounds = capabilities.Backgrounds,
+            ModerationLevels = capabilities.ModerationLevels,
+            MaxPartialImages = capabilities.MaxPartialImages,
+            SupportsWebGrounding = capabilities.SupportsWebGrounding,
+            MaxPromptCharacters = capabilities.MaxPromptCharacters,
+            Editing = capabilities.Editing == null ? null : new ImageEditCapabilitiesDocument
+            {
+                MaxInputImages = capabilities.Editing.MaxInputImages,
+                InputFormats = capabilities.Editing.InputFormats,
+                MaxInputImageBytes = capabilities.Editing.MaxInputImageBytes,
+                SupportsMask = capabilities.Editing.SupportsMask,
+                SupportsMarkup = capabilities.Editing.SupportsMarkup,
+                AcceptsGenerationSettings = capabilities.Editing.AcceptsGenerationSettings
+            }
         };
     }
 }

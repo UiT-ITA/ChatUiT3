@@ -4,7 +4,7 @@ namespace ChatUiT.Server.Models;
 
 /// <summary>
 /// How much reasoning a model should spend on a request.
-/// The ladder is per-model — see <see cref="ModelCapabilities.SupportedEfforts"/>.
+/// The ladder is per-model — see <see cref="LanguageModelCapabilities.SupportedEfforts"/>.
 /// </summary>
 [JsonConverter(typeof(JsonStringEnumConverter))]
 public enum ReasoningEffort

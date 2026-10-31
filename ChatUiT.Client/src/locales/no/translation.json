@@ -39,7 +39,8 @@
     "darkMode": "Mørk modus",
     "lightMode": "Lys modus",
     "collapseSidebar": "Skjul sidepanel",
-    "expandSidebar": "Vis sidepanel"
+    "expandSidebar": "Vis sidepanel",
+    "generate": "Generer"
   },
   "chat": {
     "sendMessage": "Send melding",
@@ -450,7 +451,8 @@
     "searchChats": "Søk i samtaler",
     "adminNote": "Administrasjon av endepunkter, modeller, systemassistenter og verktøy.",
     "help": "Hjelp",
-    "status": "Status"
+    "status": "Status",
+    "generate": "Generer"
   },
   "common": {
     "close": "Lukk",
@@ -514,7 +516,7 @@
     },
     "domains": {
       "endpoints": "Tjenestene ChatUiT sender modellforespørsler til.",
-      "models": "Modellene brukerne kan chatte med, og endepunktet hver kjører på.",
+      "models": "Modellene brukerne kan chatte med og lage bilder med, og endepunktet hver kjører på.",
       "assistants": "Systemassistentene som tilbys i ChatUiT.",
       "tools": "Verktøykassene og hvem som kan bruke dem.",
       "agents": "Agenter definert i kode, og modellen hver kjører på.",
@@ -765,6 +767,75 @@
         "exposedInApiHelp": "Responses-API-et tilbyr denne agenten til API-klienter som modellen «{{id}}».",
         "updated": "Lagret {{date}}."
       }
+    },
+    "modelTypes": {
+      "Language": {
+        "title": "Språkmodeller",
+        "empty": "Ingen språkmodeller er satt opp.",
+        "add": "Legg til språkmodell"
+      },
+      "Image": {
+        "title": "Bildemodeller",
+        "empty": "Ingen bildemodeller er satt opp.",
+        "add": "Legg til bildemodell"
+      },
+      "Voice": {
+        "title": "Talemodeller",
+        "empty": "Talemodeller støttes ikke ennå.",
+        "add": "Legg til talemodell"
+      }
+    },
+    "imageApi": {
+      "OpenAiImages": "OpenAI Images",
+      "MaiImages": "MAI Images"
+    },
+    "imageModels": {
+      "addTitle": "Legg til bildemodell",
+      "editTitle": "Rediger bildemodell",
+      "fields": {
+        "imageApi": "Bilde-API",
+        "imageApiNone": "Velg et API",
+        "imageApiHint": "Hvordan modellen kalles. Endepunktets vert legger til riktig sti, f.eks. /openai/v1 eller /mai/v1 på Microsoft Foundry.",
+        "noLimit": "Ingen grense",
+        "sizePresets": "Faste størrelser",
+        "sizePresetsHint": "Størrelsene brukerne kan velge i en liste.",
+        "addSize": "Legg til størrelse",
+        "removeSize": "Fjern størrelse",
+        "supportsAutoSize": "Modellen kan velge størrelsen",
+        "supportsCustomSize": "Brukerne kan skrive inn andre størrelser innenfor størrelsesreglene",
+        "supportsAutoAspectRatio": "Modellen kan velge sideforholdet",
+        "sizeRules": "Størrelsesregler",
+        "sizeRulesHint": "Gjelder egne størrelser. La et felt stå tomt når modellen ikke har en slik grense.",
+        "sizeMultiple": "Sider et multiplum av",
+        "minSide": "Minste side",
+        "maxSide": "Største side",
+        "minPixels": "Minst piksler",
+        "maxPixels": "Flest piksler",
+        "maxAspectRatio": "Største sideforhold",
+        "maxImagesPerRequest": "Bilder per forespørsel",
+        "maxPartialImages": "Delbilder",
+        "maxPartialImagesHint": "Hvor mange uferdige forhåndsvisninger modellen kan sende før det ferdige bildet. 0 betyr ingen.",
+        "maxPromptCharacters": "Flest tegn i ledeteksten",
+        "qualities": "Kvalitetsnivåer",
+        "qualitiesHint": "La alle stå tomme for en modell uten kvalitetsvalg.",
+        "outputFormats": "Utdataformater",
+        "outputFormatsHint": "PNG er standard når det er valgt, ellers det første valgte formatet.",
+        "supportsCompression": "Støtter komprimeringsnivå for JPEG og WebP",
+        "backgrounds": "Bakgrunner",
+        "backgroundsHint": "La alle stå tomme for en modell uten bakgrunnsvalg.",
+        "moderationLevels": "Moderasjonsnivåer",
+        "moderationLevelsHint": "La alle stå tomme for en modell uten moderasjonsvalg.",
+        "supportsWebGrounding": "Kan bruke nettsøk som kontekst",
+        "editing": "Kan redigere bilder",
+        "editingHint": "Brukerne kan sende bilder med ledeteksten som modellen endrer eller setter sammen.",
+        "maxInputImages": "Flest inndatabilder",
+        "maxInputImageMegabytes": "Største MB per inndatabilde",
+        "inputFormats": "Inndataformater",
+        "supportsMask": "Tar imot en maske",
+        "supportsMarkup": "Tar imot markering",
+        "acceptsGenerationSettings": "Redigering tar genereringsvalgene",
+        "acceptsGenerationSettingsHint": "Størrelse, kvalitet, antall, format og de andre valgene. Når av, tar en redigering bare ledeteksten og bildene."
+      }
     }
   },
   "initError": {
@@ -837,6 +908,103 @@
       "Green": "Åpne data",
       "Yellow": "Interne data",
       "Red": "Fortrolige data"
+    }
+  },
+  "generate": {
+    "title": "Generer",
+    "intro": "Lag bilder fra en beskrivelse, eller endre bilder du laster opp.",
+    "type": "Type",
+    "types": {
+      "Image": "Bilde",
+      "Voice": "Tale"
+    },
+    "noModels": "Ingen bildemodeller er tilgjengelige for deg.",
+    "model": "Modell",
+    "prompt": "Ledetekst",
+    "promptPlaceholder": "Beskriv hva du vil ha",
+    "promptCount": "{{count}} av {{max}} tegn",
+    "promptTooLong": "Ledeteksten kan ha høyst {{max}} tegn.",
+    "refinePrompt": "Forbedre ledetekst",
+    "undoRefine": "Angre forbedring",
+    "modelDefault": "Modellens standard",
+    "remove": "Fjern",
+    "generating": "Genererer…",
+    "cancel": "Avbryt",
+    "download": "Last ned",
+    "newGeneration": "Ny generering",
+    "recent": "Dine genereringer",
+    "empty": "Ingen genereringer ennå.",
+    "notFound": "Denne genereringen er ikke lenger tilgjengelig.",
+    "tokens": "{{input}} inn, {{output}} ut tokens",
+    "status": {
+      "Running": "Kjører",
+      "Completed": "Ferdig",
+      "Failed": "Feilet",
+      "Cancelled": "Avbrutt"
+    },
+    "image": {
+      "generate": "Generer",
+      "edit": "Rediger bilder",
+      "size": "Størrelse",
+      "sizeAuto": "La modellen velge",
+      "sizeCustom": "Egen",
+      "width": "Bredde",
+      "height": "Høyde",
+      "autoAspectRatio": "La modellen velge sideforholdet",
+      "autoAspectRatioHint": "Modellen velger formen som passer ledeteksten.",
+      "qualityLabel": "Kvalitet",
+      "quality": {
+        "Auto": "Auto",
+        "Low": "Lav",
+        "Medium": "Middels",
+        "High": "Høy",
+        "XHigh": "Ekstra høy",
+        "Max": "Maks"
+      },
+      "count": "Antall bilder",
+      "formatLabel": "Format",
+      "format": {
+        "Png": "PNG",
+        "Jpeg": "JPEG",
+        "Webp": "WebP"
+      },
+      "compression": "Komprimering (0–100)",
+      "backgroundLabel": "Bakgrunn",
+      "background": {
+        "Auto": "Auto",
+        "Opaque": "Ugjennomsiktig",
+        "Transparent": "Gjennomsiktig"
+      },
+      "moderationLabel": "Moderasjon",
+      "moderation": {
+        "Auto": "Standard",
+        "Low": "Mindre streng"
+      },
+      "partialImages": "Forhåndsvisninger underveis",
+      "partialImagesHint": "Uferdige versjoner som vises før det ferdige bildet.",
+      "webGrounding": "Bruk nettsøk",
+      "webGroundingHint": "Modellen slår opp oppdatert informasjon på nettet.",
+      "inputImages": "Bilder som skal redigeres",
+      "inputImagesHint": "Valgfritt. Legg til opptil {{max}} bilder for å endre eller sette dem sammen.",
+      "mask": "Maske",
+      "maskHint": "Valgfritt. En PNG i samme størrelse som det første bildet; det gjennomsiktige området viser hva som skal endres.",
+      "markup": "Markering",
+      "markupHint": "Valgfritt. En gjennomsiktig PNG tegnet over det første bildet som viser hva som skal endres.",
+      "editTakesPromptOnly": "Denne modellen redigerer bare ut fra ledeteksten og bildene.",
+      "rules": {
+        "sizeMissing": "Skriv inn bredde og høyde.",
+        "sizeMultiple": "Begge sidene må være et multiplum av {{multiple}}.",
+        "minSide": "Hver side må være minst {{min}} piksler.",
+        "maxSide": "Hver side kan være høyst {{max}} piksler.",
+        "minPixels": "Bildet må ha minst {{min}} piksler.",
+        "maxPixels": "Bildet kan ha høyst {{max}} piksler.",
+        "maxAspectRatio": "Den lange siden kan være høyst {{max}} ganger den korte.",
+        "fileFormat": "{{name}}: modellen tar bare {{formats}}.",
+        "fileTooLarge": "{{name}}: modellen tar filer på høyst {{max}} MB.",
+        "countNeedsNoPreviews": "Sett forhåndsvisninger til 0 for å lage mer enn ett bilde.",
+        "previewsNeedOneImage": "Forhåndsvisninger fungerer bare med ett bilde.",
+        "transparentNeedsFormat": "Gjennomsiktig bakgrunn krever PNG eller WebP."
+      }
     }
   }
 }

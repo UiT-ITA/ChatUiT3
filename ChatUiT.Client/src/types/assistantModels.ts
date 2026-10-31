@@ -157,7 +157,7 @@ export interface UpdateAssistantDto {
     access?: AssistantAccessPolicyDto | null;
 }
 
-/** Which levels a given model actually accepts varies — see UserModelCapabilitiesDto.supportedEfforts. */
+/** Which levels a given model actually accepts varies — see UserLanguageModelCapabilitiesDto.supportedEfforts. */
 export type ReasoningEffort =
     "None"
     | "Low"

@@ -39,7 +39,8 @@
     "darkMode": "Dark mode",
     "lightMode": "Light mode",
     "collapseSidebar": "Collapse sidebar",
-    "expandSidebar": "Expand sidebar"
+    "expandSidebar": "Expand sidebar",
+    "generate": "Generate"
   },
   "chat": {
     "sendMessage": "Send message",
@@ -450,7 +451,8 @@
     "searchChats": "Search chats",
     "adminNote": "Administration of endpoints, models, system assistants and tools.",
     "help": "Help",
-    "status": "Status"
+    "status": "Status",
+    "generate": "Generate"
   },
   "common": {
     "close": "Close",
@@ -514,7 +516,7 @@
     },
     "domains": {
       "endpoints": "The services ChatUiT sends model requests to.",
-      "models": "The models users can chat with, and the endpoint each runs on.",
+      "models": "The models users can chat with and generate images with, and the endpoint each runs on.",
       "assistants": "The system assistants offered in ChatUiT.",
       "tools": "The toolboxes and who may use them.",
       "agents": "Agents defined in code, and the model each runs on.",
@@ -765,6 +767,75 @@
         "exposedInApiHelp": "The Responses API serves this agent to API clients as the model \"{{id}}\".",
         "updated": "Saved {{date}}."
       }
+    },
+    "modelTypes": {
+      "Language": {
+        "title": "Language models",
+        "empty": "No language models configured.",
+        "add": "Add language model"
+      },
+      "Image": {
+        "title": "Image models",
+        "empty": "No image models configured.",
+        "add": "Add image model"
+      },
+      "Voice": {
+        "title": "Voice models",
+        "empty": "Voice models are not supported yet.",
+        "add": "Add voice model"
+      }
+    },
+    "imageApi": {
+      "OpenAiImages": "OpenAI Images",
+      "MaiImages": "MAI Images"
+    },
+    "imageModels": {
+      "addTitle": "Add Image Model",
+      "editTitle": "Edit Image Model",
+      "fields": {
+        "imageApi": "Image API",
+        "imageApiNone": "Select an API",
+        "imageApiHint": "How the model is spoken to on the wire. The endpoint's host adds the matching path, e.g. /openai/v1 or /mai/v1 on Microsoft Foundry.",
+        "noLimit": "No limit",
+        "sizePresets": "Size presets",
+        "sizePresetsHint": "The sizes users can pick from a list.",
+        "addSize": "Add size",
+        "removeSize": "Remove size",
+        "supportsAutoSize": "The model can pick the size",
+        "supportsCustomSize": "Users can enter other sizes within the size rules",
+        "supportsAutoAspectRatio": "The model can pick the aspect ratio",
+        "sizeRules": "Size rules",
+        "sizeRulesHint": "Checked for custom sizes. Leave a field empty when the model has no such limit.",
+        "sizeMultiple": "Sides a multiple of",
+        "minSide": "Min side",
+        "maxSide": "Max side",
+        "minPixels": "Min pixels",
+        "maxPixels": "Max pixels",
+        "maxAspectRatio": "Max aspect ratio",
+        "maxImagesPerRequest": "Images per request",
+        "maxPartialImages": "Partial images",
+        "maxPartialImagesHint": "How many unfinished previews the model can stream before the final image. 0 means none.",
+        "maxPromptCharacters": "Max prompt characters",
+        "qualities": "Quality levels",
+        "qualitiesHint": "Leave all unchecked for a model without a quality setting.",
+        "outputFormats": "Output formats",
+        "outputFormatsHint": "PNG is the default when it is checked; otherwise the first checked format.",
+        "supportsCompression": "Supports a compression level for JPEG and WebP",
+        "backgrounds": "Backgrounds",
+        "backgroundsHint": "Leave all unchecked for a model without a background setting.",
+        "moderationLevels": "Moderation levels",
+        "moderationLevelsHint": "Leave all unchecked for a model without a moderation setting.",
+        "supportsWebGrounding": "Can use web search as context",
+        "editing": "Can edit images",
+        "editingHint": "Users can send images with the prompt for the model to change or combine.",
+        "maxInputImages": "Max input images",
+        "maxInputImageMegabytes": "Max MB per input image",
+        "inputFormats": "Input formats",
+        "supportsMask": "Accepts a mask",
+        "supportsMarkup": "Accepts markup",
+        "acceptsGenerationSettings": "Edits take the generation settings",
+        "acceptsGenerationSettingsHint": "Size, quality, count, format and the other settings. When off, an edit takes only the prompt and the images."
+      }
     }
   },
   "initError": {
@@ -837,6 +908,103 @@
       "Green": "Open",
       "Yellow": "Internal",
       "Red": "Confidential"
+    }
+  },
+  "generate": {
+    "title": "Generate",
+    "intro": "Create images from a description, or change images you upload.",
+    "type": "Type",
+    "types": {
+      "Image": "Image",
+      "Voice": "Voice"
+    },
+    "noModels": "No image models are available to you.",
+    "model": "Model",
+    "prompt": "Prompt",
+    "promptPlaceholder": "Describe what you want",
+    "promptCount": "{{count}} of {{max}} characters",
+    "promptTooLong": "The prompt can be at most {{max}} characters.",
+    "refinePrompt": "Refine prompt",
+    "undoRefine": "Undo refinement",
+    "modelDefault": "Model default",
+    "remove": "Remove",
+    "generating": "Generating…",
+    "cancel": "Cancel",
+    "download": "Download",
+    "newGeneration": "New generation",
+    "recent": "Your generations",
+    "empty": "No generations yet.",
+    "notFound": "This generation is no longer available.",
+    "tokens": "{{input}} in, {{output}} out tokens",
+    "status": {
+      "Running": "Running",
+      "Completed": "Done",
+      "Failed": "Failed",
+      "Cancelled": "Cancelled"
+    },
+    "image": {
+      "generate": "Generate",
+      "edit": "Edit images",
+      "size": "Size",
+      "sizeAuto": "Let the model pick",
+      "sizeCustom": "Custom",
+      "width": "Width",
+      "height": "Height",
+      "autoAspectRatio": "Let the model pick the aspect ratio",
+      "autoAspectRatioHint": "The model chooses the shape that suits the prompt.",
+      "qualityLabel": "Quality",
+      "quality": {
+        "Auto": "Auto",
+        "Low": "Low",
+        "Medium": "Medium",
+        "High": "High",
+        "XHigh": "Extra high",
+        "Max": "Max"
+      },
+      "count": "Number of images",
+      "formatLabel": "Format",
+      "format": {
+        "Png": "PNG",
+        "Jpeg": "JPEG",
+        "Webp": "WebP"
+      },
+      "compression": "Compression (0–100)",
+      "backgroundLabel": "Background",
+      "background": {
+        "Auto": "Auto",
+        "Opaque": "Opaque",
+        "Transparent": "Transparent"
+      },
+      "moderationLabel": "Moderation",
+      "moderation": {
+        "Auto": "Standard",
+        "Low": "Less strict"
+      },
+      "partialImages": "Previews while generating",
+      "partialImagesHint": "Unfinished versions shown before the final image.",
+      "webGrounding": "Use web search",
+      "webGroundingHint": "The model looks up current information on the web.",
+      "inputImages": "Images to edit",
+      "inputImagesHint": "Optional. Add up to {{max}} images to change or combine them.",
+      "mask": "Mask",
+      "maskHint": "Optional. A PNG the same size as the first image; its transparent area marks what to change.",
+      "markup": "Markup",
+      "markupHint": "Optional. A transparent PNG drawn over the first image to show what to change.",
+      "editTakesPromptOnly": "This model edits from the prompt and the images only.",
+      "rules": {
+        "sizeMissing": "Enter a width and a height.",
+        "sizeMultiple": "Both sides must be a multiple of {{multiple}}.",
+        "minSide": "Each side must be at least {{min}} pixels.",
+        "maxSide": "Each side can be at most {{max}} pixels.",
+        "minPixels": "The image must have at least {{min}} pixels.",
+        "maxPixels": "The image can have at most {{max}} pixels.",
+        "maxAspectRatio": "The long side can be at most {{max}} times the short side.",
+        "fileFormat": "{{name}}: the model takes {{formats}} only.",
+        "fileTooLarge": "{{name}}: the model takes files of at most {{max}} MB.",
+        "countNeedsNoPreviews": "Set previews to 0 to make more than one image.",
+        "previewsNeedOneImage": "Previews work with one image only.",
+        "transparentNeedsFormat": "A transparent background needs PNG or WebP."
+      }
     }
   }
 }

@@ -103,7 +103,7 @@ public sealed class ToolExecutionContext
     public string? UserPrincipalName { get; init; }
 
     /// <summary>The model the outer chat runs on. Internal agents fall back to it when no model is configured for them.</summary>
-    public Model? Model { get; init; }
+    public LanguageModel? Model { get; init; }
 
     public ModelEndpoint? Endpoint { get; init; }
 

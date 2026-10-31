@@ -45,15 +45,3 @@ public interface IApiProtocolRegistry
     /// <summary>Throws <see cref="NotSupportedException"/> when no adapter handles the protocol.</summary>
     IApiProtocol For(ApiProtocol protocol);
 }
-
-public static class ApiProtocols
-{
-    /// <summary>
-    /// The protocol a model row declares. A row saved before protocols were per model has
-    /// none; that is reported, not guessed, because guessing sends the model to an API that
-    /// returns an opaque 400 or, worse, answers differently.
-    /// </summary>
-    public static ApiProtocol Require(Model model) =>
-        model.ApiProtocol ?? throw new InvalidOperationException(
-            $"Model '{model.ModelName}' ({model.ModelId}) has no API protocol. Set one in the admin panel under Models.");
-}

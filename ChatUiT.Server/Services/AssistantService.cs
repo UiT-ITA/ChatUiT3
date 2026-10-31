@@ -13,7 +13,7 @@ namespace ChatUiT.Server.Services
     {
         private readonly IDatabaseService _databaseService;
         private readonly IModelService _modelService;
-        private readonly IHubContext<ChatHub, IChatHubClient> _hubContext;
+        private readonly IHubContext<AppHub, IAppHubClient> _hubContext;
         private readonly IToolboxRegistry _toolboxes;
         private readonly IToolAccessService _toolAccess;
         private readonly ITokenCountingService _tokenCounting;
@@ -42,7 +42,7 @@ namespace ChatUiT.Server.Services
         public AssistantService(
             IDatabaseService databaseService,
             IModelService modelService,
-            IHubContext<ChatHub, IChatHubClient> hubContext,
+            IHubContext<AppHub, IAppHubClient> hubContext,
             IToolboxRegistry toolboxes,
             IToolAccessService toolAccess,
             ITokenCountingService tokenCounting,
@@ -270,7 +270,7 @@ namespace ChatUiT.Server.Services
         // from ModelService, which keeps every model in memory.
         private async Task<Assistant> WithModelAsync(Assistant assistant)
         {
-            var model = await _modelService.GetModelByIdAsync(assistant.ChatSettings.Model.Id);
+            var model = await _modelService.GetModelAsync<LanguageModel>(assistant.ChatSettings.Model.Id);
             if (model != null)
             {
                 assistant.ChatSettings.Model = model;
@@ -489,7 +489,7 @@ namespace ChatUiT.Server.Services
         {
             if (string.IsNullOrWhiteSpace(modelId)) return false;
 
-            var model = await _modelService.GetModelForUserAsync(modelId, roles);
+            var model = await _modelService.GetModelForUserAsync<LanguageModel>(modelId, roles);
             return model?.AllowedAsDefault == true;
         }
 
@@ -694,7 +694,7 @@ namespace ChatUiT.Server.Services
 
         private async Task<Assistant> BuildAssistantAsync(CreateAssistantDto createDto, string ownerId)
         {
-            var model = await _modelService.GetModelByIdAsync(createDto.ModelId);
+            var model = await _modelService.GetModelAsync<LanguageModel>(createDto.ModelId);
             if (model == null)
             {
                 throw new ArgumentException("Invalid model ID", nameof(createDto.ModelId));
@@ -764,7 +764,7 @@ namespace ChatUiT.Server.Services
         // Stores only settings the model can actually honour, so an assistant configured
         // against one model cannot carry an impossible combination onto another.
         private ChatSettings BuildChatSettings(
-            Model model,
+            LanguageModel model,
             string systemPrompt,
             float temperature,
             ReasoningEffort requestedEffort,
@@ -792,7 +792,7 @@ namespace ChatUiT.Server.Services
 
         private async Task<bool> ApplyAssistantUpdateAsync(Assistant assistant, UpdateAssistantDto updateDto)
         {
-            var model = await _modelService.GetModelByIdAsync(updateDto.ModelId);
+            var model = await _modelService.GetModelAsync<LanguageModel>(updateDto.ModelId);
             if (model == null)
             {
                 return false;

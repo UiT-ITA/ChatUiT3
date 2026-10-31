@@ -99,7 +99,7 @@ public class AdminSettingsController : ControllerBase
             return true;
         }
 
-        return await _modelService.GetModelByIdAsync(modelId) != null;
+        return await _modelService.GetModelAsync<LanguageModel>(modelId) != null;
     }
 
     // Deliberately not checked against Model.AllowedAsDefault: that flag exists so users cannot

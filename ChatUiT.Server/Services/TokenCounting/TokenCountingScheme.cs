@@ -93,7 +93,7 @@ public static class TokenCountingSchemes
     /// The id a model's counts are stored and read under: its scheme, made text-only when the
     /// model cannot read images. Null when the model has no counter.
     /// </summary>
-    public static string? IdFor(ModelCapabilities capabilities)
+    public static string? IdFor(LanguageModelCapabilities capabilities)
     {
         if (!TryParse(capabilities.TokenCountingScheme, out var scheme))
         {

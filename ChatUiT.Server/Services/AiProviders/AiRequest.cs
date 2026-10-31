@@ -15,7 +15,7 @@ using ChatUiT.Server.Services.Tools;
 /// </summary>
 public sealed record AiRequest
 {
-    public required Model Model { get; init; }
+    public required LanguageModel Model { get; init; }
 
     public required ModelEndpoint Endpoint { get; init; }
 

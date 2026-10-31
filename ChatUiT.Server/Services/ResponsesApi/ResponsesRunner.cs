@@ -135,7 +135,7 @@ public sealed class ResponsesRunner
             Tools = [.. request.ServerTools, .. request.ClientTools]
         };
 
-        var protocol = ApiProtocols.Require(target.Model);
+        var protocol = target.Model.ApiProtocol;
         var conversation = _providers.For(target.Endpoint.EndpointType).StartConversation(aiRequest);
 
         for (var round = 0; ; round++)

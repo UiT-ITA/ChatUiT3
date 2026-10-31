@@ -1,10 +1,13 @@
-import { signal } from '@preact/signals-react';
+import { computed, signal } from '@preact/signals-react';
 import { getEndpoints, getModels, getAdminAssistants, getAppSettings, getAdminTools, getAdminInternalAgents } from './adminService';
 import type { EndpointDto, ModelDto, AdminAssistantDto, AppSettingsDto, AdminToolDto, InternalAgentDto } from '../types/admin';
+import { isLanguageModel } from '../types/admin';
 
 // Shared admin lists — drive both the context column and the admin pages
 export const adminEndpointsSignal = signal<EndpointDto[] | undefined>(undefined);
 export const adminModelsSignal = signal<ModelDto[] | undefined>(undefined);
+/** The language models of adminModelsSignal: the ones assistants, settings and agents run on. */
+export const adminLanguageModelsSignal = computed(() => adminModelsSignal.value?.filter(isLanguageModel));
 export const adminAssistantsSignal = signal<AdminAssistantDto[] | undefined>(undefined);
 export const adminSettingsSignal = signal<AppSettingsDto | undefined>(undefined);
 export const adminToolsSignal = signal<AdminToolDto[] | undefined>(undefined);

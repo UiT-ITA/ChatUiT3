@@ -55,7 +55,7 @@ public static class AlwaysLoadedFileLimit
     public const int MaxTokens = 100_000;
 
     /// <summary>Half the model's context window, never more than <see cref="MaxTokens"/>.</summary>
-    public static int For(ModelCapabilities capabilities) => Math.Min(capabilities.MaxContextTokens / 2, MaxTokens);
+    public static int For(LanguageModelCapabilities capabilities) => Math.Min(capabilities.MaxContextTokens / 2, MaxTokens);
 }
 
 public class AssistantFile : ChatFile

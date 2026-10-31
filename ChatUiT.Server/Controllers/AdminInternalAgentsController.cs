@@ -66,7 +66,7 @@ public class AdminInternalAgentsController : ControllerBase
                 return NotFound($"Internal agent {id} not found");
             }
 
-            var model = string.IsNullOrWhiteSpace(dto.ModelId) ? null : await _models.GetModelByIdAsync(dto.ModelId);
+            var model = string.IsNullOrWhiteSpace(dto.ModelId) ? null : await _models.GetModelAsync<LanguageModel>(dto.ModelId);
             if (model == null)
             {
                 return BadRequest(new { error = "unknown_model", message = "Choose the model the agent runs on." });

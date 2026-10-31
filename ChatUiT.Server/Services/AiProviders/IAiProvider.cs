@@ -1,15 +1,17 @@
+using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
 
 namespace ChatUiT.Server.Services.AiProviders;
 
 using ChatUiT.Server.Models;
+using ChatUiT.Server.Services.AiProviders.Images;
 
 /// <summary>
 /// One host: where an endpoint row points. A host knows how to compose the base URL for
-/// each <see cref="ApiProtocol"/> it serves and which protocols those are; it hands the
-/// request to the protocol's adapter (<c>Protocols.IApiProtocol</c>), which owns the wire
-/// format. Neither decides what a model supports (<see cref="ChatParameterResolver"/> has)
+/// each <see cref="ApiProtocol"/> and <see cref="ImageApi"/> it serves and which those are; it
+/// hands the request to the adapter (<c>Protocols.IApiProtocol</c>, <c>Images.IImageApi</c>),
+/// which owns the wire format. Neither decides what a model supports (<see cref="ChatParameterResolver"/> has)
 /// or runs the tool-call loop (<see cref="AiConversationRunner"/> does).
 ///
 /// Adding a host means adding one class and registering it; nothing dispatches on
@@ -24,6 +26,9 @@ public interface IAiProvider
 
     /// <summary>Generates a chat name with a single non-streamed, length-bounded completion.</summary>
     Task<string> GenerateChatNameAsync(AiRequest request, CancellationToken cancellationToken = default);
+
+    /// <summary>Runs one image generation or edit on the model's image API.</summary>
+    IAsyncEnumerable<ImageStreamEvent> GenerateImagesAsync(ImageRequest request, CancellationToken cancellationToken = default);
 }
 
 /// <summary>Resolves the provider registered for an endpoint's type.</summary>

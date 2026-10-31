@@ -4,11 +4,11 @@ using System.Collections.Generic;
 namespace ChatUiT.Server.Models;
 
 /// <summary>
-/// The user-facing view of a model's capabilities. Deliberately narrower than
-/// <see cref="ModelCapabilitiesDto"/>: it drives which controls the assistant form shows
+/// The user-facing view of a language model's capabilities. Deliberately narrower than
+/// <see cref="LanguageModelCapabilitiesDto"/>: it drives which controls the assistant form shows
 /// and carries no provider or endpoint detail.
 /// </summary>
-public class UserModelCapabilitiesDto
+public class UserLanguageModelCapabilitiesDto
 {
     public bool Vision { get; set; }
     public bool Tools { get; set; }
@@ -32,7 +32,7 @@ public class UserModelCapabilitiesDto
     public string? TokenCountingScheme { get; set; }
 }
 
-public class UserModelDto
+public class UserLanguageModelDto
 {
     public string Id { get; set; } = string.Empty;
     public string ModelName { get; set; } = string.Empty;
@@ -40,12 +40,12 @@ public class UserModelDto
 
     /// <summary>
     /// Whether an assistant on this model may be pinned as the user's default assistant.
-    /// Sits on the model, not on <see cref="UserModelCapabilitiesDto"/>, because it is
+    /// Sits on the model, not on <see cref="UserLanguageModelCapabilitiesDto"/>, because it is
     /// operator policy rather than something the model can or cannot do.
     /// </summary>
     public bool AllowedAsDefault { get; set; }
 
     public DataClassification Classification { get; set; }
 
-    public UserModelCapabilitiesDto Capabilities { get; set; } = new UserModelCapabilitiesDto();
+    public UserLanguageModelCapabilitiesDto Capabilities { get; set; } = new UserLanguageModelCapabilitiesDto();
 }

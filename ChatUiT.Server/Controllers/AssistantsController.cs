@@ -22,7 +22,7 @@ public class AssistantsController : ControllerBase
     private readonly IToolRegistry _toolRegistry;
     private readonly IToolAccessService _toolAccess;
     private readonly IKnowledgeSourceRegistry _knowledgeSources;
-    private readonly IHubContext<ChatHub, IChatHubClient> _hubContext;
+    private readonly IHubContext<AppHub, IAppHubClient> _hubContext;
 
     public AssistantsController(
         IAssistantService assistantService,
@@ -32,7 +32,7 @@ public class AssistantsController : ControllerBase
         IToolRegistry toolRegistry,
         IToolAccessService toolAccess,
         IKnowledgeSourceRegistry knowledgeSources,
-        IHubContext<ChatHub, IChatHubClient> hubContext)
+        IHubContext<AppHub, IAppHubClient> hubContext)
     {
         _assistantService = assistantService;
         _userService = userService;
@@ -375,15 +375,15 @@ public class AssistantsController : ControllerBase
         try
         {
             // Only models whose AllowedRoles match the caller's roles are returned.
-            var models = await _modelService.GetAvailableModelsForUserAsync(_userService.GetUserRoles(User));
-            var modelDtos = models.Select(m => new UserModelDto
+            var models = await _modelService.GetModelsForUserAsync<LanguageModel>(_userService.GetUserRoles(User));
+            var modelDtos = models.Select(m => new UserLanguageModelDto
             {
                 Id = m.Id,
                 ModelName = m.ModelName,
                 Description = m.Description,
                 AllowedAsDefault = m.AllowedAsDefault,
                 Classification = m.Classification,
-                Capabilities = new UserModelCapabilitiesDto
+                Capabilities = new UserLanguageModelCapabilitiesDto
                 {
                     Vision = m.Capabilities.SupportsVision,
                     Tools = m.Capabilities.SupportsFunctionCalling,

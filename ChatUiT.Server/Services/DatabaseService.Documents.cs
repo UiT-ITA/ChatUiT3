@@ -248,13 +248,21 @@ public partial class DatabaseService
         public string Payload { get; set; } = string.Empty;
     }
 
-    private sealed class ModelDocument
+    /// <summary>
+    /// The persisted fields every model type shares. <c>type</c> picks the subclass a row is
+    /// read as; a row without it fails to load.
+    /// </summary>
+    private abstract class ModelDocument
     {
         [JsonProperty("id")]
         public string Id { get; set; } = string.Empty;
 
         [JsonProperty("partitionKey")]
         public string PartitionKey { get; set; } = string.Empty;
+
+        [JsonProperty("type", Required = Required.Always)]
+        [JsonConverter(typeof(StringEnumConverter))]
+        public ModelType Type { get; set; }
 
         [JsonProperty("modelId")]
         public string ModelId { get; set; } = string.Empty;
@@ -270,33 +278,34 @@ public partial class DatabaseService
 
         [JsonProperty("allowedRoles", ItemConverterType = typeof(StringEnumConverter))]
         public List<UserRole> AllowedRoles { get; set; } = new();
+    }
 
+    private sealed class LanguageModelDocument : ModelDocument
+    {
         [JsonProperty("allowedAsDefault")]
         public bool AllowedAsDefault { get; set; }
 
         [JsonProperty("exposedInApi")]
         public bool ExposedInApi { get; set; }
 
-        [JsonProperty("capabilities")]
-        public ModelCapabilitiesDocument Capabilities { get; set; } = new();
+        [JsonProperty("capabilities", Required = Required.Always)]
+        public LanguageModelCapabilitiesDocument Capabilities { get; set; } = new();
 
-        // Absent in rows saved before protocols were per model; null is surfaced, not defaulted.
-        [JsonProperty("apiProtocol")]
+        [JsonProperty("apiProtocol", Required = Required.Always)]
         [JsonConverter(typeof(StringEnumConverter))]
-        public ApiProtocol? ApiProtocol { get; set; }
+        public ApiProtocol ApiProtocol { get; set; }
 
-        // Absent in rows saved before data classification existed; those read as Green.
-        [JsonProperty("classification")]
+        [JsonProperty("classification", Required = Required.Always)]
         [JsonConverter(typeof(StringEnumConverter))]
-        public DataClassification Classification { get; set; } = DataClassification.Green;
+        public DataClassification Classification { get; set; }
     }
 
     /// <summary>
-    /// The persisted shape of <see cref="ModelCapabilities"/>. Kept separate from the domain
+    /// The persisted shape of <see cref="LanguageModelCapabilities"/>. Kept separate from the domain
     /// type on purpose, so that changing the domain model does not silently change the
     /// database schema.
     /// </summary>
-    private sealed class ModelCapabilitiesDocument
+    private sealed class LanguageModelCapabilitiesDocument
     {
         [JsonProperty("supportsVision")]
         public bool SupportsVision { get; set; }
@@ -323,9 +332,113 @@ public partial class DatabaseService
         [JsonProperty("knowledgeCutoff")]
         public DateTime? KnowledgeCutoff { get; set; }
 
-        // May be absent in stored rows; null means "no token counter for this model".
+        // Null means "no token counter for this model".
         [JsonProperty("tokenCountingScheme")]
         public string? TokenCountingScheme { get; set; }
+    }
+
+    private sealed class ImageModelDocument : ModelDocument
+    {
+        [JsonProperty("imageApi", Required = Required.Always)]
+        [JsonConverter(typeof(StringEnumConverter))]
+        public ImageApi ImageApi { get; set; }
+
+        [JsonProperty("capabilities", Required = Required.Always)]
+        public ImageModelCapabilitiesDocument Capabilities { get; set; } = new();
+    }
+
+    /// <summary>The persisted shape of <see cref="ImageModelCapabilities"/>.</summary>
+    private sealed class ImageModelCapabilitiesDocument
+    {
+        [JsonProperty("sizePresets")]
+        public List<ImageSizeDocument> SizePresets { get; set; } = new();
+
+        [JsonProperty("supportsAutoSize")]
+        public bool SupportsAutoSize { get; set; }
+
+        [JsonProperty("supportsCustomSize")]
+        public bool SupportsCustomSize { get; set; }
+
+        [JsonProperty("sizeMultiple")]
+        public int? SizeMultiple { get; set; }
+
+        [JsonProperty("minSide")]
+        public int? MinSide { get; set; }
+
+        [JsonProperty("maxSide")]
+        public int? MaxSide { get; set; }
+
+        [JsonProperty("minPixels")]
+        public long? MinPixels { get; set; }
+
+        [JsonProperty("maxPixels")]
+        public long? MaxPixels { get; set; }
+
+        [JsonProperty("maxAspectRatio")]
+        public double? MaxAspectRatio { get; set; }
+
+        [JsonProperty("supportsAutoAspectRatio")]
+        public bool SupportsAutoAspectRatio { get; set; }
+
+        [JsonProperty("qualities", ItemConverterType = typeof(StringEnumConverter))]
+        public List<ImageQuality> Qualities { get; set; } = new();
+
+        [JsonProperty("maxImagesPerRequest")]
+        public int MaxImagesPerRequest { get; set; }
+
+        [JsonProperty("outputFormats", ItemConverterType = typeof(StringEnumConverter))]
+        public List<ImageFormat> OutputFormats { get; set; } = new();
+
+        [JsonProperty("supportsCompression")]
+        public bool SupportsCompression { get; set; }
+
+        [JsonProperty("backgrounds", ItemConverterType = typeof(StringEnumConverter))]
+        public List<ImageBackground> Backgrounds { get; set; } = new();
+
+        [JsonProperty("moderationLevels", ItemConverterType = typeof(StringEnumConverter))]
+        public List<ImageModeration> ModerationLevels { get; set; } = new();
+
+        [JsonProperty("maxPartialImages")]
+        public int MaxPartialImages { get; set; }
+
+        [JsonProperty("supportsWebGrounding")]
+        public bool SupportsWebGrounding { get; set; }
+
+        [JsonProperty("maxPromptCharacters")]
+        public int? MaxPromptCharacters { get; set; }
+
+        [JsonProperty("editing")]
+        public ImageEditCapabilitiesDocument? Editing { get; set; }
+    }
+
+    private sealed class ImageSizeDocument
+    {
+        [JsonProperty("width")]
+        public int Width { get; set; }
+
+        [JsonProperty("height")]
+        public int Height { get; set; }
+    }
+
+    private sealed class ImageEditCapabilitiesDocument
+    {
+        [JsonProperty("maxInputImages")]
+        public int MaxInputImages { get; set; }
+
+        [JsonProperty("inputFormats", ItemConverterType = typeof(StringEnumConverter))]
+        public List<ImageFormat> InputFormats { get; set; } = new();
+
+        [JsonProperty("maxInputImageBytes")]
+        public long? MaxInputImageBytes { get; set; }
+
+        [JsonProperty("supportsMask")]
+        public bool SupportsMask { get; set; }
+
+        [JsonProperty("supportsMarkup")]
+        public bool SupportsMarkup { get; set; }
+
+        [JsonProperty("acceptsGenerationSettings")]
+        public bool AcceptsGenerationSettings { get; set; }
     }
 
     private sealed class AppSettingsDocument
