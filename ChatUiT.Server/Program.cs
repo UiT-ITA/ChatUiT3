@@ -4,6 +4,7 @@ using ChatUiT.Server.Hubs;
 using ChatUiT.Server.Models;
 using ChatUiT.Server.Services;
 using ChatUiT.Server.Services.AiProviders;
+using ChatUiT.Server.Services.AiProviders.Images;
 using ChatUiT.Server.Services.AiProviders.Protocols;
 using ChatUiT.Server.Services.TokenCounting;
 using ChatUiT.Server.Services.Agents;
@@ -12,6 +13,7 @@ using ChatUiT.Server.Services.ResponsesApi;
 using ChatUiT.Server.Services.Directory;
 using ChatUiT.Server.Services.Encryption;
 using ChatUiT.Server.Services.Knowledge;
+using ChatUiT.Server.Services.MediaGenerations;
 using ChatUiT.Server.Services.Tools;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.Identity.Web;
@@ -85,7 +87,7 @@ builder.Services.Configure<JwtBearerOptions>(JwtBearerDefaults.AuthenticationSch
 
                 if (path.StartsWithSegments("/testHub") ||
                     path.StartsWithSegments("/testAuthHub") ||
-                    path.StartsWithSegments("/chatHub"))
+                    path.StartsWithSegments("/apphub"))
                 {
                     context.Token = accessToken;
                 }
@@ -125,6 +127,14 @@ builder.Services.AddSingleton<IAiProvider, AzureOpenAiProvider>();
 builder.Services.AddSingleton<IAiProvider, MicrosoftFoundryProvider>();
 builder.Services.AddSingleton<IAiProvider, AnthropicProvider>();
 builder.Services.AddSingleton<IAiProviderRegistry, AiProviderRegistry>();
+// One IImageApi per image API; hosts route an image model to it by the model's declared API.
+builder.Services.AddSingleton<IImageApi, OpenAiImagesApi>();
+builder.Services.AddSingleton<IImageApi, MaiImagesApi>();
+builder.Services.AddSingleton<IImageApiRegistry, ImageApiRegistry>();
+builder.Services.AddHttpClient(ImageApiHttp.ClientName, client => client.Timeout = Timeout.InfiniteTimeSpan);
+builder.Services.AddSingleton<IMediaGenerationStore, InMemoryMediaGenerationStore>();
+builder.Services.AddSingleton<MediaGenerationService>();
+builder.Services.AddSingleton<ImagePromptRefiner>();
 builder.Services.AddSingleton<AiConversationRunner>();
 builder.Services.AddTools(builder.Configuration);
 builder.Services.AddInternalAgents();
@@ -179,14 +189,14 @@ if (!string.IsNullOrWhiteSpace(seedEndpointUrl) && !string.IsNullOrWhiteSpace(se
 }
 
 // Sends visitors of the azurewebsites.net host to ki-beta.uit.no. The Office add-ins (/office),
-// the API (/api) and the hub (/chathub) stay reachable on the old host.
+// the API (/api) and the hub (/apphub) stay reachable on the old host.
 app.Use(async (context, next) =>
 {
     var request = context.Request;
     if (string.Equals(request.Host.Host, "chatuit-v3-ekguc0ase9dghpdn.westeurope-01.azurewebsites.net", StringComparison.OrdinalIgnoreCase) &&
         !request.Path.StartsWithSegments("/office") &&
         !request.Path.StartsWithSegments("/api") &&
-        !request.Path.StartsWithSegments("/chathub"))
+        !request.Path.StartsWithSegments("/apphub"))
     {
         context.Response.Redirect($"https://ki-beta.uit.no{request.PathBase}{request.Path}{request.QueryString}");
         return;
@@ -217,7 +227,7 @@ app.UseAuthentication();
 app.UseAuthorization();
 
 app.MapControllers();
-app.MapHub<ChatHub>("/chatHub");
+app.MapHub<AppHub>("/apphub");
 app.MapFallbackToFile("/index.html", new StaticFileOptions
 {
     OnPrepareResponse = context =>

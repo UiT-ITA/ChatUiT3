@@ -5,6 +5,8 @@ import { invalidateChat, invalidateChats, receiveMessageChunk, setStreamMessageC
 import { invalidateAssistants } from "./assistantService";
 import { refreshTools } from "./toolService";
 import { addNotification } from "./notificationService";
+import { receiveMediaGenerationEvent, resumeGenerationStreams, setStreamGenerationCallback } from "./mediaGenerationService";
+import type { MediaGenerationEvent } from "../types/mediaGenerationModels";
 import type { NotifyLevel } from "../types/notification";
 
 class SignalrService {
@@ -30,6 +32,15 @@ class SignalrService {
         return;
       }
       this.connection?.invoke("StreamMessage", messageId);
+    });
+
+    setStreamGenerationCallback(async (generationId: string) => {
+      try {
+        await this.ensureConnection();
+      } catch {
+        return;
+      }
+      this.connection?.invoke("StreamMediaGeneration", generationId);
     });
   }
 
@@ -59,7 +70,7 @@ class SignalrService {
 
       if (!this.connection || this.connection.state === signalR.HubConnectionState.Disconnected) {
         this.connection = new signalR.HubConnectionBuilder()
-          .withUrl("/chathub", {
+          .withUrl("/apphub", {
             accessTokenFactory: () => authService.getAccessToken().then(t => t || "")
           })
           .withAutomaticReconnect()
@@ -111,6 +122,15 @@ class SignalrService {
 
     this.connection.on("ReceiveMessageChunk", (messageId: string, chunk: ChatStreamChunk) => {
       receiveMessageChunk(messageId, chunk);
+    });
+
+    this.connection.on("ReceiveMediaGenerationEvent", (generationId: string, event: MediaGenerationEvent) => {
+      receiveMediaGenerationEvent(generationId, event);
+    });
+
+    // Requests the running generations' events again on the new connection
+    this.connection.onreconnected(() => {
+      resumeGenerationStreams();
     });
 
   }

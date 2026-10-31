@@ -11,17 +11,17 @@ public interface IModelService
     Task<bool> UpdateEndpointAsync(ModelEndpoint endpoint);
     Task<bool> DeleteEndpointAsync(string endpointId);
 
-    // Model operations
-    Task<List<Model>> GetAllModelsAsync();
-    Task<Model?> GetModelByIdAsync(string modelId);
+    // Model operations, over every model type. TModel picks the type; Model means all of them.
+    Task<List<TModel>> GetModelsAsync<TModel>() where TModel : Model;
+    Task<TModel?> GetModelAsync<TModel>(string modelId) where TModel : Model;
     Task<string> CreateModelAsync(Model model);
     Task<bool> UpdateModelAsync(Model model);
     Task<bool> DeleteModelAsync(string modelId);
 
     // User-specific operations
-    Task<List<Model>> GetAvailableModelsForUserAsync(List<UserRole> userRoles);
-    Task<Model?> GetModelForUserAsync(string modelId, List<UserRole> userRoles);
+    Task<List<TModel>> GetModelsForUserAsync<TModel>(List<UserRole> userRoles) where TModel : Model;
+    Task<TModel?> GetModelForUserAsync<TModel>(string modelId, List<UserRole> userRoles) where TModel : Model;
 
     // Provider integration
-    Task<(ModelEndpoint endpoint, Model model)?> GetModelWithEndpointAsync(string modelId);
+    Task<(ModelEndpoint endpoint, TModel model)?> GetModelWithEndpointAsync<TModel>(string modelId) where TModel : Model;
 }

@@ -18,13 +18,13 @@ public class AdminToolsController : ControllerBase
 {
     private readonly IToolboxRegistry _registry;
     private readonly IToolAccessService _access;
-    private readonly IHubContext<ChatHub, IChatHubClient> _hubContext;
+    private readonly IHubContext<AppHub, IAppHubClient> _hubContext;
     private readonly ILogger<AdminToolsController> _logger;
 
     public AdminToolsController(
         IToolboxRegistry registry,
         IToolAccessService access,
-        IHubContext<ChatHub, IChatHubClient> hubContext,
+        IHubContext<AppHub, IAppHubClient> hubContext,
         ILogger<AdminToolsController> logger)
     {
         _registry = registry;

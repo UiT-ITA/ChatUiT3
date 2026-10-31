@@ -1,5 +1,5 @@
 import type { FullAssistantDto, CreateAssistantDto, UpdateAssistantDto, UserRole } from './assistantModels';
-import type { DataClassification } from './modelModels';
+import type { DataClassification, ImageApi, ImageModelCapabilities } from './modelModels';
 import type { IconName } from '../components/common/Icon';
 
 /** Where an endpoint points (the host). The host decides which protocols it serves and on what path. */
@@ -193,7 +193,7 @@ export function clampEffort(
   return levels[0];
 }
 
-export interface ModelCapabilities {
+export interface LanguageModelCapabilities {
   supportsVision: boolean;
   supportsFunctionCalling: boolean;
   temperature: TemperatureSupport;
@@ -213,66 +213,69 @@ export interface ModelTestResultDto {
   error?: string | null;
 }
 
-export interface ModelDto {
+/** What every model type has. */
+interface ModelBaseDto {
   id: string;
-  modelId: string;      // Provider model identifier (e.g. "gpt-5.4")
+  modelId: string;      // Provider model identifier or deployment name (e.g. "gpt-5.4")
   modelName: string;    // Friendly/display name
   description: string;
   endpointId: string;
   allowedRoles: UserRole[];
-  /** Whether a user may pin an assistant on this model as their default. Policy, not capability. */
-  allowedAsDefault: boolean;
-  /** Whether the Responses API serves this model, under its modelId, to callers with one of its roles. */
-  exposedInApi: boolean;
-  capabilities: ModelCapabilities;
-  /** Empty string on a stored row that predates per-model protocols; such a row cannot be used until set. */
-  apiProtocol: ApiProtocol | '';
-  classification: DataClassification;
 }
 
-export interface CreateModelDto {
-  modelId: string;      // Provider model identifier
-  modelName: string;    // Friendly/display name
-  description: string;
-  endpointId: string;
-  allowedRoles: UserRole[];
+export interface LanguageModelDto extends ModelBaseDto {
+  type: 'Language';
   /** Whether a user may pin an assistant on this model as their default. Policy, not capability. */
   allowedAsDefault: boolean;
   /** Whether the Responses API serves this model, under its modelId, to callers with one of its roles. */
   exposedInApi: boolean;
-  capabilities: ModelCapabilities;
+  capabilities: LanguageModelCapabilities;
   apiProtocol: ApiProtocol;
   classification: DataClassification;
 }
 
-export interface UpdateModelDto {
-  id: string;
-  modelId: string;      // Provider model identifier
-  modelName: string;    // Friendly/display name
-  description: string;
-  endpointId: string;
-  allowedRoles: UserRole[];
-  /** Whether a user may pin an assistant on this model as their default. Policy, not capability. */
-  allowedAsDefault: boolean;
-  /** Whether the Responses API serves this model, under its modelId, to callers with one of its roles. */
-  exposedInApi: boolean;
-  capabilities: ModelCapabilities;
-  apiProtocol: ApiProtocol;
-  classification: DataClassification;
+export interface ImageModelDto extends ModelBaseDto {
+  type: 'Image';
+  imageApi: ImageApi;
+  capabilities: ImageModelCapabilities;
 }
+
+/** A model of any type, told apart by `type`. */
+export type ModelDto = LanguageModelDto | ImageModelDto;
+
+export const isLanguageModel = (model: ModelDto): model is LanguageModelDto => model.type === 'Language';
+
+export const isImageModel = (model: ModelDto): model is ImageModelDto => model.type === 'Image';
+
+/** The body a model of each type is created and updated with. */
+export type SaveLanguageModelDto = Omit<LanguageModelDto, 'id' | 'type'>;
+
+export type SaveImageModelDto = Omit<ImageModelDto, 'id' | 'type'>;
 
 /**
- * A model we have verified capability defaults for. Used to prefill the admin form; the
+ * A model we have verified capability defaults for. Used to prefill the admin forms; the
  * saved model row is still what the server sends at request time.
  */
-export interface CatalogModelDto {
+interface CatalogModelBaseDto {
   modelId: string;
   displayName: string;
   description: string;
   provider: EndpointType;
-  apiProtocol: ApiProtocol;
-  capabilities: ModelCapabilities;
 }
+
+export interface LanguageCatalogModelDto extends CatalogModelBaseDto {
+  type: 'Language';
+  apiProtocol: ApiProtocol;
+  capabilities: LanguageModelCapabilities;
+}
+
+export interface ImageCatalogModelDto extends CatalogModelBaseDto {
+  type: 'Image';
+  imageApi: ImageApi;
+  capabilities: ImageModelCapabilities;
+}
+
+export type CatalogModelDto = LanguageCatalogModelDto | ImageCatalogModelDto;
 
 export interface AppSettingsDto {
   defaultModelId: string;      // Model.id preselected when creating assistants

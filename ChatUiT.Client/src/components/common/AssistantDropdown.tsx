@@ -11,7 +11,7 @@ import Popover from './Popover';
 import { Menu, MenuItem } from './Menu';
 import { CAPABILITIES, capabilitiesOf, type Capability } from './assistantCapabilities';
 import type { AssistantDto } from '../../types/assistantModels';
-import type { UserModelDto } from '../../types/modelModels';
+import type { UserLanguageModelDto } from '../../types/modelModels';
 import './AssistantDropdown.css';
 
 interface AssistantDropdownProps {
@@ -41,7 +41,7 @@ export default function AssistantDropdown({ onClose }: AssistantDropdownProps) {
   const selectedAssistant = selectableAssistants.find(a => a.id === currentAssistantId) || selectableAssistants[0];
 
   const modelsSignal = getModels();
-  const models: UserModelDto[] = modelsSignal.value ?? [];
+  const models: UserLanguageModelDto[] = modelsSignal.value ?? [];
   const redEnabled = getRedEnabled().value;
 
   const handleSelectAssistant = (assistant: AssistantDto) => {

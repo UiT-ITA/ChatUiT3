@@ -15,7 +15,7 @@ using ChatUiT.Server.Models;
 /// </summary>
 public static class ChatParameterResolver
 {
-    public static ResolvedChatParameters Resolve(ModelCapabilities capabilities, ChatSettings settings)
+    public static ResolvedChatParameters Resolve(LanguageModelCapabilities capabilities, ChatSettings settings)
     {
         ArgumentNullException.ThrowIfNull(capabilities);
         ArgumentNullException.ThrowIfNull(settings);
@@ -34,7 +34,7 @@ public static class ChatParameterResolver
         };
     }
 
-    private static float? ResolveTemperature(ModelCapabilities capabilities, float requested, ReasoningEffort effort)
+    private static float? ResolveTemperature(LanguageModelCapabilities capabilities, float requested, ReasoningEffort effort)
     {
         return capabilities.Temperature switch
         {
@@ -46,7 +46,7 @@ public static class ChatParameterResolver
         };
     }
 
-    private static int ResolveMaxOutputTokens(ModelCapabilities capabilities)
+    private static int ResolveMaxOutputTokens(LanguageModelCapabilities capabilities)
     {
         var ceiling = capabilities.MaxOutputTokens > 0 ? capabilities.MaxOutputTokens : DefaultOutputTokens;
         var requested = capabilities.DefaultMaxOutputTokens > 0 ? capabilities.DefaultMaxOutputTokens : ceiling;

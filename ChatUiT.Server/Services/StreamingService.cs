@@ -1,20 +1,20 @@
 using System.Collections.Concurrent;
-using System.Threading.Channels;
 using Microsoft.Extensions.Logging;
 using Microsoft.AspNetCore.SignalR;
 using ChatUiT.Server.Hubs;
 using ChatUiT.Server.Models;
+using ChatUiT.Server.Services.Streaming;
 
 namespace ChatUiT.Server.Services;
 
 public class StreamingService
 {
     private readonly ILogger<StreamingService> _logger;
-    private readonly IHubContext<ChatHub, IChatHubClient> _hubContext;
-    private readonly ConcurrentDictionary<string, MessageStream> _activeStreams = new();
-    private readonly ConcurrentDictionary<string, GenerationHandle> _activeGenerations = new();
+    private readonly IHubContext<AppHub, IAppHubClient> _hubContext;
+    private readonly ConcurrentDictionary<string, LiveStream<ChatStreamChunk>> _activeStreams = new();
+    private readonly ConcurrentDictionary<string, RunHandle> _activeGenerations = new();
 
-    public StreamingService(ILogger<StreamingService> logger, IHubContext<ChatHub, IChatHubClient> hubContext)
+    public StreamingService(ILogger<StreamingService> logger, IHubContext<AppHub, IAppHubClient> hubContext)
     {
         _logger = logger;
         _hubContext = hubContext;
@@ -26,7 +26,7 @@ public class StreamingService
     /// </summary>
     public void RegisterGeneration(string userId, string messageId, CancellationTokenSource cancellationTokenSource, TimeSpan timeout)
     {
-        var handle = new GenerationHandle { Cts = cancellationTokenSource, Timeout = timeout };
+        var handle = new RunHandle { Cts = cancellationTokenSource, Timeout = timeout };
         handle.Resume();
         _activeGenerations[GetStreamKey(userId, messageId)] = handle;
     }
@@ -96,7 +96,7 @@ public class StreamingService
     public void StartMessage(string userId, string messageId)
     {
         var streamKey = GetStreamKey(userId, messageId);
-        var stream = new MessageStream(userId, messageId);
+        var stream = new LiveStream<ChatStreamChunk>();
         _activeStreams[streamKey] = stream;
         
         // Auto-cleanup after completion + delay
@@ -181,137 +181,4 @@ public class StreamingService
     }
 
     private static string GetStreamKey(string userId, string messageId) => $"{userId}:{messageId}";
-
-    private sealed class GenerationHandle
-    {
-        public required CancellationTokenSource Cts { get; init; }
-        public required TimeSpan Timeout { get; init; }
-        public volatile bool UserCancelled;
-
-        public void Suspend()
-        {
-            try
-            {
-                Cts.CancelAfter(System.Threading.Timeout.InfiniteTimeSpan);
-            }
-            catch (ObjectDisposedException)
-            {
-            }
-        }
-
-        /// <summary>Restarts the full deadline: the run gets its whole budget again after a pause.</summary>
-        public void Resume()
-        {
-            try
-            {
-                Cts.CancelAfter(Timeout);
-            }
-            catch (ObjectDisposedException)
-            {
-            }
-        }
-    }
-}
-
-internal class MessageStream : IDisposable
-{
-    private readonly List<ChatStreamChunk> _buffer = new();
-    private readonly List<Channel<ChatStreamChunk>> _channels = new();
-    private readonly object _lock = new();
-    private bool _isComplete = false;
-
-    public string UserId { get; }
-    public string MessageId { get; }
-
-    public MessageStream(string userId, string messageId)
-    {
-        UserId = userId;
-        MessageId = messageId;
-    }
-
-    public bool IsComplete
-    {
-        get
-        {
-            lock (_lock)
-            {
-                return _isComplete;
-            }
-        }
-    }
-
-    public void Publish(ChatStreamChunk chunk)
-    {
-        lock (_lock)
-        {
-            if (_isComplete) return;
-            
-            _buffer.Add(chunk);
-            foreach (var channel in _channels)
-            {
-                channel.Writer.TryWrite(chunk);
-            }
-        }
-    }
-
-    public void Complete()
-    {
-        lock (_lock)
-        {
-            _isComplete = true;
-            foreach (var channel in _channels)
-            {
-                channel.Writer.TryComplete();
-            }
-        }
-    }
-
-    public IAsyncEnumerable<ChatStreamChunk> GetReader()
-    {
-        var channel = Channel.CreateUnbounded<ChatStreamChunk>();
-        lock (_lock)
-        {
-            // Replay all existing chunks to new reader
-            foreach (var chunk in _buffer)
-            {
-                channel.Writer.TryWrite(chunk);
-            }
-            
-            // If already complete, close this channel too
-            if (_isComplete)
-            {
-                channel.Writer.TryComplete();
-            }
-            else
-            {
-                // Add to active channels for future chunks
-                _channels.Add(channel);
-            }
-        }
-
-        return ReadAll(channel.Reader);
-    }
-
-    private async IAsyncEnumerable<ChatStreamChunk> ReadAll(ChannelReader<ChatStreamChunk> reader)
-    {
-        while (await reader.WaitToReadAsync())
-        {
-            while (reader.TryRead(out var chunk))
-            {
-                yield return chunk;
-            }
-        }
-    }
-
-    public void Dispose()
-    {
-        lock (_lock)
-        {
-            foreach (var channel in _channels)
-            {
-                channel.Writer.TryComplete();
-            }
-            _channels.Clear();
-        }
-    }
 }

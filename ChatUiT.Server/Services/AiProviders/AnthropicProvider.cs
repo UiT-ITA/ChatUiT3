@@ -1,10 +1,12 @@
 using System;
+using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
 
 namespace ChatUiT.Server.Services.AiProviders;
 
 using ChatUiT.Server.Models;
+using ChatUiT.Server.Services.AiProviders.Images;
 using ChatUiT.Server.Services.AiProviders.Protocols;
 
 /// <summary>
@@ -35,9 +37,14 @@ public sealed class AnthropicProvider : IAiProvider
         return protocol.GenerateChatNameAsync(request, target, cancellationToken);
     }
 
+    public IAsyncEnumerable<ImageStreamEvent> GenerateImagesAsync(ImageRequest request, CancellationToken cancellationToken = default) =>
+        throw new NotSupportedException(
+            $"An Anthropic endpoint serves no image API, but image model '{request.Model.ModelId}' is on one. " +
+            "Put the model on a Microsoft Foundry or Azure OpenAI endpoint.");
+
     private (IApiProtocol Protocol, ProtocolTarget Target) Resolve(AiRequest request)
     {
-        var protocol = ApiProtocols.Require(request.Model);
+        var protocol = request.Model.ApiProtocol;
         if (protocol != ApiProtocol.AnthropicMessages)
         {
             throw new NotSupportedException(

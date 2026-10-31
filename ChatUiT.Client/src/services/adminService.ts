@@ -6,8 +6,8 @@ import type { DirectoryGroupDto,
   CreateEndpointDto,
   UpdateEndpointDto,
   ModelDto,
-  CreateModelDto,
-  UpdateModelDto,
+  SaveLanguageModelDto,
+  SaveImageModelDto,
   AdminAssistantDto,
   CreateAdminAssistantDto,
   UpdateAdminAssistantDto,
@@ -44,12 +44,20 @@ export async function getModels(): Promise<ModelDto[]> {
   return apiService<ModelDto[]>('/api/admin/models');
 }
 
-export async function createModel(data: CreateModelDto): Promise<ModelDto> {
-  return apiService.post<ModelDto>('/api/admin/models', data);
+export async function createLanguageModel(data: SaveLanguageModelDto): Promise<ModelDto> {
+  return apiService.post<ModelDto>('/api/admin/models/language', data);
 }
 
-export async function updateModel(id: string, data: UpdateModelDto): Promise<ModelDto> {
-  return apiService.put<ModelDto>(`/api/admin/models/${id}`, data);
+export async function updateLanguageModel(id: string, data: SaveLanguageModelDto): Promise<ModelDto> {
+  return apiService.put<ModelDto>(`/api/admin/models/language/${id}`, data);
+}
+
+export async function createImageModel(data: SaveImageModelDto): Promise<ModelDto> {
+  return apiService.post<ModelDto>('/api/admin/models/image', data);
+}
+
+export async function updateImageModel(id: string, data: SaveImageModelDto): Promise<ModelDto> {
+  return apiService.put<ModelDto>(`/api/admin/models/image/${id}`, data);
 }
 
 export async function deleteModel(id: string): Promise<void> {

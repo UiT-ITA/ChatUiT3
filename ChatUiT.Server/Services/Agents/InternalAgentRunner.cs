@@ -19,7 +19,7 @@ namespace ChatUiT.Server.Services.Agents;
 /// </summary>
 /// <param name="MaxRounds">Function call rounds before the model gets one last turn with function calls switched off.</param>
 public sealed record InternalAgentSetup(
-    Model Model,
+    LanguageModel Model,
     ModelEndpoint Endpoint,
     string SystemPrompt,
     ResolvedChatParameters Parameters,
@@ -65,11 +65,11 @@ public sealed class InternalAgentRunner
     /// (<paramref name="context"/>) at its lowest level. Without a context, as when the API
     /// catalog resolves an agent, only the setting counts.
     /// </summary>
-    public async Task<(Model Model, ModelEndpoint Endpoint, ReasoningEffort Effort)?> ResolveModelAsync(InternalAgent agent, ToolExecutionContext? context)
+    public async Task<(LanguageModel Model, ModelEndpoint Endpoint, ReasoningEffort Effort)?> ResolveModelAsync(InternalAgent agent, ToolExecutionContext? context)
     {
         if (await _settings.GetAsync(agent.Id) is { } setting)
         {
-            var stored = await _modelService.GetModelWithEndpointAsync(setting.ModelId);
+            var stored = await _modelService.GetModelWithEndpointAsync<LanguageModel>(setting.ModelId);
             if (stored is { } found && found.model.Capabilities.SupportsFunctionCalling)
             {
                 return (found.model, found.endpoint, setting.ReasoningEffort);

@@ -1,12 +1,12 @@
 import { signal, Signal } from "@preact/signals-react";
-import type { UserModelDto } from "../types/modelModels";
+import type { UserLanguageModelDto } from "../types/modelModels";
 import apiService from "./apiService";
 
-const modelsSignal = signal<UserModelDto[] | undefined>(undefined);
+const modelsSignal = signal<UserLanguageModelDto[] | undefined>(undefined);
 
 let modelsLoadingPromise: Promise<void> | null = null;
 
-export function getModels(): Signal<UserModelDto[] | undefined> {
+export function getModels(): Signal<UserLanguageModelDto[] | undefined> {
     if (modelsSignal.value === undefined && !modelsLoadingPromise) {
         loadModels();
     }
@@ -20,7 +20,7 @@ async function loadModels(): Promise<void> {
 
     modelsLoadingPromise = (async () => {
         try {
-            const response = await apiService<UserModelDto[]>("/api/Assistants/models");
+            const response = await apiService<UserLanguageModelDto[]>("/api/Assistants/models");
             modelsSignal.value = response;
         } catch (error) {
             console.error("Failed to load models:", error);

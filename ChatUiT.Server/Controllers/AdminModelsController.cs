@@ -3,11 +3,16 @@ using Microsoft.AspNetCore.Mvc;
 using ChatUiT.Server.Models;
 using ChatUiT.Server.Services;
 using ChatUiT.Server.Services.AiProviders;
+using ChatUiT.Server.Services.AiProviders.Images;
 using ChatUiT.Server.Services.ApiCatalog;
 using ChatUiT.Server.Services.TokenCounting;
 
 namespace ChatUiT.Server.Controllers;
 
+/// <summary>
+/// Models of every type. Reads and deletes take any model; each type is created and updated
+/// on its own route, with its own body.
+/// </summary>
 [ApiController]
 [Route("api/admin/models")]
 [Authorize(Roles = "Admin")]
@@ -29,8 +34,8 @@ public class AdminModelsController : ControllerBase
     {
         try
         {
-            var models = await _modelService.GetAllModelsAsync();
-            return Ok(models.Select(ToDto).ToList());
+            var models = await _modelService.GetModelsAsync<Model>();
+            return Ok(models.Select(ModelDtoMapper.ToDto).ToList());
         }
         catch (Exception ex)
         {
@@ -43,13 +48,13 @@ public class AdminModelsController : ControllerBase
     {
         try
         {
-            var model = await _modelService.GetModelByIdAsync(id);
+            var model = await _modelService.GetModelAsync<Model>(id);
             if (model == null)
             {
                 return NotFound($"Model with id {id} not found");
             }
 
-            return Ok(ToDto(model));
+            return Ok(ModelDtoMapper.ToDto(model));
         }
         catch (Exception ex)
         {
@@ -57,49 +62,24 @@ public class AdminModelsController : ControllerBase
         }
     }
 
-    [HttpPost]
-    public async Task<ActionResult<ModelDto>> CreateModel(CreateModelDto createDto)
+    [HttpPost("language")]
+    public async Task<ActionResult<ModelDto>> CreateLanguageModel(SaveLanguageModelDto dto)
     {
         try
         {
-            if (!IsValidScheme(createDto.Capabilities.TokenCountingScheme))
-            {
-                return BadRequest($"Unknown token counting scheme '{createDto.Capabilities.TokenCountingScheme}'");
-            }
-
-            if (!Enum.TryParse<ApiProtocol>(createDto.ApiProtocol, ignoreCase: true, out var protocol))
-            {
-                return BadRequest($"Unknown API protocol '{createDto.ApiProtocol}'");
-            }
-
-            if (!Enum.IsDefined(createDto.Classification))
-            {
-                return BadRequest($"Unknown data classification '{createDto.Classification}'");
-            }
-
-            var model = new Model
-            {
-                ApiProtocol = protocol,
-                ModelId = createDto.ModelId,
-                ModelName = createDto.ModelName,
-                Description = createDto.Description,
-                EndpointId = createDto.EndpointId,
-                AllowedRoles = createDto.AllowedRoles,
-                AllowedAsDefault = createDto.AllowedAsDefault,
-                Classification = createDto.Classification,
-                ExposedInApi = createDto.ExposedInApi,
-                Capabilities = ToCapabilities(createDto.Capabilities)
-            };
-
-            if (model.ExposedInApi && await _catalog.ModelExposureProblemAsync(model) is { } problem)
+            if (ValidateLanguageModel(dto) is { } problem)
             {
                 return BadRequest(problem);
             }
 
-            var createdId = await _modelService.CreateModelAsync(model);
-            model.Id = createdId;
+            var model = ToLanguageModel(dto, Guid.NewGuid().ToString());
+            if (model.ExposedInApi && await _catalog.ModelExposureProblemAsync(model) is { } exposureProblem)
+            {
+                return BadRequest(exposureProblem);
+            }
 
-            return CreatedAtAction(nameof(GetModel), new { id = createdId }, ToDto(model));
+            await _modelService.CreateModelAsync(model);
+            return CreatedAtAction(nameof(GetModel), new { id = model.Id }, ModelDtoMapper.ToDto(model));
         }
         catch (Exception ex)
         {
@@ -107,58 +87,61 @@ public class AdminModelsController : ControllerBase
         }
     }
 
-    [HttpPut("{id}")]
-    public async Task<ActionResult<ModelDto>> UpdateModel(string id, UpdateModelDto updateDto)
+    [HttpPut("language/{id}")]
+    public async Task<ActionResult<ModelDto>> UpdateLanguageModel(string id, SaveLanguageModelDto dto)
     {
         try
         {
-            if (id != updateDto.Id)
-            {
-                return BadRequest("Route id does not match request body id");
-            }
-
-            if (!IsValidScheme(updateDto.Capabilities.TokenCountingScheme))
-            {
-                return BadRequest($"Unknown token counting scheme '{updateDto.Capabilities.TokenCountingScheme}'");
-            }
-
-            if (!Enum.TryParse<ApiProtocol>(updateDto.ApiProtocol, ignoreCase: true, out var protocol))
-            {
-                return BadRequest($"Unknown API protocol '{updateDto.ApiProtocol}'");
-            }
-
-            if (!Enum.IsDefined(updateDto.Classification))
-            {
-                return BadRequest($"Unknown data classification '{updateDto.Classification}'");
-            }
-
-            var model = new Model
-            {
-                ApiProtocol = protocol,
-                Id = updateDto.Id,
-                ModelId = updateDto.ModelId,
-                ModelName = updateDto.ModelName,
-                Description = updateDto.Description,
-                EndpointId = updateDto.EndpointId,
-                AllowedRoles = updateDto.AllowedRoles,
-                AllowedAsDefault = updateDto.AllowedAsDefault,
-                Classification = updateDto.Classification,
-                ExposedInApi = updateDto.ExposedInApi,
-                Capabilities = ToCapabilities(updateDto.Capabilities)
-            };
-
-            if (model.ExposedInApi && await _catalog.ModelExposureProblemAsync(model) is { } problem)
+            if (ValidateLanguageModel(dto) is { } problem)
             {
                 return BadRequest(problem);
             }
 
-            var updated = await _modelService.UpdateModelAsync(model);
-            if (!updated)
+            var model = ToLanguageModel(dto, id);
+            if (model.ExposedInApi && await _catalog.ModelExposureProblemAsync(model) is { } exposureProblem)
             {
-                return NotFound($"Model with id {id} not found");
+                return BadRequest(exposureProblem);
             }
 
-            return Ok(ToDto(model));
+            return await SaveAsync(model);
+        }
+        catch (Exception ex)
+        {
+            return StatusCode(500, $"Internal server error: {ex.Message}");
+        }
+    }
+
+    [HttpPost("image")]
+    public async Task<ActionResult<ModelDto>> CreateImageModel(SaveImageModelDto dto)
+    {
+        try
+        {
+            if (ValidateImageModel(dto) is { } problem)
+            {
+                return BadRequest(problem);
+            }
+
+            var model = ToImageModel(dto, Guid.NewGuid().ToString());
+            await _modelService.CreateModelAsync(model);
+            return CreatedAtAction(nameof(GetModel), new { id = model.Id }, ModelDtoMapper.ToDto(model));
+        }
+        catch (Exception ex)
+        {
+            return StatusCode(500, $"Internal server error: {ex.Message}");
+        }
+    }
+
+    [HttpPut("image/{id}")]
+    public async Task<ActionResult<ModelDto>> UpdateImageModel(string id, SaveImageModelDto dto)
+    {
+        try
+        {
+            if (ValidateImageModel(dto) is { } problem)
+            {
+                return BadRequest(problem);
+            }
+
+            return await SaveAsync(ToImageModel(dto, id));
         }
         catch (Exception ex)
         {
@@ -185,14 +168,14 @@ public class AdminModelsController : ControllerBase
         }
     }
 
-    // Sends one test message to the saved model through its endpoint and reports whether text came back.
+    // Runs one small request on the saved model through its endpoint and reports whether a result came back.
     [HttpPost("{id}/test")]
     public async Task<ActionResult<ModelTestResultDto>> TestModel(string id, CancellationToken cancellationToken)
     {
-        var resolved = await _modelService.GetModelWithEndpointAsync(id);
+        var resolved = await _modelService.GetModelWithEndpointAsync<Model>(id);
         if (resolved == null)
         {
-            if (await _modelService.GetModelByIdAsync(id) == null)
+            if (await _modelService.GetModelAsync<Model>(id) == null)
             {
                 return NotFound($"Model with id {id} not found");
             }
@@ -206,35 +189,14 @@ public class AdminModelsController : ControllerBase
             return Ok(new ModelTestResultDto { Success = false, Error = $"No AI provider is registered for endpoint type {endpoint.EndpointType}." });
         }
 
-        var request = new AiRequest
-        {
-            Model = model,
-            Endpoint = endpoint,
-            Messages = AiInputItem.From(new List<ChatMessage>
-            {
-                new() { Role = AiChatRole.User, Content = TestPrompt }
-            }),
-            Parameters = ChatParameterResolver.Resolve(model.Capabilities, new ChatSettings { Model = model })
-        };
-
         try
         {
-            var text = new System.Text.StringBuilder();
-            var conversation = _providers.For(endpoint.EndpointType).StartConversation(request);
-            await foreach (var streamEvent in conversation.StreamTurnAsync(allowToolCalls: false, cancellationToken))
+            return Ok(model switch
             {
-                if (streamEvent is AiStreamEvent.Text textEvent)
-                {
-                    text.Append(textEvent.Delta);
-                }
-            }
-
-            if (string.IsNullOrWhiteSpace(text.ToString()))
-            {
-                return Ok(new ModelTestResultDto { Success = false, Error = "The model returned no text." });
-            }
-
-            return Ok(new ModelTestResultDto { Success = true, Response = text.ToString().Trim() });
+                LanguageModel language => await TestLanguageModelAsync(language, endpoint, cancellationToken),
+                ImageModel image => await TestImageModelAsync(image, endpoint, cancellationToken),
+                _ => new ModelTestResultDto { Success = false, Error = $"{model.Type} models cannot be tested yet." }
+            });
         }
         catch (Exception ex)
         {
@@ -242,35 +204,172 @@ public class AdminModelsController : ControllerBase
         }
     }
 
-    private const string TestPrompt = "This is a connection test. Reply with the single word OK.";
+    private const string LanguageTestPrompt = "This is a connection test. Reply with the single word OK.";
 
-    private static ModelDto ToDto(Model model) => new()
+    private const string ImageTestPrompt = "A small red circle on a white background.";
+
+    private async Task<ModelTestResultDto> TestLanguageModelAsync(LanguageModel model, ModelEndpoint endpoint, CancellationToken cancellationToken)
     {
-        Id = model.Id,
-        ModelId = model.ModelId,
-        ModelName = model.ModelName,
-        Description = model.Description,
-        EndpointId = model.EndpointId,
-        AllowedRoles = model.AllowedRoles,
-        AllowedAsDefault = model.AllowedAsDefault,
-        ExposedInApi = model.ExposedInApi,
-        ApiProtocol = model.ApiProtocol?.ToString() ?? string.Empty,
-        Classification = model.Classification,
-        Capabilities = new ModelCapabilitiesDto
+        var request = new AiRequest
         {
-            SupportsVision = model.Capabilities.SupportsVision,
-            SupportsFunctionCalling = model.Capabilities.SupportsFunctionCalling,
-            Temperature = model.Capabilities.Temperature,
-            SupportedEfforts = model.Capabilities.SupportedEfforts,
-            MaxContextTokens = model.Capabilities.MaxContextTokens,
-            MaxOutputTokens = model.Capabilities.MaxOutputTokens,
-            DefaultMaxOutputTokens = model.Capabilities.DefaultMaxOutputTokens,
-            KnowledgeCutoff = model.Capabilities.KnowledgeCutoff,
-            TokenCountingScheme = model.Capabilities.TokenCountingScheme
+            Model = model,
+            Endpoint = endpoint,
+            Messages = AiInputItem.From(new List<ChatMessage>
+            {
+                new() { Role = AiChatRole.User, Content = LanguageTestPrompt }
+            }),
+            Parameters = ChatParameterResolver.Resolve(model.Capabilities, new ChatSettings { Model = model })
+        };
+
+        var text = await _providers.For(endpoint.EndpointType).CompleteTextAsync(request, cancellationToken);
+        if (text.Length == 0)
+        {
+            return new ModelTestResultDto { Success = false, Error = "The model returned no text." };
         }
+
+        return new ModelTestResultDto { Success = true, Response = text };
+    }
+
+    // Asks for one image at the smallest preset and the lowest quality the model offers.
+    private async Task<ModelTestResultDto> TestImageModelAsync(ImageModel model, ModelEndpoint endpoint, CancellationToken cancellationToken)
+    {
+        var capabilities = model.Capabilities;
+        var parameters = new ImageGenerationParameters
+        {
+            Prompt = ImageTestPrompt,
+            Size = capabilities.SizePresets.OrderBy(s => (long)s.Width * s.Height).FirstOrDefault(),
+            Quality = capabilities.Qualities.Where(q => q != ImageQuality.Auto).Cast<ImageQuality?>().FirstOrDefault()
+        };
+
+        var problems = ImageParameterValidator.Validate(capabilities, parameters);
+        if (problems.Count > 0)
+        {
+            return new ModelTestResultDto { Success = false, Error = string.Join(" ", problems) };
+        }
+
+        var request = new ImageRequest { Model = model, Endpoint = endpoint, Parameters = parameters };
+        await foreach (var streamEvent in _providers.For(endpoint.EndpointType).GenerateImagesAsync(request, cancellationToken))
+        {
+            if (streamEvent is ImageStreamEvent.Image image)
+            {
+                return new ModelTestResultDto { Success = true, Response = $"{image.Format} image, {image.Content.Length / 1024} KB" };
+            }
+        }
+
+        return new ModelTestResultDto { Success = false, Error = "The model returned no image." };
+    }
+
+    // Saves an update; a model of another type under the id is refused.
+    private async Task<ActionResult<ModelDto>> SaveAsync(Model model)
+    {
+        var existing = await _modelService.GetModelAsync<Model>(model.Id);
+        if (existing == null)
+        {
+            return NotFound($"Model with id {model.Id} not found");
+        }
+
+        if (existing.Type != model.Type)
+        {
+            return BadRequest($"Model {model.Id} is a {existing.Type} model, not a {model.Type} model.");
+        }
+
+        if (!await _modelService.UpdateModelAsync(model))
+        {
+            return NotFound($"Model with id {model.Id} not found");
+        }
+
+        return Ok(ModelDtoMapper.ToDto(model));
+    }
+
+    private static string? ValidateLanguageModel(SaveLanguageModelDto dto)
+    {
+        if (!IsValidScheme(dto.Capabilities.TokenCountingScheme))
+        {
+            return $"Unknown token counting scheme '{dto.Capabilities.TokenCountingScheme}'";
+        }
+
+        if (!Enum.IsDefined(dto.ApiProtocol))
+        {
+            return $"Unknown API protocol '{dto.ApiProtocol}'";
+        }
+
+        if (!Enum.IsDefined(dto.Classification))
+        {
+            return $"Unknown data classification '{dto.Classification}'";
+        }
+
+        return null;
+    }
+
+    private static string? ValidateImageModel(SaveImageModelDto dto)
+    {
+        var capabilities = dto.Capabilities;
+        if (!Enum.IsDefined(dto.ImageApi))
+        {
+            return $"Unknown image API '{dto.ImageApi}'";
+        }
+
+        if (capabilities.MaxImagesPerRequest < 1)
+        {
+            return "The model must make at least 1 image per request.";
+        }
+
+        if (capabilities.OutputFormats.Count == 0)
+        {
+            return "The model must return at least one format.";
+        }
+
+        if (capabilities.SizePresets.Count == 0 && !capabilities.SupportsAutoSize && !capabilities.SupportsCustomSize)
+        {
+            return "The model must offer a size: presets, auto size or custom sizes.";
+        }
+
+        if (capabilities.SizePresets.Any(s => s.Width <= 0 || s.Height <= 0))
+        {
+            return "Every size preset needs a width and height above 0.";
+        }
+
+        if (capabilities.MaxPartialImages < 0)
+        {
+            return "Partial images cannot be negative.";
+        }
+
+        if (capabilities.Editing is { } editing && (editing.MaxInputImages < 1 || editing.InputFormats.Count == 0))
+        {
+            return "An editing model must take at least 1 input image and one input format.";
+        }
+
+        return null;
+    }
+
+    private static LanguageModel ToLanguageModel(SaveLanguageModelDto dto, string id) => new()
+    {
+        Id = id,
+        ModelId = dto.ModelId,
+        ModelName = dto.ModelName,
+        Description = dto.Description,
+        EndpointId = dto.EndpointId,
+        AllowedRoles = dto.AllowedRoles,
+        AllowedAsDefault = dto.AllowedAsDefault,
+        ExposedInApi = dto.ExposedInApi,
+        ApiProtocol = dto.ApiProtocol,
+        Classification = dto.Classification,
+        Capabilities = ToCapabilities(dto.Capabilities)
     };
 
-    private static ModelCapabilities ToCapabilities(ModelCapabilitiesDto dto) => new()
+    private static ImageModel ToImageModel(SaveImageModelDto dto, string id) => new()
+    {
+        Id = id,
+        ModelId = dto.ModelId,
+        ModelName = dto.ModelName,
+        Description = dto.Description,
+        EndpointId = dto.EndpointId,
+        AllowedRoles = dto.AllowedRoles,
+        ImageApi = dto.ImageApi,
+        Capabilities = ModelDtoMapper.ToCapabilities(dto.Capabilities)
+    };
+
+    private static LanguageModelCapabilities ToCapabilities(LanguageModelCapabilitiesDto dto) => new()
     {
         SupportsVision = dto.SupportsVision,
         SupportsFunctionCalling = dto.SupportsFunctionCalling,

@@ -36,6 +36,7 @@ const IconRail = ({ isMobile }: IconRailProps) => {
   const compact = useMediaQuery('(max-width: 27.5rem)') && !!isMobile;
 
   const section = location.pathname.startsWith('/assistants') ? 'assistants'
+    : location.pathname.startsWith('/generate') ? 'generate'
     : location.pathname.startsWith('/admin') ? 'admin'
     : location.pathname.startsWith('/settings') ? 'settings'
     : location.pathname.startsWith('/help') ? 'help'
@@ -79,6 +80,7 @@ const IconRail = ({ isMobile }: IconRailProps) => {
 
       <IconButton iconSize="xl" icon="chatNew" label={t('sidebar.chats')} active={section === 'chats'} onClick={() => go('/')} />
       <IconButton iconSize="xl" icon="assistants" label={t('sidebar.assistants')} active={section === 'assistants'} onClick={() => go('/assistants')} />
+      <IconButton iconSize="xl" icon="image" label={t('sidebar.generate')} active={section === 'generate'} onClick={() => go('/generate')} />
       {isAdmin && (
         <IconButton iconSize="xl" icon="admin" label={t('sidebar.admin')} active={section === 'admin'} onClick={() => go('/admin')} />
       )}

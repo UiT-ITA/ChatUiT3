@@ -10,7 +10,7 @@ import { getKnowledgeSources } from '../../services/knowledgeSourceService';
 import { adminToolsSignal } from '../../services/adminDataService';
 import { clampEffort, type AdminToolDto, type ToolAccessPolicyDto } from '../../types/admin';
 import GroupPicker from '../common/GroupPicker';
-import type { UserModelDto } from '../../types/modelModels';
+import type { UserLanguageModelDto } from '../../types/modelModels';
 import { createAssistant, updateAssistant, fetchAssistantFile, getAssistants } from '../../services/assistantService';
 import TagField from '../common/TagField';
 import ClassificationBadge from '../common/ClassificationBadge';
@@ -44,7 +44,7 @@ const createEmptyKnowledgeFiles = (): Record<KnowledgeFileCategory, KnowledgeFil
 });
 
 /** True when a temperature control makes sense for the model at the current effort. */
-const showsTemperature = (model: UserModelDto | undefined, effort: ReasoningEffort | undefined) => {
+const showsTemperature = (model: UserLanguageModelDto | undefined, effort: ReasoningEffort | undefined) => {
   if (!model) return false;
   if (model.capabilities.temperature === 'Supported') return true;
   // gpt-5.x rejects a non-default temperature while reasoning is active.
@@ -174,7 +174,7 @@ const AssistantForm: React.FC<AssistantFormProps> = ({
     setRejectedFiles([]);
   }
 
-  const models: UserModelDto[] = modelsSignal.value ?? [];
+  const models: UserLanguageModelDto[] = modelsSignal.value ?? [];
   const selectedModel = models.find(m => m.id === formData.modelId);
   const supportedEfforts = selectedModel?.capabilities.supportedEfforts ?? [];
   const currentEffort = clampEffort(formData.reasoningEffort, supportedEfforts);
@@ -182,7 +182,7 @@ const AssistantForm: React.FC<AssistantFormProps> = ({
   // Token budget for always-loaded files. A model without a counter has no budget.
   const scheme = parseScheme(selectedModel?.capabilities.tokenCountingScheme);
   const tokenizer = scheme ? getTokenizer(scheme).value : undefined;
-  const alwaysLoadedBudget = (model: UserModelDto, modelScheme: ParsedScheme, modelTokenizer: Tokenizer | undefined) => ({
+  const alwaysLoadedBudget = (model: UserLanguageModelDto, modelScheme: ParsedScheme, modelTokenizer: Tokenizer | undefined) => ({
     used: knowledgeFilesTokens(knowledgeFiles.alwaysLoaded, modelScheme, modelTokenizer),
     limit: alwaysLoadedLimit(model.capabilities.contextSize)
   });

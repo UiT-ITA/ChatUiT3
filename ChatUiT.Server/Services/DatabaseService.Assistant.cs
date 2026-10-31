@@ -219,8 +219,8 @@ public partial class DatabaseService
     private async Task<Assistant> MapAssistantAsync(AssistantDocument document, bool includeFileContent = false)
     {
         var model = string.IsNullOrWhiteSpace(document.ChatSettings.ModelId)
-            ? new Model()
-            : new Model { Id = document.ChatSettings.ModelId };
+            ? new LanguageModel()
+            : new LanguageModel { Id = document.ChatSettings.ModelId };
 
         var contentBlocksById = includeFileContent && document.Files.Count > 0
             ? await ReadAssistantContentBlockMapAsync(document.Id)

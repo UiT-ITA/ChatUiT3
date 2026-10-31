@@ -2,37 +2,31 @@ import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { useSignals } from '@preact/signals-react/runtime';
-import { createModel, updateModel, deleteModel, getModelCatalog, getEndpointDeployments, testModel } from '../../services/adminService';
+import { createLanguageModel, updateLanguageModel } from '../../services/adminService';
 import { adminEndpointsSignal, adminModelsSignal, loadAdminData } from '../../services/adminDataService';
 import type {
   UserRole,
-  ModelCapabilities,
+  LanguageModelCapabilities,
   TemperatureSupport,
   ReasoningEffortLevel,
-  CatalogModelDto,
+  LanguageCatalogModelDto,
   ApiProtocol,
-  ModelDto,
+  LanguageModelDto,
   EndpointDto,
-  EndpointDeploymentDto,
-  ModelTestResultDto,
 } from '../../types/admin';
-import { API_PROTOCOLS, REASONING_EFFORT_ORDER, TOKEN_COUNTING_SCHEME_OPTIONS } from '../../types/admin';
+import { API_PROTOCOLS, REASONING_EFFORT_ORDER, TOKEN_COUNTING_SCHEME_OPTIONS, isLanguageModel } from '../../types/admin';
 import { DATA_CLASSIFICATIONS, type DataClassification } from '../../types/modelModels';
 import EditorHeader from '../layout/EditorHeader';
-import { Icon } from '../common/Icon';
 import Select from '../common/Select';
 import TextInput from '../common/TextInput';
 import TextArea from '../common/TextArea';
 import Checkbox, { CheckboxGroup } from '../common/Checkbox';
 import Field from '../common/Field';
-import Button from '../common/Button';
 import Stack from '../common/Stack';
 import Grid from '../common/Grid';
-import { ConfirmDialog } from '../common/Dialog';
 import { hasChanges } from '../../utils/formChanges';
-import ModelCombobox, { type ModelComboboxOption } from './ModelCombobox';
-
-const ALL_ROLES: UserRole[] = ['User', 'Admin', 'Beta', 'Super', 'External'];
+import { AllowedRolesField, EndpointSelect, KnownModelSelect, ModelEditorFooter, ModelIdField } from './ModelEditorParts';
+import { ALL_ROLES, catalogEntryForModelId, modelIdOptions, useEndpointDeployments, useModelCatalog } from './modelEditorShared';
 
 const TEMPERATURE_OPTIONS: TemperatureSupport[] = [
   'Unsupported',
@@ -40,7 +34,7 @@ const TEMPERATURE_OPTIONS: TemperatureSupport[] = [
   'SupportedWhenReasoningDisabled',
 ];
 
-const defaultCapabilities: ModelCapabilities = {
+const defaultCapabilities: LanguageModelCapabilities = {
   supportsVision: false,
   supportsFunctionCalling: false,
   temperature: 'Unsupported',
@@ -52,12 +46,12 @@ const defaultCapabilities: ModelCapabilities = {
   tokenCountingScheme: null,
 };
 
-interface ModelEditorProps {
+interface LanguageModelEditorProps {
   modelId?: string;
 }
 
 /** The form's field values for a model, or the defaults for a new one. */
-function formStateFor(model: ModelDto | undefined, endpoints: EndpointDto[]) {
+function formStateFor(model: LanguageModelDto | undefined, endpoints: EndpointDto[]) {
   const caps = model?.capabilities ?? defaultCapabilities;
   const iso = caps.knowledgeCutoff;
   return {
@@ -74,6 +68,7 @@ function formStateFor(model: ModelDto | undefined, endpoints: EndpointDto[]) {
     // A new model starts ticked; an admin unticks it for models too expensive to run unprompted.
     allowedAsDefault: model?.allowedAsDefault ?? true,
     exposedInApi: model?.exposedInApi ?? false,
+    // '' until the admin picks one for a new model.
     apiProtocol: (model?.apiProtocol ?? '') as ApiProtocol | '',
     classification: model?.classification ?? 'Green' as DataClassification,
     capabilities: caps,
@@ -81,13 +76,14 @@ function formStateFor(model: ModelDto | undefined, endpoints: EndpointDto[]) {
   };
 }
 
-const ModelEditor: React.FC<ModelEditorProps> = ({ modelId: editId }) => {
+const LanguageModelEditor: React.FC<LanguageModelEditorProps> = ({ modelId: editId }) => {
   useSignals();
   const { t } = useTranslation();
   const navigate = useNavigate();
   const models = adminModelsSignal.value;
   const endpoints = adminEndpointsSignal.value ?? [];
-  const model = editId ? models?.find(m => m.id === editId) : undefined;
+  const stored = editId ? models?.find(m => m.id === editId) : undefined;
+  const model = stored && isLanguageModel(stored) ? stored : undefined;
 
   const initial = formStateFor(model, endpoints);
   const [modelId, setModelId] = useState(initial.modelId);
@@ -97,47 +93,22 @@ const ModelEditor: React.FC<ModelEditorProps> = ({ modelId: editId }) => {
   const [allowedRoles, setAllowedRoles] = useState<UserRole[]>(initial.allowedRoles);
   const [allowedAsDefault, setAllowedAsDefault] = useState(initial.allowedAsDefault);
   const [exposedInApi, setExposedInApi] = useState(initial.exposedInApi);
-  // '' until the admin picks one; a stored row from before per-model protocols also arrives as ''.
   const [apiProtocol, setApiProtocol] = useState<ApiProtocol | ''>(initial.apiProtocol);
   const [classification, setClassification] = useState<DataClassification>(initial.classification);
-  const [capabilities, setCapabilities] = useState<ModelCapabilities>(initial.capabilities);
+  const [capabilities, setCapabilities] = useState<LanguageModelCapabilities>(initial.capabilities);
   const [knowledgeCutoffMonth, setKnowledgeCutoffMonth] = useState<string>(initial.knowledgeCutoffMonth);
   const [saving, setSaving] = useState(false);
-  const [catalog, setCatalog] = useState<CatalogModelDto[]>([]);
+  const catalog = useModelCatalog('Language');
   // The catalog entry last applied, or '' for custom values
   const [presetId, setPresetId] = useState('');
-  // The deployments listed for endpointId; empty when the endpoint cannot list them
-  const [deployments, setDeployments] = useState<{ endpointId: string; items: EndpointDeploymentDto[] }>({ endpointId: '', items: [] });
-  const [testing, setTesting] = useState(false);
-  const [testResult, setTestResult] = useState<ModelTestResultDto | null>(null);
-  const [confirmDelete, setConfirmDelete] = useState(false);
-  const [deleting, setDeleting] = useState(false);
+  const deployments = useEndpointDeployments(endpointId);
 
   useEffect(() => {
     loadAdminData();
-    // A failed catalog fetch must not block the form — it only prefills.
-    getModelCatalog().then(setCatalog).catch(() => setCatalog([]));
   }, []);
 
-  useEffect(() => {
-    if (!endpointId) return;
-    let cancelled = false;
-    getEndpointDeployments(endpointId)
-      .then(items => { if (!cancelled) setDeployments({ endpointId, items }); })
-      .catch(() => { if (!cancelled) setDeployments({ endpointId, items: [] }); });
-    return () => { cancelled = true; };
-  }, [endpointId]);
-
-  const deploymentsLoaded = deployments.endpointId === endpointId;
-  const endpointDeployments = deploymentsLoaded ? deployments.items : [];
   const endpointType = endpoints.find(ep => ep.id === endpointId)?.endpointType;
-  // The endpoint's deployments, or the presets for its type when it lists none.
-  const modelOptions: ModelComboboxOption[] = (!deploymentsLoaded
-    ? []
-    : endpointDeployments.length > 0
-      ? endpointDeployments.map(d => ({ value: d.name, detail: d.model !== d.name ? d.model : undefined }))
-      : catalog.filter(c => c.provider === endpointType).map(c => ({ value: c.modelId, detail: c.displayName }))
-  ).map(o => ({ ...o, added: models?.some(m => m.endpointId === endpointId && m.modelId.toLowerCase() === o.value.toLowerCase()) ?? false }));
+  const modelOptions = modelIdOptions(deployments, catalog, endpointType, models, endpointId);
 
   const [synced, setSynced] = useState({ model, endpointCount: endpoints.length });
   if (model !== synced.model || endpoints.length !== synced.endpointCount) {
@@ -155,8 +126,6 @@ const ModelEditor: React.FC<ModelEditorProps> = ({ modelId: editId }) => {
     setCapabilities(next.capabilities);
     setKnowledgeCutoffMonth(next.knowledgeCutoffMonth);
     setPresetId('');
-    setTestResult(null);
-    setConfirmDelete(false);
   }
 
   if (editId && models === undefined) {
@@ -167,16 +136,7 @@ const ModelEditor: React.FC<ModelEditorProps> = ({ modelId: editId }) => {
     return <div className="admin-empty t-ui-plain">{t('common.notFound')}</div>;
   }
 
-  const toggleRole = (role: UserRole, checked: boolean) => {
-    setAllowedRoles(prev => {
-      const set = new Set(prev);
-      if (checked) set.add(role);
-      else set.delete(role);
-      return Array.from(set) as UserRole[];
-    });
-  };
-
-  const updateCaps = <K extends keyof ModelCapabilities>(key: K, value: ModelCapabilities[K]) => {
+  const updateCaps = <K extends keyof LanguageModelCapabilities>(key: K, value: LanguageModelCapabilities[K]) => {
     setCapabilities(prev => ({ ...prev, [key]: value }));
     setPresetId('');
   };
@@ -197,7 +157,7 @@ const ModelEditor: React.FC<ModelEditorProps> = ({ modelId: editId }) => {
   };
 
   // Overwrites protocol and capabilities. Model id, name and description are filled only when empty; the endpoint is never touched.
-  const applyCatalogEntry = (entry: CatalogModelDto, currentModelId: string) => {
+  const applyCatalogEntry = (entry: LanguageCatalogModelDto, currentModelId: string) => {
     setPresetId(entry.modelId);
     if (!currentModelId) setModelId(entry.modelId);
     setApiProtocol(entry.apiProtocol);
@@ -208,20 +168,9 @@ const ModelEditor: React.FC<ModelEditorProps> = ({ modelId: editId }) => {
     if (!description) setDescription(entry.description);
   };
 
-  const findCatalogEntry = (id: string) =>
-    catalog.find(c => c.modelId.toLowerCase() === id.toLowerCase());
-
-  // A listed deployment applies the preset for the model it runs. Without a list, a typed name that equals a preset id applies that preset.
-  // Nothing is applied while the deployments are loading.
   const handleModelIdChange = (value: string) => {
     setModelId(value);
-    if (!deploymentsLoaded) return;
-    const entry = endpointDeployments.length > 0
-      ? (() => {
-          const deployment = endpointDeployments.find(d => d.name.toLowerCase() === value.toLowerCase());
-          return deployment ? findCatalogEntry(deployment.model) : undefined;
-        })()
-      : findCatalogEntry(value);
+    const entry = catalogEntryForModelId(value, deployments, catalog);
     if (entry) applyCatalogEntry(entry, value);
   };
 
@@ -247,7 +196,7 @@ const ModelEditor: React.FC<ModelEditorProps> = ({ modelId: editId }) => {
     if (!canSave || saving) return;
     setSaving(true);
     try {
-      const capsToSend: ModelCapabilities = {
+      const capsToSend: LanguageModelCapabilities = {
         ...capabilities,
         knowledgeCutoff: knowledgeCutoffMonth ? `${knowledgeCutoffMonth}-01T00:00:00Z` : null,
         tokenCountingScheme: capabilities.tokenCountingScheme?.trim() || null,
@@ -255,41 +204,14 @@ const ModelEditor: React.FC<ModelEditorProps> = ({ modelId: editId }) => {
       const payload = { modelId, modelName, description, endpointId, allowedRoles, allowedAsDefault, exposedInApi, apiProtocol, classification, capabilities: capsToSend };
 
       if (model) {
-        await updateModel(model.id, { id: model.id, ...payload });
+        await updateLanguageModel(model.id, payload);
       } else {
-        await createModel(payload);
+        await createLanguageModel(payload);
       }
       await loadAdminData(true);
       navigate('/admin/models');
     } finally {
       setSaving(false);
-    }
-  };
-
-  const handleTest = async () => {
-    if (!model || testing) return;
-    setTesting(true);
-    setTestResult(null);
-    try {
-      setTestResult(await testModel(model.id));
-    } catch (error) {
-      setTestResult({ success: false, error: error instanceof Error ? error.message : String(error) });
-    } finally {
-      setTesting(false);
-    }
-  };
-
-  const handleDelete = async () => {
-    if (!model || deleting) return;
-    setDeleting(true);
-    try {
-      await deleteModel(model.id);
-      await loadAdminData(true);
-      navigate('/admin/models');
-    } catch (error) {
-      console.error('Failed to delete model:', error);
-    } finally {
-      setDeleting(false);
     }
   };
 
@@ -315,52 +237,19 @@ const ModelEditor: React.FC<ModelEditorProps> = ({ modelId: editId }) => {
       <div className="page-title-bar" />
 
       <Stack gap="xl">
-        <Select
-          label={t('admin.models.fields.endpoint')}
-          value={endpointId}
-          onChange={setEndpointId}
-        >
-          {endpointId === '' && (
-            <option value="" disabled>{t('admin.models.fields.endpointNone')}</option>
-          )}
-          {endpoints.map(ep => (
-            <option key={ep.id} value={ep.id}>
-              {ep.url} ({t(`admin.endpointType.${ep.endpointType}`)})
-            </option>
-          ))}
-        </Select>
+        <EndpointSelect value={endpointId} endpoints={endpoints} onChange={setEndpointId} />
 
         {endpointId && (
-          <Field label={t('admin.models.fields.modelId')}>
-            <ModelCombobox
-              value={modelId}
-              options={modelOptions}
-              placeholder={t('admin.models.fields.modelIdPlaceholder')}
-              addedLabel={t('admin.models.fields.modelIdAdded')}
-              otherLabel={t('admin.models.fields.modelIdOther')}
-              onChange={handleModelIdChange}
-            />
-          </Field>
+          <ModelIdField value={modelId} options={modelOptions} onChange={handleModelIdChange} />
         )}
 
         {endpointId && catalog.length > 0 && (
-          <Select
-            label={t('admin.models.fields.knownModel')}
-            description={t('admin.models.fields.knownModelHint')}
+          <KnownModelSelect
+            catalog={catalog}
             value={presetId}
-            onChange={(value) => {
-              const entry = catalog.find(c => c.modelId === value);
-              if (entry) applyCatalogEntry(entry, modelId);
-              else setPresetId('');
-            }}
-          >
-            <option value="">{t('admin.models.fields.knownModelCustom')}</option>
-            {catalog.map(entry => (
-              <option key={entry.modelId} value={entry.modelId}>
-                {entry.displayName} ({t(`admin.endpointType.${entry.provider}`)})
-              </option>
-            ))}
-          </Select>
+            onSelect={(entry) => applyCatalogEntry(entry, modelId)}
+            onClear={() => setPresetId('')}
+          />
         )}
 
         {showDetails && (
@@ -404,22 +293,7 @@ const ModelEditor: React.FC<ModelEditorProps> = ({ modelId: editId }) => {
               ))}
             </Select>
 
-            <Field
-              label={t('admin.models.fields.allowedRoles')}
-              description={allowedRoles.length === 0 ? t('admin.models.fields.allowedRolesRequired') : undefined}
-            >
-              <CheckboxGroup>
-                {ALL_ROLES.map(role => (
-                  <Checkbox
-                    key={role}
-                    checked={allowedRoles.includes(role)}
-                    onChange={(checked) => toggleRole(role, checked)}
-                  >
-                    {t(`roles.${role}`)}
-                  </Checkbox>
-                ))}
-              </CheckboxGroup>
-            </Field>
+            <AllowedRolesField value={allowedRoles} onChange={setAllowedRoles} />
 
             <Checkbox checked={allowedAsDefault} onChange={setAllowedAsDefault} description={t('admin.models.fields.allowedAsDefaultHelp')}>
               {t('admin.models.fields.allowedAsDefault')}
@@ -535,41 +409,9 @@ const ModelEditor: React.FC<ModelEditorProps> = ({ modelId: editId }) => {
         )}
       </Stack>
 
-      {model && (
-        <div className="admin-form-footer">
-          <Button
-            variant="secondary"
-            onClick={handleTest}
-            disabled={testing || dirty}
-            title={dirty ? t('admin.models.test.saveFirst') : undefined}
-          >
-            {testing ? t('admin.models.test.running') : t('admin.models.test.button')}
-          </Button>
-          {testResult?.success && (
-            <span className="admin-test-success" title={testResult.response ?? undefined}>
-              <Icon name="check" size="xl" color="success" />
-            </span>
-          )}
-          {testResult && !testResult.success && (
-            <span className="admin-test-error t-caption">{testResult.error}</span>
-          )}
-          <Button variant="danger" ml="auto" onClick={() => setConfirmDelete(true)}>
-            {t('admin.models.actions.delete')}
-          </Button>
-        </div>
-      )}
-
-      <ConfirmDialog
-        isOpen={confirmDelete}
-        title={t('admin.models.dialog.delete.title')}
-        message={t('admin.models.dialog.delete.confirm')}
-        confirmLabel={t('admin.models.actions.delete')}
-        busy={deleting}
-        onConfirm={handleDelete}
-        onCancel={() => setConfirmDelete(false)}
-      />
+      {model && <ModelEditorFooter modelId={model.id} dirty={dirty} />}
     </div>
   );
 };
 
-export default ModelEditor;
+export default LanguageModelEditor;

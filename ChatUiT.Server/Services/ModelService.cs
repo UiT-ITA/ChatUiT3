@@ -84,17 +84,17 @@ public class ModelService : IModelService
     }
 
     // Model operations
-    public async Task<List<Model>> GetAllModelsAsync()
+    public async Task<List<TModel>> GetModelsAsync<TModel>() where TModel : Model
     {
         await EnsureInitializedAsync();
-        return _models.Values.ToList();
+        return _models.Values.OfType<TModel>().ToList();
     }
 
-    public async Task<Model?> GetModelByIdAsync(string modelId)
+    public async Task<TModel?> GetModelAsync<TModel>(string modelId) where TModel : Model
     {
         await EnsureInitializedAsync();
         _models.TryGetValue(modelId, out var model);
-        return model;
+        return model as TModel;
     }
 
     public async Task<string> CreateModelAsync(Model model)
@@ -125,28 +125,29 @@ public class ModelService : IModelService
     }
 
     // User-specific operations
-    public async Task<List<Model>> GetAvailableModelsForUserAsync(List<UserRole> userRoles)
+    public async Task<List<TModel>> GetModelsForUserAsync<TModel>(List<UserRole> userRoles) where TModel : Model
     {
         await EnsureInitializedAsync();
         return _models.Values
+            .OfType<TModel>()
             .Where(m => m.AllowedRoles.Any(role => userRoles.Contains(role)))
             .ToList();
     }
 
-    public async Task<Model?> GetModelForUserAsync(string modelId, List<UserRole> userRoles)
+    public async Task<TModel?> GetModelForUserAsync<TModel>(string modelId, List<UserRole> userRoles) where TModel : Model
     {
         await EnsureInitializedAsync();
-        if (!_models.TryGetValue(modelId, out var model))
+        if (!_models.TryGetValue(modelId, out var stored) || stored is not TModel model)
             return null;
 
         return model.AllowedRoles.Any(role => userRoles.Contains(role)) ? model : null;
     }
 
     // Provider integration
-    public async Task<(ModelEndpoint endpoint, Model model)?> GetModelWithEndpointAsync(string modelId)
+    public async Task<(ModelEndpoint endpoint, TModel model)?> GetModelWithEndpointAsync<TModel>(string modelId) where TModel : Model
     {
         await EnsureInitializedAsync();
-        if (!_models.TryGetValue(modelId, out var model))
+        if (!_models.TryGetValue(modelId, out var stored) || stored is not TModel model)
             return null;
 
         if (!_endpoints.TryGetValue(model.EndpointId, out var endpoint))

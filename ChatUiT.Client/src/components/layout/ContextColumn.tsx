@@ -9,10 +9,12 @@ import { ChatList } from '../chat/ChatList';
 import { AssistantList } from '../assistants/AssistantList';
 import { getChats } from '../../services/chatService';
 import { getAssistants } from '../../services/assistantService';
+import { getGenerations } from '../../services/mediaGenerationService';
 import { adminEndpointsSignal, adminModelsSignal, adminAssistantsSignal, adminToolsSignal, adminInternalAgentsSignal, loadAdminData } from '../../services/adminDataService';
 import { useAuth } from '../../hooks/useAuth';
 import { toolboxLabel, ADMIN_DOMAINS, ADMIN_DOMAIN_ICONS, ADMIN_SETTINGS_PAGES, type AdminDomain } from '../../types/admin';
 import type { SettingsCategory } from '../../types/settingsModels';
+import { MODEL_TYPES } from '../../types/modelModels';
 import { HELP_SECTIONS, isHelpSection } from '../help/helpSections';
 import HelpSectionNav from '../help/HelpSectionNav';
 import { cx } from '../common/layout';
@@ -38,6 +40,7 @@ const ContextColumn = ({ isMobile, collapsed, peek }: ContextColumnProps) => {
   const pathParts = location.pathname.split('/').filter(Boolean);
 
   const section = location.pathname.startsWith('/assistants') ? 'assistants'
+    : location.pathname.startsWith('/generate') ? 'generate'
     : location.pathname.startsWith('/admin') ? 'admin'
     : location.pathname.startsWith('/settings') ? 'settings'
     : location.pathname.startsWith('/help') ? 'help'
@@ -52,6 +55,7 @@ const ContextColumn = ({ isMobile, collapsed, peek }: ContextColumnProps) => {
 
   const chats = getChats();
   const assistants = getAssistants();
+  const generations = section === 'generate' ? getGenerations().value : undefined;
   const adminEndpoints = adminEndpointsSignal.value;
   const adminModels = adminModelsSignal.value;
   const adminAssistants = adminAssistantsSignal.value;
@@ -67,6 +71,7 @@ const ContextColumn = ({ isMobile, collapsed, peek }: ContextColumnProps) => {
   const titles: Record<string, string> = {
     chats: t('contextColumn.chats'),
     assistants: t('contextColumn.assistants'),
+    generate: t('contextColumn.generate'),
     admin: t('contextColumn.admin'),
     settings: t('contextColumn.settings'),
     help: t('contextColumn.help'),
@@ -86,6 +91,7 @@ const ContextColumn = ({ isMobile, collapsed, peek }: ContextColumnProps) => {
   const activeAdminId = section === 'admin' ? pathParts[2] : undefined;
 
   const activeAssistantId = section === 'assistants' ? pathParts[1] : undefined;
+  const activeGenerationId = section === 'generate' ? pathParts[1] : undefined;
 
   const renderAdminLoading = () => (
     <div className="context-column-note t-ui-plain">{t('common.loading')}</div>
@@ -107,17 +113,25 @@ const ContextColumn = ({ isMobile, collapsed, peek }: ContextColumnProps) => {
           </NavItem>
         ));
       case 'models':
-        return adminModels === undefined ? renderAdminLoading() : adminModels.map((model) => (
-          <NavItem
-            key={model.id}
-            level={2}
-            active={activeAdminId === model.id}
-            onClick={() => navigate(`/admin/models/${model.id}`)}
-            description={adminEndpoints?.find(endpoint => endpoint.id === model.endpointId)?.url ?? ''}
-          >
-            {model.modelName}
-          </NavItem>
-        ));
+        return adminModels === undefined ? renderAdminLoading() : MODEL_TYPES.map((type) => {
+          const ofType = adminModels.filter(model => model.type === type);
+          return ofType.length === 0 ? null : (
+            <div key={type}>
+              <div className="context-group-label t-group-label">{t(`admin.modelTypes.${type}.title`)}</div>
+              {ofType.map((model) => (
+                <NavItem
+                  key={model.id}
+                  level={2}
+                  active={activeAdminId === model.id}
+                  onClick={() => navigate(`/admin/models/${model.id}`)}
+                  description={adminEndpoints?.find(endpoint => endpoint.id === model.endpointId)?.url ?? ''}
+                >
+                  {model.modelName}
+                </NavItem>
+              ))}
+            </div>
+          );
+        });
       case 'assistants':
         return adminAssistants === undefined ? renderAdminLoading() : adminAssistants.map((assistant) => (
           <NavItem
@@ -209,6 +223,36 @@ const ContextColumn = ({ isMobile, collapsed, peek }: ContextColumnProps) => {
           >
             {t('assistants.newAssistant')}
           </Button>
+        </div>
+      )}
+
+      {section === 'generate' && (
+        <div className="context-column-scroll">
+          <Button
+            variant="dashed"
+            startIcon="add"
+            fullWidth
+            justify="start"
+            mb="sm"
+            active={activeGenerationId === undefined}
+            onClick={() => navigate('/generate')}
+          >
+            {t('generate.newGeneration')}
+          </Button>
+          {generations === undefined ? (
+            <div className="context-column-note t-ui-plain">{t('common.loading')}</div>
+          ) : generations.length === 0 ? (
+            <div className="context-column-note t-ui-plain">{t('generate.empty')}</div>
+          ) : generations.map((generation) => (
+            <NavItem
+              key={generation.id}
+              active={activeGenerationId === generation.id}
+              onClick={() => navigate(`/generate/${generation.id}`)}
+              description={`${generation.modelName} · ${t(`generate.status.${generation.status}`)}`}
+            >
+              {generation.prompt}
+            </NavItem>
+          ))}
         </div>
       )}
 

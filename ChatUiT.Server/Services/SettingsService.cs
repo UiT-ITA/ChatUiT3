@@ -82,7 +82,7 @@ public class SettingsService : ISettingsService
     // first registered model so the app never silently does nothing.
     private async Task<string> ResolveOrFallbackAsync(string storedModelId, string settingName)
     {
-        if (!string.IsNullOrWhiteSpace(storedModelId) && await _modelService.GetModelByIdAsync(storedModelId) != null)
+        if (!string.IsNullOrWhiteSpace(storedModelId) && await _modelService.GetModelAsync<LanguageModel>(storedModelId) != null)
         {
             return storedModelId;
         }
@@ -106,7 +106,7 @@ public class SettingsService : ISettingsService
 
     private async Task<string?> GetFallbackModelIdAsync()
     {
-        var models = await _modelService.GetAllModelsAsync();
+        var models = await _modelService.GetModelsAsync<LanguageModel>();
 
         // Ordered by name so the fallback is stable across restarts
         return models

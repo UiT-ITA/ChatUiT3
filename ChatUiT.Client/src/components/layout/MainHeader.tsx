@@ -37,6 +37,7 @@ const MainHeader = ({ isMobile, sidebarCollapsed, onToggleSidebar }: MainHeaderP
   const pathParts = location.pathname.split('/').filter(Boolean);
 
   const section = location.pathname.startsWith('/assistants') ? 'assistants'
+    : location.pathname.startsWith('/generate') ? 'generate'
     : location.pathname.startsWith('/admin') ? 'admin'
     : location.pathname.startsWith('/settings') ? 'settings'
     : location.pathname.startsWith('/help') ? 'help'
@@ -46,6 +47,7 @@ const MainHeader = ({ isMobile, sidebarCollapsed, onToggleSidebar }: MainHeaderP
   const sectionTitles: Record<string, string> = {
     chats: t('contextColumn.chats'),
     assistants: t('contextColumn.assistants'),
+    generate: t('contextColumn.generate'),
     admin: t('contextColumn.admin'),
     settings: t('contextColumn.settings'),
     help: t('contextColumn.help'),
@@ -55,6 +57,7 @@ const MainHeader = ({ isMobile, sidebarCollapsed, onToggleSidebar }: MainHeaderP
   const sectionRoots: Record<string, string> = {
     chats: '/',
     assistants: '/assistants',
+    generate: '/generate',
     admin: '/admin',
     settings: '/settings',
     help: '/help',

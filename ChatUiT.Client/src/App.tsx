@@ -18,11 +18,13 @@ const loadAssistantsPage = () => import('./components/assistants/AssistantsPage'
 const loadSettingsPage = () => import('./components/settings/SettingsPage');
 const loadHelpPage = () => import('./components/help/HelpPage');
 const loadAdminPage = () => import('./components/admin/AdminPage');
+const loadGeneratePage = () => import('./components/generate/GeneratePage');
 
 const AssistantsPage = lazy(loadAssistantsPage);
 const SettingsPage = lazy(loadSettingsPage);
 const HelpPage = lazy(loadHelpPage);
 const AdminPage = lazy(loadAdminPage);
+const GeneratePage = lazy(loadGeneratePage);
 const StatusPage = lazy(() => import('./components/status/StatusPage'));
 
 // Suspends per route, below MainLayout, so the always-mounted chat surface
@@ -60,6 +62,7 @@ const App: React.FC = () => {
         loadAssistantsPage();
         loadSettingsPage();
         loadHelpPage();
+        loadGeneratePage();
         if (isAdmin) loadAdminPage();
       });
     });
@@ -86,6 +89,8 @@ const App: React.FC = () => {
           <Route path="/chat/:chatId" element={null} />
           <Route path="/assistants" element={<Page><AssistantsPage /></Page>} />
           <Route path="/assistants/:assistantId" element={<Page><AssistantsPage /></Page>} />
+          <Route path="/generate" element={<Page><GeneratePage /></Page>} />
+          <Route path="/generate/:generationId" element={<Page><GeneratePage /></Page>} />
           <Route path="/settings" element={<Page><SettingsPage /></Page>} />
           <Route path="/settings/:tab" element={<Page><SettingsPage /></Page>} />
           <Route path="/help" element={<Page><HelpPage /></Page>} />
