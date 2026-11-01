@@ -11,8 +11,17 @@ const environments = require("./environments");
 // Every failed tool call of a dev pane, one JSON object per line (src/chat/dev/toolErrorLog.ts).
 const toolErrorLog = path.join(__dirname, "logs", "tool-errors.jsonl");
 
-// The ChatUiT server as `dotnet run --launch-profile https` starts it.
-const apiDev = "https://localhost:7254";
+// The ports scripts/dev.mjs started this checkout's server on.
+const devPortsFile = path.join(__dirname, "..", ".dev-ports.json");
+
+/** The ChatUiT server of this checkout: the one scripts/dev.mjs started, else the one `dotnet run --launch-profile https` starts. */
+function apiDev() {
+  try {
+    return `https://localhost:${JSON.parse(fs.readFileSync(devPortsFile, "utf8")).server}`;
+  } catch {
+    return "https://localhost:7254";
+  }
+}
 
 /** The prod environment, or an error naming every value that is still empty. */
 function prodEnvironment() {
@@ -98,7 +107,7 @@ module.exports = async (env, options) => {
       },
       port: process.env.npm_package_config_dev_server_port || 3000,
       // The task pane calls the API on its own origin, like the ChatUiT client's Vite proxy.
-      proxy: [{ context: ["/api"], target: apiDev, changeOrigin: true }],
+      proxy: [{ context: ["/api"], target: apiDev(), router: apiDev, changeOrigin: true }],
       // Compression would buffer the streamed (SSE) responses.
       compress: false,
       setupMiddlewares: (middlewares, devServer) => {

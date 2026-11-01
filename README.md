@@ -23,10 +23,12 @@ ChatUiT is UiT's AI chat service. Users sign in with their UiT account and chat 
 Server and web app:
 
 ```bash
-dotnet run --project ChatUiT.Server --launch-profile https
+node scripts/dev.mjs
 ```
 
-This starts the server and the Vite dev server for the web app. The web app is at https://localhost:54979.
+This starts the server and the Vite dev server for the web app on the first free ports, from https://localhost:54979 and https://localhost:7254 upwards, and prints the web app's address. Each worktree can run its own copy at the same time. `--port <port>` sets the web app port. Entra accepts any localhost port, so sign-in works on all of them.
+
+`dotnet run --project ChatUiT.Server --launch-profile https` still starts the app on the fixed ports 54979 and 7254.
 
 Office add-in, with the server running:
 

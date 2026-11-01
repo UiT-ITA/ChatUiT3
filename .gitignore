@@ -373,3 +373,6 @@ sample/
 
 # Office add-in build output
 ChatUiT.Office/dist/
+
+# Ports written by scripts/dev.mjs
+.dev-ports.json

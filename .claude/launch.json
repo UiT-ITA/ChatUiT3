@@ -3,15 +3,14 @@
   "configurations": [
     {
       "name": "chatuit",
-      "runtimeExecutable": "dotnet",
+      "runtimeExecutable": "node",
       "runtimeArgs": [
-        "run",
-        "--project",
-        "ChatUiT.Server/ChatUiT.Server.csproj",
-        "--launch-profile",
-        "https"
+        "scripts/dev.mjs",
+        "--port",
+        "54979"
       ],
       "port": 54979,
+      "autoPort": true,
       "url": "https://localhost:54979"
     }
   ]

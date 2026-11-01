@@ -16,7 +16,9 @@ The ChatUiT assistant as a task pane in Word, Excel, PowerPoint and Outlook on W
 
 ## Development
 
-Requirements: Node 22.15 or later, Microsoft 365 Apps (current channel), and the ChatUiT server running locally (`dotnet run --launch-profile https` in `../ChatUiT.Server`, which listens on https://localhost:7254). The dev server serves the pane on https://localhost:3000 and forwards `/api` to that server.
+Requirements: Node 22.15 or later, Microsoft 365 Apps (current channel), and the ChatUiT server running locally from the same checkout (`node scripts/dev.mjs` in the repository root, or `dotnet run --launch-profile https` in `../ChatUiT.Server`, which listens on https://localhost:7254). The dev server serves the pane on https://localhost:3000 and forwards `/api` to the server that `scripts/dev.mjs` started in this checkout, else to https://localhost:7254.
+
+Only one checkout can run the add-in at a time. Port 3000 is fixed because Entra matches the add-in's `brk-multihub://localhost:3000` redirect URI including the port. `npm run start:word` reuses a dev server that already runs on port 3000, even one from another worktree, so stop that one first (`npm run stop` there).
 
 | App | Windows | Mac |
 | --- | --- | --- |
