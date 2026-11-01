@@ -65,7 +65,8 @@ export default defineConfig({
                 rewrite: (path) => path
             },
         },
-        port: 54979,
+        port: env.CHATUIT_CLIENT_PORT ? Number(env.CHATUIT_CLIENT_PORT) : 54979,
+        strictPort: true,
         https: {
             key: fs.readFileSync(keyFilePath),
             cert: fs.readFileSync(certFilePath),
