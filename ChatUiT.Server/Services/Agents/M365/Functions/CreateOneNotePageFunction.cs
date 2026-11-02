@@ -36,8 +36,8 @@ public sealed class CreateOneNotePageFunction : ConfirmableTool<CreateOneNotePag
         return new ToolPreview(
             "Create OneNote page",
             null,
-            [new ToolPreviewField("Section", section.Str("displayName") ?? ""), new ToolPreviewField("Title", args.Title), new ToolPreviewField("Content", args.Html, Multiline: true)],
-            AllowEdit: false);
+            [new ToolPreviewField("Section", section.Str("displayName") ?? "", Role: ToolPreviewFieldRole.Path), new ToolPreviewField("Title", args.Title, Role: ToolPreviewFieldRole.Path), new ToolPreviewField("Content", args.Html, Multiline: true, Role: ToolPreviewFieldRole.Content)],
+            AllowEdit: false, Kind: ToolPreviewKind.File);
     }
 
     protected override async Task<ToolResult> CommitAsync(CreateOneNotePageArgs args, ToolInvocation invocation, CancellationToken ct)

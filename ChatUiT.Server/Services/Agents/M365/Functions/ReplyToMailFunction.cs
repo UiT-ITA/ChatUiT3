@@ -57,8 +57,8 @@ public sealed class ReplyToMailFunction : ConfirmableTool<ReplyToMailArgs>
         return new ToolPreview(
             title,
             null,
-            [new ToolPreviewField("To", recipients), new ToolPreviewField("Subject", original.Str("subject") ?? ""), new ToolPreviewField("Message", args.Text, Multiline: true)],
-            AllowEdit: false);
+            [new ToolPreviewField("To", recipients, Role: ToolPreviewFieldRole.Recipients), new ToolPreviewField("Subject", original.Str("subject") ?? "", Role: ToolPreviewFieldRole.Subject), new ToolPreviewField("Message", args.Text, Multiline: true, Role: ToolPreviewFieldRole.Body)],
+            AllowEdit: false, Kind: ToolPreviewKind.Message);
     }
 
     protected override async Task<ToolResult> CommitAsync(ReplyToMailArgs args, ToolInvocation invocation, CancellationToken ct)

@@ -63,14 +63,14 @@ public sealed class CreateOfficeDocumentFunction : ConfirmableTool<CreateOfficeD
             ? $"OneDrive/{(string.IsNullOrWhiteSpace(args.FolderPath) ? string.Empty : DriveSupport.Normalise(args.FolderPath))}"
             : (await _graph.GetAsync(invocation.Context, $"{DriveSupport.ItemPath(args.DriveId, args.FolderId ?? string.Empty)}?$select=name,webUrl", DriveSupport.Scopes, ct)).Str("webUrl") ?? string.Empty;
 
-        var fields = new List<ToolPreviewField> { new("Folder", location), new("Name", name) };
+        var fields = new List<ToolPreviewField> { new("Folder", location, Role: ToolPreviewFieldRole.Path), new("Name", name, Role: ToolPreviewFieldRole.Path) };
         var content = Content(kind, args);
         if (content.Length > 0)
         {
-            fields.Add(new ToolPreviewField("Content", content, Multiline: true));
+            fields.Add(new ToolPreviewField("Content", content, Multiline: true, Role: ToolPreviewFieldRole.Content));
         }
 
-        return new ToolPreview($"Create {kind} file", null, fields, AllowEdit: false);
+        return new ToolPreview($"Create {kind} file", null, fields, AllowEdit: false, Kind: ToolPreviewKind.File);
     }
 
     protected override async Task<ToolResult> CommitAsync(CreateOfficeDocumentArgs args, ToolInvocation invocation, CancellationToken ct)

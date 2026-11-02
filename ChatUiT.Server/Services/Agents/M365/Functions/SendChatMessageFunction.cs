@@ -46,8 +46,8 @@ public sealed class SendChatMessageFunction : ConfirmableTool<SendChatMessageArg
         return new ToolPreview(
             "Send Teams message",
             null,
-            [new ToolPreviewField("To", recipient), new ToolPreviewField("Message", args.Text, Multiline: true)],
-            AllowEdit: false);
+            [new ToolPreviewField("To", recipient, Role: ToolPreviewFieldRole.Recipients), new ToolPreviewField("Message", args.Text, Multiline: true, Role: ToolPreviewFieldRole.Body)],
+            AllowEdit: false, Kind: ToolPreviewKind.Message);
     }
 
     protected override async Task<ToolResult> CommitAsync(SendChatMessageArgs args, ToolInvocation invocation, CancellationToken ct)

@@ -69,17 +69,23 @@ public class ClientToolDeclarationDto
     public JsonElement ParametersSchema { get; set; }
 }
 
-/// <summary>The user's or client's answer to a paused tool call.</summary>
+/// <summary>
+/// The user's or client's answer to a tool call that waits. Kept on the call's activity entry
+/// until the run that continues the message has used it.
+/// </summary>
 public class ToolCallResponseDto
 {
     [Required]
     public ToolCallResponseKind Kind { get; set; }
 
-    /// <summary>Confirmation: Approve or Reject.</summary>
+    /// <summary>Confirmation: Approve or Reject. ClientResult: Reject when the user declined the call in the client.</summary>
     public ToolCallDecision? Decision { get; set; }
 
     /// <summary>Confirmation only: the arguments as edited by the user, when editing is allowed.</summary>
     public string? EditedArgumentsJson { get; set; }
+
+    /// <summary>Answer only: one per question, null for a question the user skipped. Null when the user answered none.</summary>
+    public List<UserAnswerDto?>? Answers { get; set; }
 
     /// <summary>ClientResult only.</summary>
     public string? Result { get; set; }
@@ -87,8 +93,54 @@ public class ToolCallResponseDto
     public bool IsError { get; set; }
 }
 
+/// <summary>An answer to one call a message waits on, given with a new message instead of on its own.</summary>
+public class PendingAnswerDto
+{
+    [Required]
+    public string ToolCallId { get; set; } = string.Empty;
+
+    [Required]
+    public ToolCallResponseDto Response { get; set; } = new();
+}
+
+/// <summary>An answer to a tool call, plus what the run that continues the message needs from this request.</summary>
+public class RespondToToolCallDto : ToolCallResponseDto
+{
+    public List<ClientToolDeclarationDto>? ClientTools { get; set; }
+
+    /// <summary>The caller's IANA time zone.</summary>
+    public string? TimeZone { get; set; }
+}
+
 public class ToolCallResponseResultDto
 {
     public bool Accepted { get; set; }
-    public ToolCallStatus? Status { get; set; }
+
+    /// <summary>True when this was the last answer the message waited for and the message continues.</summary>
+    public bool Continued { get; set; }
+}
+
+/// <summary>A question the model asks the user, with the answers to choose from.</summary>
+public class UserQuestionDto
+{
+    public string Question { get; set; } = string.Empty;
+
+    public List<UserQuestionOptionDto> Options { get; set; } = new();
+
+    public bool MultiSelect { get; set; }
+}
+
+public class UserQuestionOptionDto
+{
+    public string Label { get; set; } = string.Empty;
+
+    public string? Description { get; set; }
+}
+
+/// <summary>The options the user picked, by label, and what they wrote themselves.</summary>
+public class UserAnswerDto
+{
+    public List<string> Selected { get; set; } = new();
+
+    public string? Text { get; set; }
 }

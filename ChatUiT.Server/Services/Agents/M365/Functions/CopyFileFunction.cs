@@ -39,15 +39,15 @@ public sealed class CopyFileFunction : ConfirmableTool<CopyFileArgs>
 
         var fields = new List<ToolPreviewField>
         {
-            new("Copy", item.Str("name") ?? ""),
-            new("Into folder", folder.Str("webUrl") ?? folder.Str("name") ?? "")
+            new("Copy", item.Str("name") ?? "", Role: ToolPreviewFieldRole.Path),
+            new("Into folder", folder.Str("webUrl") ?? folder.Str("name") ?? "", Role: ToolPreviewFieldRole.Path)
         };
         if (!string.IsNullOrWhiteSpace(args.NewName))
         {
-            fields.Add(new ToolPreviewField("Name of copy", args.NewName.Trim()));
+            fields.Add(new ToolPreviewField("Name of copy", args.NewName.Trim(), Role: ToolPreviewFieldRole.Path));
         }
 
-        return new ToolPreview("Copy file", null, fields, AllowEdit: false);
+        return new ToolPreview("Copy file", null, fields, AllowEdit: false, Kind: ToolPreviewKind.File);
     }
 
     protected override async Task<ToolResult> CommitAsync(CopyFileArgs args, ToolInvocation invocation, CancellationToken ct)

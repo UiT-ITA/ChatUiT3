@@ -59,3 +59,21 @@ public abstract class ConfirmableTool<TArgs> : Tool<TArgs>, IConfirmableTool whe
     protected override Task<ToolResult> ExecuteAsync(TArgs args, ToolInvocation invocation, CancellationToken cancellationToken)
         => throw new InvalidOperationException($"{Id} requires confirmation and cannot be executed directly.");
 }
+
+/// <summary>Typed-argument base for question tools.</summary>
+public abstract class QuestionTool<TArgs> : Tool<TArgs>, IQuestionTool where TArgs : class
+{
+    public Task<IReadOnlyList<UserQuestion>> PrepareQuestionsAsync(ToolInvocation invocation, CancellationToken cancellationToken)
+        => PrepareQuestionsAsync(ToolSchema.Deserialize<TArgs>(invocation.Arguments), invocation, cancellationToken);
+
+    public Task<ToolResult> AnswerAsync(ToolInvocation invocation, IReadOnlyList<UserAnswer?> answers, CancellationToken cancellationToken)
+        => AnswerAsync(ToolSchema.Deserialize<TArgs>(invocation.Arguments), answers, invocation, cancellationToken);
+
+    protected abstract Task<IReadOnlyList<UserQuestion>> PrepareQuestionsAsync(TArgs args, ToolInvocation invocation, CancellationToken cancellationToken);
+
+    protected abstract Task<ToolResult> AnswerAsync(TArgs args, IReadOnlyList<UserAnswer?> answers, ToolInvocation invocation, CancellationToken cancellationToken);
+
+    /// <summary>Never reached: the executor routes question tools through PrepareQuestion and Answer.</summary>
+    protected override Task<ToolResult> ExecuteAsync(TArgs args, ToolInvocation invocation, CancellationToken cancellationToken)
+        => throw new InvalidOperationException($"{Id} asks the user and cannot be executed directly.");
+}

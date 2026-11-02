@@ -72,8 +72,8 @@ public sealed class EditPowerPointPresentationFunction : ConfirmableTool<EditPow
         return new ToolPreview(
             "Edit PowerPoint presentation",
             null,
-            [new ToolPreviewField("Presentation", loaded.Name), new ToolPreviewField("Changes", OfficeFiles.Numbered(changes), Multiline: true)],
-            AllowEdit: false);
+            [new ToolPreviewField("Presentation", loaded.Name, Role: ToolPreviewFieldRole.Document), new ToolPreviewField("Changes", OfficeFiles.Numbered(changes), Multiline: true, Role: ToolPreviewFieldRole.Changes)],
+            AllowEdit: false, Kind: ToolPreviewKind.DocumentEdit);
     }
 
     protected override async Task<ToolResult> CommitAsync(EditPowerPointPresentationArgs args, ToolInvocation invocation, CancellationToken ct)

@@ -68,6 +68,10 @@ constructs it with the assistant's on-demand files still loadable and adds it to
 - Access falls back to the tool's `DefaultPolicy`; admins cannot override it in `ToolPolicies`.
 - The executor runs it like any other server tool: same output cap, same confirmation and consent routing.
 
+`AskUserTool` (`ask_user`, `Services/Tools/Questions/`) is the one base tool: `ChatService` adds it to every chat on
+a model that can call functions, `ResponsesRequestMapper` adds it to every Responses API run on such a model, and
+`AssistantService` counts it. See [Questions](#questions).
+
 ### Delegated Microsoft Graph access
 
 Call `await invocation.Context.Tokens.GetAccessTokenAsync(RequiredScopes, ct)` and use the token with
@@ -78,9 +82,43 @@ with the same arguments. Do not catch that exception in the tool.
 ### Confirmation
 
 `ConfirmableTool<TArgs>` splits the call in two. `PrepareAsync` validates and returns a `ToolPreview` (title,
-optional markdown summary, label/value fields, `AllowEdit`). Nothing may change state there. The user sees the
+optional markdown summary, label/value fields, `AllowEdit`, `Kind`). Nothing may change state there. The user sees the
 preview and approves or rejects; on approve `CommitAsync` runs with the arguments the user approved, edited if
-`AllowEdit` was true. A rejection or a timeout is reported to the model as a declined action.
+`AllowEdit` was true. A rejection is reported to the model as a declined action. `CommitAsync` must fail, not
+overwrite, when its target changed since the preview: the user can answer days later.
+
+The tool says what kind of action it is and what each field holds; the client owns the layout. `Kind` is one of
+`General` (a list of fields), `Message`, `File`, `DocumentEdit` or `Event`, and each `ToolPreviewField` may carry a
+`Role` (`Recipients`, `Subject`, `Body`, `Attachments`, `Path`, `Content`, `Document`, `Changes`, `Time`,
+`Location`, `Attendees`). Each kind's layout places the fields with its roles and lists every other field by label,
+so a new tool needs no client change. A new kind needs a layout in both clients.
+
+### Waiting for the user
+
+Nothing waits in process. A call that needs the user or the client (a confirmation, a question, a client tool)
+ends with `ToolExecutionEvent.Deferred`; the round's other calls still run; the run ends. In a chat the message is
+saved with status `AwaitingUser` and the waiting calls in an awaiting status on its activity. Each answer is kept on
+its entry (`ActivityEntry.Response`); the last one starts a new run of the same message, which continues the calls
+with `IToolExecutor.ResumeAsync` and then calls the model again. There is no timeout. A new user message closes the
+waiting calls first: the ones the user answered, before or with the message (`SendMessageDto.answers` carries what was
+filled in on the card shown), go on with their answers, so an approved action runs; an approval left unanswered is
+rejected and a question left unanswered is skipped. A client call left unanswered is `Unanswered`. A stop on a message
+that continued keeps what it had; only the stop of a new message undoes the send (`cancel` returns `undone`).
+The Responses API works the same way with the client holding the history (`mcp_approval_request` /
+`mcp_approval_response`).
+
+The clients show the waiting call in a card docked on top of the message box. The call itself stays in the
+message's activity as a record of what was asked and answered.
+
+### Questions
+
+`QuestionTool<TArgs>` is the question counterpart of `ConfirmableTool<TArgs>`: `PrepareQuestionsAsync` returns one
+or more `UserQuestion`s (the question, up to 10 options with an optional description, and whether several may be
+picked), and `AnswerAsync` turns the user's answers into the result: one `UserAnswer` per question (the picked option
+labels and their own text), null for a question they skipped. The user can always write their own answer, skip a
+question, or answer none. `ask_user` is the tool that asks, 1 to 4 questions in one call that the user steps through
+in one card; its description tells the model to ask everything it needs from the user through it, in one call per
+turn, never in its reply text, and not to ask what it can find out itself.
 
 ## Client tools
 
@@ -96,10 +134,12 @@ registerClientTool({
 });
 ```
 
-Every send carries `getClientToolDeclarations()`. When the model calls one, the server emits a
-`ToolClientCallRequested` chunk, the client store runs the handler after the flush is applied (so a replayed,
-already finished call is not run again), and posts the result to the respond endpoint. Handlers should be
-idempotent: two open tabs both receive the call, and the second result gets a 409.
+Every send carries `getClientToolDeclarations()`. When the model calls one, the message waits on the call; the
+composer dock runs the handler and posts the result to the respond endpoint, which continues the message. Handlers
+should be idempotent: two open tabs both see the call, and the second result gets a 409. A tool with a `preview`
+function asks the user first: the preview is shown in the approval card, and the handler runs only on approve; a
+decline is posted as `{ "kind": "clientResult", "decision": "reject" }`. Office add-in tools take the same optional
+`preview`; the add-in waits on the call itself and sends its output once the user has answered.
 
 Access for client tools is one policy, id `client_tools` (default: everyone). Server tool ids never start with
 `client_`, so the two namespaces cannot collide. Declarations are capped by `Tools:MaxClientTools` and
@@ -129,28 +169,36 @@ Stream chunk kinds added by the tool system, all on `ReceiveMessageChunk`:
 | kind | fields |
 |---|---|
 | `ToolStart` | toolCallId, toolName, argumentsJson, execution |
-| `ToolConfirmationRequested` | toolCallId, toolName, argumentsJson, preview, timeoutMs |
+| `ToolConfirmationRequested` | toolCallId, toolName, argumentsJson, preview |
+| `ToolQuestionRequested` | toolCallId, toolName, argumentsJson, questions |
 | `ToolConsentRequired` | toolCallId, toolName, requiredScopes, timeoutMs |
-| `ToolClientCallRequested` | toolCallId, toolName, argumentsJson, timeoutMs |
+| `ToolClientCallRequested` | toolCallId, toolName, argumentsJson |
 | `ToolStatus` | toolCallId, status (`approved`, `running`) |
-| `ToolEnd` | toolCallId, toolName, result, isError, status (`completed`, `rejected`, `timeout`, `error`) |
+| `ToolEnd` | toolCallId, toolName, result, isError, status (`completed`, `rejected`, `error`) |
+| `AwaitingUser` | activity: the run ended on calls that wait |
+| `Continued` | activity: first chunk of a run that continues a message that waited |
 
-`timeoutMs` counts from the chunk's `elapsedMs`. While a call waits, the generation deadline is suspended.
-
-Respond: `POST /api/chats/{chatId}/messages/{messageId}/tool-calls/{toolCallId}/respond` with one of
+Respond: `POST /api/chats/{chatId}/messages/{messageId}/tool-calls/{toolCallId}/respond` with one of, plus the
+`clientTools` and `timeZone` of a send for the run that continues the message:
 
 ```json
 { "kind": "confirmation", "decision": "approve", "editedArgumentsJson": null }
-{ "kind": "consent", "decision": "retry" }
+{ "kind": "answer", "answers": [{ "selected": ["Board"], "text": null }, null] }
+{ "kind": "answer", "answers": null }
 { "kind": "clientResult", "result": "…", "isError": false }
 ```
 
-200 `{ accepted: true, status }`; 409 `{ accepted: false }` when nothing is pending (answered elsewhere or timed
-out); 400 when the response does not match what the call is waiting for or `editedArgumentsJson` is not an object.
-A consent retry uses the bearer token of the respond request for the On-Behalf-Of exchange.
+200 `{ accepted: true, continued }`, where `continued` is true when this was the last answer the message waited for;
+409 `{ accepted: false }` when nothing waits under that id (answered elsewhere, or left by a new message); 400 when the
+response does not match what the call waits for, `editedArgumentsJson` is not an object, or the answer does not fit
+the questions.
 
-Persisted `ActivityEntry` carries `execution`, `status` (terminal), `preview` and `requiredScopes` so history
-shows what the user approved or declined.
+Persisted `ActivityEntry` carries `execution`, `status`, `preview`, `question`, `response` and `requiredScopes` so
+history shows what the user was asked and answered. In the Responses API questions are an `mcp_approval_request`
+with `chatuit_kind: "question"` and `chatuit_questions`, answered by an `mcp_approval_response` with `approve: true`
+and `chatuit_answers` (one per question, null for a skipped one), or `approve: false` for no answer. The `mcp_call`
+that continues an answered request carries its `approval_request_id`, so a client shows the two as one call.
+Previews there carry `kind` and field `role` in snake case.
 
 ## Access enforcement points
 
@@ -176,8 +224,8 @@ the Configuration database.
 
 ## Configuration
 
-`appsettings.json` section `Tools`: `MaxModelContentChars`, `ConfirmationTimeout`, `ConsentTimeout`,
-`ClientToolTimeout`, `MaxClientTools`, `MaxClientSchemaBytes`.
+`appsettings.json` section `Tools`: `MaxModelContentChars`, `ConsentTimeout`, `MaxClientTools`,
+`MaxClientSchemaBytes`.
 
 ## Internal agents
 
@@ -232,13 +280,10 @@ The two loops stay separate:
 - API run (`ResponsesRunner`, `/api/v1/responses`): the client sends the history, items stream back, client
   tools and approvals are handled. The agent's functions are its server tools. Raw models use this loop too.
 
-Inner functions run through the normal `IToolExecutor`, so consent and confirmation work unchanged. Their pauses
-are forwarded under the outer tool call id (the only id the client knows), which `IStreamingTool` makes possible:
-a tool that yields `ToolExecutionEvent`s instead of returning one result. Two consequences:
-
-- Inner functions are executed one at a time.
-- Inner confirmable functions must return previews with `AllowEdit = false`, because the respond endpoint can
-  only validate edits against the outer tool's schema.
+Inner functions run through the normal `IToolExecutor`, one at a time, and their progress is forwarded under the
+outer tool call id, which `IStreamingTool` makes possible: a tool that yields `ToolExecutionEvent`s instead of
+returning one result. Inner functions must not need the user: a call that waits ends the run, and nothing of an inner
+run is kept to continue it, so a confirmable or question function inside an agent ends the outer call with an error.
 
 Access:
 
@@ -274,5 +319,5 @@ Adding an agent:
   and Entra then sends an overage marker instead, which the server treats as no groups.
 - **Assign groups** to the enterprise application, then paste each group's object id into the tool's policy in the
   admin page.
-- Scale-out note: the token cache and the pending-interaction registry are in-process. A second server instance
-  needs a distributed cache and a backplane before confirmations work across nodes.
+- Scale-out note: the token cache, live streams and the lock that orders answers to one message are in-process. A
+  second server instance needs a distributed cache and a backplane.

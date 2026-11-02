@@ -64,9 +64,18 @@ public class ActivityEntry
     /// <summary>Tool only: where the tool ran.</summary>
     public ToolExecution Execution { get; set; } = ToolExecution.Server;
 
-    /// <summary>Tool only. Persisted entries hold a terminal status.</summary>
+    /// <summary>
+    /// Tool only. A message that waits for the user holds its waiting calls in an awaiting status;
+    /// every other persisted entry holds a terminal status.
+    /// </summary>
     public ToolCallStatus Status { get; set; } = ToolCallStatus.Running;
 
     /// <summary>Tool only: the preview the user was shown, when the tool asked for confirmation.</summary>
     public ToolPreviewDto? Preview { get; set; }
+
+    /// <summary>Tool only: the questions the user was asked.</summary>
+    public List<UserQuestionDto>? Questions { get; set; }
+
+    /// <summary>Tool only: what the user or the client answered a call that waited. Null while it still waits.</summary>
+    public ToolCallResponseDto? Response { get; set; }
 }

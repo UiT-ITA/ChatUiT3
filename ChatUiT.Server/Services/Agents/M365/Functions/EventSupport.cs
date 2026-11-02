@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using ChatUiT.Server.Models;
 using ChatUiT.Server.Services.Tools;
 
 namespace ChatUiT.Server.Services.Agents.M365.Functions;
@@ -77,22 +78,22 @@ internal static class EventSupport
         var fields = new List<ToolPreviewField>();
         if (!string.IsNullOrWhiteSpace(subject))
         {
-            fields.Add(new ToolPreviewField("Subject", subject));
+            fields.Add(new ToolPreviewField("Subject", subject, Role: ToolPreviewFieldRole.Subject));
         }
 
         if (start != null || end != null)
         {
-            fields.Add(new ToolPreviewField("When", $"{start ?? "(unchanged)"} – {end ?? "(unchanged)"} ({timeZone})"));
+            fields.Add(new ToolPreviewField("When", $"{start ?? "(unchanged)"} – {end ?? "(unchanged)"} ({timeZone})", Role: ToolPreviewFieldRole.Time));
         }
 
         if (attendees != null)
         {
-            fields.Add(new ToolPreviewField("Attendees", attendees.Count == 0 ? "(none)" : string.Join(", ", MailSupport.Addresses(attendees))));
+            fields.Add(new ToolPreviewField("Attendees", attendees.Count == 0 ? "(none)" : string.Join(", ", MailSupport.Addresses(attendees)), Role: ToolPreviewFieldRole.Attendees));
         }
 
         if (location != null)
         {
-            fields.Add(new ToolPreviewField("Location", location));
+            fields.Add(new ToolPreviewField("Location", location, Role: ToolPreviewFieldRole.Location));
         }
 
         if (teamsMeeting == true)
@@ -102,7 +103,7 @@ internal static class EventSupport
 
         if (body != null)
         {
-            fields.Add(new ToolPreviewField("Description", body, Multiline: true));
+            fields.Add(new ToolPreviewField("Description", body, Multiline: true, Role: ToolPreviewFieldRole.Body));
         }
 
         return fields;

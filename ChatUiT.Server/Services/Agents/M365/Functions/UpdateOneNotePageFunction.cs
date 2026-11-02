@@ -56,13 +56,14 @@ public sealed class UpdateOneNotePageFunction : ConfirmableTool<UpdateOneNotePag
         var commands = Commands(args);
         var page = await _graph.GetAsync(invocation.Context, $"{PagePath(args)}?$select=title", OneNoteSupport.WriteScopes, ct);
 
-        var fields = new List<ToolPreviewField> { new("Page", page.Str("title") ?? "") };
+        var fields = new List<ToolPreviewField> { new("Page", page.Str("title") ?? "", Role: ToolPreviewFieldRole.Document) };
         fields.AddRange(commands.Select((c, i) => new ToolPreviewField(
             $"Change {i + 1}: {c["action"]} {(c.TryGetValue("position", out var p) ? p + " " : "")}{c["target"]}",
             (string)c["content"],
-            Multiline: true)));
+            Multiline: true,
+            Role: ToolPreviewFieldRole.Changes)));
 
-        return new ToolPreview("Update OneNote page", null, fields, AllowEdit: false);
+        return new ToolPreview("Update OneNote page", null, fields, AllowEdit: false, Kind: ToolPreviewKind.DocumentEdit);
     }
 
     protected override async Task<ToolResult> CommitAsync(UpdateOneNotePageArgs args, ToolInvocation invocation, CancellationToken ct)

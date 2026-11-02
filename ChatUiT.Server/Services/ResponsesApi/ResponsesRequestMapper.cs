@@ -13,7 +13,7 @@ using ChatUiT.Server.Services.Tools;
 namespace ChatUiT.Server.Services.ResponsesApi;
 
 /// <summary>An answered approval to continue before the model runs. <see cref="Slot"/> is where its result goes in the history.</summary>
-public sealed record PendingResume(int Slot, ApprovalState State, ResumeInput Input);
+public sealed record PendingResume(int Slot, ApprovalState State, ResumeInput Input, string ApprovalRequestId);
 
 /// <summary>A validated request, ready for <see cref="ResponsesRunner"/>.</summary>
 public sealed class MappedRequest
@@ -59,7 +59,6 @@ public sealed class MappedRequest
 /// </summary>
 public sealed class ResponsesRequestMapper
 {
-    private const string NotRespondedText = "The user did not respond; the action was not performed.";
     private const string NotCompletedText = "The call did not complete; the action was not performed.";
     private const string AdditionalInstructionsHeader = "# Additional instructions from the client";
 
@@ -96,7 +95,9 @@ public sealed class ResponsesRequestMapper
 
         RejectUnsupported(request.Reasoning?.Unsupported, "reasoning");
 
-        var serverTools = setup?.Functions ?? [];
+        IReadOnlyList<ITool> serverTools = target.Model.Capabilities.SupportsFunctionCalling
+            ? [.. setup?.Functions ?? [], new AskUserTool()]
+            : setup?.Functions ?? [];
         return new MappedRequest
         {
             History = BuildHistory(ParseInput(request.Input), target.PublicId, out var resumes, out var rounds),
@@ -551,17 +552,27 @@ public sealed class ResponsesRequestMapper
         {
             if (lastUserMessage > lastIndex)
             {
-                return new TurnResult(new AiInputItem.ToolResult(callId, NotRespondedText, true), null, chain[0]);
+                return new TurnResult(new AiInputItem.ToolResult(callId, AiConversationRunner.NotRespondedText, true), null, chain[0]);
             }
 
             throw ResponsesApiException.BadRequest($"{param}: no mcp_approval_response answers this approval request.", param, "missing_approval_response");
         }
 
-        return new TurnResult(null, new PendingResume(-1, state, ToResumeInput(state, answer, param)), lastIndex);
+        return new TurnResult(null, new PendingResume(-1, state, ToResumeInput(state, answer, param), request.Id!), lastIndex);
     }
 
     private static ResumeInput ToResumeInput(ApprovalState state, McpApprovalResponseItem answer, string param)
     {
+        if (state.Questions is { } questions)
+        {
+            return ToAnswers(questions, answer, param);
+        }
+
+        if (answer.ChatuitAnswers != null)
+        {
+            throw ResponsesApiException.BadRequest($"{param}: chatuit_answers only answers questions.", "chatuit_answers", "invalid_value");
+        }
+
         var edited = answer.ChatuitEditedArguments;
         if (edited != null && !state.AllowEdit)
         {
@@ -594,6 +605,32 @@ public sealed class ResponsesRequestMapper
         }
 
         return new ResumeInput.Commit(editedArguments);
+    }
+
+    private static ResumeInput ToAnswers(IReadOnlyList<UserQuestion> questions, McpApprovalResponseItem answer, string param)
+    {
+        if (answer.ChatuitEditedArguments != null)
+        {
+            throw ResponsesApiException.BadRequest($"{param}: chatuit_edited_arguments does not answer questions.", "chatuit_edited_arguments", "invalid_value");
+        }
+
+        if (!answer.Approve)
+        {
+            return new ResumeInput.Declined();
+        }
+
+        if (answer.ChatuitAnswers is not { } given)
+        {
+            throw ResponsesApiException.BadRequest($"{param}: questions are answered with chatuit_answers.", "chatuit_answers", "missing_required_parameter");
+        }
+
+        var answers = given.Select(a => a == null ? null : new UserAnswer(a.Selected ?? [], a.Text)).ToList();
+        if (AskUserTool.Validate(questions, answers) is { } problem)
+        {
+            throw ResponsesApiException.BadRequest($"{param}: {problem}", "chatuit_answers", "invalid_value");
+        }
+
+        return new ResumeInput.Answers(answers);
     }
 
     private static JsonElement Parse(string json)

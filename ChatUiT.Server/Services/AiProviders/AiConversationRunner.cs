@@ -29,6 +29,12 @@ using ChatUiT.Server.Services.Tools;
 ///
 /// Tools of <see cref="AiRequest.LoadableTools"/> are callable once a toolbox load (in the
 /// history or in this run) has named them.
+///
+/// A call that needs the user or the client ends the run: the round's other calls still run, the
+/// waiting calls stay open in the activity, and the run ends with an
+/// <see cref="ChatStreamChunkKind.AwaitingUser"/> chunk. <see cref="ResumeAsync"/> continues those
+/// calls with their answers on a later run of the same message, which then goes on with
+/// <see cref="StreamAsync"/>.
 /// </summary>
 public sealed class AiConversationRunner
 {
@@ -61,7 +67,7 @@ public sealed class AiConversationRunner
     {
         var chatId = context.ChatId;
         var loaded = new HashSet<string>(request.LoadedToolIds, StringComparer.Ordinal);
-        var stopwatch = Stopwatch.StartNew();
+        var clock = new RunClock(activity.TotalMs);
         activity.Model = request.Model.ModelId;
         activity.Effort = request.Parameters.Effort;
 
@@ -83,18 +89,18 @@ public sealed class AiConversationRunner
                     case AiStreamEvent.Text text when !string.IsNullOrEmpty(text.Delta):
                         CloseThinking();
                         roundText.Append(text.Delta);
-                        yield return new ChatStreamChunk { Kind = ChatStreamChunkKind.Text, Text = text.Delta, ElapsedMs = stopwatch.ElapsedMilliseconds };
+                        yield return new ChatStreamChunk { Kind = ChatStreamChunkKind.Text, Text = text.Delta, ElapsedMs = clock.Now };
                         break;
                     case AiStreamEvent.Thinking delta when !string.IsNullOrEmpty(delta.Delta):
                         if (thinking == null)
                         {
-                            thinking = new ActivityEntry { Type = ActivityEntryType.Thinking, StartedMs = stopwatch.ElapsedMilliseconds };
+                            thinking = new ActivityEntry { Type = ActivityEntryType.Thinking, StartedMs = clock.Now };
                             activity.Entries.Add(thinking);
                         }
 
                         thinkingText.Append(delta.Delta);
                         thinking.Text = thinkingText.ToString();
-                        yield return new ChatStreamChunk { Kind = ChatStreamChunkKind.Thinking, Text = delta.Delta, ElapsedMs = stopwatch.ElapsedMilliseconds };
+                        yield return new ChatStreamChunk { Kind = ChatStreamChunkKind.Thinking, Text = delta.Delta, ElapsedMs = clock.Now };
                         break;
                     case AiStreamEvent.ThinkingBreak when thinking != null && thinkingText.Length > 0:
                         // Summary parts arrive without separators; a paragraph break keeps them readable.
@@ -103,7 +109,7 @@ public sealed class AiConversationRunner
                         {
                             thinkingText.Append(ParagraphBreak);
                             thinking.Text = thinkingText.ToString();
-                            yield return new ChatStreamChunk { Kind = ChatStreamChunkKind.Thinking, Text = ParagraphBreak, ElapsedMs = stopwatch.ElapsedMilliseconds };
+                            yield return new ChatStreamChunk { Kind = ChatStreamChunkKind.Thinking, Text = ParagraphBreak, ElapsedMs = clock.Now };
                         }
                         break;
                     case AiStreamEvent.ToolCall call:
@@ -128,12 +134,13 @@ public sealed class AiConversationRunner
                 _logger.LogWarning(
                     "Stopping chat {ChatId} after {Rounds} tool rounds; the model kept requesting tools.",
                     chatId, MaxToolRounds);
-                yield return new ChatStreamChunk { Kind = ChatStreamChunkKind.Text, Text = $"\n_{ToolRoundLimitText}_\n", ElapsedMs = stopwatch.ElapsedMilliseconds };
+                yield return new ChatStreamChunk { Kind = ChatStreamChunkKind.Text, Text = $"\n_{ToolRoundLimitText}_\n", ElapsedMs = clock.Now };
                 break;
             }
 
             activity.ToolRounds++;
             var results = new List<AiToolResult>(toolCalls.Count);
+            var outcome = new RoundOutcome();
 
             foreach (var call in toolCalls)
             {
@@ -144,7 +151,7 @@ public sealed class AiConversationRunner
                 var entry = new ActivityEntry
                 {
                     Type = ActivityEntryType.Tool,
-                    StartedMs = stopwatch.ElapsedMilliseconds,
+                    StartedMs = clock.Now,
                     ToolCallId = call.Id,
                     ToolName = call.FunctionName,
                     ArgumentsJson = call.ArgumentsJson,
@@ -170,82 +177,23 @@ public sealed class AiConversationRunner
                     var unknown = ToolResult.Error(notLoaded
                         ? $"{call.FunctionName} is not loaded. Load its toolbox with {LoadToolsTool.ToolId} first."
                         : $"Unknown tool: {call.FunctionName}");
-                    yield return CompleteEntry(entry, unknown, ToolCallStatus.Error, results, call.Id, stopwatch.ElapsedMilliseconds);
+                    yield return CompleteEntry(entry, unknown, ToolCallStatus.Error, results, call.Id, clock.Now);
                     continue;
                 }
 
-                await foreach (var evt in _toolExecutor.ExecuteAsync(tool, call, context, cancellationToken))
+                await foreach (var chunk in TrackAsync(entry, call, _toolExecutor.ExecuteAsync(tool, call, context, cancellationToken), results, outcome, clock))
                 {
-                    var elapsed = stopwatch.ElapsedMilliseconds;
-                    switch (evt)
-                    {
-                        case ToolExecutionEvent.ConfirmationRequested confirmation:
-                            entry.Status = ToolCallStatus.AwaitingConfirmation;
-                            entry.Preview = ToPreviewDto(confirmation.Preview);
-                            yield return new ChatStreamChunk
-                            {
-                                Kind = ChatStreamChunkKind.ToolConfirmationRequested,
-                                ElapsedMs = elapsed,
-                                ToolCallId = call.Id,
-                                ToolName = call.FunctionName,
-                                ArgumentsJson = entry.ArgumentsJson,
-                                Preview = entry.Preview,
-                                Status = entry.Status,
-                                TimeoutMs = (long)confirmation.Timeout.TotalMilliseconds
-                            };
-                            break;
-
-                        case ToolExecutionEvent.ClientCallRequested clientCall:
-                            entry.Status = ToolCallStatus.AwaitingClient;
-                            yield return new ChatStreamChunk
-                            {
-                                Kind = ChatStreamChunkKind.ToolClientCallRequested,
-                                ElapsedMs = elapsed,
-                                ToolCallId = call.Id,
-                                ToolName = call.FunctionName,
-                                ArgumentsJson = clientCall.ArgumentsJson,
-                                Status = entry.Status,
-                                TimeoutMs = (long)clientCall.Timeout.TotalMilliseconds
-                            };
-                            break;
-
-                        case ToolExecutionEvent.StatusChanged status:
-                            entry.Status = status.Status;
-                            if (status.ArgumentsJson != null)
-                            {
-                                entry.ArgumentsJson = status.ArgumentsJson;
-                            }
-
-                            yield return new ChatStreamChunk
-                            {
-                                Kind = ChatStreamChunkKind.ToolStatus,
-                                ElapsedMs = elapsed,
-                                ToolCallId = call.Id,
-                                ToolName = call.FunctionName,
-                                ArgumentsJson = status.ArgumentsJson,
-                                Status = entry.Status
-                            };
-                            break;
-
-                        case ToolExecutionEvent.Completed completed:
-                            yield return CompleteEntry(entry, completed.Result, completed.Status, results, call.Id, elapsed);
-                            break;
-                    }
+                    yield return chunk;
                 }
             }
 
-            foreach (var result in results)
+            AddResults(transcript, results, loaded);
+
+            if (outcome.Waiting)
             {
-                loaded.UnionWith(result.LoadedToolIds ?? []);
-                transcript.Add(new TranscriptItem
-                {
-                    Kind = TranscriptItemKind.ToolResult,
-                    ToolCallId = result.ToolCallId,
-                    Content = result.Content,
-                    IsError = result.IsError,
-                    LoadedToolIds = result.LoadedToolIds is { Count: > 0 } ids ? ids.ToList() : null,
-                    Images = result.Images is { Count: > 0 } images ? images.Select(i => new TranscriptImage { Base64 = i.Base64, MediaType = i.MediaType }).ToList() : null
-                });
+                Pause(activity, clock.Now);
+                yield return new ChatStreamChunk { Kind = ChatStreamChunkKind.AwaitingUser, ElapsedMs = activity.TotalMs, Activity = activity };
+                yield break;
             }
 
             conversation.AppendToolResults(results);
@@ -257,15 +205,183 @@ public sealed class AiConversationRunner
                     return;
                 }
 
-                thinking.EndedMs = stopwatch.ElapsedMilliseconds;
+                thinking.EndedMs = clock.Now;
                 thinking = null;
                 thinkingText.Clear();
             }
         }
 
-        Finish(activity, stopwatch.ElapsedMilliseconds);
+        Finish(activity, clock.Now);
         yield return new ChatStreamChunk { Kind = ChatStreamChunkKind.Done, ElapsedMs = activity.TotalMs, Activity = activity };
     }
+
+    /// <summary>
+    /// Continues the calls a message waited on, with the answers they got, and records their
+    /// results in the transcript. Ends with an <see cref="ChatStreamChunkKind.AwaitingUser"/> chunk
+    /// when a call waits again; otherwise the caller goes on with <see cref="StreamAsync"/> on a
+    /// request whose history holds these results.
+    /// </summary>
+    public async IAsyncEnumerable<ChatStreamChunk> ResumeAsync(
+        AiRequest request,
+        ToolExecutionContext context,
+        MessageActivity activity,
+        List<TranscriptItem> transcript,
+        IReadOnlyList<ResumedCall> calls,
+        [EnumeratorCancellation] CancellationToken cancellationToken = default)
+    {
+        var loaded = new HashSet<string>(request.LoadedToolIds, StringComparer.Ordinal);
+        var clock = new RunClock(activity.TotalMs);
+        var results = new List<AiToolResult>(calls.Count);
+        var outcome = new RoundOutcome();
+
+        yield return new ChatStreamChunk { Kind = ChatStreamChunkKind.Continued, ElapsedMs = clock.Now, Activity = activity };
+
+        foreach (var (entry, input) in calls)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+
+            var call = new AiStreamEvent.ToolCall(entry.ToolCallId!, entry.ToolName!, OriginalArguments(transcript, entry));
+            var (tool, _) = FindTool(request, loaded, call.FunctionName);
+            if (tool == null)
+            {
+                yield return CompleteEntry(entry, ToolResult.Error($"Unknown tool: {call.FunctionName}"), ToolCallStatus.Error, results, call.Id, clock.Now);
+                continue;
+            }
+
+            await foreach (var chunk in TrackAsync(entry, call, _toolExecutor.ResumeAsync(tool, call, context, input, cancellationToken), results, outcome, clock))
+            {
+                yield return chunk;
+            }
+        }
+
+        AddResults(transcript, results, loaded);
+
+        if (outcome.Waiting)
+        {
+            Pause(activity, clock.Now);
+            yield return new ChatStreamChunk { Kind = ChatStreamChunkKind.AwaitingUser, ElapsedMs = activity.TotalMs, Activity = activity };
+            yield break;
+        }
+
+        activity.TotalMs = clock.Now;
+    }
+
+    /// <summary>
+    /// Gives every call the message waits on the result <see cref="NotRespondedText"/> and the
+    /// status <see cref="ToolCallStatus.Unanswered"/>: the user sent a new message instead of answering.
+    /// </summary>
+    public static void LeaveUnanswered(MessageActivity activity, List<TranscriptItem> transcript)
+    {
+        foreach (var entry in activity.Entries.Where(e => e.Type == ActivityEntryType.Tool && e.Status.IsAwaiting()))
+        {
+            entry.Status = ToolCallStatus.Unanswered;
+            entry.EndedMs = activity.TotalMs;
+            entry.Result = NotRespondedText;
+            entry.IsError = true;
+            entry.Response = null;
+            transcript.Add(new TranscriptItem { Kind = TranscriptItemKind.ToolResult, ToolCallId = entry.ToolCallId, Content = NotRespondedText, IsError = true });
+        }
+
+        SetTotals(activity, activity.TotalMs);
+    }
+
+    /// <summary>Applies one call's executor events to its entry and yields the chunks they become.</summary>
+    private static async IAsyncEnumerable<ChatStreamChunk> TrackAsync(
+        ActivityEntry entry,
+        AiStreamEvent.ToolCall call,
+        IAsyncEnumerable<ToolExecutionEvent> events,
+        List<AiToolResult> results,
+        RoundOutcome outcome,
+        RunClock clock)
+    {
+        await foreach (var evt in events)
+        {
+            switch (evt)
+            {
+                case ToolExecutionEvent.StatusChanged status:
+                    entry.Status = status.Status;
+                    if (status.ArgumentsJson != null)
+                    {
+                        entry.ArgumentsJson = status.ArgumentsJson;
+                    }
+
+                    yield return new ChatStreamChunk
+                    {
+                        Kind = ChatStreamChunkKind.ToolStatus,
+                        ElapsedMs = clock.Now,
+                        ToolCallId = call.Id,
+                        ToolName = call.FunctionName,
+                        ArgumentsJson = status.ArgumentsJson,
+                        Status = entry.Status
+                    };
+                    break;
+
+                case ToolExecutionEvent.Completed completed:
+                    yield return CompleteEntry(entry, completed.Result, completed.Status, results, call.Id, clock.Now);
+                    break;
+
+                case ToolExecutionEvent.Deferred deferred:
+                    outcome.Waiting = true;
+                    yield return Wait(entry, call, deferred.Step, clock.Now);
+                    break;
+            }
+        }
+    }
+
+    /// <summary>Puts the entry in the awaiting status of the step and returns the chunk that announces it.</summary>
+    private static ChatStreamChunk Wait(ActivityEntry entry, AiStreamEvent.ToolCall call, DeferredStep step, long elapsedMs)
+    {
+        entry.Response = null;
+        var chunk = new ChatStreamChunk { ElapsedMs = elapsedMs, ToolCallId = call.Id, ToolName = call.FunctionName, ArgumentsJson = entry.ArgumentsJson };
+        switch (step)
+        {
+            case DeferredStep.Confirmation confirmation:
+                entry.Status = ToolCallStatus.AwaitingConfirmation;
+                entry.Preview = ToPreviewDto(confirmation.Preview);
+                chunk.Kind = ChatStreamChunkKind.ToolConfirmationRequested;
+                chunk.Preview = entry.Preview;
+                break;
+
+            case DeferredStep.Questions questions:
+                entry.Status = ToolCallStatus.AwaitingAnswer;
+                entry.Questions = questions.Values.Select(ToQuestionDto).ToList();
+                chunk.Kind = ChatStreamChunkKind.ToolQuestionRequested;
+                chunk.Questions = entry.Questions;
+                break;
+
+            default:
+                entry.Status = ToolCallStatus.AwaitingClient;
+                chunk.Kind = ChatStreamChunkKind.ToolClientCallRequested;
+                break;
+        }
+
+        chunk.Status = entry.Status;
+        return chunk;
+    }
+
+    /// <summary>Adds the results to the transcript and the tools a toolbox load named to <paramref name="loaded"/>.</summary>
+    private static void AddResults(List<TranscriptItem> transcript, List<AiToolResult> results, HashSet<string> loaded)
+    {
+        foreach (var result in results)
+        {
+            loaded.UnionWith(result.LoadedToolIds ?? []);
+            transcript.Add(new TranscriptItem
+            {
+                Kind = TranscriptItemKind.ToolResult,
+                ToolCallId = result.ToolCallId,
+                Content = result.Content,
+                IsError = result.IsError,
+                LoadedToolIds = result.LoadedToolIds is { Count: > 0 } ids ? ids.ToList() : null,
+                Images = result.Images is { Count: > 0 } images ? images.Select(i => new TranscriptImage { Base64 = i.Base64, MediaType = i.MediaType }).ToList() : null
+            });
+        }
+    }
+
+    /// <summary>The arguments the model called with, as the transcript recorded them.</summary>
+    private static string OriginalArguments(List<TranscriptItem> transcript, ActivityEntry entry)
+        => transcript.LastOrDefault(item => item.Kind == TranscriptItemKind.ToolCall && item.ToolCallId == entry.ToolCallId)?.ArgumentsJson
+            ?? entry.ArgumentsJson
+            ?? "{}";
 
     /// <summary>
     /// The tool the model called: one of the request's tools, or a loadable tool a load named.
@@ -324,21 +440,34 @@ public sealed class AiConversationRunner
             entry.EndedMs = totalMs;
             if (entry.Type == ActivityEntryType.Tool && !entry.Status.IsTerminal())
             {
-                // Nothing pending survives the run; history only holds terminal states.
-                entry.Status = entry.Status is ToolCallStatus.AwaitingConfirmation or ToolCallStatus.AwaitingClient
-                    ? ToolCallStatus.Timeout
-                    : ToolCallStatus.Error;
+                entry.Status = ToolCallStatus.Error;
                 entry.IsError = true;
             }
         }
 
+        SetTotals(activity, totalMs);
+    }
+
+    /// <summary>The totals of a run that ends with calls waiting; the waiting entries stay open.</summary>
+    private static void Pause(MessageActivity activity, long totalMs)
+    {
+        foreach (var entry in activity.Entries.Where(entry => entry.EndedMs == null && !(entry.Type == ActivityEntryType.Tool && entry.Status.IsAwaiting())))
+        {
+            entry.EndedMs = totalMs;
+        }
+
+        SetTotals(activity, totalMs);
+    }
+
+    private static void SetTotals(MessageActivity activity, long totalMs)
+    {
         activity.TotalMs = totalMs;
         activity.ThinkingMs = activity.Entries
             .Where(entry => entry.Type == ActivityEntryType.Thinking)
-            .Sum(entry => entry.EndedMs!.Value - entry.StartedMs);
+            .Sum(entry => (entry.EndedMs ?? totalMs) - entry.StartedMs);
         activity.ToolMs = activity.Entries
             .Where(entry => entry.Type == ActivityEntryType.Tool)
-            .Sum(entry => entry.EndedMs!.Value - entry.StartedMs);
+            .Sum(entry => (entry.EndedMs ?? totalMs) - entry.StartedMs);
     }
 
     private static ChatStreamChunk CompleteEntry(
@@ -373,10 +502,37 @@ public sealed class AiConversationRunner
         Title = preview.Title,
         Summary = preview.Summary,
         AllowEdit = preview.AllowEdit,
-        Fields = preview.Fields.Select(f => new ToolPreviewFieldDto { Label = f.Label, Value = f.Value, Multiline = f.Multiline }).ToList()
+        Kind = preview.Kind,
+        Fields = preview.Fields.Select(f => new ToolPreviewFieldDto { Label = f.Label, Value = f.Value, Multiline = f.Multiline, Role = f.Role }).ToList()
+    };
+
+    private static UserQuestionDto ToQuestionDto(UserQuestion question) => new()
+    {
+        Question = question.Question,
+        MultiSelect = question.MultiSelect,
+        Options = question.Options.Select(o => new UserQuestionOptionDto { Label = o.Label, Description = o.Description }).ToList()
     };
 
     /// <summary>Also what the Responses API ends with when an agent calls tools after its budget ran out.</summary>
     internal const string ToolRoundLimitText =
         "Stopped after too many tool calls in a row.";
+
+    /// <summary>What a call gets when the user sent a new message instead of answering it.</summary>
+    public const string NotRespondedText = "The user did not respond; the action was not performed.";
+
+    /// <summary>Milliseconds on the message's timeline: the time earlier runs of the message took, plus this run's.</summary>
+    private sealed class RunClock(long startMs)
+    {
+        private readonly Stopwatch _stopwatch = Stopwatch.StartNew();
+
+        public long Now => startMs + _stopwatch.ElapsedMilliseconds;
+    }
+
+    private sealed class RoundOutcome
+    {
+        public bool Waiting { get; set; }
+    }
 }
+
+/// <summary>A call a message waited on, and the answer it continues with.</summary>
+public sealed record ResumedCall(ActivityEntry Entry, ResumeInput Input);

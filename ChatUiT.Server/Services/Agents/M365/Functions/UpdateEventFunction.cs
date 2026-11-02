@@ -43,9 +43,9 @@ public sealed class UpdateEventFunction : ConfirmableTool<UpdateEventArgs>
         Changes(args);
         var current = await _graph.GetAsync(invocation.Context, $"{EventSupport.EventPath(args.EventId)}?$select=subject", EventSupport.Scopes, ct);
 
-        var fields = new List<ToolPreviewField> { new("Event", current.Str("subject") ?? "") };
+        var fields = new List<ToolPreviewField> { new("Event", current.Str("subject") ?? "", Role: ToolPreviewFieldRole.Subject) };
         fields.AddRange(EventSupport.Preview(args.Subject, args.Start, args.End, args.TimeZone, args.Attendees, args.Location, args.Body, null));
-        return new ToolPreview("Update calendar event", null, fields, AllowEdit: false);
+        return new ToolPreview("Update calendar event", null, fields, AllowEdit: false, Kind: ToolPreviewKind.Event);
     }
 
     protected override async Task<ToolResult> CommitAsync(UpdateEventArgs args, ToolInvocation invocation, CancellationToken ct)

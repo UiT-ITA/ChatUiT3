@@ -45,11 +45,11 @@ public sealed class CreateSharingLinkFunction : ConfirmableTool<CreateSharingLin
             "Share file",
             recipients.Count > 0 ? "The recipients are notified by email." : null,
             [
-                new ToolPreviewField("File", item.Str("name") ?? ""),
+                new ToolPreviewField("File", item.Str("name") ?? "", Role: ToolPreviewFieldRole.Path),
                 new ToolPreviewField("Access", args.Access == SharingAccess.Edit ? "Can edit" : "Can view"),
                 new ToolPreviewField("Shared with", recipients.Count > 0 ? string.Join(", ", recipients) : "Anyone in the organization with the link")
             ],
-            AllowEdit: false);
+            AllowEdit: false, Kind: ToolPreviewKind.File);
     }
 
     protected override async Task<ToolResult> CommitAsync(CreateSharingLinkArgs args, ToolInvocation invocation, CancellationToken ct)

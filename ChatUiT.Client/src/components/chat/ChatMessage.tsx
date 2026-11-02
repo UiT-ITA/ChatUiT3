@@ -53,13 +53,14 @@ function ChatMessage({ chatId, message, fallbackAssistantName, onStreamingChunk 
     return message.status === "Generating" && !message.optimistic ? getStreamSignal(message.id, chatId) : null;
   }, [message.id, message.status, message.optimistic, chatId]);
 
+  // A message that continues after waiting streams only what comes after its stored text.
   const displayContent = message.status === "Generating"
-    ? (streamSignal?.value || "")
+    ? (message.content ?? "") + (streamSignal?.value || "")
     : message.content;
 
   const activitySignal = useMemo(() => {
-    return message.status === "Generating" && message.role === 'Assistant' && !message.optimistic ? getActivitySignal(message.id, chatId) : null;
-  }, [message.id, message.status, message.role, message.optimistic, chatId]);
+    return message.status === "Generating" && message.role === 'Assistant' && !message.optimistic ? getActivitySignal(message.id, chatId, message.activity) : null;
+  }, [message.id, message.status, message.role, message.optimistic, message.activity, chatId]);
   const liveActivity = activitySignal?.value ?? null;
 
   const isUser = message.role === 'User';
@@ -207,7 +208,7 @@ function ChatMessage({ chatId, message, fallbackAssistantName, onStreamingChunk 
   return (
     <div className={`chat-message ${isUser ? 'user-message' : isAssistant ? 'assistant-message' : 'system-message'} ${isStreaming ? 'streaming' : ''}`}>
       {isAssistant && (
-        <MessageActivity activity={message.activity ?? null} live={liveActivity} chatId={chatId} messageId={message.id}>
+        <MessageActivity activity={message.activity ?? null} live={liveActivity}>
           <span className="message-meta-name t-overline">{message.assistantName || fallbackAssistantName || t('chat.assistantLabel')}</span>
           <span className="message-time t-meta">
             {new Date(message.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}

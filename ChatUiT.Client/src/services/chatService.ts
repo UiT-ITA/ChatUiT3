@@ -1,9 +1,10 @@
 import { signal, Signal, computed } from "@preact/signals-react";
-import type { ChatDto, ChatFileDto, ChatHeaderDto, ChatMessageDto, ChatStreamChunk, CreateChatDto, MessageActivityDto, ActivityEntryDto, UpdateChatDto, ToolCallResponseDto, ToolCallResponseResultDto, ToolCallStatus } from "../types/chatModels";
+import type { ChatDto, ChatFileDto, ChatHeaderDto, ChatMessageDto, ChatStreamChunk, CreateChatDto, MessageActivityDto, ActivityEntryDto, UpdateChatDto, ToolCallResponseDto, ToolCallResponseResultDto, RespondToToolCallDto } from "../types/chatModels";
 import { getClientToolDeclarations } from "./clientTools/clientToolRegistry";
-import { runClientToolCall } from "./clientTools/clientToolRunner";
+import { runWaitingClientCalls } from "./clientTools/clientToolRunner";
 import apiService, { ApiError } from "./apiService";
-import type { SendMessageDto } from "../types/chatModels";
+import type { PendingAnswerDto, SendMessageDto } from "../types/chatModels";
+import { TERMINAL_TOOL_STATUSES } from "../types/chatModels";
 import { getAssistants, getAssistant } from "./assistantService";
 import { getAppDefaults } from "./appSettingsService";
 import type { AssistantDto, AssistantSummaryDto, FullAssistantDto } from "../types/assistantModels";
@@ -213,7 +214,8 @@ export async function deleteChat(chatId: string): Promise<void> {
   }
 }
 
-export async function sendMessage(chatId: string, content: string, files: ChatFile[]): Promise<void> {
+/** Sends a message. `answers` are answers the user gave to calls the chat waits on, sent with it. */
+export async function sendMessage(chatId: string, content: string, files: ChatFile[], answers: PendingAnswerDto[] = []): Promise<void> {
   const assistantId = getCurrentAssistantId().value;
   if (!assistantId) {
     throw new Error("No assistant selected");
@@ -228,14 +230,14 @@ export async function sendMessage(chatId: string, content: string, files: ChatFi
   }
 
   try {
-    await postMessage(chatId, content, files, assistantId);
+    await postMessage(chatId, content, files, assistantId, answers);
   } catch (error) {
     removeOptimisticMessages(chatId);
     throw error;
   }
 }
 
-async function postMessage(chatId: string, content: string, files: ChatFile[], assistantId: string): Promise<void> {
+async function postMessage(chatId: string, content: string, files: ChatFile[], assistantId: string, answers: PendingAnswerDto[] = []): Promise<void> {
   // Lets the optimistic messages paint before the request is serialized, which is slow with large files.
   await new Promise(resolve => setTimeout(resolve, 0));
 
@@ -244,7 +246,8 @@ async function postMessage(chatId: string, content: string, files: ChatFile[], a
     assistantId,
     files: mapToCreateChatFileDto(files),
     clientTools: getClientToolDeclarations(),
-    timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone
+    timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+    answers: answers.length > 0 ? answers : null,
   };
 
   ensurePayloadWithinLimit(messageDto);
@@ -253,19 +256,20 @@ async function postMessage(chatId: string, content: string, files: ChatFile[], a
 }
 
 /**
- * Stops a running generation. The server undoes the whole send — both the assistant message
- * and the user message that triggered it are deleted, and the chat too if it is left empty —
- * so the caller is responsible for putting the text back in the composer.
+ * Stops a running generation. For a new message the server undoes the whole send (`undone`) —
+ * both the assistant message and the user message that triggered it are deleted, and the chat too
+ * if it is left empty — so the caller is responsible for putting the text back in the composer. A
+ * message that continued after waiting is stopped and keeps what it had.
  *
- * Returns false when the generation had already finished: nothing was undone, leave the chat alone.
+ * `cancelled` is false when the generation had already finished: leave the chat alone.
  */
-export async function cancelGeneration(chatId: string, messageId: string): Promise<boolean> {
+export async function cancelGeneration(chatId: string, messageId: string): Promise<{ cancelled: boolean; undone: boolean }> {
   try {
-    const response = await apiService.post<{ cancelled: boolean }>(
+    const response = await apiService.post<{ cancelled: boolean; undone: boolean }>(
       `/api/Chats/${chatId}/messages/${messageId}/cancel`,
       {}
     );
-    return response?.cancelled === true;
+    return { cancelled: response?.cancelled === true, undone: response?.undone === true };
   } catch (error) {
     console.error(`Error cancelling generation for message ${messageId}:`, error);
     throw error;
@@ -316,6 +320,15 @@ function sameTokenCounts(a: Record<string, number> | undefined, b: Record<string
   return aKeys.length === bKeys.length && aKeys.every(key => a![key] === b?.[key]);
 }
 
+// A message that waits changes only in its activity when one of its calls is answered; other
+// messages change their activity only together with their status or content.
+function sameActivity(existing: ChatMessageDto, next: ChatMessageDto): boolean {
+  if (existing.status !== "AwaitingUser" && next.status !== "AwaitingUser") {
+    return true;
+  }
+  return JSON.stringify(existing.activity ?? null) === JSON.stringify(next.activity ?? null);
+}
+
 export async function invalidateChat(chatId: string): Promise<void> {
   try {
     const chatSignal = chatCache.get(chatId);
@@ -333,7 +346,8 @@ export async function invalidateChat(chatId: string): Promise<void> {
             existingMessage.status === newMessage.status &&
             existingMessage.timestamp === newMessage.timestamp &&
             existingMessage.assistantName === newMessage.assistantName &&
-            sameTokenCounts(existingMessage.tokenCounts, newMessage.tokenCounts)) {
+            sameTokenCounts(existingMessage.tokenCounts, newMessage.tokenCounts) &&
+            sameActivity(existingMessage, newMessage)) {
           return existingMessage;
         }
         
@@ -365,6 +379,7 @@ export async function invalidateChat(chatId: string): Promise<void> {
     } else {
       chatCache.set(chatId, signal(chat));
     }
+    runWaitingClientCalls(chat);
 
     // clear any prior not-found flag
     const nf = chatNotFoundCache.get(chatId);
@@ -405,8 +420,8 @@ export function getStreamSignal(messageId: string, chatId?: string): Signal<stri
   return streamSignal;
 }
 
-/** What the message's generation is doing right now. "awaitingUser" means a tool call needs the user's answer. */
-export type GenerationPhase = "starting" | "thinking" | "tool" | "awaitingUser" | "writing" | "done";
+/** What the message's generation is doing right now. */
+export type GenerationPhase = "starting" | "thinking" | "tool" | "writing" | "done";
 
 /**
  * The activity of a message as it streams in, rebuilt chunk by chunk. `final` is set once the
@@ -426,10 +441,6 @@ export interface LiveActivity {
   final: MessageActivityDto | null;
   /** The chat this message belongs to, once known. */
   chatId: string | null;
-  /** The tool call the run is paused on, if any. */
-  pendingToolCallId: string | null;
-  /** Server time (ms since generation start) when the pending call times out. */
-  pendingDeadlineMs: number | null;
 }
 
 const EMPTY_ACTIVITY: LiveActivity = {
@@ -441,17 +452,23 @@ const EMPTY_ACTIVITY: LiveActivity = {
   hasText: false,
   final: null,
   chatId: null,
-  pendingToolCallId: null,
-  pendingDeadlineMs: null,
 };
 
-export function getActivitySignal(messageId: string, chatId?: string): Signal<LiveActivity> {
+/**
+ * The live activity of a generating message. `stored` is the activity the message already has:
+ * a message that continues after waiting starts from it.
+ */
+export function getActivitySignal(messageId: string, chatId?: string, stored?: MessageActivityDto | null): Signal<LiveActivity> {
   if (chatId) messageChatIds.set(messageId, chatId);
   let activitySignal = messageActivityCache.get(messageId);
   if (!activitySignal) {
     // Anchored to now so the counter ticks from when the message appeared until the first
     // chunk brings the server's own timing.
-    activitySignal = signal<LiveActivity>({ ...EMPTY_ACTIVITY, receivedAt: Date.now() });
+    activitySignal = signal<LiveActivity>({
+      ...EMPTY_ACTIVITY,
+      receivedAt: Date.now(),
+      ...(stored ? { entries: stored.entries, phase: "tool" as GenerationPhase, phaseStartedMs: stored.totalMs, lastElapsedMs: stored.totalMs } : {}),
+    });
     messageActivityCache.set(messageId, activitySignal);
   }
   return activitySignal;
@@ -465,13 +482,9 @@ function applyChunk(activity: LiveActivity, chunk: ChatStreamChunk): LiveActivit
   // Updates the tool entry the chunk refers to; entries are immutable so the signal changes.
   const updateTool = (patch: Partial<ActivityEntryDto>): ActivityEntryDto[] =>
     entries.map(entry =>
-      entry.type === "Tool" && entry.toolCallId === chunk.toolCallId && entry.endedMs === null
+      entry.type === "Tool" && entry.toolCallId === chunk.toolCallId && !TERMINAL_TOOL_STATUSES.has(entry.status)
         ? { ...entry, ...patch }
         : entry);
-
-  const clearPending = base.pendingToolCallId === chunk.toolCallId
-    ? { pendingToolCallId: null, pendingDeadlineMs: null }
-    : {};
 
   switch (chunk.kind) {
     case "Text":
@@ -497,6 +510,8 @@ function applyChunk(activity: LiveActivity, chunk: ChatStreamChunk): LiveActivit
         execution: "server",
         status: "running",
         preview: null,
+        questions: null,
+        response: null,
       };
       return { ...base, entries: [...closeOpenEntries(entries, chunk.elapsedMs), entry], phase: "thinking", phaseStartedMs: chunk.elapsedMs };
     }
@@ -514,35 +529,19 @@ function applyChunk(activity: LiveActivity, chunk: ChatStreamChunk): LiveActivit
         execution: chunk.execution ?? "server",
         status: "running",
         preview: null,
+        questions: null,
+        response: null,
       };
       return { ...base, entries: [...closeOpenEntries(entries, chunk.elapsedMs), entry], phase: "tool", phaseStartedMs: chunk.elapsedMs };
     }
     case "ToolConfirmationRequested":
-      return {
-        ...base,
-        entries: updateTool({ status: "awaitingConfirmation", preview: chunk.preview, argumentsJson: chunk.argumentsJson ?? undefined }),
-        phase: "awaitingUser",
-        phaseStartedMs: chunk.elapsedMs,
-        pendingToolCallId: chunk.toolCallId,
-        pendingDeadlineMs: chunk.timeoutMs !== null ? chunk.elapsedMs + chunk.timeoutMs : null,
-      };
+      return { ...base, entries: updateTool({ status: "awaitingConfirmation", preview: chunk.preview, argumentsJson: chunk.argumentsJson ?? undefined }) };
+    case "ToolQuestionRequested":
+      return { ...base, entries: updateTool({ status: "awaitingAnswer", questions: chunk.questions }) };
     case "ToolClientCallRequested":
-      // The client's job, not the user's: the phase stays "tool".
-      return {
-        ...base,
-        entries: updateTool({ status: "awaitingClient", argumentsJson: chunk.argumentsJson ?? undefined }),
-        pendingToolCallId: chunk.toolCallId,
-        pendingDeadlineMs: chunk.timeoutMs !== null ? chunk.elapsedMs + chunk.timeoutMs : null,
-      };
-    case "ToolStatus": {
-      const status = chunk.status ?? "running";
-      const resumed = base.phase === "awaitingUser" && (status === "approved" || status === "running");
-      return {
-        ...base,
-        entries: updateTool({ status, argumentsJson: chunk.argumentsJson ?? undefined }),
-        ...(resumed ? { phase: "tool" as GenerationPhase, phaseStartedMs: chunk.elapsedMs, ...clearPending } : {}),
-      };
-    }
+      return { ...base, entries: updateTool({ status: "awaitingClient", argumentsJson: chunk.argumentsJson ?? undefined }) };
+    case "ToolStatus":
+      return { ...base, entries: updateTool({ status: chunk.status ?? "running", argumentsJson: chunk.argumentsJson ?? undefined }) };
     case "ToolEnd":
       return {
         ...base,
@@ -552,18 +551,17 @@ function applyChunk(activity: LiveActivity, chunk: ChatStreamChunk): LiveActivit
           isError: chunk.isError,
           status: chunk.status ?? (chunk.isError ? "error" : "completed"),
         }),
-        ...(base.phase === "awaitingUser" ? { phase: "tool" as GenerationPhase, phaseStartedMs: chunk.elapsedMs } : {}),
-        ...clearPending,
       };
+    case "Continued":
+      return { ...base, entries: chunk.activity?.entries ?? entries, phase: "tool", phaseStartedMs: chunk.elapsedMs };
     case "Done":
+    case "AwaitingUser":
       return {
         ...base,
         entries: chunk.activity?.entries ?? closeOpenEntries(entries, chunk.elapsedMs),
         phase: "done",
         phaseStartedMs: chunk.elapsedMs,
         final: chunk.activity,
-        pendingToolCallId: null,
-        pendingDeadlineMs: null,
       };
     default: {
       // An unknown kind from a newer server must not corrupt the activity; ignore it.
@@ -584,13 +582,9 @@ function flushBuffer(messageId: string): void {
 
   let text = "";
   let activity = getActivitySignal(messageId).value;
-  const clientCalls = new Map<string, number>();
   for (const chunk of buffer) {
     if (chunk.kind === "Text") {
       text += chunk.text ?? "";
-    }
-    if (chunk.kind === "ToolClientCallRequested" && chunk.toolCallId) {
-      clientCalls.set(chunk.toolCallId, chunk.timeoutMs ?? 60_000);
     }
     activity = applyChunk(activity, chunk);
   }
@@ -612,57 +606,36 @@ function flushBuffer(messageId: string): void {
 
   chunkBuffers.delete(messageId);
   flushTimers.delete(messageId);
-
-  // Only calls still waiting after the whole buffer is applied are run. A replayed stream
-  // delivers the call and its end in one burst, so a finished call is never run twice.
-  if (chatId && clientCalls.size > 0) {
-    for (const entry of activity.entries) {
-      if (entry.type === "Tool" && entry.status === "awaitingClient" && entry.toolCallId && clientCalls.has(entry.toolCallId)) {
-        void runClientToolCall(chatId, messageId, entry, clientCalls.get(entry.toolCallId)!);
-      }
-    }
-  }
 }
 
 /**
- * Answers a tool call the run is paused on. The entry's status is set right away so the card
- * does not flicker while the server's ToolStatus chunk travels. A 409 means the call was
- * already answered elsewhere or timed out; the returned status is adopted and no error is
- * raised.
+ * Answers a tool call a message waits on, then reloads the chat: the entry now holds the
+ * answer, and the last answer the message waited for sets it generating again. A 409 means
+ * the call no longer waits (another tab answered, or a new message left it unanswered); it is
+ * returned as not accepted, not raised.
  */
 export async function respondToToolCall(
   chatId: string,
   messageId: string,
   toolCallId: string,
-  body: ToolCallResponseDto,
+  response: ToolCallResponseDto,
 ): Promise<ToolCallResponseResultDto> {
   const endpoint = `/api/Chats/${chatId}/messages/${messageId}/tool-calls/${toolCallId}/respond`;
+  const body: RespondToToolCallDto = {
+    ...response,
+    clientTools: getClientToolDeclarations(),
+    timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+  };
   try {
-    const result = await apiService.post<ToolCallResponseResultDto>(endpoint, body);
-    if (result?.status) {
-      setLiveToolStatus(messageId, toolCallId, result.status);
-    }
-    return result;
+    return await apiService.post<ToolCallResponseResultDto>(endpoint, body);
   } catch (error) {
     if (error instanceof ApiError && error.status === 409) {
-      const stale: ToolCallResponseResultDto = { accepted: false, status: null };
-      return stale;
+      return { accepted: false, continued: false };
     }
     throw error;
+  } finally {
+    void invalidateChat(chatId);
   }
-}
-
-function setLiveToolStatus(messageId: string, toolCallId: string, status: ToolCallStatus): void {
-  const activitySignal = messageActivityCache.get(messageId);
-  if (!activitySignal) return;
-  const current = activitySignal.value;
-  const resumed = status === "approved" || status === "running";
-  activitySignal.value = {
-    ...current,
-    entries: current.entries.map(entry =>
-      entry.type === "Tool" && entry.toolCallId === toolCallId && entry.endedMs === null ? { ...entry, status } : entry),
-    ...(resumed && current.phase === "awaitingUser" ? { phase: "tool" as GenerationPhase, pendingToolCallId: null, pendingDeadlineMs: null } : {}),
-  };
 }
 
 export function receiveMessageChunk(messageId: string, chunk: ChatStreamChunk): void {

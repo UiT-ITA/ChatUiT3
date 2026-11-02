@@ -44,17 +44,17 @@ public sealed class CreateMailDraftFunction : ConfirmableTool<CreateMailDraftArg
         }
         else
         {
-            fields.Add(new ToolPreviewField("To", string.Join(", ", to)));
+            fields.Add(new ToolPreviewField("To", string.Join(", ", to), Role: ToolPreviewFieldRole.Recipients));
             if (cc.Count > 0)
             {
-                fields.Add(new ToolPreviewField("Cc", string.Join(", ", cc)));
+                fields.Add(new ToolPreviewField("Cc", string.Join(", ", cc), Role: ToolPreviewFieldRole.Recipients));
             }
 
-            fields.Add(new ToolPreviewField("Subject", args.Subject ?? ""));
+            fields.Add(new ToolPreviewField("Subject", args.Subject ?? "", Role: ToolPreviewFieldRole.Subject));
         }
 
-        fields.Add(new ToolPreviewField("Message", args.Body, Multiline: true));
-        return Task.FromResult(new ToolPreview("Save email draft", "The draft is saved in Drafts and not sent.", fields, AllowEdit: false));
+        fields.Add(new ToolPreviewField("Message", args.Body, Multiline: true, Role: ToolPreviewFieldRole.Body));
+        return Task.FromResult(new ToolPreview("Save email draft", "The draft is saved in Drafts and not sent.", fields, AllowEdit: false, Kind: ToolPreviewKind.Message));
     }
 
     protected override async Task<ToolResult> CommitAsync(CreateMailDraftArgs args, ToolInvocation invocation, CancellationToken ct)

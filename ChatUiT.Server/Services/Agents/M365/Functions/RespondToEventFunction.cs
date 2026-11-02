@@ -40,17 +40,17 @@ public sealed class RespondToEventFunction : ConfirmableTool<RespondToEventArgs>
 
         var fields = new List<ToolPreviewField>
         {
-            new("Event", e.Str("subject") ?? ""),
+            new("Event", e.Str("subject") ?? "", Role: ToolPreviewFieldRole.Subject),
             new("Organizer", e.Str("organizer", "emailAddress", "name") ?? ""),
-            new("Start (UTC)", e.Str("start", "dateTime") ?? ""),
+            new("Start (UTC)", e.Str("start", "dateTime") ?? "", Role: ToolPreviewFieldRole.Time),
             new("Response", args.Response.ToString())
         };
         if (!string.IsNullOrWhiteSpace(args.Comment))
         {
-            fields.Add(new ToolPreviewField("Message", args.Comment, Multiline: true));
+            fields.Add(new ToolPreviewField("Message", args.Comment, Multiline: true, Role: ToolPreviewFieldRole.Body));
         }
 
-        return new ToolPreview("Respond to invitation", null, fields, AllowEdit: false);
+        return new ToolPreview("Respond to invitation", null, fields, AllowEdit: false, Kind: ToolPreviewKind.Event);
     }
 
     protected override async Task<ToolResult> CommitAsync(RespondToEventArgs args, ToolInvocation invocation, CancellationToken ct)

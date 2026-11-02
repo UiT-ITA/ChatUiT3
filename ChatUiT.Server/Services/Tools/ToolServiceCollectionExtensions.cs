@@ -19,7 +19,6 @@ public static class ToolServiceCollectionExtensions
         services.AddSingleton<IToolRegistry, ToolRegistry>();
         services.AddSingleton<IToolboxRegistry, ToolboxRegistry>();
         services.AddSingleton<IToolAccessService, ToolAccessService>();
-        services.AddSingleton<PendingInteractionRegistry>();
         services.AddSingleton<IToolExecutor, ToolExecutor>();
         services.AddSingleton<IUserTokenProviderFactory, MsalUserTokenProviderFactory>();
         services.AddHttpClient();

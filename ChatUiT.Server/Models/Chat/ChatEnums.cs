@@ -28,6 +28,8 @@ public enum AiChatStatus
     Success,
     Error,
     Cancelled,
+    /// <summary>The run ended on tool calls that wait for the user or the client; their answers continue it.</summary>
+    AwaitingUser,
 }
 
 [JsonConverter(typeof(JsonStringEnumConverter))]

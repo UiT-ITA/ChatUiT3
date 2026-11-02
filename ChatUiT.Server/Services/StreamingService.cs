@@ -24,23 +24,28 @@ public class StreamingService
     /// Registers the token source driving a generation so it can be cancelled from another request.
     /// Ownership (disposal) stays with the caller.
     /// </summary>
-    public void RegisterGeneration(string userId, string messageId, CancellationTokenSource cancellationTokenSource, TimeSpan timeout)
+    /// <param name="undoesSend">True when a cancel removes the send that started the run; false for a message that continues.</param>
+    public void RegisterGeneration(string userId, string messageId, CancellationTokenSource cancellationTokenSource, TimeSpan timeout, bool undoesSend)
     {
-        var handle = new RunHandle { Cts = cancellationTokenSource, Timeout = timeout };
-        handle.Resume();
+        var handle = new RunHandle { Cts = cancellationTokenSource, UndoesSend = undoesSend };
+        cancellationTokenSource.CancelAfter(timeout);
         _activeGenerations[GetStreamKey(userId, messageId)] = handle;
     }
 
     /// <summary>
     /// Cancels a running generation on the user's behalf. False when nothing is running — the
     /// generation already finished, or the message belongs to someone else (the key embeds the user).
+    /// <paramref name="undoesSend"/> says whether the cancel removes the send.
     /// </summary>
-    public bool TryCancelGeneration(string userId, string messageId)
+    public bool TryCancelGeneration(string userId, string messageId, out bool undoesSend)
     {
+        undoesSend = false;
         if (!_activeGenerations.TryGetValue(GetStreamKey(userId, messageId), out var handle))
         {
             return false;
         }
+
+        undoesSend = handle.UndoesSend;
 
         // Flag before cancelling: the generation task reads it the moment the token fires.
         handle.UserCancelled = true;
@@ -73,26 +78,6 @@ public class StreamingService
     public bool IsGenerationActive(string userId, string messageId)
         => _activeGenerations.ContainsKey(GetStreamKey(userId, messageId));
 
-    /// <summary>
-    /// Stops the generation deadline while a tool waits for the user. Time spent reading a
-    /// preview must not count against the run; the wait has its own timeout.
-    /// </summary>
-    public void SuspendGenerationTimeout(string userId, string messageId)
-    {
-        if (_activeGenerations.TryGetValue(GetStreamKey(userId, messageId), out var handle))
-        {
-            handle.Suspend();
-        }
-    }
-
-    public void ResumeGenerationTimeout(string userId, string messageId)
-    {
-        if (_activeGenerations.TryGetValue(GetStreamKey(userId, messageId), out var handle))
-        {
-            handle.Resume();
-        }
-    }
-
     public void StartMessage(string userId, string messageId)
     {
         var streamKey = GetStreamKey(userId, messageId);
@@ -110,9 +95,10 @@ public class StreamingService
             // Wait additional time for late clients
             await Task.Delay(TimeSpan.FromMinutes(5));
             
-            if (_activeStreams.TryRemove(streamKey, out var removedStream))
+            // Removes this stream only, not a newer one a continued message started under the same key.
+            if (_activeStreams.TryRemove(new KeyValuePair<string, LiveStream<ChatStreamChunk>>(streamKey, stream)))
             {
-                removedStream.Dispose();
+                stream.Dispose();
             }
         });
     }

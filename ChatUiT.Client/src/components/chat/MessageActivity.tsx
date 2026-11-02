@@ -6,7 +6,7 @@ import remarkGfm from 'remark-gfm';
 import { Icon } from '../common/Icon';
 import ToolCallBlock from './ToolCallBlock';
 import type { LiveActivity } from '../../services/chatService';
-import type { ActivityEntryDto, MessageActivityDto } from '../../types/chatModels';
+import { isAwaitingStatus, type ActivityEntryDto, type MessageActivityDto } from '../../types/chatModels';
 import { formatDuration } from '../../utils/durationUtils';
 import Button from '../common/Button';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '../common/Collapsible';
@@ -16,8 +16,6 @@ type Props = {
   activity: MessageActivityDto | null;
   /** The in-progress state while the message is generating. */
   live: LiveActivity | null;
-  chatId: string;
-  messageId: string;
   /** The assistant name and timestamp; the activity headline is placed after them on the same line. */
   children: ReactNode;
 };
@@ -27,21 +25,15 @@ type Props = {
  * happened while the message was generated. While the model thinks, the headline shows the
  * latest thinking heading. The history is collapsed until the user opens it.
  */
-export default function MessageActivity({ activity, live, chatId, messageId, children }: Props) {
+export default function MessageActivity({ activity, live, children }: Props) {
   const { t } = useTranslation();
   const isLive = live !== null && live.phase !== "done";
-  const needsInput = isLive && live.phase === "awaitingUser";
-  const [open, setOpen] = useState(needsInput);
-
-  // Opens once when a tool asks for the user; never closes on its own.
-  const [sawNeedsInput, setSawNeedsInput] = useState(needsInput);
-  if (needsInput !== sawNeedsInput) {
-    setSawNeedsInput(needsInput);
-    if (needsInput) setOpen(true);
-  }
+  const [open, setOpen] = useState(false);
 
   const entries = isLive ? live.entries : (live?.final ?? activity)?.entries ?? [];
   const summary = isLive ? null : (live?.final ?? activity);
+  // The calls the message waits on; they are answered in the card above the message box.
+  const waitingOn = isLive ? undefined : entries.find(entry => entry.type === "Tool" && isAwaitingStatus(entry.status));
   const liveElapsedMs = useLiveElapsed(isLive ? live : null);
   const hasActivity = isLive || summary !== null;
 
@@ -50,7 +42,7 @@ export default function MessageActivity({ activity, live, chatId, messageId, chi
 
   return (
     <Collapsible open={open} onOpenChange={setOpen} width="full" minWidth="0">
-      <div className={`activity ${isLive ? "live" : ""} ${needsInput ? "needs-input" : ""}`}>
+      <div className={`activity ${isLive ? "live" : ""} ${waitingOn ? "needs-input" : ""}`}>
         <div className="message-meta">
           {children}
           {hasActivity && (
@@ -58,10 +50,14 @@ export default function MessageActivity({ activity, live, chatId, messageId, chi
               <Button
                 variant="ghost"
                 size="xs"
-                tone={needsInput ? 'warning' : 'default'}
-                startIcon={<Icon name={needsInput ? "info" : isLive ? "refresh" : "branch"} size="small" spin={isLive && !needsInput} />}
+                tone={waitingOn ? 'warning' : 'default'}
+                startIcon={<Icon name={waitingOn ? "info" : isLive ? "refresh" : "branch"} size="small" spin={isLive} />}
               >
-                {isLive ? liveHeadline(live, liveElapsedMs, t) : doneHeadline(summary!, thinkingCount, toolCount, t)}
+                {isLive
+                  ? liveHeadline(live, liveElapsedMs, t)
+                  : waitingOn
+                    ? t('chat.activity.awaitingUser', { name: waitingOn.toolName ?? "" })
+                    : doneHeadline(summary!, thinkingCount, toolCount, t)}
               </Button>
             </CollapsibleTrigger>
           )}
@@ -86,10 +82,6 @@ export default function MessageActivity({ activity, live, chatId, messageId, chi
                   key={entry.toolCallId ?? index}
                   entry={entry}
                   nowMs={isLive ? liveElapsedMs : null}
-                  isLive={isLive}
-                  chatId={live?.chatId ?? chatId}
-                  messageId={messageId}
-                  deadlineMs={isLive && live.pendingToolCallId === entry.toolCallId ? live.pendingDeadlineMs : null}
                 />
               ))}
             </div>
@@ -103,13 +95,9 @@ export default function MessageActivity({ activity, live, chatId, messageId, chi
 type RowProps = {
   entry: ActivityEntryDto;
   nowMs: number | null;
-  isLive: boolean;
-  chatId: string;
-  messageId: string;
-  deadlineMs: number | null;
 };
 
-function ActivityRow({ entry, nowMs, isLive, chatId, messageId, deadlineMs }: RowProps) {
+function ActivityRow({ entry, nowMs }: RowProps) {
   const { t } = useTranslation();
   const durationMs = entry.endedMs !== null
     ? entry.endedMs - entry.startedMs
@@ -118,17 +106,7 @@ function ActivityRow({ entry, nowMs, isLive, chatId, messageId, deadlineMs }: Ro
       : null;
 
   if (entry.type === "Tool") {
-    return (
-      <ToolCallBlock
-        entry={entry}
-        durationMs={durationMs}
-        isLive={isLive}
-        chatId={chatId}
-        messageId={messageId}
-        deadlineMs={deadlineMs}
-        nowMs={nowMs}
-      />
-    );
+    return <ToolCallBlock entry={entry} durationMs={durationMs} />;
   }
 
   return (
@@ -158,14 +136,6 @@ function liveHeadline(live: LiveActivity, elapsedMs: number, t: Translate): stri
       const running = [...live.entries].reverse().find(entry => entry.type === "Tool" && entry.endedMs === null);
       const key = running?.status === "awaitingClient" ? 'chat.activity.awaitingClient' : 'chat.activity.runningTool';
       return `${t(key, { name: running?.toolName ?? "" })} ${formatDuration(phaseMs)}`;
-    }
-    case "awaitingUser": {
-      const pending = live.entries.find(entry => entry.type === "Tool" && entry.toolCallId === live.pendingToolCallId)
-        ?? [...live.entries].reverse().find(entry => entry.type === "Tool" && entry.endedMs === null);
-      const left = live.pendingDeadlineMs !== null
-        ? ` · ${t('chat.activity.timeLeft', { duration: formatDuration(Math.max(0, live.pendingDeadlineMs - elapsedMs)) })}`
-        : '';
-      return `${t('chat.activity.awaitingUser', { name: pending?.toolName ?? "" })}${left}`;
     }
     case "writing":
       return t('chat.activity.writing');

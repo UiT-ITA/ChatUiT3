@@ -5,9 +5,9 @@ using ChatUiT.Server.Services.AiProviders;
 namespace ChatUiT.Server.Services.Tools;
 
 /// <summary>
-/// Runs one tool call from start to finish, including any pause for the user or the client.
-/// A call ends with exactly one <see cref="ToolExecutionEvent.Completed"/>, or in
-/// <see cref="InteractionMode.Defer"/> with one <see cref="ToolExecutionEvent.Deferred"/>.
+/// Runs one tool call. A call ends with exactly one <see cref="ToolExecutionEvent.Completed"/>, or
+/// with one <see cref="ToolExecutionEvent.Deferred"/> when it needs the user or the client: nothing
+/// waits in process, and the answer continues the call through <see cref="ResumeAsync"/>.
 /// Never throws for a tool failure: every failure becomes a <see cref="ToolExecutionEvent.Completed"/>
 /// with an error result, so the runner's loop stays free of exception handling. Cancellation
 /// of the generation does propagate.
