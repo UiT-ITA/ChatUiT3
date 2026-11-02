@@ -31,8 +31,8 @@ function newChat(): CurrentChat {
 }
 
 /**
- * Saves the conversation under the pane's document whenever it stops (done, stopped, failed or waiting for an
- * approval), and opens saved chats. A chat belongs to the document that was open when its first message was sent.
+ * Saves the conversation under the pane's document when a message is sent and whenever it stops (done, stopped,
+ * failed or waiting for an approval), and opens saved chats. A chat belongs to the document that was open when its first message was sent.
  */
 export function useChatHistory(
   state: ConversationState,
@@ -52,7 +52,12 @@ export function useChatHistory(
 
   const save = useCallback(
     (current: ConversationState): Promise<void> => {
-      if (!getDocumentKey || isBusy(current) || current.items.length === 0 || current.items === pendingItems.current) {
+      if (
+        !getDocumentKey ||
+        (isBusy(current) && !endsWithUserMessage(current.items)) ||
+        current.items.length === 0 ||
+        current.items === pendingItems.current
+      ) {
         return saving.current;
       }
       const target = chat.current;
@@ -142,6 +147,12 @@ export function useChatHistory(
   }, [getDocumentKey]);
 
   return { startNew, open, list };
+}
+
+/** True when the last item is a user message, which is the case from a send until the first reply arrives. */
+function endsWithUserMessage(items: readonly InputItem[]): boolean {
+  const last = items[items.length - 1];
+  return last?.type === "message" && last.role === "user";
 }
 
 /** The first user message's text, or the name of its first file, shortened. */
