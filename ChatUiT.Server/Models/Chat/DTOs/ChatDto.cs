@@ -100,5 +100,8 @@ public class SendMessageDto
 
     /// <summary>The client's IANA time zone, for knowledge sources that depend on "today". Not stored.</summary>
     public string? TimeZone { get; set; }
+
+    /// <summary>Answers the user had given to the calls the chat waits on, sent with this message instead of on their own.</summary>
+    public List<PendingAnswerDto>? Answers { get; set; }
 }
 

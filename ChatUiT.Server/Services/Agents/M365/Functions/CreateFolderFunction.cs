@@ -25,7 +25,7 @@ public sealed class CreateFolderFunction : ConfirmableTool<CreateFolderArgs>
     public override IReadOnlyList<string> RequiredScopes => DriveSupport.Scopes;
 
     protected override Task<ToolPreview> PrepareAsync(CreateFolderArgs args, ToolInvocation invocation, CancellationToken ct)
-        => Task.FromResult(new ToolPreview("Create folder in OneDrive", null, [new ToolPreviewField("Path", DriveSupport.Normalise(args.Path))], AllowEdit: false));
+        => Task.FromResult(new ToolPreview("Create folder in OneDrive", null, [new ToolPreviewField("Path", DriveSupport.Normalise(args.Path), Role: ToolPreviewFieldRole.Path)], AllowEdit: false, Kind: ToolPreviewKind.File));
 
     protected override async Task<ToolResult> CommitAsync(CreateFolderArgs args, ToolInvocation invocation, CancellationToken ct)
     {

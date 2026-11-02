@@ -220,7 +220,7 @@ public class ChatsController : ControllerBase
             var promptUser = await _assistantService.GetPromptUserContextAsync(_userService.GetUserIdentity(User));
 
             // Uses the same streaming path as the SignalR hub, so both entry points behave alike.
-            await _chatService.SendStreamingMessageAsync(userId, chatId, message, request.AssistantId, promptUser, BuildToolSession(request.ClientTools, request.TimeZone));
+            await _chatService.SendStreamingMessageAsync(userId, chatId, message, request.AssistantId, promptUser, BuildToolSession(request.ClientTools, request.TimeZone), request.Answers);
 
             await _hubContext.Clients.Group(userId).ChatUpdated(chatId);
 
@@ -229,6 +229,10 @@ public class ChatsController : ControllerBase
         catch (ToolArgumentException ex)
         {
             return BadRequest(new { error = "invalid_client_tools", message = ex.Message });
+        }
+        catch (ArgumentException ex)
+        {
+            return BadRequest(new { error = "invalid_response", message = ex.Message });
         }
         catch (Exception ex)
         {
@@ -246,9 +250,9 @@ public class ChatsController : ControllerBase
 
             // False means the generation already finished (or was never this user's): the client
             // leaves the completed message alone instead of restoring the composer.
-            var cancelled = await _chatService.CancelGenerationAsync(userId, chatId, messageId);
+            var (cancelled, undone) = await _chatService.CancelGenerationAsync(userId, chatId, messageId);
 
-            return Ok(new { cancelled });
+            return Ok(new { cancelled, undone });
         }
         catch (Exception ex)
         {
@@ -258,20 +262,27 @@ public class ChatsController : ControllerBase
     }
 
     /// <summary>
-    /// Answers a tool call that paused the run: approve or reject a confirmation, or deliver a
-    /// client tool's result. 409 when nothing is
-    /// waiting under that id any more (another tab answered, or it timed out).
+    /// Answers a tool call a message waits on: approve or reject a confirmation, answer a
+    /// question, or deliver a client tool's result. The last answer the message waits for
+    /// continues it on a new stream. 409 when nothing waits under that id any more (another tab
+    /// answered, or a new message left it unanswered).
     /// </summary>
     [HttpPost("{chatId}/messages/{messageId}/tool-calls/{toolCallId}/respond")]
     public async Task<ActionResult<ToolCallResponseResultDto>> RespondToToolCall(
-        string chatId, string messageId, string toolCallId, [FromBody] ToolCallResponseDto response)
+        string chatId, string messageId, string toolCallId, [FromBody] RespondToToolCallDto response)
     {
         try
         {
             var userId = GetCurrentUserId();
-            var result = await _chatService.RespondToToolCallAsync(userId, chatId, messageId, toolCallId, response);
+            var promptUser = await _assistantService.GetPromptUserContextAsync(_userService.GetUserIdentity(User));
+            var result = await _chatService.RespondToToolCallAsync(
+                userId, chatId, messageId, toolCallId, response, promptUser, BuildToolSession(response.ClientTools, response.TimeZone));
 
             return result.Accepted ? Ok(result) : Conflict(result);
+        }
+        catch (ToolArgumentException ex)
+        {
+            return BadRequest(new { error = "invalid_client_tools", message = ex.Message });
         }
         catch (ArgumentException ex)
         {

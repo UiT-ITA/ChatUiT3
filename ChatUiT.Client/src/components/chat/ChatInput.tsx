@@ -2,7 +2,7 @@ import './ChatInput.css';
 import { useState, useRef, useEffect } from 'react';
 import { useSignals } from '@preact/signals-react/runtime';
 import { useTranslation } from 'react-i18next';
-import { sendMessage, sendNewChatMessage, deleteChat, getCurrentChatId, getCurrentAssistantId, getChat, cancelGeneration, forgetChat, getActivitySignal } from '../../services/chatService';
+import { sendMessage, sendNewChatMessage, deleteChat, getCurrentChatId, getCurrentAssistantId, getChat, cancelGeneration, forgetChat } from '../../services/chatService';
 import { removeCachedChat } from '../../hooks/useChatCache';
 import { FileProcessingService } from '../../services/fileProcessingService';
 import AssistantSelector from '../common/AssistantSelector';
@@ -20,6 +20,8 @@ import { addNotification } from '../../services/notificationService';
 import { getContextUsage, setDraft } from '../../services/contextUsageService';
 import { formatTokens, formatTokensCompact } from '../../utils/tokenCounting';
 import TextArea from '../common/TextArea';
+import InteractionCard from './interaction/InteractionCard';
+import { useInteractionDock } from '../../hooks/useInteractionDock';
 
 const DRAFT_COUNT_DEBOUNCE_MS = 150;
 
@@ -60,7 +62,7 @@ export default function ChatInput() {
     m => m.role === 'Assistant' && m.status === 'Generating'
   );
   const isGenerating = generatingMessage !== undefined;
-  const awaitingUser = generatingMessage !== undefined && getActivitySignal(generatingMessage.id).value.phase === 'awaitingUser';
+  const dock = useInteractionDock(chatId);
 
   const usage = getContextUsage(chatId).value;
 
@@ -108,7 +110,7 @@ export default function ChatInput() {
     try {
       if (chatId !== undefined) {
         lastSentRef.current.set(chatId, { text: message, files: sentFiles });
-        await sendMessage(chatId, message, sentFiles);
+        await sendMessage(chatId, message, sentFiles, dock.pendingAnswers());
       } else {
         await sendNewChatMessage(message, sentFiles, currentAssistantId.value!, (createdChatId) => {
           newChatId = createdChatId;
@@ -149,10 +151,11 @@ export default function ChatInput() {
     setIsCancelling(true);
 
     try {
-      const cancelled = await cancelGeneration(chatId, generatingMessage.id);
+      const { cancelled, undone } = await cancelGeneration(chatId, generatingMessage.id);
 
-      // Already finished before the click landed — the answer stands, leave the composer alone.
-      if (!cancelled) {
+      // Already finished before the click landed, or a message that continued after waiting and
+      // keeps what it had — the chat stands, leave the composer alone.
+      if (!cancelled || !undone) {
         return;
       }
 
@@ -317,6 +320,8 @@ export default function ChatInput() {
           onDrop={handleDrop}
           data-drop-active={isDragOver || undefined}
         >
+          <InteractionCard dock={dock} />
+
           {selectedFiles.length > 0 && (
             <div className="composer-file-previews">
               {selectedFiles.map((file, index) => (
@@ -414,9 +419,7 @@ export default function ChatInput() {
 
         <div className="composer-hints t-hint">
           <span className="composer-hint-keys">{t('chat.enterHint')}</span>
-          {awaitingUser
-            ? <span className="composer-awaiting-hint">{t('chat.awaitingInputHint')}</span>
-            : <span>{t('chat.disclaimer')}</span>}
+          <span>{t('chat.disclaimer')}</span>
         </div>
       </div>
     </div>

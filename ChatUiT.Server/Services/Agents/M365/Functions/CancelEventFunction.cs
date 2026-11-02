@@ -37,16 +37,16 @@ public sealed class CancelEventFunction : ConfirmableTool<CancelEventArgs>
 
         var fields = new List<ToolPreviewField>
         {
-            new("Event", e.Str("subject") ?? ""),
-            new("Start (UTC)", e.Str("start", "dateTime") ?? ""),
-            new("Attendees notified", e.Items("attendees").Count().ToString())
+            new("Event", e.Str("subject") ?? "", Role: ToolPreviewFieldRole.Subject),
+            new("Start (UTC)", e.Str("start", "dateTime") ?? "", Role: ToolPreviewFieldRole.Time),
+            new("Attendees notified", e.Items("attendees").Count().ToString(), Role: ToolPreviewFieldRole.Attendees)
         };
         if (!string.IsNullOrWhiteSpace(args.Comment))
         {
-            fields.Add(new ToolPreviewField("Message", args.Comment, Multiline: true));
+            fields.Add(new ToolPreviewField("Message", args.Comment, Multiline: true, Role: ToolPreviewFieldRole.Body));
         }
 
-        return new ToolPreview("Cancel calendar event", null, fields, AllowEdit: false);
+        return new ToolPreview("Cancel calendar event", null, fields, AllowEdit: false, Kind: ToolPreviewKind.Event);
     }
 
     protected override async Task<ToolResult> CommitAsync(CancelEventArgs args, ToolInvocation invocation, CancellationToken ct)

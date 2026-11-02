@@ -10,6 +10,7 @@ import {
   type ClipboardEvent,
   type DragEvent,
   type KeyboardEvent,
+  type ReactNode,
 } from "react";
 import type { ChatFile } from "../files/fileModels";
 import { MAX_FILES } from "../files/filePart";
@@ -27,6 +28,8 @@ export interface ComposerProps {
   draft: { text: string; id: number } | null;
   /** True while a response streams or tools run. Sending is blocked and Stop is shown. */
   busy: boolean;
+  /** Shown on top of the text box, inside the composer: what the conversation waits for. */
+  dock?: ReactNode;
   onSend(text: string, files: ChatFile[]): void;
   onStop(): void;
 }
@@ -102,7 +105,7 @@ const useStyles = makeStyles({
   },
 });
 
-export function Composer({ draft, busy, onSend, onStop }: ComposerProps) {
+export function Composer({ draft, busy, dock, onSend, onStop }: ComposerProps) {
   const styles = useStyles();
   const [text, setText] = useState("");
   const [files, setFiles] = useState<ChatFile[]>([]);
@@ -212,6 +215,7 @@ export function Composer({ draft, busy, onSend, onStop }: ComposerProps) {
       onDrop={onDrop}
     >
       <div className={styles.card}>
+        {dock}
         {(files.length > 0 || reading > 0) && (
           <div className={styles.files}>
             {files.map((file) => (

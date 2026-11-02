@@ -1,9 +1,9 @@
-import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { formatDuration } from '../../utils/durationUtils';
+import { prettyMaybeJson } from '../../utils/jsonUtils';
 import type { ActivityEntryDto, ToolCallStatus } from '../../types/chatModels';
 import { isAwaitingStatus } from '../../types/chatModels';
-import ToolConfirmationCard from './ToolConfirmationCard';
+import ToolPreview from './interaction/ToolPreview';
 import "./ToolCallBlock.css";
 import Badge from '../common/Badge';
 import Card from '../common/Card';
@@ -14,28 +14,7 @@ type Props = {
   entry: ActivityEntryDto;
   /** Set once the call has finished, or counting up while it runs. */
   durationMs: number | null;
-  /** True while the message is still generating; only then can the user act on the call. */
-  isLive: boolean;
-  chatId: string | null;
-  messageId: string;
-  /** Server time (ms since generation start) when the pending call times out. */
-  deadlineMs: number | null;
-  /** Current server-side elapsed time while live. */
-  nowMs: number | null;
 };
-
-function prettyMaybeJson(text: string | null): string | undefined {
-  if (!text) return undefined;
-  const t = text.trim();
-  if ((t.startsWith("{") && t.endsWith("}")) || (t.startsWith("[") && t.endsWith("]"))) {
-    try {
-      return JSON.stringify(JSON.parse(t), null, 2);
-    } catch {
-      return text;
-    }
-  }
-  return text;
-}
 
 function truncateEnd(text: string, maxLen = 140): string {
   if (text.length <= maxLen) return text;
@@ -46,39 +25,38 @@ function truncateEnd(text: string, maxLen = 140): string {
 const STATUS_KEYS: Record<ToolCallStatus, string> = {
   running: 'chat.status.running',
   awaitingConfirmation: 'chat.status.awaitingConfirmation',
+  awaitingAnswer: 'chat.status.awaitingAnswer',
   awaitingClient: 'chat.status.awaitingClient',
   approved: 'chat.status.approved',
   completed: 'chat.status.done',
   rejected: 'chat.status.rejected',
+  unanswered: 'chat.status.unanswered',
   timeout: 'chat.status.timeout',
   error: 'chat.status.failed',
 };
 
-export default function ToolCallBlock({ entry, durationMs, isLive, chatId, messageId, deadlineMs, nowMs }: Props) {
+/**
+ * One tool call in a message's activity: its name, status, and on opening what the user was
+ * shown and answered, the arguments and the result. A call that waits is answered in the card
+ * above the message box, not here.
+ */
+export default function ToolCallBlock({ entry, durationMs }: Props) {
   const { t } = useTranslation();
   const toolName = entry.toolName ?? '';
   const status: ToolCallStatus = entry.status ?? (entry.endedMs === null ? 'running' : entry.isError ? 'error' : 'completed');
   const awaiting = isAwaitingStatus(status);
-  const needsUser = isLive && entry.endedMs === null && status === 'awaitingConfirmation';
-  const [expanded, setExpanded] = useState(needsUser);
-  const [prevNeedsUser, setPrevNeedsUser] = useState(needsUser);
-  if (needsUser !== prevNeedsUser) {
-    setPrevNeedsUser(needsUser);
-    setExpanded(needsUser);
-  }
   const isComplete = entry.endedMs !== null;
 
   const prettyArgs = prettyMaybeJson(entry.argumentsJson);
   const prettyResult = prettyMaybeJson(entry.result);
   const argsInline = entry.argumentsJson?.replace(/\s+/g, " ") ?? "";
   const argsPreview = argsInline.length > 0 ? truncateEnd(argsInline, 140) : "";
+  const answers = entry.response?.kind === 'answer' ? entry.response.answers : undefined;
 
-  const remainingMs = deadlineMs !== null && nowMs !== null ? deadlineMs - nowMs : null;
-
-  const statusTone = awaiting ? "awaiting" : status === "rejected" || status === "timeout" ? "declined" : entry.isError ? "error" : isComplete ? "complete" : "running";
+  const statusTone = awaiting ? "awaiting" : status === "rejected" || status === "timeout" || status === "unanswered" ? "declined" : entry.isError ? "error" : isComplete ? "complete" : "running";
 
   return (
-    <Collapsible open={expanded} onOpenChange={setExpanded} my="md">
+    <Collapsible my="md">
       <Card padding="none" gap="none" tone={awaiting ? 'warning' : 'default'}>
         <CollapsibleTrigger>
           <ListItem
@@ -92,7 +70,7 @@ export default function ToolCallBlock({ entry, durationMs, isLive, chatId, messa
             )}
             trailing={(
               <span className={`toolcall-status toolcall-status--${statusTone} t-overline`}>
-                {t(STATUS_KEYS[status])}
+                {t(status === 'rejected' && entry.questions ? 'chat.status.skipped' : STATUS_KEYS[status])}
                 {durationMs !== null && !awaiting && <span className="toolcall-duration t-meta"> · {formatDuration(durationMs)}</span>}
               </span>
             )}
@@ -100,27 +78,30 @@ export default function ToolCallBlock({ entry, durationMs, isLive, chatId, messa
         </CollapsibleTrigger>
         <CollapsibleContent>
           <div className="toolcall-body">
-            {needsUser && status === 'awaitingConfirmation' && entry.preview && entry.toolCallId && (
-              <ToolConfirmationCard
-                chatId={chatId}
-                messageId={messageId}
-                toolCallId={entry.toolCallId}
-                preview={entry.preview}
-                argumentsJson={entry.argumentsJson}
-                remainingMs={remainingMs}
-              />
-            )}
-            {!needsUser && entry.preview && (
+            {entry.preview && (
               <div className="toolcall-section">
                 <div className="toolcall-title t-overline">{entry.preview.title}</div>
-                <dl className="toolcard-fields">
-                  {entry.preview.fields.map((field, index) => (
-                    <div key={index} className="toolcard-field">
-                      <dt className="t-overline">{field.label}</dt>
-                      <dd className={field.multiline ? 't-code toolcard-multiline' : 't-table'}>{field.value}</dd>
+                <ToolPreview preview={entry.preview} />
+              </div>
+            )}
+            {entry.questions && entry.questions.length > 0 && (
+              <div className="toolcall-section">
+                <div className="toolcall-title t-overline">{t('toolCall.questions', { count: entry.questions.length })}</div>
+                {entry.questions.map((question, index) => {
+                  const answer = answers === undefined ? undefined : answers?.[index] ?? null;
+                  return (
+                    <div key={index} className="toolcall-question">
+                      <div className="t-table">{question.question}</div>
+                      {answer !== undefined && (
+                        <div className="toolcall-answer t-table">
+                          {answer === null
+                            ? t('toolCall.notAnswered')
+                            : [...answer.selected, ...(answer.text ? [answer.text] : [])].join(' · ')}
+                        </div>
+                      )}
                     </div>
-                  ))}
-                </dl>
+                  );
+                })}
               </div>
             )}
             {prettyArgs && (

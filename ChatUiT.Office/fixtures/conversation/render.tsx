@@ -17,7 +17,6 @@ export function renderOutline(state: ConversationState): string {
         emptyMessage="Ask ChatUiT about this document."
         starters={[]}
         onStarter={() => undefined}
-        onAnswer={async () => undefined}
       />
     </FluentProvider>
   ).replace(/<style[\s\S]*?<\/style>/g, "");

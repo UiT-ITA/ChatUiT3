@@ -98,8 +98,8 @@ public sealed class EditExcelWorkbookFunction : ConfirmableTool<EditExcelWorkboo
         return new ToolPreview(
             "Edit Excel workbook",
             null,
-            [new ToolPreviewField("Workbook", name), new ToolPreviewField("Changes", OfficeFiles.Numbered(changes), Multiline: true)],
-            AllowEdit: false);
+            [new ToolPreviewField("Workbook", name, Role: ToolPreviewFieldRole.Document), new ToolPreviewField("Changes", OfficeFiles.Numbered(changes), Multiline: true, Role: ToolPreviewFieldRole.Changes)],
+            AllowEdit: false, Kind: ToolPreviewKind.DocumentEdit);
     }
 
     protected override async Task<ToolResult> CommitAsync(EditExcelWorkbookArgs args, ToolInvocation invocation, CancellationToken ct)

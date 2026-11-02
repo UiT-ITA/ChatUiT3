@@ -103,6 +103,11 @@ namespace ChatUiT.Server.Services
                 tools.Add(new LoadKnowledgeFileTool(assistant.Id, onDemandFiles, _databaseService, _tokenCounting, _toolOptions, _logger));
             }
 
+            if (canLoadOnDemand)
+            {
+                tools.Add(new AskUserTool());
+            }
+
             var alwaysLoaded = files
                 .Where(f => f.Category == AssistantFileCategories.AlwaysLoaded && fileCounts.ContainsKey(f.Id))
                 .ToList();

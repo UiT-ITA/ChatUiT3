@@ -16,12 +16,21 @@ public enum ChatStreamChunkKind
     ToolEnd,
     /// <summary>Generation finished; carries the final <see cref="MessageActivity"/>.</summary>
     Done,
-    /// <summary>The run is paused until the user approves or rejects the tool call.</summary>
+    /// <summary>The tool call waits for the user to approve or reject it.</summary>
     ToolConfirmationRequested,
-    /// <summary>The run is paused until the client runs the tool and posts the result.</summary>
+    /// <summary>The tool call waits for the client to run the tool and post the result.</summary>
     ToolClientCallRequested,
     /// <summary>A tool call changed status without finishing (approved).</summary>
-    ToolStatus
+    ToolStatus,
+    /// <summary>The tool call waits for the user to answer questions.</summary>
+    ToolQuestionRequested,
+    /// <summary>
+    /// The run ended on calls that wait; carries the <see cref="MessageActivity"/> so far. The
+    /// message continues on a new stream once every waiting call has its answer.
+    /// </summary>
+    AwaitingUser,
+    /// <summary>First chunk of a run that continues a message that waited; carries its <see cref="MessageActivity"/> so far.</summary>
+    Continued
 }
 
 /// <summary>
@@ -59,8 +68,8 @@ public class ChatStreamChunk
     /// <summary>ToolConfirmationRequested.</summary>
     public ToolPreviewDto? Preview { get; set; }
 
-    /// <summary>On the pause kinds: how long the server waits, counted from this chunk's <see cref="ElapsedMs"/>.</summary>
-    public long? TimeoutMs { get; set; }
+    /// <summary>ToolQuestionRequested.</summary>
+    public List<UserQuestionDto>? Questions { get; set; }
 }
 
 /// <summary>What the user sees before approving a confirmable tool call. Also stored on the activity entry.</summary>
@@ -74,6 +83,8 @@ public class ToolPreviewDto
     public List<ToolPreviewFieldDto> Fields { get; set; } = new();
 
     public bool AllowEdit { get; set; } = true;
+
+    public ToolPreviewKind Kind { get; set; } = ToolPreviewKind.General;
 }
 
 public class ToolPreviewFieldDto
@@ -81,4 +92,5 @@ public class ToolPreviewFieldDto
     public string Label { get; set; } = string.Empty;
     public string Value { get; set; } = string.Empty;
     public bool Multiline { get; set; }
+    public ToolPreviewFieldRole Role { get; set; } = ToolPreviewFieldRole.None;
 }

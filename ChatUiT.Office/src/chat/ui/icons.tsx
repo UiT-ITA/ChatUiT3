@@ -15,6 +15,13 @@ const outlined = {
   check: "M5 12l5 5 9-10",
   failed: "M18 6L6 18M6 6l12 12",
   chevron: "M9 6l6 6-6 6",
+  chevronLeft: "M15 6l-6 6 6 6",
+  mail: "M3 6h18v12H3zM3 7l9 6 9-6",
+  calendar: "M4 6h16v14H4zM4 10h16M8 3v4M16 3v4",
+  question: "M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18zM9.5 9a2.5 2.5 0 1 1 3.5 2.3c-.6.3-1 .9-1 1.6V14M12 17h.01",
+  file: "M14 3H6v18h12V7zM14 3v4h4",
+  edit: "M12 20h9M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4z",
+  tools: "M14.7 6.3a4 4 0 0 0-5.4 5.4L3 18l3 3 6.3-6.3a4 4 0 0 0 5.4-5.4l-2.5 2.5-2.4-.6-.6-2.4z",
 } as const;
 
 export type IconName = keyof typeof filled | keyof typeof outlined;

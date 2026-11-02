@@ -108,7 +108,7 @@ public sealed class ResponsesRunner
             var result = tool == null
                 ? output.CompleteWithError(call, $"Unknown tool: {call.FunctionName}")
                 : await output.ExecuteServerCallAsync(
-                    tool, call, _executor.ResumeAsync(tool, call, context, resume.Input, cancellationToken), announce, displayArguments);
+                    tool, call, _executor.ResumeAsync(tool, call, context, resume.Input, cancellationToken), announce, displayArguments, resume.ApprovalRequestId);
 
             if (result == null)
             {
@@ -184,7 +184,7 @@ public sealed class ResponsesRunner
 
                 var result = await output.ExecuteServerCallAsync(
                     tool, call, _executor.ExecuteAsync(tool, call, context, cancellationToken),
-                    announce: tool is not IConfirmableTool, call.ArgumentsJson);
+                    announce: tool is not (IConfirmableTool or IQuestionTool), call.ArgumentsJson);
                 _logger.LogInformation("Response {ResponseId} server tool {Tool} -> {Outcome}",
                     writer.Response.Id, call.FunctionName, result == null ? "deferred" : result.IsError ? "error" : "ok");
                 if (result == null)
@@ -367,9 +367,10 @@ public sealed class ResponsesRunner
             AiStreamEvent.ToolCall call,
             IAsyncEnumerable<ToolExecutionEvent> events,
             bool announce,
-            string displayArguments)
+            string displayArguments,
+            string? approvalRequestId = null)
         {
-            var item = new McpCallItem { Id = call.Id, Name = tool.Id, Arguments = displayArguments, Status = "in_progress" };
+            var item = new McpCallItem { Id = call.Id, Name = tool.Id, Arguments = displayArguments, Status = "in_progress", ApprovalRequestId = approvalRequestId };
             int? index = null;
             if (announce)
             {
@@ -490,8 +491,32 @@ public sealed class ResponsesRunner
                             Title = preview.Title,
                             Summary = preview.Summary,
                             AllowEdit = preview.AllowEdit,
-                            Fields = preview.Fields.Select(f => new ApprovalPreviewField { Label = f.Label, Value = f.Value, Multiline = f.Multiline }).ToList()
+                            Kind = ResponsesJson.Name(preview.Kind),
+                            Fields = preview.Fields.Select(f => new ApprovalPreviewField
+                            {
+                                Label = f.Label,
+                                Value = f.Value,
+                                Multiline = f.Multiline,
+                                Role = ResponsesJson.Name(f.Role)
+                            }).ToList()
                         }
+                    };
+                    break;
+
+                case DeferredStep.Questions questions:
+                    var questionState = new ApprovalState(_target.PublicId, call.Id, tool.Id, call.ArgumentsJson, AllowEdit: false, questions.Values);
+                    item = new McpApprovalRequestItem
+                    {
+                        Id = _sealer.SealApproval(questionState),
+                        Name = tool.Id,
+                        Arguments = call.ArgumentsJson,
+                        ChatuitKind = ResponsesJson.KindQuestion,
+                        ChatuitQuestions = questions.Values.Select(q => new ApprovalQuestion
+                        {
+                            Question = q.Question,
+                            MultiSelect = q.MultiSelect,
+                            Options = q.Options.Select(o => new ApprovalQuestionOption { Label = o.Label, Description = o.Description }).ToList()
+                        }).ToList()
                     };
                     break;
 

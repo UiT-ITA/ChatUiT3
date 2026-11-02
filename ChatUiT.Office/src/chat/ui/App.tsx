@@ -9,6 +9,8 @@ import { logToolError } from "../dev/toolErrorLog";
 import { useChatHistory } from "../history/useChatHistory";
 import type { HostAdapter } from "../host";
 import { Composer } from "./Composer";
+import { InteractionCard } from "./InteractionCard";
+import { useInteractionDock } from "./useInteractionDock";
 import { useGlobalStyles } from "./globalStyles";
 import { Header, type HeaderProps } from "./Header";
 import { MessageList } from "./MessageList";
@@ -93,6 +95,7 @@ function Chat({ adapter, client, dev }: ChatProps) {
   const history = useChatHistory(state, conversation, adapter.getDocumentKey);
   const [draft, setDraft] = useState<{ text: string; id: number } | null>(null);
   const busy = isBusy(state);
+  const dock = useInteractionDock(state, (id, decision) => conversation.answerApproval(id, decision));
 
   return (
     <div className={styles.chat}>
@@ -112,7 +115,6 @@ function Chat({ adapter, client, dev }: ChatProps) {
         emptyMessage={adapter.emptyMessage}
         starters={adapter.starters}
         onStarter={(starter) => setDraft((current) => ({ text: starter.prompt, id: (current?.id ?? 0) + 1 }))}
-        onAnswer={(requestId, decision) => conversation.answerApproval(requestId, decision)}
       />
       {state.error && (
         <MessageBar intent="error" className={styles.error}>
@@ -122,7 +124,8 @@ function Chat({ adapter, client, dev }: ChatProps) {
       <Composer
         draft={draft}
         busy={busy}
-        onSend={(text, files) => void conversation.send(text, files)}
+        dock={<InteractionCard dock={dock} />}
+        onSend={(text, files) => void conversation.send(text, files, dock.pendingAnswers())}
         onStop={() => conversation.cancel()}
       />
     </div>

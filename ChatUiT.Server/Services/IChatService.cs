@@ -25,17 +25,22 @@ public interface IChatService
     Task SendMessageAsync(string userId, string chatId, ChatMessage message, string? assistantId, PromptUserContext promptUser);
     Task SendStreamingMessageAsync(string userId, string chatId, ChatMessage message, PromptUserContext promptUser);
     Task SendStreamingMessageAsync(string userId, string chatId, ChatMessage message, string assistantId, PromptUserContext promptUser);
-    Task SendStreamingMessageAsync(string userId, string chatId, ChatMessage message, string? assistantId, PromptUserContext promptUser, ToolSessionInput tools);
+    /// <param name="answers">Answers the user gave to calls a message waits on before writing this message instead.</param>
+    Task SendStreamingMessageAsync(string userId, string chatId, ChatMessage message, string? assistantId, PromptUserContext promptUser, ToolSessionInput tools, IReadOnlyList<PendingAnswerDto>? answers = null);
     Task AddMessageAsync(string userId, string chatId, ChatMessage message);
     Task DeleteMessageAsync(string userId, string chatId, string messageId);
 
     /// <summary>
-    /// Stops a running generation and undoes the send. False when no generation was running.
+    /// Stops a running generation. A new message is undone (Undone true); a message that continued
+    /// after waiting keeps what it had. Cancelled is false when no generation was running.
     /// </summary>
-    Task<bool> CancelGenerationAsync(string userId, string chatId, string messageId);
+    Task<(bool Cancelled, bool Undone)> CancelGenerationAsync(string userId, string chatId, string messageId);
 
-    /// <summary>Answers a tool call that is waiting for the user or the client.</summary>
-    Task<ToolCallResponseResultDto> RespondToToolCallAsync(string userId, string chatId, string messageId, string toolCallId, ToolCallResponseDto response);
+    /// <summary>
+    /// Answers a tool call a message waits on. The last answer the message waits for continues
+    /// the message in the background. Accepted is false when nothing waits under that id.
+    /// </summary>
+    Task<ToolCallResponseResultDto> RespondToToolCallAsync(string userId, string chatId, string messageId, string toolCallId, ToolCallResponseDto response, PromptUserContext promptUser, ToolSessionInput tools);
 
     // AI Response
     Task<string> GetResponseAsync(string userId, string chatId, ChatMessage userMessage);

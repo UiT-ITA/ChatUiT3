@@ -76,5 +76,11 @@ async function outlookThreadKey(): Promise<string | null> {
 }
 
 function toClientTool(tool: OfficeToolDefinition): ClientToolDefinition {
-  return { name: tool.name, description: tool.description, parameters: tool.parameters, handler: tool.handler };
+  return {
+    name: tool.name,
+    description: tool.description,
+    parameters: tool.parameters,
+    ...(tool.preview ? { preview: tool.preview } : {}),
+    handler: tool.handler,
+  };
 }

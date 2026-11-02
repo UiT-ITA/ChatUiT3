@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using System.Text.Json;
 using System.Text.Json.Serialization;
@@ -21,8 +22,14 @@ public static class ResponsesJson
     /// <summary>The <c>server_label</c> of every server tool call.</summary>
     public const string ServerLabel = "chatuit";
 
-    /// <summary>The <c>chatuit_kind</c> value of an approval request.</summary>
+    /// <summary>The <c>chatuit_kind</c> of an approval request for a call the user must approve.</summary>
     public const string KindConfirmation = "confirmation";
+
+    /// <summary>The <c>chatuit_kind</c> of an approval request for questions the user must answer.</summary>
+    public const string KindQuestion = "question";
+
+    /// <summary>A name in the API's own case: <c>DocumentEdit</c> becomes <c>document_edit</c>.</summary>
+    public static string Name<T>(T value) where T : struct, Enum => JsonNamingPolicy.SnakeCaseLower.ConvertName(value.ToString());
 }
 
 public sealed class CreateResponseRequest
@@ -145,6 +152,10 @@ public sealed class SummaryText
 /// </summary>
 public sealed class McpCallItem : ResponseItem
 {
+    /// <summary>The approval request this call continues, when it waited for the user.</summary>
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public string? ApprovalRequestId { get; set; }
+
     public string ServerLabel { get; set; } = ResponsesJson.ServerLabel;
 
     public string? Name { get; set; }
@@ -168,11 +179,14 @@ public sealed class McpApprovalRequestItem : ResponseItem
 
     public string? Arguments { get; set; }
 
-    /// <summary>Always <see cref="ResponsesJson.KindConfirmation"/>.</summary>
+    /// <summary><see cref="ResponsesJson.KindConfirmation"/> with a preview, or <see cref="ResponsesJson.KindQuestion"/> with questions.</summary>
     public string? ChatuitKind { get; set; }
 
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     public ApprovalPreview? ChatuitPreview { get; set; }
+
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public List<ApprovalQuestion>? ChatuitQuestions { get; set; }
 }
 
 public sealed class ApprovalPreview
@@ -184,6 +198,9 @@ public sealed class ApprovalPreview
     public List<ApprovalPreviewField> Fields { get; set; } = new();
 
     public bool AllowEdit { get; set; }
+
+    /// <summary><c>general</c>, <c>message</c>, <c>file</c>, <c>document_edit</c> or <c>event</c>.</summary>
+    public string Kind { get; set; } = "general";
 }
 
 public sealed class ApprovalPreviewField
@@ -193,8 +210,32 @@ public sealed class ApprovalPreviewField
     public string Value { get; set; } = string.Empty;
 
     public bool Multiline { get; set; }
+
+    /// <summary>What the field holds, in snake case (<c>recipients</c>, <c>body</c>, ...); <c>none</c> for a plain field.</summary>
+    public string Role { get; set; } = "none";
 }
 
+public sealed class ApprovalQuestion
+{
+    public string Question { get; set; } = string.Empty;
+
+    public List<ApprovalQuestionOption> Options { get; set; } = new();
+
+    public bool MultiSelect { get; set; }
+}
+
+public sealed class ApprovalQuestionOption
+{
+    public string Label { get; set; } = string.Empty;
+
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public string? Description { get; set; }
+}
+
+/// <summary>
+/// The answer to an approval request. For questions, <see cref="Approve"/> false means the user
+/// answered none, and true comes with <see cref="ChatuitAnswers"/>: one per question, null for a skipped one.
+/// </summary>
 public sealed class McpApprovalResponseItem : ResponseItem
 {
     public string? ApprovalRequestId { get; set; }
@@ -204,6 +245,18 @@ public sealed class McpApprovalResponseItem : ResponseItem
     /// <summary>A JSON object as a string. Accepted only when the preview allowed editing.</summary>
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     public string? ChatuitEditedArguments { get; set; }
+
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public List<ApprovalAnswer?>? ChatuitAnswers { get; set; }
+}
+
+/// <summary>The options the user picked, by label, and what they wrote themselves.</summary>
+public sealed class ApprovalAnswer
+{
+    public List<string> Selected { get; set; } = new();
+
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public string? Text { get; set; }
 }
 
 public sealed class OutputTextPart

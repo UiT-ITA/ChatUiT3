@@ -88,8 +88,8 @@ public sealed class EditWordDocumentFunction : ConfirmableTool<EditWordDocumentA
         return new ToolPreview(
             "Edit Word document",
             null,
-            [new ToolPreviewField("Document", loaded.Name), new ToolPreviewField("Changes", OfficeFiles.Numbered(changes), Multiline: true)],
-            AllowEdit: false);
+            [new ToolPreviewField("Document", loaded.Name, Role: ToolPreviewFieldRole.Document), new ToolPreviewField("Changes", OfficeFiles.Numbered(changes), Multiline: true, Role: ToolPreviewFieldRole.Changes)],
+            AllowEdit: false, Kind: ToolPreviewKind.DocumentEdit);
     }
 
     protected override async Task<ToolResult> CommitAsync(EditWordDocumentArgs args, ToolInvocation invocation, CancellationToken ct)

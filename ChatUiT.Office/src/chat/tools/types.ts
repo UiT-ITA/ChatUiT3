@@ -1,5 +1,7 @@
 /* global AbortSignal */
 
+import type { ApprovalPreview } from "../api/types";
+
 /** Arguments as parsed from the model's JSON. Handlers validate what they read. */
 export type ToolArguments = Record<string, unknown>;
 
@@ -19,12 +21,16 @@ export class ToolResultWithImages {
 
 /**
  * A function tool that runs in the add-in. Its JSON-serialisable result is sent back to the model;
- * a handler that returns ToolResultWithImages sends pictures too.
+ * a handler that returns ToolResultWithImages sends pictures too. A tool with `preview` asks the
+ * user first: the preview is shown in the approval card, and the handler runs only once the user
+ * approves.
  */
 export interface ClientToolDefinition {
   name: string;
   description: string;
   /** JSON Schema of the arguments object. */
   parameters: Record<string, unknown>;
+  /** What the user approves before the handler runs. Must have no side effects. */
+  preview?(args: ToolArguments): ApprovalPreview | Promise<ApprovalPreview>;
   handler(args: ToolArguments, signal: AbortSignal): Promise<unknown>;
 }
