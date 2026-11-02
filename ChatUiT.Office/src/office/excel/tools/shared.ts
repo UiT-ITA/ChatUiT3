@@ -4,6 +4,7 @@ import { ToolArgumentError } from "../../../chat/tools/args";
 import type { ToolArguments } from "../../../chat/tools/types";
 import type { ErrorHints } from "../../shared/officeError";
 import { runBatch } from "../../shared/runBatch";
+import { excelFailureDocs } from "../failureDocs.generated";
 
 /** Said when the selection is a chart, shape or other object instead of cells. */
 export const NOT_CELLS = "The selection is not cells; the user has selected a chart, shape or other object.";
@@ -44,7 +45,7 @@ const excelHints: ErrorHints = {
 
 /** Runs an Excel batch unless the call was cancelled. Office errors are rethrown with Excel's debug info. */
 export function runExcel<T>(signal: AbortSignal, batch: (context: Excel.RequestContext) => Promise<T>): Promise<T> {
-  return runBatch(signal, () => Excel.run(batch), excelHints);
+  return runBatch(signal, () => Excel.run(batch), excelHints, excelFailureDocs);
 }
 
 export const addressHint =

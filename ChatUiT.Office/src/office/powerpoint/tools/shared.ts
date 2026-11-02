@@ -13,6 +13,7 @@ import type { ToolArguments } from "../../../chat/tools/types";
 import type { ErrorHints } from "../../shared/officeError";
 import { isSetSupported, type RequirementSet } from "../../shared/officeTool";
 import { runBatch } from "../../shared/runBatch";
+import { powerPointFailureDocs } from "../failureDocs.generated";
 
 /** What PowerPoint's error codes mean for the slide and shape ids the tools use. */
 const powerPointHints: ErrorHints = {
@@ -26,7 +27,7 @@ export function runPowerPoint<T>(
   signal: AbortSignal,
   batch: (context: PowerPoint.RequestContext) => Promise<T>
 ): Promise<T> {
-  return runBatch(signal, () => PowerPoint.run(batch), powerPointHints);
+  return runBatch(signal, () => PowerPoint.run(batch), powerPointHints, powerPointFailureDocs);
 }
 
 export const POWERPOINT_1_5: RequirementSet = { set: "PowerPointApi", version: "1.5" };

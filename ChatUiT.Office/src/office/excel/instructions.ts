@@ -8,4 +8,4 @@ export const instructions = `You are in Microsoft Excel, working on the open wor
 - Column widths are in characters and row heights in points. To make content readable, set each column to its needed width from excel_get_layout, plus a little room.
 - Place charts on free cells, in an area large enough to read them.
 - Check layout with excel_get_layout and excel_get_image.
-- excel_run_script does many changes in one call. When the user asks to see what you can do, use it and make the result visibly ambitious: formatting, charts, conditional formats and layout far beyond a plain grid.`;
+- excel_run_script does many changes in one call.`;
