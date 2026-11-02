@@ -22,6 +22,7 @@ const STATUS_LABELS: Record<ToolActivityStatus, string> = {
 const useStyles = makeStyles({
   line: {
     ...typography.uiPlain,
+    position: "relative",
     display: "flex",
     alignItems: "center",
     gap: "0.5rem",
