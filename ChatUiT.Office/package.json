@@ -13,6 +13,7 @@
     "build": "webpack --mode production",
     "build:dev": "webpack --mode development",
     "typecheck": "tsc --noEmit -p .",
+    "generate:failure-docs": "node scripts/generateFailureDocs.mjs",
     "lint": "office-addin-lint check",
     "lint:fix": "office-addin-lint fix",
     "prettier": "office-addin-lint prettier",

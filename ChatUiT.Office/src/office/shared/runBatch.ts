@@ -1,12 +1,17 @@
 /* global AbortSignal, OfficeExtension */
 
-import { describeOfficeError, type ErrorHints } from "./officeError";
+import { describeOfficeError, type ErrorHints, type FailureDocs } from "./officeError";
 
 /**
  * Runs an Office batch (Word.run, Excel.run, PowerPoint.run) unless the call was cancelled. Office
- * errors are rethrown with their debug info and the app's hints.
+ * errors are rethrown with their debug info, the app's hints and the failing call's failure docs.
  */
-export async function runBatch<T>(signal: AbortSignal, run: () => Promise<T>, hints?: ErrorHints): Promise<T> {
+export async function runBatch<T>(
+  signal: AbortSignal,
+  run: () => Promise<T>,
+  hints?: ErrorHints,
+  failureDocs?: FailureDocs
+): Promise<T> {
   if (signal.aborted) {
     throw new Error("Cancelled.");
   }
@@ -14,7 +19,7 @@ export async function runBatch<T>(signal: AbortSignal, run: () => Promise<T>, hi
     return await run();
   } catch (error) {
     if (error instanceof OfficeExtension.Error) {
-      throw new Error(describeOfficeError(error, hints), { cause: error });
+      throw new Error(describeOfficeError(error, hints, failureDocs), { cause: error });
     }
     throw error;
   }

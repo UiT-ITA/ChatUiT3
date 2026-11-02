@@ -10,6 +10,7 @@ import {
 import type { ToolArguments } from "../../../chat/tools/types";
 import { describeOfficeError, type ErrorHints } from "../../shared/officeError";
 import { runBatch } from "../../shared/runBatch";
+import { wordFailureDocs } from "../failureDocs.generated";
 
 /** What Word's error codes mean for the paragraph ids the tools use. */
 const wordHints: ErrorHints = {
@@ -20,11 +21,11 @@ const wordHints: ErrorHints = {
 
 /** Runs a Word batch unless the call was cancelled. Office errors are rethrown with Word's debug info. */
 export function runWord<T>(signal: AbortSignal, batch: (context: Word.RequestContext) => Promise<T>): Promise<T> {
-  return runBatch(signal, () => Word.run(batch), wordHints);
+  return runBatch(signal, () => Word.run(batch), wordHints, wordFailureDocs);
 }
 
 export function describeWordError(error: OfficeExtension.Error): string {
-  return describeOfficeError(error, wordHints);
+  return describeOfficeError(error, wordHints, wordFailureDocs);
 }
 
 /** Loads the paragraphs from `fromId` to `toId`, inclusive and in document order. */

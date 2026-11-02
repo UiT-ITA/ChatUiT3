@@ -11,6 +11,10 @@ const READ_PATTERN =
   "To read anything, load it first and sync once: `const item = ...; item.load('name,size'); await context.sync(); " +
   "return { name: item.name, size: item.size };`. Reading a property that was not loaded fails with PropertyNotLoaded.";
 
+/** Added to every error from running the code. */
+const STATE_AFTER_FAILURE =
+  "Changes the code made before it failed are kept. Read the current state before you try again.";
+
 export interface RunScriptOptions<Context> {
   name: string;
   description: string;
@@ -47,7 +51,15 @@ export function createRunScriptTool<Context>(options: RunScriptOptions<Context>)
       } catch (error) {
         throw new Error(`The code does not compile: ${describeError(error)}`, { cause: error });
       }
-      const value = (await options.run(signal, (context) => script(context, options.api()))) ?? null;
+      let value: unknown;
+      try {
+        value = (await options.run(signal, (context) => script(context, options.api()))) ?? null;
+      } catch (error) {
+        if (signal.aborted) {
+          throw error;
+        }
+        throw new Error(`${describeError(error)} ${STATE_AFTER_FAILURE}`, { cause: error });
+      }
       const json = JSON.stringify(value);
       return json.length > MAX_RESULT_LENGTH
         ? { result: json.slice(0, MAX_RESULT_LENGTH), truncated: true }
