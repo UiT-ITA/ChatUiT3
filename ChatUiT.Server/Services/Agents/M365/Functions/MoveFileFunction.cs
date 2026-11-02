@@ -35,19 +35,19 @@ public sealed class MoveFileFunction : ConfirmableTool<MoveFileArgs>
         Changes(args);
         var item = await _graph.GetAsync(invocation.Context, $"{DriveSupport.ItemPath(args.DriveId, args.ItemId)}?$select=name,parentReference", DriveSupport.Scopes, ct);
 
-        var fields = new List<ToolPreviewField> { new("Item", $"{item.Str("parentReference", "path")?.Split(':', 2)[^1]}/{item.Str("name")}") };
+        var fields = new List<ToolPreviewField> { new("Item", $"{item.Str("parentReference", "path")?.Split(':', 2)[^1]}/{item.Str("name")}", Role: ToolPreviewFieldRole.Path) };
         if (!string.IsNullOrWhiteSpace(args.DestinationFolderId))
         {
             var folder = await _graph.GetAsync(invocation.Context, $"{DriveSupport.ItemPath(args.DriveId, args.DestinationFolderId)}?$select=name,parentReference", DriveSupport.Scopes, ct);
-            fields.Add(new ToolPreviewField("Move to", $"{folder.Str("parentReference", "path")?.Split(':', 2)[^1]}/{folder.Str("name")}"));
+            fields.Add(new ToolPreviewField("Move to", $"{folder.Str("parentReference", "path")?.Split(':', 2)[^1]}/{folder.Str("name")}", Role: ToolPreviewFieldRole.Path));
         }
 
         if (!string.IsNullOrWhiteSpace(args.NewName))
         {
-            fields.Add(new ToolPreviewField("New name", args.NewName.Trim()));
+            fields.Add(new ToolPreviewField("New name", args.NewName.Trim(), Role: ToolPreviewFieldRole.Path));
         }
 
-        return new ToolPreview("Move or rename file", null, fields, AllowEdit: false);
+        return new ToolPreview("Move or rename file", null, fields, AllowEdit: false, Kind: ToolPreviewKind.File);
     }
 
     protected override async Task<ToolResult> CommitAsync(MoveFileArgs args, ToolInvocation invocation, CancellationToken ct)

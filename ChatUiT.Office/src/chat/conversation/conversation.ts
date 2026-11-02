@@ -2,6 +2,8 @@
 
 import type { ResponsesClient } from "../api/client";
 import type {
+  ApprovalAnswer,
+  ApprovalPreview,
   CreateResponseRequest,
   FilePart,
   FunctionCallItem,
@@ -68,18 +70,35 @@ export interface ConversationState {
   /** Reasoning items to show in the history, including those not kept in `items`. */
   thoughts: readonly Thought[];
   turns: readonly Turn[];
+  /**
+   * The previews of the add-in's own function calls that wait for the user's approval, by call id.
+   * Built again from the call's arguments when a saved conversation is loaded.
+   */
+  previews: Readonly<Record<string, ApprovalPreview>>;
 }
 
 /** The part of a conversation that is saved, and restored by `Conversation.load`. */
 export type SavedConversation = Pick<ConversationState, "items" | "thoughts" | "activity" | "turns">;
 
+/**
+ * A confirmation is approved or not. Questions are answered with `answers`, one per question and null for a
+ * skipped one, or not answered with `approve` false.
+ */
 export interface ApprovalDecision {
   approve: boolean;
   /** A JSON object string. Only for confirmation requests whose preview has `allow_edit`. */
   editedArguments?: string;
+  answers?: (ApprovalAnswer | null)[];
 }
 
 export type ApprovalState = "pending" | "approved" | "rejected" | "unanswered";
+
+/** Answers the user filled in for a question request, sent with a new message instead of on their own. */
+export interface PendingAnswer {
+  requestId: string;
+  /** One per question, null for a question left empty. */
+  answers: (ApprovalAnswer | null)[];
+}
 
 export interface ConversationOptions {
   client: ResponsesClient;
@@ -138,7 +157,11 @@ const initialState: ConversationState = {
   activity: {},
   thoughts: [],
   turns: [],
+  previews: {},
 };
+
+/** What a call the user declined gets. */
+const DECLINED = "The user declined this action. Do not retry it.";
 
 /**
  * One conversation with a ChatUiT model, held in memory.
@@ -154,6 +177,8 @@ export class Conversation {
   private running: Promise<void> | null = null;
   /** Incremented by `reset`, so a run that is still unwinding cannot touch the new conversation. */
   private generation = 0;
+  /** The add-in's own function calls the user approved that have not run yet. */
+  private readonly approvedCalls = new Set<string>();
 
   constructor(private readonly options: ConversationOptions) {}
 
@@ -168,13 +193,46 @@ export class Conversation {
     return isBusy(this.state);
   }
 
-  /** Sends a user message. Unanswered approvals are left unanswered, and the server records them as not performed. */
-  async send(text: string, files: readonly ChatFile[] = []): Promise<void> {
+  /**
+   * Sends a user message. The calls that wait for the user are closed first: the ones the user answered go on
+   * with their answers, `answers` filled in on the card included, and approved function calls of the add-in run;
+   * an approval left unanswered is declined and a question left unanswered is skipped.
+   */
+  async send(text: string, files: readonly ChatFile[] = [], answers: readonly PendingAnswer[] = []): Promise<void> {
     const content = text.trim();
     if ((content.length === 0 && files.length === 0) || this.isBusy()) {
       return;
     }
-    // A turn left waiting for an approval ends here: the new message leaves the approval unanswered.
+    const generation = this.generation;
+    const responses = pendingApprovalRequests(this.state.items).map((request): McpApprovalResponseItem => {
+      const given = answers.find((answer) => answer.requestId === request.id);
+      return given && request.chatuit_kind === "question"
+        ? {
+            type: "mcp_approval_response",
+            approval_request_id: request.id,
+            approve: true,
+            chatuit_answers: given.answers,
+          }
+        : { type: "mcp_approval_response", approval_request_id: request.id, approve: false };
+    });
+    this.patch(generation, { items: [...this.state.items, ...responses], previews: {} });
+
+    const open = openFunctionCalls(this.state.items);
+    if (open.length > 0) {
+      const controller = new AbortController();
+      this.controller = controller;
+      this.patch(generation, { status: "running_tools" });
+      await this.runFunctionCalls(generation, open, controller.signal, true);
+      if (this.controller === controller) {
+        this.controller = null;
+      }
+      if (controller.signal.aborted) {
+        this.patch(generation, { status: "idle", cancelled: true });
+        return;
+      }
+    }
+
+    // The turn ends here, and a new one starts with the message.
     const now = this.now();
     const index = this.state.items.length;
     const turns = [...endOpenTurn(this.state.turns, now), { start: index, startedAt: now, endedAt: null }];
@@ -182,8 +240,8 @@ export class Conversation {
     const fileParts = files.map(toFilePart);
     const items = [...this.state.items.map(withoutContext), userMessage(content, fileParts, null)];
     // The message is shown at once. The app's context is read afterwards and added to it before the request.
-    this.patch(this.generation, { items, turns, status: "streaming", error: null, cancelled: false });
-    await this.run(async (generation, signal) => {
+    this.patch(generation, { items, turns, status: "streaming", error: null, cancelled: false });
+    await this.run(async (signal) => {
       const context = await this.readContext(signal);
       if (context) {
         const withContext = [...this.state.items];
@@ -193,11 +251,27 @@ export class Conversation {
     });
   }
 
-  /** Answers one approval request. The next request starts when no approval is pending. */
+  /**
+   * Answers one approval request or question, from the server or for one of the add-in's own
+   * function calls. The conversation goes on when nothing waits for the user any more.
+   */
   async answerApproval(requestId: string, decision: ApprovalDecision): Promise<void> {
     if (this.isBusy()) {
       throw new Error("Wait for the current response to finish.");
     }
+
+    if (this.state.previews[requestId]) {
+      this.answerOwnCall(requestId, decision.approve);
+    } else {
+      this.answerServerRequest(requestId, decision);
+    }
+
+    if (!waitsForUser(this.state)) {
+      await this.run();
+    }
+  }
+
+  private answerServerRequest(requestId: string, decision: ApprovalDecision): void {
     const request = this.state.items.find(
       (item): item is McpApprovalRequestItem => item.type === "mcp_approval_request" && item.id === requestId
     );
@@ -213,8 +287,19 @@ export class Conversation {
       approval_request_id: requestId,
       approve: decision.approve,
     };
-    if (decision.approve && decision.editedArguments !== undefined) {
-      if (request.chatuit_kind !== "confirmation" || request.chatuit_preview?.allow_edit !== true) {
+    if (request.chatuit_kind === "question") {
+      if (decision.approve) {
+        const answers = decision.answers ?? [];
+        if (answers.length !== (request.chatuit_questions?.length ?? 0)) {
+          throw new Error("Give one answer per question.");
+        }
+        if (!answers.some((answer) => answer && (answer.selected.length > 0 || answer.text?.trim()))) {
+          throw new Error("An answer picks an option or has text.");
+        }
+        response.chatuit_answers = answers;
+      }
+    } else if (decision.approve && decision.editedArguments !== undefined) {
+      if (request.chatuit_preview?.allow_edit !== true) {
         throw new Error("This request does not allow edited arguments.");
       }
       if (!isJsonObjectString(decision.editedArguments)) {
@@ -223,11 +308,23 @@ export class Conversation {
       response.chatuit_edited_arguments = decision.editedArguments;
     }
 
-    const items = [...this.state.items, response];
-    this.patch(this.generation, { items, error: null, cancelled: false });
-    if (pendingApprovalRequests(items).length === 0) {
-      await this.run();
+    this.patch(this.generation, { items: [...this.state.items, response], error: null, cancelled: false });
+  }
+
+  /** An approved call runs when the conversation goes on; a declined one gets its output now. */
+  private answerOwnCall(callId: string, approve: boolean): void {
+    const previews = Object.fromEntries(Object.entries(this.state.previews).filter(([id]) => id !== callId));
+    if (approve) {
+      this.approvedCalls.add(callId);
+      this.patch(this.generation, { previews, error: null, cancelled: false });
+      return;
     }
+    const output: FunctionCallOutputItem = {
+      type: "function_call_output",
+      call_id: callId,
+      output: toolError(DECLINED),
+    };
+    this.patch(this.generation, { items: [...this.state.items, output], previews, error: null, cancelled: false });
   }
 
   /** Stops the response or tool call in progress. */
@@ -246,14 +343,19 @@ export class Conversation {
     this.controller?.abort();
     this.controller = null;
     this.generation += 1;
+    this.approvedCalls.clear();
     this.state = initialState;
     this.emit();
   }
 
-  /** Replaces the conversation with a saved one. A saved approval that is still pending can be answered. */
+  /**
+   * Replaces the conversation with a saved one. A saved approval that is still pending can be
+   * answered, and so can a saved function call that waited for the user's approval.
+   */
   load(saved: SavedConversation): void {
     this.reset();
-    const awaiting = pendingApprovalRequests(saved.items).length > 0;
+    const waiting = openFunctionCalls(saved.items).filter((call) => this.toolFor(call)?.preview);
+    const awaiting = pendingApprovalRequests(saved.items).length > 0 || waiting.length > 0;
     this.state = {
       ...initialState,
       ...saved,
@@ -261,10 +363,16 @@ export class Conversation {
       turns: awaiting ? saved.turns : endOpenTurn(saved.turns, this.now()),
     };
     this.emit();
+    const generation = this.generation;
+    for (const call of waiting) {
+      void this.preview(call).then((preview) =>
+        this.patch(generation, { previews: { ...this.state.previews, [call.call_id]: preview } })
+      );
+    }
   }
 
   /** Runs the loop. `prepare` runs first, and the user can stop it like a response. */
-  private async run(prepare?: (generation: number, signal: AbortSignal) => Promise<void>): Promise<void> {
+  private async run(prepare?: (signal: AbortSignal) => Promise<void>): Promise<void> {
     const run = this.loop(prepare);
     this.running = run;
     try {
@@ -276,46 +384,50 @@ export class Conversation {
     }
   }
 
-  private async loop(prepare?: (generation: number, signal: AbortSignal) => Promise<void>): Promise<void> {
+  private async loop(prepare?: (signal: AbortSignal) => Promise<void>): Promise<void> {
     const generation = this.generation;
     const controller = new AbortController();
     this.controller = controller;
     const { signal } = controller;
 
     try {
-      await prepare?.(generation, signal);
+      await prepare?.(signal);
       if (signal.aborted) {
         this.patch(generation, { status: "idle", cancelled: true });
         return;
       }
       for (;;) {
-        this.patch(generation, { status: "streaming", live: [] });
-        const output = await this.streamResponse(generation, signal);
-        if (output === null) {
-          this.patch(generation, {
-            status: "idle",
-            live: [],
-            cancelled: true,
-            activity: finishActivity(this.state.activity),
-          });
-          return;
+        // Function calls that waited for the user's approval run before the next response.
+        let calls: FunctionCallItem[] = openFunctionCalls(this.state.items);
+        if (calls.length === 0) {
+          this.patch(generation, { status: "streaming", live: [] });
+          const output = await this.streamResponse(generation, signal);
+          if (output === null) {
+            this.patch(generation, {
+              status: "idle",
+              live: [],
+              cancelled: true,
+              activity: finishActivity(this.state.activity),
+            });
+            return;
+          }
+
+          const items = [...this.state.items];
+          const thoughts = [...this.state.thoughts];
+          for (const outputItem of output) {
+            if (outputItem.type === "reasoning") {
+              thoughts.push({ position: items.length, id: outputItem.id });
+            }
+            const item = toInputItem(outputItem);
+            if (item) {
+              items.push(item);
+            }
+          }
+          const produced = items.slice(this.state.items.length);
+          this.patch(generation, { items, thoughts, live: [], activity: finishActivity(this.state.activity) });
+          calls = produced.filter((item): item is FunctionCallItem => item.type === "function_call");
         }
 
-        const items = [...this.state.items];
-        const thoughts = [...this.state.thoughts];
-        for (const outputItem of output) {
-          if (outputItem.type === "reasoning") {
-            thoughts.push({ position: items.length, id: outputItem.id });
-          }
-          const item = toInputItem(outputItem);
-          if (item) {
-            items.push(item);
-          }
-        }
-        const produced = items.slice(this.state.items.length);
-        this.patch(generation, { items, thoughts, live: [], activity: finishActivity(this.state.activity) });
-
-        const calls = produced.filter((item): item is FunctionCallItem => item.type === "function_call");
         if (calls.length > 0) {
           this.patch(generation, { status: "running_tools" });
           await this.runFunctionCalls(generation, calls, signal);
@@ -325,7 +437,7 @@ export class Conversation {
           }
         }
 
-        if (pendingApprovalRequests(this.state.items).length > 0) {
+        if (waitsForUser(this.state)) {
           this.patch(generation, { status: "awaiting_approval" });
           return;
         }
@@ -411,10 +523,17 @@ export class Conversation {
     return output;
   }
 
+  /**
+   * Runs the calls in order and appends their outputs. Stops at a call whose tool asks the user
+   * first and that the user has not approved: its preview is stored, and it and the calls after it
+   * run once the user has answered. When `closing`, such a call is declined instead, because the
+   * user wrote a new message.
+   */
   private async runFunctionCalls(
     generation: number,
     calls: readonly FunctionCallItem[],
-    signal: AbortSignal
+    signal: AbortSignal,
+    closing = false
   ): Promise<void> {
     // Every function_call must get an output, or the server rejects the next request. Calls after a failed
     // call are not run, because they usually depend on it; the model sees which call failed and why.
@@ -425,7 +544,15 @@ export class Conversation {
         output = toolError("Cancelled by the user before the tool ran.");
       } else if (failed) {
         output = toolError(`Not run, because the earlier call ${failed.name} (${failed.call_id}) failed.`);
+      } else if (this.toolFor(call)?.preview && !this.approvedCalls.has(call.call_id) && closing) {
+        output = toolError(DECLINED);
+        failed = call;
+      } else if (this.toolFor(call)?.preview && !this.approvedCalls.has(call.call_id)) {
+        const preview = await this.preview(call);
+        this.patch(generation, { previews: { ...this.state.previews, [call.call_id]: preview } });
+        return;
       } else {
+        this.approvedCalls.delete(call.call_id);
         this.patch(generation, { runningCallId: call.call_id });
         const result = await this.executeTool(call, signal);
         if (result.ok) {
@@ -440,6 +567,25 @@ export class Conversation {
       }
       const item: FunctionCallOutputItem = { type: "function_call_output", call_id: call.call_id, output };
       this.patch(generation, { items: [...this.state.items, item], runningCallId: null });
+    }
+  }
+
+  private toolFor(call: FunctionCallItem): ClientToolDefinition | undefined {
+    return this.options.tools.find((candidate) => candidate.name === call.name);
+  }
+
+  /** The preview the user approves before the call runs. A preview that fails shows the call as it is. */
+  private async preview(call: FunctionCallItem): Promise<ApprovalPreview> {
+    const fallback: ApprovalPreview = {
+      title: call.name,
+      fields: [{ label: "Arguments", value: call.arguments, multiline: true }],
+      allow_edit: false,
+    };
+    try {
+      const args: unknown = call.arguments.trim() === "" ? {} : JSON.parse(call.arguments);
+      return isPlainObject(args) ? ((await this.toolFor(call)?.preview?.(args)) ?? fallback) : fallback;
+    } catch {
+      return fallback;
     }
   }
 
@@ -523,6 +669,33 @@ export function isBusy(state: ConversationState): boolean {
   return state.status === "streaming" || state.status === "running_tools";
 }
 
+/** True while an approval request, a question or one of the add-in's own function calls waits for the user. */
+export function waitsForUser(state: ConversationState): boolean {
+  return pendingApprovalRequests(state.items).length > 0 || Object.keys(state.previews).length > 0;
+}
+
+/** The function calls since the last user message that have no output yet. */
+export function openFunctionCalls(items: readonly InputItem[]): FunctionCallItem[] {
+  const answered = new Set(
+    items
+      .filter((item): item is FunctionCallOutputItem => item.type === "function_call_output")
+      .map((item) => item.call_id)
+  );
+  return items
+    .slice(lastUserMessage(items) + 1)
+    .filter((item): item is FunctionCallItem => item.type === "function_call" && !answered.has(item.call_id));
+}
+
+function lastUserMessage(items: readonly InputItem[]): number {
+  let lastUser = -1;
+  items.forEach((item, index) => {
+    if (item.type === "message" && item.role === "user") {
+      lastUser = index;
+    }
+  });
+  return lastUser;
+}
+
 function endOpenTurn(turns: readonly Turn[], now: number): readonly Turn[] {
   const last = turns[turns.length - 1];
   return last && last.endedAt === null ? [...turns.slice(0, -1), { ...last, endedAt: now }] : turns;
@@ -530,12 +703,7 @@ function endOpenTurn(turns: readonly Turn[], now: number): readonly Turn[] {
 
 /** Approval requests since the last user message that have no response yet. */
 export function pendingApprovalRequests(items: readonly InputItem[]): McpApprovalRequestItem[] {
-  let lastUser = -1;
-  items.forEach((item, index) => {
-    if (item.type === "message" && item.role === "user") {
-      lastUser = index;
-    }
-  });
+  const lastUser = lastUserMessage(items);
   const answered = new Set(
     items
       .filter((item): item is McpApprovalResponseItem => item.type === "mcp_approval_response")
@@ -753,6 +921,9 @@ export function toInputItem(item: OutputItem): InputItem | null {
       if (typeof item.error === "string") {
         call.error = item.error;
       }
+      if (typeof item.approval_request_id === "string") {
+        call.approval_request_id = item.approval_request_id;
+      }
       return call;
     }
     case "mcp_approval_request": {
@@ -774,6 +945,17 @@ export function toInputItem(item: OutputItem): InputItem | null {
         if (typeof preview.summary === "string") {
           request.chatuit_preview.summary = preview.summary;
         }
+        if (preview.kind) {
+          request.chatuit_preview.kind = preview.kind;
+        }
+      }
+      const questions = item.chatuit_questions;
+      if (questions) {
+        request.chatuit_questions = questions.map((question) => ({
+          question: question.question,
+          options: question.options.map((option) => ({ ...option })),
+          multi_select: question.multi_select,
+        }));
       }
       return request;
     }

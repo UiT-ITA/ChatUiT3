@@ -53,8 +53,8 @@ public sealed class WriteTextFileFunction : ConfirmableTool<WriteTextFileArgs>
         return new ToolPreview(
             exists ? "Overwrite file in OneDrive" : "Create file in OneDrive",
             exists ? "A file already exists at this path and will be replaced." : null,
-            [new ToolPreviewField("Path", path), new ToolPreviewField("Content", excerpt, Multiline: true)],
-            AllowEdit: false);
+            [new ToolPreviewField("Path", path, Role: ToolPreviewFieldRole.Path), new ToolPreviewField("Content", excerpt, Multiline: true, Role: ToolPreviewFieldRole.Content)],
+            AllowEdit: false, Kind: ToolPreviewKind.File);
     }
 
     protected override async Task<ToolResult> CommitAsync(WriteTextFileArgs args, ToolInvocation invocation, CancellationToken ct)

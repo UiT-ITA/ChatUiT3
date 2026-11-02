@@ -69,14 +69,36 @@ export interface McpCallItem {
   arguments: string;
   output?: string;
   error?: string;
+  /** The approval request this call continues, when it waited for the user. */
+  approval_request_id?: string;
 }
 
-export type ApprovalKind = "confirmation";
+/** A confirmation comes with `chatuit_preview`, questions with `chatuit_questions`. */
+export type ApprovalKind = "confirmation" | "question";
+
+/** What kind of action a preview shows; each kind has its own layout, general is a list of fields. */
+export type PreviewKind = "general" | "message" | "file" | "document_edit" | "event";
+
+/** What a preview field holds, so the layout of a kind can place it. */
+export type PreviewFieldRole =
+  | "none"
+  | "recipients"
+  | "subject"
+  | "body"
+  | "attachments"
+  | "path"
+  | "content"
+  | "document"
+  | "changes"
+  | "time"
+  | "location"
+  | "attendees";
 
 export interface ApprovalPreviewField {
   label: string;
   value: string;
   multiline: boolean;
+  role?: PreviewFieldRole;
 }
 
 export interface ApprovalPreview {
@@ -84,6 +106,25 @@ export interface ApprovalPreview {
   summary?: string;
   fields: ApprovalPreviewField[];
   allow_edit: boolean;
+  kind?: PreviewKind;
+}
+
+export interface ApprovalQuestionOption {
+  label: string;
+  description?: string;
+}
+
+/** A question the model asks the user. The user can always write their own answer. */
+export interface ApprovalQuestion {
+  question: string;
+  options: ApprovalQuestionOption[];
+  multi_select: boolean;
+}
+
+/** The options the user picked, by label, and what they wrote themselves. */
+export interface ApprovalAnswer {
+  selected: string[];
+  text?: string;
 }
 
 /** `id` is sealed by the server. */
@@ -95,6 +136,7 @@ export interface McpApprovalRequestItem {
   arguments: string;
   chatuit_kind: ApprovalKind;
   chatuit_preview?: ApprovalPreview;
+  chatuit_questions?: ApprovalQuestion[];
 }
 
 export interface McpApprovalResponseItem {
@@ -103,6 +145,8 @@ export interface McpApprovalResponseItem {
   approve: boolean;
   /** A JSON object string. Only allowed when the request's preview has `allow_edit`. */
   chatuit_edited_arguments?: string;
+  /** Answers to questions: one per question, null for a skipped one. Questions with `approve` false are not answered. */
+  chatuit_answers?: (ApprovalAnswer | null)[];
 }
 
 export type InputItem =

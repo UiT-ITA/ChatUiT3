@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.Security.Cryptography;
 using System.Text.Json;
 using ChatUiT.Server.Models;
@@ -11,13 +12,15 @@ namespace ChatUiT.Server.Services.ResponsesApi;
 /// <summary>
 /// What an approval request carries through the client and back: enough to execute or commit
 /// the call on a later request. <see cref="CatalogId"/> ties it to the catalog entry that asked.
+/// <see cref="Questions"/> is set for questions and null for a confirmation.
 /// </summary>
 public sealed record ApprovalState(
     string CatalogId,
     string CallId,
     string Tool,
     string ArgumentsJson,
-    bool AllowEdit);
+    bool AllowEdit,
+    IReadOnlyList<UserQuestion>? Questions = null);
 
 /// <summary>
 /// Seals the items a client must hand back unchanged and must not be able to fabricate:

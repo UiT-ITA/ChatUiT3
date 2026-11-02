@@ -393,6 +393,298 @@ const cases: Array<[string, () => Promise<void>]> = [
     },
   ],
   [
+    "questions in one mcp_approval_request are answered together and logged on one line",
+    async () => {
+      const request = {
+        type: "mcp_approval_request",
+        id: "sealed-question-0",
+        server_label: "chatuit",
+        name: "ask_user",
+        arguments: '{"questions":[]}',
+        chatuit_kind: "question",
+        chatuit_questions: [
+          {
+            question: "Who is it for?",
+            options: [{ label: "Board" }, { label: "Staff", description: "Teaching changes" }],
+            multi_select: false,
+          },
+          { question: "How long?", options: [], multi_select: false },
+          { question: "Which format?", options: [{ label: "Slides" }, { label: "Memo" }], multi_select: false },
+        ],
+      };
+      const call = {
+        type: "mcp_call",
+        id: "mcp_3",
+        server_label: "chatuit",
+        name: "ask_user",
+        arguments: '{"questions":[]}',
+        output: "{}",
+        status: "completed",
+        approval_request_id: "sealed-question-0",
+      };
+      const h = setup([
+        [sse.created(), sse.itemAdded(0, request), sse.itemDone(0, request), sse.completed([request])],
+        [
+          sse.created(),
+          sse.itemDone(0, call),
+          ...sse.textMessage(1, "msg_1", ["Done."]),
+          sse.completed([call, sse.messageItem("msg_1", "Done.")]),
+        ],
+      ]);
+      await h.conversation.send("Summarise the report.");
+
+      let state = h.conversation.getState();
+      assert.equal(state.status, "awaiting_approval");
+      assert.deepEqual(pendingApprovalRequests(state.items), [request]);
+      assert.match(renderOutline(state), /ask_user\n· Waiting for your answers/);
+
+      await assert.rejects(
+        h.conversation.answerApproval("sealed-question-0", { approve: true, answers: [null, null, null] }),
+        /picks an option or has text/
+      );
+      await assert.rejects(
+        h.conversation.answerApproval("sealed-question-0", { approve: true, answers: [{ selected: ["Board"] }] }),
+        /one answer per question/
+      );
+      assert.equal(h.requests.length, 1, "a refused answer sends nothing");
+
+      const answers = [{ selected: ["Board"] }, null, { selected: ["Memo"], text: "Keep it short" }];
+      await h.conversation.answerApproval("sealed-question-0", { approve: true, answers });
+      assert.equal(h.requests.length, 2);
+      assert.deepEqual(h.requests[1].body.input, [
+        userMessage("Summarise the report."),
+        request,
+        {
+          type: "mcp_approval_response",
+          approval_request_id: "sealed-question-0",
+          approve: true,
+          chatuit_answers: answers,
+        },
+      ]);
+
+      state = h.conversation.getState();
+      assert.equal(state.status, "idle");
+      const outline = renderOutline(state);
+      assert.match(outline, /Board · Skipped · Memo, Keep it short/);
+      assert.equal(outline.match(/ask_user/g)?.length, 1, "the call and its approval request are one line");
+    },
+  ],
+  [
+    "an own tool with a preview runs only once the user approves",
+    async () => {
+      const ran: ToolArguments[] = [];
+      const replaceTool: ClientToolDefinition = {
+        name: "word_replace",
+        description: "Replace a paragraph.",
+        parameters: { type: "object", properties: {}, additionalProperties: true },
+        preview: (args) => ({
+          title: "Replace paragraph",
+          kind: "document_edit",
+          fields: [{ label: "New text", value: String(args.text), multiline: true, role: "changes" }],
+          allow_edit: false,
+        }),
+        handler: async (args) => {
+          ran.push(args);
+          return { replaced: true };
+        },
+      };
+      const call = {
+        type: "function_call",
+        id: "fc_9",
+        call_id: "call_9",
+        name: "word_replace",
+        status: "completed",
+        arguments: '{"text":"Hi"}',
+      };
+      const h = setup(
+        [
+          [sse.created(), sse.itemDone(0, call), sse.completed([call])],
+          [
+            sse.created(),
+            ...sse.textMessage(0, "msg_9", ["Replaced."]),
+            sse.completed([sse.messageItem("msg_9", "Replaced.")]),
+          ],
+        ],
+        undefined,
+        [replaceTool]
+      );
+      await h.conversation.send("Change it to Hi.");
+
+      let state = h.conversation.getState();
+      assert.equal(state.status, "awaiting_approval");
+      assert.deepEqual(ran, [], "the handler waits for the user");
+      assert.equal(state.previews.call_9?.title, "Replace paragraph");
+      assert.match(renderOutline(state), /word_replace\nWaiting for you/);
+
+      await h.conversation.answerApproval("call_9", { approve: true });
+      assert.deepEqual(ran, [{ text: "Hi" }]);
+      assert.equal(h.requests.length, 2);
+      assert.deepEqual((h.requests[1].body.input as unknown[]).slice(-1), [
+        { type: "function_call_output", call_id: "call_9", output: JSON.stringify({ replaced: true }) },
+      ]);
+      state = h.conversation.getState();
+      assert.equal(state.status, "idle");
+      assert.deepEqual(state.previews, {});
+    },
+  ],
+  [
+    "an own tool the user declines, or leaves for a new message, is declined and not run",
+    async () => {
+      const ran: ToolArguments[] = [];
+      const replaceTool: ClientToolDefinition = {
+        name: "word_replace",
+        description: "Replace a paragraph.",
+        parameters: { type: "object", properties: {}, additionalProperties: true },
+        preview: () => ({ title: "Replace paragraph", fields: [], allow_edit: false }),
+        handler: async (args) => {
+          ran.push(args);
+          return {};
+        },
+      };
+      const first = {
+        type: "function_call",
+        id: "fc_1",
+        call_id: "call_1",
+        name: "word_replace",
+        status: "completed",
+        arguments: "{}",
+      };
+      const second = {
+        type: "function_call",
+        id: "fc_2",
+        call_id: "call_2",
+        name: "word_replace",
+        status: "completed",
+        arguments: "{}",
+      };
+      const h = setup(
+        [
+          [sse.created(), sse.itemDone(0, first), sse.completed([first])],
+          [sse.created(), sse.itemDone(0, second), sse.completed([second])],
+          [
+            sse.created(),
+            ...sse.textMessage(0, "msg_3", ["Okay."]),
+            sse.completed([sse.messageItem("msg_3", "Okay.")]),
+          ],
+        ],
+        undefined,
+        [replaceTool]
+      );
+      await h.conversation.send("Replace it.");
+      await h.conversation.answerApproval("call_1", { approve: false });
+      assert.equal(h.requests.length, 2);
+      assert.deepEqual((h.requests[1].body.input as unknown[]).slice(-1), [
+        {
+          type: "function_call_output",
+          call_id: "call_1",
+          output: JSON.stringify({ error: "The user declined this action. Do not retry it." }),
+        },
+      ]);
+      assert.equal(h.conversation.getState().status, "awaiting_approval");
+
+      await h.conversation.send("Never mind.");
+      assert.deepEqual(ran, []);
+      assert.equal(h.requests.length, 3);
+      assert.deepEqual((h.requests[2].body.input as unknown[]).slice(-2), [
+        {
+          type: "function_call_output",
+          call_id: "call_2",
+          output: JSON.stringify({ error: "The user declined this action. Do not retry it." }),
+        },
+        userMessage("Never mind."),
+      ]);
+    },
+  ],
+  [
+    "a new message keeps given answers, runs approved own calls and declines the rest",
+    async () => {
+      const ran: ToolArguments[] = [];
+      const replaceTool: ClientToolDefinition = {
+        name: "word_replace",
+        description: "Replace a paragraph.",
+        parameters: { type: "object", properties: {}, additionalProperties: true },
+        preview: () => ({ title: "Replace paragraph", fields: [], allow_edit: false }),
+        handler: async (args) => {
+          ran.push(args);
+          return { replaced: true };
+        },
+      };
+      const approval = {
+        type: "mcp_approval_request",
+        id: "sealed-confirm-1",
+        server_label: "chatuit",
+        name: "send_mail",
+        arguments: "{}",
+        chatuit_kind: "confirmation",
+        chatuit_preview: { title: "Send email", fields: [], allow_edit: false },
+      };
+      const questions = {
+        type: "mcp_approval_request",
+        id: "sealed-question-1",
+        server_label: "chatuit",
+        name: "ask_user",
+        arguments: "{}",
+        chatuit_kind: "question",
+        chatuit_questions: [
+          { question: "Who?", options: [{ label: "Board" }], multi_select: false },
+          { question: "When?", options: [], multi_select: false },
+        ],
+      };
+      const own = {
+        type: "function_call",
+        id: "fc_7",
+        call_id: "call_7",
+        name: "word_replace",
+        status: "completed",
+        arguments: '{"text":"Hi"}',
+      };
+      const h = setup(
+        [
+          [
+            sse.created(),
+            sse.itemDone(0, approval),
+            sse.itemDone(1, questions),
+            sse.itemDone(2, own),
+            sse.completed([approval, questions, own]),
+          ],
+          [
+            sse.created(),
+            ...sse.textMessage(0, "msg_8", ["Okay."]),
+            sse.completed([sse.messageItem("msg_8", "Okay.")]),
+          ],
+        ],
+        undefined,
+        [replaceTool]
+      );
+      await h.conversation.send("Do it.");
+      assert.equal(h.conversation.getState().status, "awaiting_approval");
+
+      await h.conversation.answerApproval("call_7", { approve: true });
+      assert.deepEqual(ran, [], "an approved call waits while other calls wait for the user");
+      assert.equal(h.requests.length, 1);
+
+      await h.conversation.send(
+        "Actually, something else.",
+        [],
+        [{ requestId: "sealed-question-1", answers: [{ selected: ["Board"] }, null] }]
+      );
+      assert.deepEqual(ran, [{ text: "Hi" }], "the approved call runs before the new message");
+      assert.equal(h.requests.length, 2);
+      assert.deepEqual((h.requests[1].body.input as unknown[]).slice(-5), [
+        { type: "function_call", call_id: "call_7", name: "word_replace", arguments: '{"text":"Hi"}' },
+        { type: "mcp_approval_response", approval_request_id: "sealed-confirm-1", approve: false },
+        {
+          type: "mcp_approval_response",
+          approval_request_id: "sealed-question-1",
+          approve: true,
+          chatuit_answers: [{ selected: ["Board"] }, null],
+        },
+        { type: "function_call_output", call_id: "call_7", output: JSON.stringify({ replaced: true }) },
+        userMessage("Actually, something else."),
+      ]);
+    },
+  ],
+  [
     "reasoning summary and mcp_call inner activity",
     async () => {
       const reasoning = {
@@ -765,14 +1057,7 @@ const cases: Array<[string, () => Promise<void>]> = [
       assert.match(state.error ?? "", /No scripted response left/);
       assert.equal(
         renderOutline(state),
-        [
-          "Read it",
-          "▸ Worked for 5s",
-          "  ▸ Reading",
-          "    the selection.",
-          "  word_get_selection",
-          "  Done",
-        ].join("\n")
+        ["Read it", "▸ Worked for 5s", "  ▸ Reading", "    the selection.", "  word_get_selection", "  Done"].join("\n")
       );
     },
   ],

@@ -48,8 +48,8 @@ public interface ITool
 
 /// <summary>
 /// A tool with side effects the user must approve first. The executor calls
-/// <see cref="PrepareAsync"/>, shows the preview, waits, and only then calls
-/// <see cref="CommitAsync"/>. <see cref="ITool.ExecuteAsync"/> is never called.
+/// <see cref="PrepareAsync"/> and ends the call with the preview; once the user has approved,
+/// the call continues with <see cref="CommitAsync"/>. <see cref="ITool.ExecuteAsync"/> is never called.
 /// </summary>
 public interface IConfirmableTool : ITool
 {
@@ -58,6 +58,20 @@ public interface IConfirmableTool : ITool
 
     /// <param name="approvedArguments">The arguments the user approved, edited when the preview allowed it.</param>
     Task<ToolResult> CommitAsync(ToolInvocation invocation, JsonElement approvedArguments, CancellationToken cancellationToken);
+}
+
+/// <summary>
+/// A tool that asks the user one or more questions. The executor calls <see cref="PrepareQuestionsAsync"/>
+/// and ends the call with the questions; the user's answers continue it through <see cref="AnswerAsync"/>.
+/// <see cref="ITool.ExecuteAsync"/> is never called.
+/// </summary>
+public interface IQuestionTool : ITool
+{
+    /// <summary>Validates the arguments and builds the questions. Must have no side effects.</summary>
+    Task<IReadOnlyList<UserQuestion>> PrepareQuestionsAsync(ToolInvocation invocation, CancellationToken cancellationToken);
+
+    /// <summary>The result the model gets for the user's answers: one per question, null for a question the user skipped.</summary>
+    Task<ToolResult> AnswerAsync(ToolInvocation invocation, IReadOnlyList<UserAnswer?> answers, CancellationToken cancellationToken);
 }
 
 /// <summary>
@@ -72,14 +86,26 @@ public interface IStreamingTool : ITool
     IAsyncEnumerable<ToolExecutionEvent> StreamAsync(ToolInvocation invocation, CancellationToken cancellationToken);
 }
 
-/// <summary>What the user sees before approving a confirmable tool.</summary>
+/// <summary>
+/// What the user sees before approving a confirmable tool. The tool says what kind of action it
+/// is and what each field holds; the client owns the layout of each kind.
+/// </summary>
 public sealed record ToolPreview(
     string Title,
     string? Summary,
     IReadOnlyList<ToolPreviewField> Fields,
-    bool AllowEdit = true);
+    bool AllowEdit = true,
+    ToolPreviewKind Kind = ToolPreviewKind.General);
 
-public sealed record ToolPreviewField(string Label, string Value, bool Multiline = false);
+public sealed record ToolPreviewField(string Label, string Value, bool Multiline = false, ToolPreviewFieldRole Role = ToolPreviewFieldRole.None);
+
+/// <summary>A question for the user, with the answers to choose from. The user may always write their own.</summary>
+public sealed record UserQuestion(string Question, IReadOnlyList<UserQuestionOption> Options, bool MultiSelect);
+
+public sealed record UserQuestionOption(string Label, string? Description);
+
+/// <summary>The options the user picked, by label, and what they wrote themselves.</summary>
+public sealed record UserAnswer(IReadOnlyList<string> Selected, string? Text);
 
 public sealed record ToolInvocation(string ToolCallId, JsonElement Arguments, ToolExecutionContext Context);
 
@@ -110,27 +136,11 @@ public sealed class ToolExecutionContext
     /// <summary>Whether tool calls are checked against the user's tool policies. False for chats on system assistants.</summary>
     public bool EnforceToolAccess { get; init; } = true;
 
-    /// <summary>How a pause for the user is handled. Chats wait; the Responses API defers.</summary>
-    public InteractionMode Mode { get; init; } = InteractionMode.Wait;
-
     /// <summary>
     /// The reasoning summary length the outer run asked for, so nested agent runs ask for the same.
     /// Chats leave the default; the Responses API sets it.
     /// </summary>
     public AiProviders.ReasoningSummaryLength ReasoningSummaryLength { get; init; } = AiProviders.ReasoningSummaryLength.Detailed;
-}
-
-public enum InteractionMode
-{
-    /// <summary>The executor waits in process for the user's answer (chats).</summary>
-    Wait,
-
-    /// <summary>
-    /// The executor ends the call with <see cref="ToolExecutionEvent.Deferred"/> instead of
-    /// waiting; the answer arrives with a later request and continues through
-    /// <see cref="IToolExecutor.ResumeAsync"/>.
-    /// </summary>
-    Defer
 }
 
 /// <summary>

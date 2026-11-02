@@ -110,9 +110,12 @@
       "running": "Running…",
       "failed": "Failed",
       "awaitingConfirmation": "Needs your approval",
+      "awaitingAnswer": "Waiting for your answer",
       "awaitingClient": "Running in your browser…",
       "approved": "Approved, running…",
       "rejected": "Declined",
+      "skipped": "Skipped",
+      "unanswered": "Not answered",
       "timeout": "Timed out"
     },
     "roles": {
@@ -136,10 +139,8 @@
       "rounds_other": "{{count}} tool rounds",
       "nothingRecorded": "No thinking or tool calls were recorded.",
       "awaitingUser": "Waiting for you: {{name}}",
-      "awaitingClient": "Running {{name}} in your browser…",
-      "timeLeft": "{{duration}} left"
+      "awaitingClient": "Running {{name}} in your browser…"
     },
-    "awaitingInputHint": "A tool is waiting for your answer above.",
     "redToggle": {
       "label": "Allow red",
       "enable": "Allow red data in this conversation. This cannot be undone.",
@@ -487,15 +488,33 @@
     "execution": {
       "client": "In your browser"
     },
+    "notAnswered": "Not answered",
+    "questions_one": "Question",
+    "questions_other": "Questions"
+  },
+  "interaction": {
+    "needsApproval": "Needs your approval",
+    "position": "{{index}} of {{count}}",
+    "approve": "Approve",
+    "reject": "Reject",
+    "approvalHint": "Or write a message to do something else instead",
     "editArguments": "Edit arguments",
     "hideArguments": "Hide editor",
     "invalidJson": "The arguments must be a valid JSON object.",
-    "approve": "Approve",
-    "reject": "Reject",
-    "working": "Working…",
-    "confirm": {
-      "title": "Confirm before running"
-    }
+    "pickOne": "Pick one",
+    "chooseAny": "Choose any",
+    "writeAnswer": "Write your answer",
+    "skip": "Skip question",
+    "answerPlaceholder": "Write your answer…",
+    "failed": "The answer could not be sent. Try again.",
+    "previewFailed": "The call could not be shown to the user for approval, so it was not run.",
+    "questionPosition": "Question {{index}} of {{count}}",
+    "next": "Next",
+    "send": "Send answers",
+    "previous": "Previous question",
+    "following": "Next question",
+    "ownAnswer": "Your own answer",
+    "ownAnswerPlaceholder": "Or write your own answer…"
   },
   "roles": {
     "User": "User",

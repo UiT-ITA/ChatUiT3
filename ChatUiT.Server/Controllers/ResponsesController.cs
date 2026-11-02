@@ -140,7 +140,6 @@ public class ResponsesController : ControllerBase
                 UserPrincipalName = identity.Username,
                 Model = target.Model,
                 Endpoint = target.Endpoint,
-                Mode = InteractionMode.Defer,
                 // Clients show the summaries in a narrow pane, so the short form is asked for,
                 // for the request's own turns and for nested agent runs.
                 ReasoningSummaryLength = ReasoningSummaryLength.Concise

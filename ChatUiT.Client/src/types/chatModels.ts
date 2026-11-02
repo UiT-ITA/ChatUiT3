@@ -12,7 +12,9 @@ export type AiChatStatus =
   | "Generating"
   | "Success"
   | "Error"
-  | "Cancelled";
+  | "Cancelled"
+  /** The run ended on tool calls that wait for the user or this client; their answers continue it. */
+  | "AwaitingUser";
 
 export type AiContentType = "Text" | "Image" | "Mixed";
 
@@ -35,29 +37,51 @@ export type ActivityEntryType = "Thinking" | "Tool";
 export type ToolExecution = "server" | "client";
 
 /**
- * The lifecycle of one tool call. Persisted history only holds the terminal states
- * (completed, rejected, timeout, error); the awaiting states exist on the live stream.
+ * The lifecycle of one tool call. A message that waits holds its waiting calls in an awaiting
+ * status until they are answered; every other stored call holds a terminal status. Unanswered
+ * marks a call left behind by a new message; timeout only appears in older history.
  */
 export type ToolCallStatus =
   | "running"
   | "awaitingConfirmation"
+  | "awaitingAnswer"
   | "awaitingClient"
   | "approved"
   | "completed"
   | "rejected"
+  | "unanswered"
   | "timeout"
   | "error";
 
-export const TERMINAL_TOOL_STATUSES: ReadonlySet<ToolCallStatus> = new Set(["completed", "rejected", "timeout", "error"]);
+export const TERMINAL_TOOL_STATUSES: ReadonlySet<ToolCallStatus> = new Set(["completed", "rejected", "unanswered", "timeout", "error"]);
 
 export function isAwaitingStatus(status: ToolCallStatus): boolean {
-  return status === "awaitingConfirmation" || status === "awaitingClient";
+  return status === "awaitingConfirmation" || status === "awaitingAnswer" || status === "awaitingClient";
 }
+
+/** What kind of action a preview shows; each kind has its own layout, general is a list of fields. */
+export type ToolPreviewKind = "general" | "message" | "file" | "documentEdit" | "event";
+
+/** What a preview field holds, so the layout of a kind can place it. */
+export type ToolPreviewFieldRole =
+  | "none"
+  | "recipients"
+  | "subject"
+  | "body"
+  | "attachments"
+  | "path"
+  | "content"
+  | "document"
+  | "changes"
+  | "time"
+  | "location"
+  | "attendees";
 
 export interface ToolPreviewFieldDto {
   label: string;
   value: string;
   multiline: boolean;
+  role: ToolPreviewFieldRole;
 }
 
 /** What the user sees before approving a confirmable tool call. */
@@ -67,6 +91,25 @@ export interface ToolPreviewDto {
   summary: string | null;
   fields: ToolPreviewFieldDto[];
   allowEdit: boolean;
+  kind: ToolPreviewKind;
+}
+
+export interface UserQuestionOptionDto {
+  label: string;
+  description: string | null;
+}
+
+/** A question the model asks the user. The user can always write their own answer. */
+export interface UserQuestionDto {
+  question: string;
+  options: UserQuestionOptionDto[];
+  multiSelect: boolean;
+}
+
+/** The options the user picked, by label, and what they wrote themselves. */
+export interface UserAnswerDto {
+  selected: string[];
+  text: string | null;
 }
 
 /**
@@ -88,10 +131,14 @@ export interface ActivityEntryDto {
   isError: boolean;
   /** Tool: where the tool ran. */
   execution: ToolExecution;
-  /** Tool: terminal in persisted history. */
+  /** Tool: awaiting while the message waits on it, otherwise terminal in stored history. */
   status: ToolCallStatus;
   /** Tool: the preview shown for a confirmation, when there was one. */
   preview: ToolPreviewDto | null;
+  /** Tool: the questions the user was asked, when there were any. */
+  questions: UserQuestionDto[] | null;
+  /** Tool: what the user or this client answered a call that waited. Null while it still waits. */
+  response: ToolCallResponseDto | null;
 }
 
 /** What happened while an assistant message was generated. Shown to the user, never sent to the model. */
@@ -111,17 +158,24 @@ export type ChatStreamChunkKind =
   | "ToolStart"
   | "ToolEnd"
   | "Done"
-  /** Run paused: the user must approve or reject the call. */
+  /** The call waits for the user to approve or reject it. */
   | "ToolConfirmationRequested"
-  /** Run paused: this client must run the tool and post the result. */
+  /** The call waits for this client to run the tool and post the result. */
   | "ToolClientCallRequested"
   /** Status-only update (approved). */
-  | "ToolStatus";
+  | "ToolStatus"
+  /** The call waits for the user to answer questions. */
+  | "ToolQuestionRequested"
+  /** The run ended on calls that wait; carries the activity so far. */
+  | "AwaitingUser"
+  /** First chunk of a run that continues a message that waited; carries its activity so far. */
+  | "Continued";
 
 /**
- * One event on a message's live stream. `elapsedMs` is measured on the server.
- * Per kind: ToolStart carries execution; the two pause kinds carry timeoutMs (counted from
- * elapsedMs) plus preview / argumentsJson; ToolStatus and ToolEnd carry status.
+ * One event on a message's live stream. `elapsedMs` is measured on the server, on the
+ * message's timeline across runs. Per kind: ToolStart carries execution; the waiting kinds
+ * carry preview, questions or argumentsJson; ToolStatus and ToolEnd carry status; Done,
+ * AwaitingUser and Continued carry activity.
  */
 export interface ChatStreamChunk {
   kind: ChatStreamChunkKind;
@@ -136,7 +190,7 @@ export interface ChatStreamChunk {
   execution: ToolExecution | null;
   status: ToolCallStatus | null;
   preview: ToolPreviewDto | null;
-  timeoutMs: number | null;
+  questions: UserQuestionDto[] | null;
 }
 
 /** A tool the client offers to run itself for one message. Names must match /^client_[a-z0-9_]{1,50}$/. */
@@ -147,13 +201,29 @@ export interface ClientToolDeclarationDto {
   parametersSchema: Record<string, unknown>;
 }
 
+/** The answer to a call that waits. A clientResult with decision reject: the user declined the call in this client. */
 export type ToolCallResponseDto =
   | { kind: "confirmation"; decision: "approve" | "reject"; editedArgumentsJson: string | null }
-  | { kind: "clientResult"; result: string; isError: boolean };
+  /** One answer per question, null for a skipped one; `answers` null when the user answered none. */
+  | { kind: "answer"; answers: (UserAnswerDto | null)[] | null }
+  | { kind: "clientResult"; result: string; isError: boolean; decision?: "reject" | null };
+
+/** An answer to one call a message waits on, sent with a new message instead of on its own. */
+export interface PendingAnswerDto {
+  toolCallId: string;
+  response: ToolCallResponseDto;
+}
+
+/** A response plus what the run that continues the message needs from this client. */
+export type RespondToToolCallDto = ToolCallResponseDto & {
+  clientTools?: ClientToolDeclarationDto[] | null;
+  timeZone?: string;
+};
 
 export interface ToolCallResponseResultDto {
   accepted: boolean;
-  status: ToolCallStatus | null;
+  /** True when this was the last answer the message waited for and the message continues. */
+  continued: boolean;
 }
 
 export interface ChatMessageDto {
@@ -218,6 +288,8 @@ export interface SendMessageDto {
   clientTools?: ClientToolDeclarationDto[] | null;
   /** The browser's IANA time zone, for knowledge sources that depend on "today". Not stored. */
   timeZone?: string;
+  /** Answers the user had given to calls the chat waits on, sent with this message instead. */
+  answers?: PendingAnswerDto[] | null;
 }
 
 

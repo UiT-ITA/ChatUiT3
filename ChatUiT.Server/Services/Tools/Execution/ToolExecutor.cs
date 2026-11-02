@@ -15,18 +15,15 @@ namespace ChatUiT.Server.Services.Tools;
 public sealed class ToolExecutor : IToolExecutor
 {
     private readonly IToolAccessService _access;
-    private readonly PendingInteractionRegistry _pending;
     private readonly ToolOptions _options;
     private readonly ILogger<ToolExecutor> _logger;
 
     public ToolExecutor(
         IToolAccessService access,
-        PendingInteractionRegistry pending,
         IOptions<ToolOptions> options,
         ILogger<ToolExecutor> logger)
     {
         _access = access;
-        _pending = pending;
         _options = options.Value;
         _logger = logger;
     }
@@ -87,13 +84,15 @@ public sealed class ToolExecutor : IToolExecutor
 
             if (tool.Execution == ToolExecution.Client)
             {
-                if (resume != null)
+                if (resume == null)
                 {
-                    Complete(writer, ToolResult.Error("A client tool call cannot be resumed."), ToolCallStatus.Error);
-                    return;
+                    Emit(writer, new ToolExecutionEvent.Deferred(new DeferredStep.ClientCall()));
+                }
+                else
+                {
+                    CompleteClient(resume, writer);
                 }
 
-                await RunClientAsync(call, context, writer, cancellationToken);
                 return;
             }
 
@@ -123,6 +122,10 @@ public sealed class ToolExecutor : IToolExecutor
                 else if (tool is IConfirmableTool confirmable)
                 {
                     await RunConfirmableAsync(confirmable, invocation, writer, cancellationToken);
+                }
+                else if (tool is IQuestionTool question)
+                {
+                    await RunQuestionAsync(question, invocation, writer, cancellationToken);
                 }
                 else
                 {
@@ -197,49 +200,22 @@ public sealed class ToolExecutor : IToolExecutor
     private async Task RunConfirmableAsync(IConfirmableTool tool, ToolInvocation invocation, ChannelWriter<ToolExecutionEvent> writer, CancellationToken cancellationToken)
     {
         var preview = await RunStepAsync(() => tool.PrepareAsync(invocation, cancellationToken), writer);
-        if (preview == null)
-        {
-            return;
-        }
-
-        if (invocation.Context.Mode == InteractionMode.Defer)
+        if (preview != null)
         {
             Emit(writer, new ToolExecutionEvent.Deferred(new DeferredStep.Confirmation(preview)));
-            return;
-        }
-
-        Emit(writer, new ToolExecutionEvent.ConfirmationRequested(preview, _options.ConfirmationTimeout));
-
-        var response = await _pending.WaitAsync(
-            invocation.Context.UserId, invocation.Context.MessageId, invocation.ToolCallId,
-            ToolCallStatus.AwaitingConfirmation, _options.ConfirmationTimeout, cancellationToken);
-
-        if (response == null)
-        {
-            Complete(writer, ToolResult.Error("The user did not respond in time; the action was not performed."), ToolCallStatus.Timeout);
-            return;
-        }
-
-        if (response.Decision != ToolCallDecision.Approve)
-        {
-            Complete(writer, ToolResult.Error("The user declined this action. Do not retry it."), ToolCallStatus.Rejected);
-            return;
-        }
-
-        var approvedArguments = preview.AllowEdit && response.Payload is { ValueKind: JsonValueKind.Object } edited
-            ? edited
-            : invocation.Arguments;
-
-        Emit(writer, new ToolExecutionEvent.StatusChanged(ToolCallStatus.Approved, approvedArguments.GetRawText()));
-
-        var result = await RunStepAsync(() => tool.CommitAsync(invocation, approvedArguments, cancellationToken), writer);
-        if (result != null)
-        {
-            Complete(writer, result, result.IsError ? ToolCallStatus.Error : ToolCallStatus.Completed);
         }
     }
 
-    /// <summary>Defer mode: continues a call with the answer a later request brought.</summary>
+    private async Task RunQuestionAsync(IQuestionTool tool, ToolInvocation invocation, ChannelWriter<ToolExecutionEvent> writer, CancellationToken cancellationToken)
+    {
+        var questions = await RunStepAsync(() => tool.PrepareQuestionsAsync(invocation, cancellationToken), writer);
+        if (questions != null)
+        {
+            Emit(writer, new ToolExecutionEvent.Deferred(new DeferredStep.Questions(questions)));
+        }
+    }
+
+    /// <summary>Continues a call with the answer a later request brought.</summary>
     private async Task ResumeCoreAsync(ITool tool, ToolInvocation invocation, ResumeInput resume, ChannelWriter<ToolExecutionEvent> writer, CancellationToken cancellationToken)
     {
         switch (resume)
@@ -255,8 +231,28 @@ public sealed class ToolExecutor : IToolExecutor
                 await CommitAsync(confirmable, invocation, commit.ApprovedArguments, writer, cancellationToken);
                 return;
 
+            case ResumeInput.Answers answers:
+                if (tool is not IQuestionTool question)
+                {
+                    Complete(writer, ToolResult.Error($"{tool.Id} does not take an answer."), ToolCallStatus.Error);
+                    return;
+                }
+
+                var result = await RunStepAsync(() => question.AnswerAsync(invocation, answers.Values, cancellationToken), writer);
+                if (result != null)
+                {
+                    Complete(writer, result, result.IsError ? ToolCallStatus.Error : ToolCallStatus.Completed);
+                }
+                return;
+
             case ResumeInput.Declined:
-                Complete(writer, ToolResult.Error("The user declined this action. Do not retry it."), ToolCallStatus.Rejected);
+                Complete(writer, tool is IQuestionTool
+                    ? ToolResult.Error(NotAnsweredText)
+                    : ToolResult.Error(DeclinedText), ToolCallStatus.Rejected);
+                return;
+
+            default:
+                Complete(writer, ToolResult.Error($"{tool.Id} cannot continue with this answer."), ToolCallStatus.Error);
                 return;
         }
     }
@@ -277,29 +273,22 @@ public sealed class ToolExecutor : IToolExecutor
         }
     }
 
-    private async Task RunClientAsync(AiStreamEvent.ToolCall call, ToolExecutionContext context, ChannelWriter<ToolExecutionEvent> writer, CancellationToken cancellationToken)
+    private void CompleteClient(ResumeInput resume, ChannelWriter<ToolExecutionEvent> writer)
     {
-        Emit(writer, new ToolExecutionEvent.ClientCallRequested(call.ArgumentsJson, _options.ClientToolTimeout));
-
-        var response = await _pending.WaitAsync(
-            context.UserId, context.MessageId, call.Id,
-            ToolCallStatus.AwaitingClient, _options.ClientToolTimeout, cancellationToken);
-
-        if (response == null)
+        switch (resume)
         {
-            Complete(writer, ToolResult.Error("The client did not return a result in time."), ToolCallStatus.Timeout);
-            return;
+            case ResumeInput.ClientResult result:
+                Complete(writer, new ToolResult(result.Content, result.Content, result.IsError), result.IsError ? ToolCallStatus.Error : ToolCallStatus.Completed);
+                return;
+
+            case ResumeInput.Declined:
+                Complete(writer, ToolResult.Error(DeclinedText), ToolCallStatus.Rejected);
+                return;
+
+            default:
+                Complete(writer, ToolResult.Error("A client tool continues only with its result."), ToolCallStatus.Error);
+                return;
         }
-
-        var content = response.Payload switch
-        {
-            { ValueKind: JsonValueKind.String } s => s.GetString() ?? string.Empty,
-            { ValueKind: JsonValueKind.Undefined } or null => string.Empty,
-            { } other => other.GetRawText()
-        };
-
-        var result = new ToolResult(content, content, response.IsError);
-        Complete(writer, result, response.IsError ? ToolCallStatus.Error : ToolCallStatus.Completed);
     }
 
     /// <summary>
@@ -328,6 +317,11 @@ public sealed class ToolExecutor : IToolExecutor
             return null;
         }
     }
+
+    /// <summary>What the model gets for a call the user said no to.</summary>
+    public const string DeclinedText = "The user declined this action. Do not retry it.";
+
+    public const string NotAnsweredText = "The user chose not to answer.";
 
     private void Complete(ChannelWriter<ToolExecutionEvent> writer, ToolResult result, ToolCallStatus status)
     {

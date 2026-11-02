@@ -43,7 +43,7 @@ public sealed class CreateEventFunction : ConfirmableTool<CreateEventArgs>
         Body(args);
         var fields = EventSupport.Preview(args.Subject, args.Start, args.End, args.TimeZone, args.Attendees, args.Location, args.Body, args.TeamsMeeting);
         var summary = args.Attendees is { Count: > 0 } ? "Invitations are sent to the attendees." : null;
-        return Task.FromResult(new ToolPreview("Create calendar event", summary, fields, AllowEdit: false));
+        return Task.FromResult(new ToolPreview("Create calendar event", summary, fields, AllowEdit: false, Kind: ToolPreviewKind.Event));
     }
 
     protected override async Task<ToolResult> CommitAsync(CreateEventArgs args, ToolInvocation invocation, CancellationToken ct)

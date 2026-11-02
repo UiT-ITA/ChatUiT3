@@ -47,20 +47,20 @@ public sealed class SendMailFunction : ConfirmableTool<SendMailArgs>
         var (to, cc) = Validate(args);
         var files = await DescribeAttachmentsAsync(args, invocation.Context, ct);
 
-        var fields = new List<ToolPreviewField> { new("To", string.Join(", ", to)) };
+        var fields = new List<ToolPreviewField> { new("To", string.Join(", ", to), Role: ToolPreviewFieldRole.Recipients) };
         if (cc.Count > 0)
         {
-            fields.Add(new ToolPreviewField("Cc", string.Join(", ", cc)));
+            fields.Add(new ToolPreviewField("Cc", string.Join(", ", cc), Role: ToolPreviewFieldRole.Recipients));
         }
 
-        fields.Add(new ToolPreviewField("Subject", args.Subject));
-        fields.Add(new ToolPreviewField("Message", args.Body, Multiline: true));
+        fields.Add(new ToolPreviewField("Subject", args.Subject, Role: ToolPreviewFieldRole.Subject));
+        fields.Add(new ToolPreviewField("Message", args.Body, Multiline: true, Role: ToolPreviewFieldRole.Body));
         if (files.Count > 0)
         {
-            fields.Add(new ToolPreviewField("Attachments", string.Join(", ", files.Select(f => f.Name))));
+            fields.Add(new ToolPreviewField("Attachments", string.Join(", ", files.Select(f => f.Name)), Role: ToolPreviewFieldRole.Attachments));
         }
 
-        return new ToolPreview("Send email", null, fields, AllowEdit: false);
+        return new ToolPreview("Send email", null, fields, AllowEdit: false, Kind: ToolPreviewKind.Message);
     }
 
     protected override async Task<ToolResult> CommitAsync(SendMailArgs args, ToolInvocation invocation, CancellationToken ct)

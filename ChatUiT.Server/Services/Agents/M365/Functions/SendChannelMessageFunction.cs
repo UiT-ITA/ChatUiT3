@@ -38,7 +38,7 @@ public sealed class SendChannelMessageFunction : ConfirmableTool<SendChannelMess
         var team = await _graph.GetAsync(invocation.Context, $"teams/{Uri.EscapeDataString(args.TeamId.Trim())}?$select=displayName", Scopes, ct);
         var channel = await _graph.GetAsync(invocation.Context, $"{channelPath}?$select=displayName", Scopes, ct);
 
-        var fields = new List<ToolPreviewField> { new("Channel", $"{team.Str("displayName")} › {channel.Str("displayName")}") };
+        var fields = new List<ToolPreviewField> { new("Channel", $"{team.Str("displayName")} › {channel.Str("displayName")}", Role: ToolPreviewFieldRole.Recipients) };
         if (!string.IsNullOrWhiteSpace(args.ReplyToMessageId))
         {
             var post = await _graph.GetAsync(invocation.Context, $"{channelPath}/messages/{Uri.EscapeDataString(args.ReplyToMessageId.Trim())}", Scopes, ct);
@@ -46,8 +46,8 @@ public sealed class SendChannelMessageFunction : ConfirmableTool<SendChannelMess
             fields.Add(new ToolPreviewField("Reply to", $"{post.Str("from", "user", "displayName")}: {(text.Length > 300 ? text[..300] + "…" : text)}"));
         }
 
-        fields.Add(new ToolPreviewField("Message", args.Text, Multiline: true));
-        return new ToolPreview(string.IsNullOrWhiteSpace(args.ReplyToMessageId) ? "Post in Teams channel" : "Reply in Teams channel", null, fields, AllowEdit: false);
+        fields.Add(new ToolPreviewField("Message", args.Text, Multiline: true, Role: ToolPreviewFieldRole.Body));
+        return new ToolPreview(string.IsNullOrWhiteSpace(args.ReplyToMessageId) ? "Post in Teams channel" : "Reply in Teams channel", null, fields, AllowEdit: false, Kind: ToolPreviewKind.Message);
     }
 
     protected override async Task<ToolResult> CommitAsync(SendChannelMessageArgs args, ToolInvocation invocation, CancellationToken ct)

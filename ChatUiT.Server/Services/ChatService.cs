@@ -24,6 +24,9 @@ public class ChatService : IChatService
     /// </summary>
     private static readonly TimeSpan GenerationTimeout = StaleGenerationThreshold;
 
+    /// <summary>Serialises the answers to one message's waiting calls, keyed by message id.</summary>
+    private static readonly SemaphoreSlim[] MessageLocks = Enumerable.Range(0, 64).Select(_ => new SemaphoreSlim(1, 1)).ToArray();
+
     private readonly AiConversationRunner _conversationRunner;
     private readonly IAiProviderRegistry _providers;
     private readonly IHubContext<AppHub, IAppHubClient> _hubContext;
@@ -35,7 +38,6 @@ public class ChatService : IChatService
     private readonly IToolRegistry _toolRegistry;
     private readonly IToolboxRegistry _toolboxes;
     private readonly IToolAccessService _toolAccess;
-    private readonly PendingInteractionRegistry _pendingInteractions;
     private readonly ISettingsService _settingsService;
     private readonly ITokenCountingService _tokenCounting;
     private readonly ToolOptions _toolOptions;
@@ -53,7 +55,6 @@ public class ChatService : IChatService
         IToolRegistry toolRegistry,
         IToolboxRegistry toolboxes,
         IToolAccessService toolAccess,
-        PendingInteractionRegistry pendingInteractions,
         ISettingsService settingsService,
         ITokenCountingService tokenCounting,
         IOptions<ToolOptions> toolOptions,
@@ -70,7 +71,6 @@ public class ChatService : IChatService
         _toolRegistry = toolRegistry;
         _toolboxes = toolboxes;
         _toolAccess = toolAccess;
-        _pendingInteractions = pendingInteractions;
         _settingsService = settingsService;
         _tokenCounting = tokenCounting;
         _toolOptions = toolOptions.Value;
@@ -103,7 +103,6 @@ public class ChatService : IChatService
                 DateTime.UtcNow - message.Timestamp < StaleGenerationThreshold ||
                 _streamingService.IsGenerationActive(userId, message.Id))
             {
-                // A run paused on a tool confirmation is still alive; only orphaned runs are failed.
                 continue;
             }
 
@@ -277,7 +276,7 @@ public class ChatService : IChatService
     public Task SendStreamingMessageAsync(string userId, string chatId, Models.ChatMessage userMessage, string? assistantId, PromptUserContext promptUser)
         => SendStreamingMessageAsync(userId, chatId, userMessage, assistantId, promptUser, ToolSessionInput.Anonymous);
 
-    public async Task SendStreamingMessageAsync(string userId, string chatId, Models.ChatMessage userMessage, string? assistantId, PromptUserContext promptUser, ToolSessionInput tools)
+    public async Task SendStreamingMessageAsync(string userId, string chatId, Models.ChatMessage userMessage, string? assistantId, PromptUserContext promptUser, ToolSessionInput tools, IReadOnlyList<PendingAnswerDto>? answers = null)
     {
         if (userMessage.Timestamp == default)
         {
@@ -335,6 +334,7 @@ public class ChatService : IChatService
         
             var chat = await GetChatByIdAsync(userId, chatId);
             var messages = chat?.Messages ?? new();
+            await CloseWaitingMessagesAsync(userId, chatId, messages, answers ?? [], promptUser, tools, activeSchemes);
 
             var wasEmpty = messages.All(m => m.Id == userMessage.Id || m.Id == assistantMessage.Id);
             if (wasEmpty)
@@ -410,100 +410,12 @@ public class ChatService : IChatService
             throw;
         }
 
-        _ = Task.Run(async () =>
+        RunInBackground(userId, chatId, RegisterRun(userId, assistantMessage.Id, undoesSend: true), new RunPlan(assistantMessage, request, toolContext, activeSchemes)
         {
-            var content = new StringBuilder();
-            // Owned here rather than by the runner so a failed run still leaves its partial
-            // record (tool calls made, time spent) on the message.
-            var activity = new MessageActivity();
-            var transcript = new List<TranscriptItem>();
-            var stopwatch = Stopwatch.StartNew();
-
-            // Without a token a run that hangs — or keeps calling tools — outlives the
-            // client that started it, with no way to stop it.
-            // The deadline is owned by the streaming service so a tool waiting on the user can pause it.
-            using var cancellation = new CancellationTokenSource();
-            _streamingService.RegisterGeneration(userId, assistantMessage.Id, cancellation, GenerationTimeout);
-
-            try
+            UndoOnCancelAsync = async () =>
             {
-                await foreach (var chunk in _conversationRunner.StreamAsync(request, toolContext, activity, transcript, cancellation.Token))
-                {
-                    _streamingService.AddChunk(userId, assistantMessage.Id, chunk);
-
-                    if (chunk.Kind == ChatStreamChunkKind.Text)
-                    {
-                        content.Append(chunk.Text);
-                    }
-                }
-
-                // The token can fire after the last chunk but before we save. The user has already
-                // been told the cancel succeeded, so the undo has to win over the success path.
-                if (_streamingService.WasCancelledByUser(userId, assistantMessage.Id))
-                {
-                    await UndoCancelledGenerationAsync();
-                    return;
-                }
-
-                assistantMessage.Content = content.ToString();
-                assistantMessage.Activity = activity;
-                assistantMessage.Transcript = transcript;
-                _streamingService.CompleteMessage(userId, assistantMessage.Id);
-
-                assistantMessage.Status = AiChatStatus.Success;
-                assistantMessage.TokenCounts = _tokenCounting.CountMessage(assistantMessage, activeSchemes).Total;
-                await _databaseService.UpdateMessageAsync(userId, chatId, assistantMessage);
-
-                NotifyChatUpdated(userId, chatId);
-            }
-            catch (Exception ex)
-            {
-                if (_streamingService.WasCancelledByUser(userId, assistantMessage.Id))
-                {
-                    await UndoCancelledGenerationAsync();
-                    return;
-                }
-
-                // A turn the provider ended early carries its reason, which the protocol has
-                // already logged as status, reason and code; it is shown in place of the generic text.
-                var failedText = GenerationFailedText;
-                if (ex is AiTurnFailedException turnFailed)
-                {
-                    _logger.LogWarning("Chat completion failed: the provider ended the turn early");
-                    failedText = $"*{turnFailed.Message}*";
-                }
-                else
-                {
-                    _logger.LogError(ex, "Error getting chat completion");
-                }
-
-                _streamingService.CompleteMessage(userId, assistantMessage.Id);
-
-                var partialContent = content.ToString();
-                assistantMessage.Content = string.IsNullOrWhiteSpace(partialContent)
-                    ? failedText
-                    : $"{partialContent}\n\n{failedText}";
-                assistantMessage.Status = AiChatStatus.Error;
-                AiConversationRunner.Finish(activity, stopwatch.ElapsedMilliseconds);
-                assistantMessage.Activity = activity;
-                assistantMessage.Transcript = transcript;
-                assistantMessage.TokenCounts = _tokenCounting.CountMessage(assistantMessage, activeSchemes).Total;
-                await _databaseService.UpdateMessageAsync(userId, chatId, assistantMessage);
-                NotifyChatUpdated(userId, chatId);
-                await _hubContext.Clients.Group(userId).Notify(NotifyLevel.Error, "The model failed to complete your request. Please try again.");
-            }
-            finally
-            {
-                _streamingService.UnregisterGeneration(userId, assistantMessage.Id);
-            }
-
-            // A cancel undoes the send entirely: both messages go away and the client puts the
-            // text back in the composer, as if it was never sent.
-            async Task UndoCancelledGenerationAsync()
-            {
-                _logger.LogInformation("Generation cancelled by user for message {MessageId}", assistantMessage.Id);
-                _streamingService.CompleteMessage(userId, assistantMessage.Id);
-
+                // A cancel undoes the send entirely: both messages go away and the client puts the
+                // text back in the composer, as if it was never sent.
                 await _databaseService.DeleteMessageAsync(userId, chatId, assistantMessage.Id);
                 await _databaseService.DeleteMessageAsync(userId, chatId, userMessage.Id);
 
@@ -517,6 +429,159 @@ public class ChatService : IChatService
                 {
                     NotifyChatUpdated(userId, chatId);
                 }
+            }
+        });
+    }
+
+    /// <summary>What one background run of an assistant message needs.</summary>
+    private sealed record RunPlan(
+        Models.ChatMessage AssistantMessage,
+        AiRequest Request,
+        ToolExecutionContext ToolContext,
+        IReadOnlyList<string> ActiveSchemes)
+    {
+        /// <summary>The calls the message waited on, with their answers. Empty for a new message.</summary>
+        public IReadOnlyList<ResumedCall> Resumes { get; init; } = [];
+
+        /// <summary>The request with a history that holds the results of <see cref="Resumes"/>.</summary>
+        public Func<AiRequest>? RequestAfterResume { get; init; }
+
+        /// <summary>Removes the send when the user cancels. Null for a message that continues: it keeps what it had.</summary>
+        public Func<Task>? UndoOnCancelAsync { get; init; }
+    }
+
+    /// <summary>
+    /// Registers the run of a message so it can be cancelled and counts as active, before anything
+    /// tells the client the message is generating. Without a token a run that hangs — or keeps
+    /// calling tools — outlives the client that started it, with no way to stop it.
+    /// </summary>
+    private CancellationTokenSource RegisterRun(string userId, string messageId, bool undoesSend)
+    {
+        var cancellation = new CancellationTokenSource();
+        _streamingService.RegisterGeneration(userId, messageId, cancellation, GenerationTimeout, undoesSend);
+        return cancellation;
+    }
+
+    /// <summary>
+    /// Runs the message in the background on a run registered with <see cref="RegisterRun"/>: first the
+    /// waiting calls it continues, if any, then the model. Saves it as AwaitingUser when calls wait,
+    /// Success when it is done, Error when the run fails.
+    /// </summary>
+    private void RunInBackground(string userId, string chatId, CancellationTokenSource registered, RunPlan plan)
+    {
+        _ = Task.Run(async () =>
+        {
+            var message = plan.AssistantMessage;
+            var content = new StringBuilder(message.Content);
+            // Owned here rather than by the runner so a failed run still leaves its partial
+            // record (tool calls made, time spent) on the message.
+            var activity = message.Activity ?? new MessageActivity();
+            var transcript = message.Transcript ?? new List<TranscriptItem>();
+            var startMs = activity.TotalMs;
+            var stopwatch = Stopwatch.StartNew();
+            var waiting = false;
+
+            using var cancellation = registered;
+
+            try
+            {
+                if (plan.Resumes.Count > 0)
+                {
+                    await foreach (var chunk in _conversationRunner.ResumeAsync(plan.Request, plan.ToolContext, activity, transcript, plan.Resumes, cancellation.Token))
+                    {
+                        _streamingService.AddChunk(userId, message.Id, chunk);
+                        waiting |= chunk.Kind == ChatStreamChunkKind.AwaitingUser;
+                    }
+                }
+
+                if (!waiting)
+                {
+                    var request = plan.RequestAfterResume?.Invoke() ?? plan.Request;
+                    await foreach (var chunk in _conversationRunner.StreamAsync(request, plan.ToolContext, activity, transcript, cancellation.Token))
+                    {
+                        _streamingService.AddChunk(userId, message.Id, chunk);
+                        waiting |= chunk.Kind == ChatStreamChunkKind.AwaitingUser;
+
+                        if (chunk.Kind == ChatStreamChunkKind.Text)
+                        {
+                            content.Append(chunk.Text);
+                        }
+                    }
+                }
+
+                // The token can fire after the last chunk but before we save. The user has already
+                // been told the cancel succeeded, so the undo has to win over the success path.
+                if (_streamingService.WasCancelledByUser(userId, message.Id) && plan.UndoOnCancelAsync != null)
+                {
+                    await UndoCancelledGenerationAsync();
+                    return;
+                }
+
+                message.Content = content.ToString();
+                message.Activity = activity;
+                message.Transcript = transcript;
+                _streamingService.CompleteMessage(userId, message.Id);
+
+                message.Status = waiting ? AiChatStatus.AwaitingUser : AiChatStatus.Success;
+                message.TokenCounts = _tokenCounting.CountMessage(message, plan.ActiveSchemes).Total;
+                await _databaseService.UpdateMessageAsync(userId, chatId, message);
+
+                NotifyChatUpdated(userId, chatId);
+            }
+            catch (Exception ex)
+            {
+                var cancelledByUser = _streamingService.WasCancelledByUser(userId, message.Id);
+                if (cancelledByUser && plan.UndoOnCancelAsync != null)
+                {
+                    await UndoCancelledGenerationAsync();
+                    return;
+                }
+
+                // A turn the provider ended early carries its reason, which the protocol has
+                // already logged as status, reason and code; it is shown in place of the generic text.
+                var failedText = GenerationFailedText;
+                if (cancelledByUser)
+                {
+                    _logger.LogInformation("Continued message {MessageId} stopped by the user", message.Id);
+                }
+                else if (ex is AiTurnFailedException turnFailed)
+                {
+                    _logger.LogWarning("Chat completion failed: the provider ended the turn early");
+                    failedText = $"*{turnFailed.Message}*";
+                }
+                else
+                {
+                    _logger.LogError(ex, "Error getting chat completion");
+                }
+
+                _streamingService.CompleteMessage(userId, message.Id);
+
+                var partialContent = content.ToString();
+                message.Content = cancelledByUser
+                    ? partialContent
+                    : string.IsNullOrWhiteSpace(partialContent) ? failedText : $"{partialContent}\n\n{failedText}";
+                message.Status = cancelledByUser ? AiChatStatus.Success : AiChatStatus.Error;
+                AiConversationRunner.Finish(activity, startMs + stopwatch.ElapsedMilliseconds);
+                message.Activity = activity;
+                message.Transcript = transcript;
+                message.TokenCounts = _tokenCounting.CountMessage(message, plan.ActiveSchemes).Total;
+                await _databaseService.UpdateMessageAsync(userId, chatId, message);
+                NotifyChatUpdated(userId, chatId);
+                if (!cancelledByUser)
+                {
+                    await _hubContext.Clients.Group(userId).Notify(NotifyLevel.Error, "The model failed to complete your request. Please try again.");
+                }
+            }
+            finally
+            {
+                _streamingService.UnregisterGeneration(userId, message.Id);
+            }
+
+            async Task UndoCancelledGenerationAsync()
+            {
+                _logger.LogInformation("Generation cancelled by user for message {MessageId}", message.Id);
+                _streamingService.CompleteMessage(userId, message.Id);
+                await plan.UndoOnCancelAsync!();
             }
         });
     }
@@ -550,9 +615,10 @@ public class ChatService : IChatService
         throw new NotImplementedException("DeleteMessageAsync is not implemented yet.");
     }
 
-    public Task<bool> CancelGenerationAsync(string userId, string chatId, string messageId)
+    public Task<(bool Cancelled, bool Undone)> CancelGenerationAsync(string userId, string chatId, string messageId)
     {
-        return Task.FromResult(_streamingService.TryCancelGeneration(userId, messageId));
+        var cancelled = _streamingService.TryCancelGeneration(userId, messageId, out var undoesSend);
+        return Task.FromResult((cancelled, cancelled && undoesSend));
     }
 
     #endregion Message operations
@@ -718,6 +784,11 @@ public class ChatService : IChatService
             resolvedTools.Add(new LoadKnowledgeFileTool(assistant.Id, onDemandFiles, _databaseService, _tokenCounting, _toolOptions, _logger));
         }
 
+        if (canLoadOnDemand)
+        {
+            resolvedTools.Add(new AskUserTool());
+        }
+
         if (canLoadOnDemand && tools.ClientTools.Count > 0 && await _toolAccess.MayUseClientToolsAsync(tools.Access))
         {
             resolvedTools.AddRange(_toolRegistry.CreateClientTools(tools.ClientTools));
@@ -733,22 +804,27 @@ public class ChatService : IChatService
             string.Join(",", toolboxes.Select(t => t.Toolbox.Id)),
             loadedToolIds.Count);
 
-        // A model that cannot call tools gets earlier messages as text.
-        var history = canLoadOnDemand
-            ? TranscriptReplay.ToInputItems(messages)
-            : AiInputItem.From(messages);
-
         return new AiRequest
         {
             Model = model,
             Endpoint = endpoint,
             SystemPrompt = settings.SystemPrompt,
-            Messages = [.. AiInputItem.From(KnowledgeFileMessages.Build(assistant.Files, resolved.PinnedFileIds)), .. history],
+            Messages = BuildHistory(resolved, messages, canLoadOnDemand),
             Parameters = parameters,
             Tools = resolvedTools,
             LoadableTools = loadableTools,
             LoadedToolIds = loadedToolIds
         };
+    }
+
+    /// <summary>The knowledge files, then the messages. A model that cannot call tools gets earlier messages as text.</summary>
+    private static List<AiInputItem> BuildHistory(ResolvedAssistant resolved, List<Models.ChatMessage> messages, bool canLoadOnDemand)
+    {
+        var history = canLoadOnDemand
+            ? TranscriptReplay.ToInputItems(messages)
+            : AiInputItem.From(messages);
+
+        return [.. AiInputItem.From(KnowledgeFileMessages.Build(resolved.Assistant.Files, resolved.PinnedFileIds)), .. history];
     }
 
     /// <summary>
@@ -830,65 +906,305 @@ public class ChatService : IChatService
         return await KnowledgeSourceMessages.BuildAsync(sources, context, _logger, CancellationToken.None);
     }
 
-    public Task<ToolCallResponseResultDto> RespondToToolCallAsync(
+    public async Task<ToolCallResponseResultDto> RespondToToolCallAsync(
         string userId,
         string chatId,
         string messageId,
         string toolCallId,
-        ToolCallResponseDto response)
+        ToolCallResponseDto response,
+        PromptUserContext promptUser,
+        ToolSessionInput tools)
     {
-        var awaiting = _pendingInteractions.GetPendingStatus(userId, messageId, toolCallId);
-        if (awaiting == null)
+        var messageLock = LockFor(messageId);
+        await messageLock.WaitAsync();
+        try
         {
-            return Task.FromResult(new ToolCallResponseResultDto { Accepted = false, Status = null });
-        }
+            // Without file content: only the answer that continues the message needs it.
+            var (chat, message, entry) = await FindWaitingCallAsync(userId, chatId, messageId, toolCallId, includeFileContent: false);
+            if (chat == null || message == null || entry == null)
+            {
+                return new ToolCallResponseResultDto { Accepted = false };
+            }
 
-        var expectedKind = awaiting switch
+            var checkedResponse = CheckResponse(entry, response);
+            entry.Response = checkedResponse;
+
+            if (message.Activity!.Entries.Any(e => e.Status.IsAwaiting() && e.Response == null))
+            {
+                await _databaseService.UpdateMessageAsync(userId, chatId, message);
+                NotifyChatUpdated(userId, chatId);
+                return new ToolCallResponseResultDto { Accepted = true, Continued = false };
+            }
+
+            (chat, message, entry) = await FindWaitingCallAsync(userId, chatId, messageId, toolCallId, includeFileContent: true);
+            if (chat == null || message == null || entry == null)
+            {
+                return new ToolCallResponseResultDto { Accepted = false };
+            }
+
+            entry.Response = checkedResponse;
+            await ContinueMessageAsync(userId, chat, message, promptUser, tools);
+            return new ToolCallResponseResultDto { Accepted = true, Continued = true };
+        }
+        finally
+        {
+            messageLock.Release();
+        }
+    }
+
+    /// <summary>The chat, the message that waits and its call that still waits under that id; nulls when there is none.</summary>
+    private async Task<(Chat? Chat, Models.ChatMessage? Message, ActivityEntry? Entry)> FindWaitingCallAsync(
+        string userId, string chatId, string messageId, string toolCallId, bool includeFileContent)
+    {
+        var chat = await GetChatByIdAsync(userId, chatId, includeFileContent);
+        var message = chat?.Messages.FirstOrDefault(m => m.Id == messageId);
+        var entry = message is { Role: AiChatRole.Assistant, Status: AiChatStatus.AwaitingUser }
+            ? message.Activity?.Entries.FirstOrDefault(e => e.ToolCallId == toolCallId && e.Status.IsAwaiting() && e.Response == null)
+            : null;
+        return (chat, message, entry);
+    }
+
+    /// <summary>The response as it is kept on the entry, after checking it fits what the call waits for.</summary>
+    private static ToolCallResponseDto CheckResponse(ActivityEntry entry, ToolCallResponseDto response)
+    {
+        var expected = entry.Status switch
         {
             ToolCallStatus.AwaitingConfirmation => ToolCallResponseKind.Confirmation,
+            ToolCallStatus.AwaitingAnswer => ToolCallResponseKind.Answer,
             _ => ToolCallResponseKind.ClientResult
         };
-        if (response.Kind != expectedKind)
+        if (response.Kind != expected)
         {
-            throw new ArgumentException($"Tool call is awaiting {awaiting}; a {response.Kind} response does not apply.");
+            throw new ArgumentException($"Tool call is {entry.Status}; a {response.Kind} response does not apply.");
         }
 
-        JsonElement? payload = null;
-        if (response.Kind == ToolCallResponseKind.Confirmation && !string.IsNullOrWhiteSpace(response.EditedArgumentsJson))
+        switch (response.Kind)
         {
-            try
-            {
-                using var document = JsonDocument.Parse(response.EditedArgumentsJson);
-                if (document.RootElement.ValueKind != JsonValueKind.Object)
+            case ToolCallResponseKind.Confirmation:
+                if (response.Decision == null)
                 {
-                    throw new ArgumentException("editedArgumentsJson must be a JSON object.");
+                    throw new ArgumentException("A confirmation needs a decision.");
                 }
 
-                payload = document.RootElement.Clone();
-            }
-            catch (JsonException ex)
-            {
-                throw new ArgumentException($"editedArgumentsJson is not valid JSON: {ex.Message}", ex);
-            }
+                string? edited = null;
+                if (response.Decision == ToolCallDecision.Approve && !string.IsNullOrWhiteSpace(response.EditedArgumentsJson))
+                {
+                    if (entry.Preview is not { AllowEdit: true })
+                    {
+                        throw new ArgumentException("This call does not allow editing its arguments.");
+                    }
+
+                    edited = ParseObject(response.EditedArgumentsJson).GetRawText();
+                }
+
+                return new ToolCallResponseDto { Kind = response.Kind, Decision = response.Decision, EditedArgumentsJson = edited };
+
+            case ToolCallResponseKind.Answer:
+                if (response.Answers != null && entry.Questions != null
+                    && AskUserTool.Validate(entry.Questions.Select(ToQuestion).ToList(), ToAnswers(response.Answers)) is { } problem)
+                {
+                    throw new ArgumentException(problem);
+                }
+
+                return new ToolCallResponseDto
+                {
+                    Kind = response.Kind,
+                    Answers = response.Answers?.Select(a => a == null ? null : new UserAnswerDto { Selected = [.. a.Selected ?? []], Text = a.Text }).ToList()
+                };
+
+            default:
+                return new ToolCallResponseDto
+                {
+                    Kind = response.Kind,
+                    Decision = response.Decision == ToolCallDecision.Reject ? ToolCallDecision.Reject : null,
+                    Result = response.Result ?? string.Empty,
+                    IsError = response.IsError
+                };
         }
-        else if (response.Kind == ToolCallResponseKind.ClientResult)
-        {
-            payload = JsonSerializer.SerializeToElement(response.Result ?? string.Empty);
-        }
-
-        var accepted = _pendingInteractions.TryComplete(userId, messageId, toolCallId,
-            new InteractionResponse(response.Kind, response.Decision, payload, response.IsError));
-
-        var status = accepted
-            ? response.Kind switch
-            {
-                ToolCallResponseKind.Confirmation => response.Decision == ToolCallDecision.Approve ? ToolCallStatus.Approved : ToolCallStatus.Rejected,
-                _ => response.IsError ? ToolCallStatus.Error : ToolCallStatus.Completed
-            }
-            : (ToolCallStatus?)null;
-
-        return Task.FromResult(new ToolCallResponseResultDto { Accepted = accepted, Status = status });
     }
+
+    /// <summary>What a run that continues a message needs: the request with the tools to continue its calls, and the calls with their answers.</summary>
+    private sealed record Continuation(
+        AiRequest Request,
+        ToolExecutionContext ToolContext,
+        IReadOnlyList<ResumedCall> Resumes,
+        Func<AiRequest> RequestAfterResume);
+
+    private async Task<Continuation> PrepareContinuationAsync(string userId, Chat chat, Models.ChatMessage message, PromptUserContext promptUser, ToolSessionInput tools)
+    {
+        var assistantId = string.IsNullOrWhiteSpace(message.AssistantId) ? chat.AssistantId : message.AssistantId;
+        var resolved = await ResolveAssistantForChatAsync(userId, assistantId, promptUser, tools.Access,
+            (chat.LoadedFiles ?? new List<ChatLoadedFile>()).Select(f => f.FileId).Distinct().ToList());
+
+        var modelId = resolved.Assistant.ChatSettings.Model.Id;
+        var (endpoint, model) = await _modelService.GetModelWithEndpointAsync<LanguageModel>(modelId)
+            ?? throw new InvalidOperationException($"Model {modelId} not found or has no endpoint configured");
+
+        var toolContext = new ToolExecutionContext
+        {
+            UserId = userId,
+            ChatId = chat.Id,
+            MessageId = message.Id,
+            Access = tools.Access,
+            Tokens = tools.Tokens,
+            UserDisplayName = tools.UserDisplayName,
+            UserPrincipalName = tools.UserPrincipalName,
+            Model = model,
+            Endpoint = endpoint,
+            EnforceToolAccess = resolved.EnforceToolAccess
+        };
+
+        var messages = chat.Messages.TakeWhile(m => m.Id != message.Id).Append(message).ToList();
+        var request = await BuildAiRequestAsync(model, endpoint, resolved, messages, tools);
+        var resumes = message.Activity!.Entries
+            .Where(e => e.Status.IsAwaiting() && e.Response != null)
+            .Select(e => new ResumedCall(e, ToResumeInput(e)))
+            .ToList();
+
+        return new Continuation(request, toolContext, resumes,
+            () => request with { Messages = BuildHistory(resolved, messages, model.Capabilities.SupportsFunctionCalling) });
+    }
+
+    /// <summary>Starts the run that continues a message once every call it waited on has its answer.</summary>
+    private async Task ContinueMessageAsync(string userId, Chat chat, Models.ChatMessage message, PromptUserContext promptUser, ToolSessionInput tools)
+    {
+        var continuation = await PrepareContinuationAsync(userId, chat, message, promptUser, tools);
+        var activeSchemes = await _tokenCounting.GetActiveSchemeIdsAsync();
+
+        // Registered first, so a read of the chat never takes the generating message for an abandoned one.
+        var registered = RegisterRun(userId, message.Id, undoesSend: false);
+        try
+        {
+            message.Status = AiChatStatus.Generating;
+            await _databaseService.UpdateMessageAsync(userId, chat.Id, message);
+        }
+        catch
+        {
+            _streamingService.UnregisterGeneration(userId, message.Id);
+            registered.Dispose();
+            throw;
+        }
+
+        _streamingService.StartMessage(userId, message.Id);
+        NotifyChatUpdated(userId, chat.Id);
+
+        RunInBackground(userId, chat.Id, registered, new RunPlan(message, continuation.Request, continuation.ToolContext, activeSchemes)
+        {
+            Resumes = continuation.Resumes,
+            RequestAfterResume = continuation.RequestAfterResume
+        });
+    }
+
+    private static ResumeInput ToResumeInput(ActivityEntry entry)
+    {
+        var response = entry.Response!;
+        return response.Kind switch
+        {
+            ToolCallResponseKind.Confirmation when response.Decision == ToolCallDecision.Approve
+                => new ResumeInput.Commit(ParseObject(response.EditedArgumentsJson ?? entry.ArgumentsJson ?? "{}")),
+            ToolCallResponseKind.Answer when response.Answers != null
+                => new ResumeInput.Answers(ToAnswers(response.Answers)),
+            ToolCallResponseKind.ClientResult when response.Decision != ToolCallDecision.Reject
+                => new ResumeInput.ClientResult(response.Result ?? string.Empty, response.IsError),
+            _ => new ResumeInput.Declined()
+        };
+    }
+
+    /// <summary>
+    /// Closes every message that waits, so a new message can follow it. Calls the user answered,
+    /// before or with the new message, go on with their answers: an approved action runs. Of the
+    /// rest, an approval is rejected and a question is skipped; a client call stays not answered.
+    /// Each message is read again under its lock, and replaces its copy in <paramref name="messages"/>.
+    /// </summary>
+    private async Task CloseWaitingMessagesAsync(
+        string userId,
+        string chatId,
+        List<Models.ChatMessage> messages,
+        IReadOnlyList<PendingAnswerDto> answers,
+        PromptUserContext promptUser,
+        ToolSessionInput tools,
+        IReadOnlyList<string> activeSchemes)
+    {
+        foreach (var messageId in messages.Where(m => m.Status == AiChatStatus.AwaitingUser).Select(m => m.Id).ToList())
+        {
+            var messageLock = LockFor(messageId);
+            await messageLock.WaitAsync();
+            try
+            {
+                var chat = await GetChatByIdAsync(userId, chatId);
+                var message = chat?.Messages.FirstOrDefault(m => m.Id == messageId);
+                if (chat == null || message == null)
+                {
+                    continue;
+                }
+
+                messages[messages.FindIndex(m => m.Id == messageId)] = message;
+                if (message.Status != AiChatStatus.AwaitingUser)
+                {
+                    continue;
+                }
+
+                var activity = message.Activity ??= new MessageActivity();
+                var transcript = message.Transcript ??= new List<TranscriptItem>();
+                foreach (var entry in activity.Entries.Where(e => e.Status.IsAwaiting() && e.Response == null))
+                {
+                    var given = answers.FirstOrDefault(a => a.ToolCallId == entry.ToolCallId);
+                    entry.Response = given != null
+                        ? CheckResponse(entry, given.Response)
+                        : entry.Status switch
+                        {
+                            ToolCallStatus.AwaitingConfirmation => new ToolCallResponseDto { Kind = ToolCallResponseKind.Confirmation, Decision = ToolCallDecision.Reject },
+                            ToolCallStatus.AwaitingAnswer => new ToolCallResponseDto { Kind = ToolCallResponseKind.Answer },
+                            _ => null
+                        };
+                }
+
+                if (activity.Entries.Any(e => e.Status.IsAwaiting() && e.Response != null))
+                {
+                    var continuation = await PrepareContinuationAsync(userId, chat, message, promptUser, tools);
+                    await foreach (var _ in _conversationRunner.ResumeAsync(continuation.Request, continuation.ToolContext, activity, transcript, continuation.Resumes))
+                    {
+                    }
+                }
+
+                AiConversationRunner.LeaveUnanswered(activity, transcript);
+                message.Status = AiChatStatus.Success;
+                message.TokenCounts = _tokenCounting.CountMessage(message, activeSchemes).Total;
+                await _databaseService.UpdateMessageAsync(userId, chatId, message);
+            }
+            finally
+            {
+                messageLock.Release();
+            }
+        }
+    }
+
+    private static SemaphoreSlim LockFor(string messageId)
+        => MessageLocks[(uint)StringComparer.Ordinal.GetHashCode(messageId) % (uint)MessageLocks.Length];
+
+    private static JsonElement ParseObject(string json)
+    {
+        try
+        {
+            using var document = JsonDocument.Parse(json);
+            if (document.RootElement.ValueKind != JsonValueKind.Object)
+            {
+                throw new ArgumentException("The arguments must be a JSON object.");
+            }
+
+            return document.RootElement.Clone();
+        }
+        catch (JsonException ex)
+        {
+            throw new ArgumentException($"The arguments are not valid JSON: {ex.Message}", ex);
+        }
+    }
+
+    private static UserQuestion ToQuestion(UserQuestionDto question)
+        => new(question.Question, question.Options.Select(o => new UserQuestionOption(o.Label, o.Description)).ToList(), question.MultiSelect);
+
+    private static List<UserAnswer?> ToAnswers(List<UserAnswerDto?> answers)
+        => answers.Select(a => a == null ? null : new UserAnswer(a.Selected ?? [], a.Text)).ToList();
 
     #endregion Private helper methods
 

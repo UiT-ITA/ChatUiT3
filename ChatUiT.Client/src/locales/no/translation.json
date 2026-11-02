@@ -110,9 +110,12 @@
       "running": "Kjører…",
       "failed": "Feilet",
       "awaitingConfirmation": "Trenger din godkjenning",
+      "awaitingAnswer": "Venter på svaret ditt",
       "awaitingClient": "Kjører i nettleseren din…",
       "approved": "Godkjent, kjører…",
       "rejected": "Avslått",
+      "skipped": "Hoppet over",
+      "unanswered": "Ikke besvart",
       "timeout": "Tidsavbrudd"
     },
     "roles": {
@@ -136,10 +139,8 @@
       "rounds_other": "{{count}} verktøyrunder",
       "nothingRecorded": "Ingen tenking eller verktøykall ble registrert.",
       "awaitingUser": "Venter på deg: {{name}}",
-      "awaitingClient": "Kjører {{name}} i nettleseren din…",
-      "timeLeft": "{{duration}} igjen"
+      "awaitingClient": "Kjører {{name}} i nettleseren din…"
     },
-    "awaitingInputHint": "Et verktøy venter på svar fra deg ovenfor.",
     "redToggle": {
       "label": "Tillat rødt",
       "enable": "Tillat røde data i denne samtalen. Dette kan ikke angres.",
@@ -487,15 +488,33 @@
     "execution": {
       "client": "I nettleseren din"
     },
+    "notAnswered": "Ikke besvart",
+    "questions_one": "Spørsmål",
+    "questions_other": "Spørsmål"
+  },
+  "interaction": {
+    "needsApproval": "Trenger din godkjenning",
+    "position": "{{index}} av {{count}}",
+    "approve": "Godkjenn",
+    "reject": "Avslå",
+    "approvalHint": "Eller skriv en melding for å gjøre noe annet i stedet",
     "editArguments": "Rediger argumenter",
     "hideArguments": "Skjul redigering",
     "invalidJson": "Argumentene må være et gyldig JSON-objekt.",
-    "approve": "Godkjenn",
-    "reject": "Avslå",
-    "working": "Arbeider…",
-    "confirm": {
-      "title": "Bekreft før kjøring"
-    }
+    "pickOne": "Velg ett",
+    "chooseAny": "Velg så mange du vil",
+    "writeAnswer": "Skriv svaret ditt",
+    "skip": "Hopp over",
+    "answerPlaceholder": "Skriv svaret ditt…",
+    "failed": "Svaret kunne ikke sendes. Prøv igjen.",
+    "previewFailed": "Kallet kunne ikke vises for godkjenning, så det ble ikke kjørt.",
+    "questionPosition": "Spørsmål {{index}} av {{count}}",
+    "next": "Neste",
+    "send": "Send svar",
+    "previous": "Forrige spørsmål",
+    "following": "Neste spørsmål",
+    "ownAnswer": "Ditt eget svar",
+    "ownAnswerPlaceholder": "Eller skriv ditt eget svar…"
   },
   "roles": {
     "User": "Bruker",

@@ -32,8 +32,8 @@ public sealed class CreateOneNoteSectionFunction : ConfirmableTool<CreateOneNote
         return new ToolPreview(
             "Create OneNote section",
             null,
-            [new ToolPreviewField("Notebook", notebook.Str("displayName") ?? ""), new ToolPreviewField("Section", args.Name.Trim())],
-            AllowEdit: false);
+            [new ToolPreviewField("Notebook", notebook.Str("displayName") ?? "", Role: ToolPreviewFieldRole.Path), new ToolPreviewField("Section", args.Name.Trim(), Role: ToolPreviewFieldRole.Path)],
+            AllowEdit: false, Kind: ToolPreviewKind.File);
     }
 
     protected override async Task<ToolResult> CommitAsync(CreateOneNoteSectionArgs args, ToolInvocation invocation, CancellationToken ct)

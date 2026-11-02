@@ -2,22 +2,27 @@
 
 import { makeStyles, Spinner } from "@fluentui/react-components";
 import { useLayoutEffect, useRef, type ReactNode } from "react";
-import { outputText, type InputItem, type OutputItem } from "../api/types";
+import {
+  outputText,
+  type InputItem,
+  type McpApprovalRequestItem,
+  type McpCallItem,
+  type McpApprovalResponseItem,
+  type OutputItem,
+} from "../api/types";
 import type { Starter } from "../host";
 import {
   approvalState,
   CONTEXT_PREFIX,
   isBusy,
-  type ApprovalDecision,
   type ConversationState,
   type ItemActivity,
   type Turn,
 } from "../conversation/conversation";
-import { ApprovalCard } from "./ApprovalCard";
 import { AssistantMeta, type TurnActivity } from "./AssistantMeta";
 import { Message } from "./Message";
 import { hasActivity, Reasoning } from "./Reasoning";
-import { ToolActivity } from "./ToolActivity";
+import { ToolActivity, type ToolActivityStatus } from "./ToolActivity";
 import { color, radius, typography } from "./tokens";
 
 export interface MessageListProps {
@@ -29,7 +34,6 @@ export interface MessageListProps {
   /** Example tasks shown while the conversation is empty. */
   starters: readonly Starter[];
   onStarter(starter: Starter): void;
-  onAnswer(requestId: string, decision: ApprovalDecision): Promise<void>;
 }
 
 const useStyles = makeStyles({
@@ -69,11 +73,10 @@ const useStyles = makeStyles({
   status: { ...typography.caption, color: color.text3 },
 });
 
-export function MessageList({ state, logoUrl, emptyMessage, starters, onStarter, onAnswer }: MessageListProps) {
+export function MessageList({ state, logoUrl, emptyMessage, starters, onStarter }: MessageListProps) {
   const styles = useStyles();
   const listRef = useRef<HTMLDivElement>(null);
   const contentHeight = useRef(0);
-  const busy = isBusy(state);
 
   // Keeps the newest content in view by scrolling the list itself, and only when its content grew
   // or shrank. Streamed text inside a collapsed summary changes nothing, so the chat stays still.
@@ -92,7 +95,7 @@ export function MessageList({ state, logoUrl, emptyMessage, starters, onStarter,
     }
   }
 
-  const context: RenderContext = { state, outputs, busy, onAnswer };
+  const context: RenderContext = { state, outputs };
   const rendered: ReactNode[] = turnSegments(state).flatMap((segment) =>
     segment.turn?.endedAt != null ? renderCollapsedTurn(segment, context) : renderSegment(segment, context)
   );
@@ -129,8 +132,6 @@ export function MessageList({ state, logoUrl, emptyMessage, starters, onStarter,
 interface RenderContext {
   state: ConversationState;
   outputs: Map<string, string>;
-  busy: boolean;
-  onAnswer: MessageListProps["onAnswer"];
 }
 
 /** Items `start` to `end` (exclusive). `turn` is null for items before the first turn. */
@@ -190,8 +191,8 @@ function renderSegment(segment: Segment, context: RenderContext): ReactNode[] {
 }
 
 /**
- * A finished turn: the user's message, then the replies and approval cards. All reasoning and tool
- * activity, in order, collapses to one "Worked for <N>s" line in the assistant's meta row: the first
+ * A finished turn: the user's message, then the replies. All reasoning, tool calls, approvals and
+ * questions, in order, collapse to one "Worked for <N>s" line in the assistant's meta row: the first
  * reply's, or a meta row of its own when the turn does not start with a reply.
  */
 function renderCollapsedTurn(segment: Segment, context: RenderContext): ReactNode[] {
@@ -204,7 +205,7 @@ function renderCollapsedTurn(segment: Segment, context: RenderContext): ReactNod
     activity.push(...renderThoughts(state, thoughts.get(index)));
     const item = state.items[index];
     const node = renderItem(item, `item-${index}`, context);
-    if (item.type === "function_call" || item.type === "mcp_call") {
+    if (item.type === "function_call" || item.type === "mcp_call" || item.type === "mcp_approval_request") {
       activity.push(node);
     } else if (node !== null) {
       rest.push({ index, node });
@@ -241,7 +242,7 @@ function renderCollapsedTurn(segment: Segment, context: RenderContext): ReactNod
 }
 
 function renderItem(item: InputItem, key: string, context: RenderContext): ReactNode {
-  const { state, outputs, busy, onAnswer } = context;
+  const { state, outputs } = context;
   switch (item.type) {
     case "message":
       if (item.role !== "user" && item.role !== "assistant") {
@@ -250,10 +251,21 @@ function renderItem(item: InputItem, key: string, context: RenderContext): React
       return <Message key={key} role={item.role} text={messageText(item.content)} files={fileNames(item.content)} />;
     case "function_call": {
       const output = outputs.get(item.call_id);
-      const status = output === undefined ? "running" : isErrorOutput(output) ? "failed" : "done";
+      const status =
+        output === undefined
+          ? state.previews[item.call_id]
+            ? "waiting"
+            : "running"
+          : isErrorOutput(output)
+            ? "failed"
+            : "done";
       return <ToolActivity key={key} name={item.name} status={status} />;
     }
     case "mcp_call":
+      // A call that waited for the user shows on its approval request's line.
+      if (item.approval_request_id && isApprovalRequest(state.items, item.approval_request_id)) {
+        return null;
+      }
       return (
         <ToolActivity
           key={key}
@@ -262,19 +274,70 @@ function renderItem(item: InputItem, key: string, context: RenderContext): React
           activity={activityOf(state, item.id)}
         />
       );
-    case "mcp_approval_request":
+    case "mcp_approval_request": {
+      const { status, detail, callId } = approvalRecord(state, item);
       return (
-        <ApprovalCard
+        <ToolActivity
           key={key}
-          request={item}
-          state={approvalState(state.items, item)}
-          disabled={busy}
-          onAnswer={(decision) => onAnswer(item.id, decision)}
+          name={item.name}
+          status={status}
+          detail={detail}
+          activity={callId ? activityOf(state, callId) : undefined}
         />
       );
+    }
     default:
       // Reasoning items are shown from `state.thoughts`.
       return null;
+  }
+}
+
+function isApprovalRequest(items: readonly InputItem[], id: string): boolean {
+  return items.some((item) => item.type === "mcp_approval_request" && item.id === id);
+}
+
+/**
+ * How an approval request or question shows in the activity: one line for the whole call, with what the user
+ * decided and how the call that continued it ended.
+ */
+function approvalRecord(
+  state: ConversationState,
+  request: McpApprovalRequestItem
+): { status: ToolActivityStatus; detail: string; callId?: string } {
+  const { items } = state;
+  const question = request.chatuit_kind === "question";
+  const call = items.find(
+    (item): item is McpCallItem => item.type === "mcp_call" && item.approval_request_id === request.id
+  );
+  const live = state.live.find((item) => item?.type === "mcp_call" && item.approval_request_id === request.id);
+  switch (approvalState(items, request)) {
+    case "pending":
+      return { status: "waiting", detail: question ? "Waiting for your answers" : "Waiting for your approval" };
+    case "approved": {
+      const status: ToolActivityStatus = call
+        ? call.error
+          ? "failed"
+          : "done"
+        : live || isBusy(state)
+          ? "running"
+          : "done";
+      if (!question) {
+        return { status, detail: "Approved", callId: call?.id ?? live?.id };
+      }
+      const answers =
+        items.find(
+          (item): item is McpApprovalResponseItem =>
+            item.type === "mcp_approval_response" && item.approval_request_id === request.id
+        )?.chatuit_answers ?? [];
+      const summary = answers
+        .map((answer) => (answer ? [...answer.selected, ...(answer.text ? [answer.text] : [])].join(", ") : "Skipped"))
+        .join(" · ");
+      return { status, detail: summary || "Answered", callId: call?.id ?? live?.id };
+    }
+    case "rejected":
+      return { status: "declined", detail: question ? "Not answered" : "Declined" };
+    default:
+      return { status: "declined", detail: "Not answered" };
   }
 }
 
@@ -291,6 +354,9 @@ function renderLiveItem(item: OutputItem, key: string, state: ConversationState)
     case "function_call":
       return <ToolActivity key={key} name={item.name} status="running" />;
     case "mcp_call": {
+      if (item.approval_request_id && isApprovalRequest(state.items, item.approval_request_id)) {
+        return null;
+      }
       const failed = item.status === "failed" || !!item.error;
       const running = item.status === "in_progress" && typeof item.output !== "string";
       return (

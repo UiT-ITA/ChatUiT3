@@ -34,19 +34,19 @@ public sealed class CreateGroupChatFunction : ConfirmableTool<CreateGroupChatArg
 
         var fields = new List<ToolPreviewField>
         {
-            new("Participants", string.Join(", ", people.Select(p => p.Email == null ? p.DisplayName : $"{p.DisplayName} ({p.Email})")))
+            new("Participants", string.Join(", ", people.Select(p => p.Email == null ? p.DisplayName : $"{p.DisplayName} ({p.Email})")), Role: ToolPreviewFieldRole.Recipients)
         };
         if (!string.IsNullOrWhiteSpace(args.Topic))
         {
-            fields.Add(new ToolPreviewField("Topic", args.Topic));
+            fields.Add(new ToolPreviewField("Topic", args.Topic, Role: ToolPreviewFieldRole.Subject));
         }
 
         if (!string.IsNullOrWhiteSpace(args.FirstMessage))
         {
-            fields.Add(new ToolPreviewField("First message", args.FirstMessage, Multiline: true));
+            fields.Add(new ToolPreviewField("First message", args.FirstMessage, Multiline: true, Role: ToolPreviewFieldRole.Body));
         }
 
-        return new ToolPreview("Create Teams group chat", null, fields, AllowEdit: false);
+        return new ToolPreview("Create Teams group chat", null, fields, AllowEdit: false, Kind: ToolPreviewKind.Message);
     }
 
     protected override async Task<ToolResult> CommitAsync(CreateGroupChatArgs args, ToolInvocation invocation, CancellationToken ct)

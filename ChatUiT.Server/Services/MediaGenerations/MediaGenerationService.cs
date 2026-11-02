@@ -121,8 +121,8 @@ public sealed class MediaGenerationService
 
         // The run is registered for cancelling before its task starts
         var cancellation = new CancellationTokenSource();
-        var handle = new RunHandle { Cts = cancellation, Timeout = timeout };
-        handle.Resume();
+        var handle = new RunHandle { Cts = cancellation };
+        cancellation.CancelAfter(timeout);
         _runs[key] = handle;
 
         _ = Task.Run(async () =>
