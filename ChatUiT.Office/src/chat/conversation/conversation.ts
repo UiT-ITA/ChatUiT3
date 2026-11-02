@@ -126,6 +126,20 @@ function withoutContext(item: InputItem): InputItem {
   return content.length === item.content.length ? item : { ...item, content };
 }
 
+/** A user message: the user's text, then the attached files, then the app's context. */
+function userMessage(text: string, files: readonly FilePart[], context: string | null): InputItem {
+  const parts: Array<TextPart | FilePart> = [
+    ...(text ? [{ type: "input_text" as const, text }] : []),
+    ...files,
+    ...(context ? [{ type: "input_text" as const, text: CONTEXT_PREFIX + context }] : []),
+  ];
+  return {
+    type: "message",
+    role: "user",
+    content: parts.length === 1 && parts[0].type === "input_text" ? parts[0].text : parts,
+  };
+}
+
 /** A tool call that failed: the tool, the arguments as the model sent them, and the error. */
 export interface ToolFailure {
   name: string;
@@ -189,22 +203,6 @@ export class Conversation {
     if ((content.length === 0 && files.length === 0) || this.isBusy()) {
       return;
     }
-    const context = await this.readContext();
-    if (this.isBusy()) {
-      return;
-    }
-    // The user's text, then the attached files, then the app's context.
-    const parts: Array<TextPart | FilePart> = [
-      ...(content ? [{ type: "input_text" as const, text: content }] : []),
-      ...files.map(toFilePart),
-      ...(context ? [{ type: "input_text" as const, text: CONTEXT_PREFIX + context }] : []),
-    ];
-    const message: InputItem = {
-      type: "message",
-      role: "user",
-      content: parts.length === 1 && parts[0].type === "input_text" ? parts[0].text : parts,
-    };
-
     const generation = this.generation;
     const responses = pendingApprovalRequests(this.state.items).map((request): McpApprovalResponseItem => {
       const given = answers.find((answer) => answer.requestId === request.id);
@@ -236,14 +234,21 @@ export class Conversation {
 
     // The turn ends here, and a new one starts with the message.
     const now = this.now();
-    const turns = [
-      ...endOpenTurn(this.state.turns, now),
-      { start: this.state.items.length, startedAt: now, endedAt: null },
-    ];
+    const index = this.state.items.length;
+    const turns = [...endOpenTurn(this.state.turns, now), { start: index, startedAt: now, endedAt: null }];
     // Only the newest message carries the app's context: earlier copies are out of date and would pile up.
-    const items = [...this.state.items.map(withoutContext), message];
-    this.patch(generation, { items, turns, error: null, cancelled: false });
-    await this.run();
+    const fileParts = files.map(toFilePart);
+    const items = [...this.state.items.map(withoutContext), userMessage(content, fileParts, null)];
+    // The message is shown at once. The app's context is read afterwards and added to it before the request.
+    this.patch(generation, { items, turns, status: "streaming", error: null, cancelled: false });
+    await this.run(async (signal) => {
+      const context = await this.readContext(signal);
+      if (context) {
+        const withContext = [...this.state.items];
+        withContext[index] = userMessage(content, fileParts, context);
+        this.patch(generation, { items: withContext });
+      }
+    });
   }
 
   /**
@@ -366,8 +371,9 @@ export class Conversation {
     }
   }
 
-  private async run(): Promise<void> {
-    const run = this.loop();
+  /** Runs the loop. `prepare` runs first, and the user can stop it like a response. */
+  private async run(prepare?: (signal: AbortSignal) => Promise<void>): Promise<void> {
+    const run = this.loop(prepare);
     this.running = run;
     try {
       await run;
@@ -378,13 +384,18 @@ export class Conversation {
     }
   }
 
-  private async loop(): Promise<void> {
+  private async loop(prepare?: (signal: AbortSignal) => Promise<void>): Promise<void> {
     const generation = this.generation;
     const controller = new AbortController();
     this.controller = controller;
     const { signal } = controller;
 
     try {
+      await prepare?.(signal);
+      if (signal.aborted) {
+        this.patch(generation, { status: "idle", cancelled: true });
+        return;
+      }
       for (;;) {
         // Function calls that waited for the user's approval run before the next response.
         let calls: FunctionCallItem[] = openFunctionCalls(this.state.items);
@@ -615,10 +626,16 @@ export class Conversation {
     }
   }
 
-  /** The app's context, or null when there is none or it cannot be read. A failure never blocks the message. */
-  private async readContext(): Promise<string | null> {
+  /**
+   * The app's context, or null when there is none, it cannot be read, or `signal` aborts first. A failure never
+   * blocks the message.
+   */
+  private async readContext(signal: AbortSignal): Promise<string | null> {
+    const aborted = new Promise<null>((resolve) =>
+      signal.addEventListener("abort", () => resolve(null), { once: true })
+    );
     try {
-      return (await this.options.getContext?.()) ?? null;
+      return (await Promise.race([this.options.getContext?.() ?? null, aborted])) ?? null;
     } catch {
       return null;
     }
