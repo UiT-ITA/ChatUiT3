@@ -8,7 +8,7 @@ import { getAppDefaults } from '../../services/appSettingsService';
 import { getTools } from '../../services/toolService';
 import { getKnowledgeSources } from '../../services/knowledgeSourceService';
 import { adminToolsSignal } from '../../services/adminDataService';
-import { clampEffort, type AdminToolDto, type ToolAccessPolicyDto } from '../../types/admin';
+import { clampEffort, CLIENT_TOOLS_POLICY_ID, type AdminToolDto, type ToolAccessPolicyDto } from '../../types/admin';
 import GroupPicker from '../common/GroupPicker';
 import type { UserLanguageModelDto } from '../../types/modelModels';
 import { createAssistant, updateAssistant, fetchAssistantFile, getAssistants } from '../../services/assistantService';
@@ -231,7 +231,10 @@ const AssistantForm: React.FC<AssistantFormProps> = ({
     formData.modelId !== editingAssistant?.modelId;
 
   // System assistants ignore tool policies, so the admin picks from every tool; users pick from what they may use.
-  const adminTools: AdminToolDto[] = systemAssistant ? (adminToolsSignal.value ?? []) : [];
+  // Leaves out the client tools policy row.
+  const adminTools: AdminToolDto[] = systemAssistant
+    ? (adminToolsSignal.value ?? []).filter(tool => tool.id !== CLIENT_TOOLS_POLICY_ID)
+    : [];
   const toChatTool = (tool: AdminToolDto): ChatToolDto => ({
     id: tool.id,
     name: tool.name,
