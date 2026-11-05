@@ -35,6 +35,14 @@ const Tooltip: React.FC<TooltipProps> = ({ content, placement = 'top', align = '
     });
   };
   const hide = () => setPosition(null);
+  // Shows on hover from a mouse or a pen, not on a touch
+  const showOnHover = (event: React.PointerEvent<HTMLElement>) => {
+    if (event.pointerType !== 'touch') show(event);
+  };
+  // Shows on keyboard focus, the focus that matches :focus-visible
+  const showOnKeyboardFocus = (event: React.FocusEvent<HTMLElement>) => {
+    if (event.target.matches(':focus-visible')) show(event);
+  };
 
   const Anchor = block ? 'div' : 'span';
 
@@ -42,9 +50,9 @@ const Tooltip: React.FC<TooltipProps> = ({ content, placement = 'top', align = '
     <Anchor
       className={cx('tooltip-anchor', block && 'tooltip-anchor--block', className)}
       tabIndex={focusable ? 0 : undefined}
-      onMouseEnter={show}
-      onMouseLeave={hide}
-      onFocus={show}
+      onPointerEnter={showOnHover}
+      onPointerLeave={hide}
+      onFocus={showOnKeyboardFocus}
       onBlur={hide}
       onClick={focusable ? (event) => event.stopPropagation() : undefined}
       onKeyDown={focusable ? (event) => {

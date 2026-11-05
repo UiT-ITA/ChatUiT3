@@ -51,7 +51,7 @@ const NavItem: React.FC<NavItemProps> = ({ active = false, icon, leading, descri
     wrap && 'nav-item--wrap', leadingAlign === 'start' && 'nav-item--leading-start', listView && 'nav-item--mobile-list', typography);
 
   if (editor !== undefined) {
-    return <div className={cx(classes, className)} style={style}>{editor}</div>;
+    return <div className={cx(classes, 'nav-item--editor', className)} style={style}>{editor}</div>;
   }
 
   const entry = (

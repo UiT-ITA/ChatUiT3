@@ -7,14 +7,12 @@ import { toggleFavorite } from '../../services/assistantService';
 import { getModels } from '../../services/modelService';
 import AssistantCard from '../assistants/AssistantCard';
 import type { IconName } from '../common/Icon';
-import useMediaQuery from '../../hooks/useMediaQuery';
 import Stack from '../common/Stack';
 import Text from '../common/Text';
 import { Tip, TipList } from '../common/TipList';
 import BrandHero from './BrandHero';
 import CenteredColumn from '../common/CenteredColumn';
 import { CardGrid } from '../common/CardGrid';
-import { MOBILE } from '../common/breakpoints';
 
 const TIPS: { key: 'selectAssistant' | 'uploadFiles' | 'askQuestions'; icon: IconName }[] = [
   { key: 'selectAssistant', icon: 'assistants' },
@@ -31,7 +29,6 @@ export default function NewChatWelcome() {
   const currentAssistantId = getCurrentAssistantId().value;
   const redEnabled = getRedEnabled().value;
   const models = getModels().value ?? [];
-  const narrow = useMediaQuery(MOBILE);
 
   const nameParts = (profileName || account?.name || '')
     .split(/[\s,]+/)
@@ -61,32 +58,34 @@ export default function NewChatWelcome() {
             </Stack>
 
             {recentAssistants.length > 0 && (
-              <div>
-                <Text as="div" variant="overline" mb="md">{t('welcome.recentAssistants')}</Text>
-                <CardGrid
-                  role="listbox"
-                  aria-label={t('welcome.recentAssistants')}
-                  cardRows={3}
-                  columns={recentAssistants.length}
-                  mobileLayout="carousel"
-                  fadeX
-                  pageDots
-                >
-                  {recentAssistants.map(assistant => (
-                    <AssistantCard
-                      key={assistant.id}
-                      assistant={assistant}
-                      selected={assistant.id === currentAssistantId}
-                      disabledReason={redEnabled && assistant.classification !== 'Red' ? t('chat.redToggle.assistantNotRed') : undefined}
-                      onSelect={a => setUserSelectedAssistantId(a.id)}
-                      onToggleFavorite={a => void toggleFavorite(a.id)}
-                      modelName={models.find(m => m.id === assistant.modelId)?.modelName}
-                      compact={narrow}
-                      showAction
-                    />
-                  ))}
-                </CardGrid>
-              </div>
+              <Stack gap="md" mobileGap="sm">
+                <Text as="div" variant="overline">{t('welcome.recentAssistants')}</Text>
+                <div>
+                  <CardGrid
+                    role="listbox"
+                    aria-label={t('welcome.recentAssistants')}
+                    cardRows={3}
+                    columns={recentAssistants.length}
+                    mobileLayout="carousel"
+                    fadeX
+                    pageDots
+                  >
+                    {recentAssistants.map(assistant => (
+                      <AssistantCard
+                        key={assistant.id}
+                        assistant={assistant}
+                        selected={assistant.id === currentAssistantId}
+                        disabledReason={redEnabled && assistant.classification !== 'Red' ? t('chat.redToggle.assistantNotRed') : undefined}
+                        onSelect={a => setUserSelectedAssistantId(a.id)}
+                        onToggleFavorite={a => void toggleFavorite(a.id)}
+                        modelName={models.find(m => m.id === assistant.modelId)?.modelName}
+                        compact
+                        showAction
+                      />
+                    ))}
+                  </CardGrid>
+                </div>
+              </Stack>
             )}
           </Stack>
         </Stack>

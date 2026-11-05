@@ -19,7 +19,6 @@
   gap: var(--space-sm);
   margin-bottom: var(--space-xs);
   color: color-mix(in srgb, var(--alert-color) 75%, var(--text));
-  text-transform: uppercase;
 }
 
 .alert__body > p:first-child {

@@ -22,23 +22,19 @@ import ChoiceCard from '../common/ChoiceCard';
 import SectionLabel from '../common/SectionLabel';
 import SettingRow from '../common/SettingRow';
 import Flag from '../common/Flag';
-import { cx } from '../common/layout';
 import './SettingsPage.css';
 
-/** A miniature of the app in a theme and mode; 'system' shows the light scene with the dark scene over its right half. */
+/** A miniature of the app in a theme and mode; 'system' shows the light scene and the dark scene side by side. */
 const ThemePreview: React.FC<{ theme: 'blue' | 'grey'; mode: 'light' | 'dark' | 'system' }> = ({ theme, mode }) => (
   <span className="theme-preview">
     {(mode === 'system' ? ['light', 'dark'] : [mode]).map((sceneMode) => (
-      <span
-        key={sceneMode}
-        className={cx('theme-preview__scene', mode === 'system' && sceneMode === 'dark' && 'theme-preview__scene--dark-half')}
-        data-theme={theme}
-        data-mode={sceneMode}
-      >
+      <span key={sceneMode} className="theme-preview__scene" data-theme={theme} data-mode={sceneMode}>
         <span className="theme-preview__rail" />
-        <span className="theme-preview__bar theme-preview__bar--1" />
-        <span className="theme-preview__bar theme-preview__bar--2" />
-        <span className="theme-preview__button" />
+        <span className="theme-preview__content">
+          <span className="theme-preview__bar theme-preview__bar--1" />
+          <span className="theme-preview__bar theme-preview__bar--2" />
+          <span className="theme-preview__button" />
+        </span>
       </span>
     ))}
   </span>

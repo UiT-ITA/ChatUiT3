@@ -1,6 +1,6 @@
-/* Typography: the single place where text styles live. Every piece of text in the app uses exactly one of these role classes.
-   Component stylesheets do not set font-family, font-size, font-weight, letter-spacing or text-transform, except
-   RichText.css for the elements of rendered markdown, which cannot take classes. */
+/* Typography: the text role classes. Text takes one of these roles where it can.
+   Component stylesheets also set font properties, taking the face, size and weight from the --font-*, --fs-* and --fw-*
+   tokens. RichText.css styles the elements of rendered markdown, which cannot take classes. */
 
 @layer base {
   /* Hero greeting (welcome banner) and page title */
@@ -32,11 +32,10 @@
     line-height: var(--lh-base);
   }
 
-  /* UI body text (inputs, intros, the composer), dense rows and tables, plain row text */
+  /* UI body text (inputs, intros, the composer), dense rows and tables */
   .t-body,
   .t-body-lg,
-  .t-table,
-  .t-ui-plain {
+  .t-table {
     font-size: var(--fs-md);
     font-weight: var(--fw-regular);
   }
@@ -71,7 +70,8 @@
     letter-spacing: 0.04em;
   }
 
-  /* Small plain hint text (composer hints, panel meta) */
+  /* Plain row text and small hint text (composer hints, panel meta) */
+  .t-ui-plain,
   .t-hint {
     font-size: var(--fs-sm);
     font-weight: var(--fw-regular);

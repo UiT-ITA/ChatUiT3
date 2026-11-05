@@ -87,11 +87,11 @@
     display: none;
   }
 
-  .composer-toolbar .popover {
+  .composer-toolbar > .composer-toolbar__popover {
     position: static;
   }
 
-  .assistant-selector .popover__panel {
+  .assistant-selector > .popover__panel {
     left: 0;
     right: 0;
     width: auto;

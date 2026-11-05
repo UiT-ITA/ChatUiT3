@@ -49,16 +49,10 @@ export function getCurrentMode(): ResolvedMode {
 }
 
 // Component theming follows the resolved light/dark mode
-type MermaidTheme = 'dark' | 'default' | 'base' | 'forest' | 'neutral' | 'null';
-
-const MODE_CONFIG: Record<ResolvedMode, { mermaid: MermaidTheme; codeblock: string }> = {
-  light: { mermaid: 'neutral', codeblock: 'oneLight' },
-  dark: { mermaid: 'dark', codeblock: 'atomDark' },
+const MODE_CONFIG: Record<ResolvedMode, { codeblock: string }> = {
+  light: { codeblock: 'oneLight' },
+  dark: { codeblock: 'atomDark' },
 };
-
-export function getMermaidTheme(mode: ModeName): MermaidTheme {
-  return MODE_CONFIG[resolveMode(mode)].mermaid;
-}
 
 export function getCodeblockTheme(mode: ModeName): string {
   return MODE_CONFIG[resolveMode(mode)].codeblock;

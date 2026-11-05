@@ -43,8 +43,7 @@ export default function InteractionCard({ dock }: { dock: InteractionDock }) {
       gap="md"
       maxHeight="half-screen"
       overflow="y-auto"
-      py="lg"
-      px="lg"
+      p="lg"
       border
       borderSide="bottom"
       aria-label={current.kind === 'approval' ? current.preview.title : current.questions[dock.step]?.question}

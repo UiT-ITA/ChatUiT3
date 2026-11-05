@@ -18,10 +18,10 @@ import { getSupportedImportKind, SUPPORTED_IMPORT_ACCEPT } from "../files/kinds"
 import { readFile } from "../files/readFile";
 import { Icon } from "./icons";
 import { ToolbarButton } from "./ToolbarButton";
-import { color, space, fs, lh, radius, border, control, size, typography } from "./tokens";
+import { color, fontSize, radius, typography } from "./tokens";
 
-/** The text box grows with its text up to this height, then scrolls. */
-const MAX_INPUT_HEIGHT = size["2xs"];
+/** The text box grows with its text up to this height in px, then scrolls. */
+const MAX_INPUT_HEIGHT = 200;
 
 export interface ComposerProps {
   /** Text to put in the composer, replacing what is there. A new `id` puts it in again. */
@@ -35,9 +35,9 @@ export interface ComposerProps {
 }
 
 const useStyles = makeStyles({
-  root: { flexShrink: 0, padding: `${space.xs} ${space.md} ${space.md}` },
+  root: { flexShrink: 0, padding: "0.25rem 0.75rem 0.75rem" },
   card: {
-    border: `${border.sm} solid ${color.line}`,
+    border: `1px solid ${color.line}`,
     borderRadius: radius.lg,
     backgroundColor: color.surface,
     ":focus-within": shorthands.borderColor(color.text3),
@@ -46,29 +46,29 @@ const useStyles = makeStyles({
     display: "block",
     width: "100%",
     boxSizing: "border-box",
-    maxHeight: MAX_INPUT_HEIGHT,
-    overflowY: "auto",
-    padding: `${space.md} ${space.lg} ${space.xs}`,
+    maxHeight: `${MAX_INPUT_HEIGHT}px`,
+    overflowY: "hidden",
+    padding: "0.75rem 0.875rem 0.125rem",
     border: "none",
     outline: "none",
     resize: "none",
     backgroundColor: "transparent",
     fontFamily: "inherit",
-    fontSize: fs.md,
-    lineHeight: lh.base,
+    fontSize: fontSize.bodySm,
+    lineHeight: 1.5,
     color: color.text,
     "::placeholder": { color: color.text3 },
   },
-  toolbar: { display: "flex", alignItems: "center", gap: space.xs, padding: `${space.xs} ${space.sm} ${space.sm}` },
-  files: { display: "flex", flexWrap: "wrap", gap: space.sm, padding: `${space.md} ${space.lg} 0` },
+  toolbar: { display: "flex", alignItems: "center", gap: "0.25rem", padding: "0.25rem 0.5rem 0.5rem" },
+  files: { display: "flex", flexWrap: "wrap", gap: "0.375rem", padding: "0.625rem 0.875rem 0" },
   file: {
     ...typography.caption,
     display: "flex",
     alignItems: "center",
-    gap: space.xs,
+    gap: "0.25rem",
     maxWidth: "100%",
-    padding: `${space.xs} ${space.xs} ${space.xs} ${space.sm}`,
-    border: `${border.sm} solid ${color.line}`,
+    padding: "0.125rem 0.25rem 0.125rem 0.5rem",
+    border: `1px solid ${color.line}`,
     borderRadius: radius.sm,
     backgroundColor: color.panel,
     color: color.text,
@@ -76,7 +76,7 @@ const useStyles = makeStyles({
   fileName: { overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" },
   remove: {
     display: "flex",
-    padding: space.xs,
+    padding: "0.125rem",
     border: "none",
     borderRadius: radius.sm,
     backgroundColor: "transparent",
@@ -84,7 +84,7 @@ const useStyles = makeStyles({
     cursor: "pointer",
     ":hover": { color: color.text },
   },
-  notice: { ...typography.caption, color: color.text2, padding: `${space.sm} ${space.lg} 0` },
+  notice: { ...typography.caption, color: color.text2, padding: "0.375rem 0.875rem 0" },
   hidden: { display: "none" },
   spacer: { flex: 1 },
   send: {
@@ -92,8 +92,8 @@ const useStyles = makeStyles({
     display: "flex",
     alignItems: "center",
     justifyContent: "center",
-    width: control.sm,
-    height: control.sm,
+    width: "2rem",
+    height: "2rem",
     padding: 0,
     border: "none",
     borderRadius: radius.pill,
@@ -115,15 +115,16 @@ export function Composer({ draft, busy, dock, onSend, onStop }: ComposerProps) {
   const input = useRef<HTMLTextAreaElement>(null);
   const canSend = !busy && reading === 0 && (text.trim().length > 0 || files.length > 0);
 
-  // Fits the text box to its text when the text changes and when the pane is resized, which rewraps it.
-  // The max-height in the styles caps it, and it scrolls beyond that.
+  // Fits the text box to its text, up to MAX_INPUT_HEIGHT, and scrolls it beyond that: when the text changes and
+  // when the pane is resized, which rewraps it.
   const fit = useCallback(() => {
     const box = input.current;
     if (!box) {
       return;
     }
     box.style.height = "auto";
-    box.style.height = `${box.scrollHeight}px`;
+    box.style.height = `${Math.min(box.scrollHeight, MAX_INPUT_HEIGHT)}px`;
+    box.style.overflowY = box.scrollHeight > MAX_INPUT_HEIGHT ? "auto" : "hidden";
   }, []);
 
   useLayoutEffect(fit, [text, fit]);
@@ -227,7 +228,7 @@ export function Composer({ draft, busy, dock, onSend, onStop }: ComposerProps) {
                   title="Remove"
                   onClick={() => setFiles((current) => current.filter((item) => item.id !== file.id))}
                 >
-                  <Icon name="close" />
+                  <Icon name="close" size={0.75} />
                 </button>
               </span>
             ))}
@@ -263,11 +264,11 @@ export function Composer({ draft, busy, dock, onSend, onStop }: ComposerProps) {
           <span className={styles.spacer} />
           {busy ? (
             <button type="button" className={styles.send} onClick={onStop} aria-label="Stop" title="Stop">
-              <Icon name="stop" />
+              <Icon name="stop" size={0.75} />
             </button>
           ) : (
             <button type="submit" className={styles.send} disabled={!canSend} aria-label="Send" title="Send">
-              <Icon name="send" />
+              <Icon name="send" size={1} />
             </button>
           )}
         </div>

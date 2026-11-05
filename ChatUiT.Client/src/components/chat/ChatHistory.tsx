@@ -17,6 +17,7 @@ function ChatHistory({ chatId }: { chatId: string }) {
   const { t } = useTranslation()
 
   const chat = getChat(chatId)
+  const loaded = chat.value !== undefined
   const messages = chat.value?.messages ?? NO_MESSAGES
   // The chat's assistant name, for messages without an assistant name of their own
   const fallbackAssistantName = (getSelectableAssistants().value || []).find((a) => a.id === chat.value?.assistantId)?.name
@@ -29,13 +30,6 @@ function ChatHistory({ chatId }: { chatId: string }) {
     if (scrollerRef.current) scrollerRef.current.scrollTop = scrollerRef.current.scrollHeight
   }, [])
 
-  const scrollToBottomIfPinned = useCallback(() => {
-    if (!pinnedRef.current) return
-    requestAnimationFrame(() => {
-      if (pinnedRef.current) scrollToBottom()
-    })
-  }, [scrollToBottom])
-
   // The view is at the bottom while the sentinel after the last message is in view
   useEffect(() => {
     const scroller = scrollerRef.current
@@ -46,7 +40,7 @@ function ChatHistory({ chatId }: { chatId: string }) {
     }, { root: scroller, threshold: 0.01 })
     io.observe(sentinel)
     return () => io.disconnect()
-  }, [messages])
+  }, [loaded])
 
   useLayoutEffect(() => {
     scrollToBottom()
@@ -62,7 +56,7 @@ function ChatHistory({ chatId }: { chatId: string }) {
     return () => observer.disconnect()
   }, [scrollToBottom])
 
-  if (chat.value === undefined) {
+  if (!loaded) {
     return (
       <div className="message-feed">
         <Stack align="center" justify="center" height="full" minHeight="2xs">
@@ -81,7 +75,6 @@ function ChatHistory({ chatId }: { chatId: string }) {
             chatId={chatId}
             message={message}
             fallbackAssistantName={fallbackAssistantName}
-            onStreamingChunk={scrollToBottomIfPinned}
           />
         ))}
         <div ref={sentinelRef} className="message-feed__sentinel" />

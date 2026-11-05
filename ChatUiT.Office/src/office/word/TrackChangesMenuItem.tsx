@@ -2,34 +2,31 @@
 
 import { makeStyles, MenuItem, mergeClasses } from "@fluentui/react-components";
 import { useCallback, useEffect, useState } from "react";
-import { color, space, radius, dur, icon } from "../../chat/ui/tokens";
+import { color, radius } from "../../chat/ui/tokens";
 import { getTrackChangesMode, setTrackChanges, type TrackChangesMode } from "./trackChanges";
 
 const useStyles = makeStyles({
   switch: {
     position: "relative",
     display: "block",
-    width: space["2xl"],
-    height: icon.sm,
+    width: "1.875rem",
+    height: "1rem",
     borderRadius: radius.pill,
     backgroundColor: color.line,
   },
   on: { backgroundColor: color.btnBg },
   knob: {
     position: "absolute",
-    top: 0,
-    bottom: 0,
-    left: space.xs,
-    width: space.md,
-    height: space.md,
-    marginTop: "auto",
-    marginBottom: "auto",
+    top: "0.125rem",
+    left: "0.125rem",
+    width: "0.75rem",
+    height: "0.75rem",
     borderRadius: radius.pill,
     backgroundColor: color.surface,
     transitionProperty: "left",
-    transitionDuration: dur.fast,
+    transitionDuration: "120ms",
   },
-  knobOn: { left: space.lg, backgroundColor: color.btnFg },
+  knobOn: { left: "1rem", backgroundColor: color.btnFg },
 });
 
 /** The Track Changes switch in the pane's menu, which reflects and changes Word's own setting. */

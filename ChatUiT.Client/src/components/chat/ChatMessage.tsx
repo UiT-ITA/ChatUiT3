@@ -1,5 +1,5 @@
 import { useSignals } from '@preact/signals-react/runtime';
-import { Suspense, lazy, useMemo, useState, useEffect, memo, type ComponentProps } from 'react';
+import { Suspense, createContext, lazy, useContext, useMemo, useState, memo, type ComponentProps } from 'react';
 import { useTranslation } from 'react-i18next';
 import { getActivitySignal, getStreamSignal } from '../../services/chatService';
 import type { ChatMessageDto } from '../../types/chatModels';
@@ -29,7 +29,6 @@ interface ChatMessageProps {
   message: ChatMessageDto;
   /** Used only when the message has no assistant of its own. */
   fallbackAssistantName?: string;
-  onStreamingChunk?: () => void;
 }
 
 // The diagram and code renderers load on first use
@@ -53,9 +52,18 @@ function CodeAction({ label, ...props }: { label: string } & ComponentProps<type
   );
 }
 
+/** Whether the message around a code block is still streaming. */
+const StreamingContext = createContext(false);
+
+function copyCode(code: string) {
+  navigator.clipboard.writeText(code)
+    .catch(err => console.error('Failed to copy code:', err));
+}
+
 /** Mermaid code block: header with the fit/full size toggle and copy action, then the diagram. Clicking the diagram toggles its size. */
-function MermaidBlock({ code, isStreaming, onCopy }: { code: string; isStreaming: boolean; onCopy: (code: string) => void }) {
+function MermaidBlock({ code }: { code: string }) {
   const { t } = useTranslation();
+  const isStreaming = useContext(StreamingContext);
   const [fullSize, setFullSize] = useState(false);
   const toggleSize = () => setFullSize(value => !value);
   const sizeLabel = fullSize ? t('chat.mermaid.fit') : t('chat.mermaid.enlarge');
@@ -76,14 +84,14 @@ function MermaidBlock({ code, isStreaming, onCopy }: { code: string; isStreaming
               onClick={toggleSize}
             />
           )}
-          <CodeAction label={t('chat.actions.copySource')} startIcon="copy" onClick={() => onCopy(code)} />
+          <CodeAction label={t('chat.actions.copySource')} startIcon="copy" onClick={() => copyCode(code)} />
         </>
       )}
     >
       {isStreaming ? (
         <CodeHighlighter code={code} language="text" />
       ) : (
-        <ZoomToggle zoomed={fullSize} onToggle={toggleSize} label={sizeTitle} hint={clickHint}>
+        <ZoomToggle zoomed={fullSize} onToggle={toggleSize} hint={clickHint}>
           <Suspense fallback={<CodeHighlighter code={code} language="text" />}>
             <MermaidDiagram chart={code} fullSize={fullSize} showScrollbar />
           </Suspense>
@@ -94,7 +102,7 @@ function MermaidBlock({ code, isStreaming, onCopy }: { code: string; isStreaming
 }
 
 /** Code block: header with the language, a line wrap toggle and the copy action, then the highlighted code. */
-function CodeSnippet({ code, language, onCopy }: { code: string; language: string; onCopy: (code: string) => void }) {
+function CodeSnippet({ code, language }: { code: string; language: string }) {
   const { t } = useTranslation();
   // Narrow screens wrap long lines until the user turns wrapping off
   const narrow = useMediaQuery(MOBILE);
@@ -115,7 +123,7 @@ function CodeSnippet({ code, language, onCopy }: { code: string; language: strin
             aria-pressed={wrap}
             onClick={() => setWrapChoice(!wrap)}
           />
-          <CodeAction label={t('chat.actions.copyCode')} startIcon="copy" onClick={() => onCopy(code)} />
+          <CodeAction label={t('chat.actions.copyCode')} startIcon="copy" onClick={() => copyCode(code)} />
         </>
       )}
     >
@@ -127,7 +135,20 @@ function CodeSnippet({ code, language, onCopy }: { code: string; language: strin
 type CodeProps = ComponentProps<'code'> & ExtraProps;
 type AnchorProps = ComponentProps<'a'> & ExtraProps;
 
-function ChatMessage({ chatId, message, fallbackAssistantName, onStreamingChunk }: ChatMessageProps) {
+const markdownComponents = {
+  code({ node, className, children, style, ...props }: CodeProps) {
+    const language = /language-(\w+)/.exec(className || '')?.[1];
+    const codeText = String(children).replace(/\n$/, '');
+    if (language === 'mermaid') return <MermaidBlock code={codeText} />;
+    if (language) return <CodeSnippet code={codeText} language={language} />;
+    return <code className={className} style={style} {...props}>{children}</code>;
+  },
+  a({ node, children, ...props }: AnchorProps) {
+    return <RichTextLink target="_blank" rel="noopener noreferrer" {...props}>{children}</RichTextLink>;
+  },
+};
+
+function ChatMessage({ chatId, message, fallbackAssistantName }: ChatMessageProps) {
   useSignals();
   const { t } = useTranslation();
   const [isCopied, setIsCopied] = useState(false);
@@ -179,28 +200,6 @@ function ChatMessage({ chatId, message, fallbackAssistantName, onStreamingChunk 
     <IconButton key={name} icon={icon} label={t(`chat.actions.${name}`)} tooltipAlign={isUser ? 'end' : 'start'} size="small" iconSize="md" onClick={onClick} />
   );
 
-  const handleCopyCode = (code: string) => {
-    navigator.clipboard.writeText(code)
-      .catch(err => console.error('Failed to copy code:', err));
-  };
-
-  useEffect(() => {
-    if (isStreaming) onStreamingChunk?.();
-  }, [streamSignal?.value, isStreaming, onStreamingChunk]);
-
-  const markdownComponents = {
-    code({ node, className, children, style, ...props }: CodeProps) {
-      const language = /language-(\w+)/.exec(className || '')?.[1];
-      const codeText = String(children).replace(/\n$/, '');
-      if (language === 'mermaid') return <MermaidBlock code={codeText} isStreaming={isStreaming} onCopy={handleCopyCode} />;
-      if (language) return <CodeSnippet code={codeText} language={language} onCopy={handleCopyCode} />;
-      return <code className={className} style={style} {...props}>{children}</code>;
-    },
-    a({ node, children, ...props }: AnchorProps) {
-      return <RichTextLink target="_blank" rel="noopener noreferrer" {...props}>{children}</RichTextLink>;
-    },
-  };
-
   const time = new Date(message.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
   const copyAction = action(isCopied ? 'check' : 'copy', 'copy', handleCopyMessage);
 
@@ -220,9 +219,11 @@ function ChatMessage({ chatId, message, fallbackAssistantName, onStreamingChunk 
         </Stack>
       )}
       <RichText className="message__body">
-        <ReactMarkdown remarkPlugins={[remarkGfm, remarkMath]} rehypePlugins={[rehypeKatex]} components={markdownComponents}>
-          {displayContent}
-        </ReactMarkdown>
+        <StreamingContext.Provider value={isStreaming}>
+          <ReactMarkdown remarkPlugins={[remarkGfm, remarkMath]} rehypePlugins={[rehypeKatex]} components={markdownComponents}>
+            {displayContent}
+          </ReactMarkdown>
+        </StreamingContext.Provider>
       </RichText>
       <div className="message__toolbar">
         <div className="message__actions">

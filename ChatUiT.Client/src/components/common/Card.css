@@ -9,7 +9,7 @@
   background: var(--surface);
   color: var(--text);
   text-align: left;
-  transition: border-color var(--dur-fast) ease, transform var(--dur-fast) ease;
+  transition: border-color var(--dur-fast) ease;
 }
 
 /* Dark modes: a stronger frame against the page */

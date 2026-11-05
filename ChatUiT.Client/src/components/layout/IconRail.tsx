@@ -1,11 +1,14 @@
 import { useLayoutEffect, useRef, useState } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
+import { useSignals } from '@preact/signals-react/runtime';
 import type { IconName } from '../common/Icon';
 import IconButton from '../common/IconButton';
 import { Rail, RailAvatar, RailButton, RailGap, RailMenuButton, RailMenuHeader, RailSeal, RailSpacer } from './AppShell';
 import Popover from '../common/Popover';
 import { Menu, MenuItem, MenuDivider } from '../common/Menu';
+import { MainHeaderContent } from './MainHeader';
+import { useHeaderBack } from './useHeaderBack';
 import { useAuth } from '../../hooks/useAuth';
 import { useSettings } from '../../hooks/useSettings';
 import { resolveMode } from '../../utils/themeUtils';
@@ -18,6 +21,7 @@ function getInitials(name: string | undefined | null): string {
 }
 
 const IconRail = ({ isMobile }: { isMobile?: boolean }) => {
+  useSignals();
   const { t } = useTranslation();
   const navigate = useNavigate();
   const { section, newChat } = parseRoute(useLocation().pathname);
@@ -26,10 +30,13 @@ const IconRail = ({ isMobile }: { isMobile?: boolean }) => {
   const [userMenuOpen, setUserMenuOpen] = useState(false);
   const railRef = useRef<HTMLElement>(null);
   const [compact, setCompact] = useState(false);
+  // A mobile view with a back control: the top bar shows the main column header's content
+  const back = useHeaderBack(isMobile);
+  const header = Boolean(isMobile && back);
 
   // A top bar too narrow for every icon keeps only the main sections and moves the rest into the menu.
-  // When the icons it shows change, the bar returns to full form and measures its full width again.
-  const contentKey = `${isMobile}|${isAdmin}`;
+  // When its content changes, the bar returns to full form and measures its full width again.
+  const contentKey = `${isMobile}|${isAdmin}|${header}`;
   const [measuredKey, setMeasuredKey] = useState(contentKey);
   if (measuredKey !== contentKey) {
     setMeasuredKey(contentKey);
@@ -38,12 +45,12 @@ const IconRail = ({ isMobile }: { isMobile?: boolean }) => {
 
   useLayoutEffect(() => {
     const element = railRef.current;
-    if (!element || !isMobile) return;
+    if (!element || !isMobile || header) return;
     const fullWidth = element.scrollWidth;
     const observer = new ResizeObserver(() => setCompact(element.clientWidth < fullWidth));
     observer.observe(element);
     return () => observer.disconnect();
-  }, [isMobile, measuredKey]);
+  }, [isMobile, header, measuredKey]);
 
   // Active in the chats section, except on a new chat on mobile, where the new chat button is active
   const chatsActive = section === 'chats' && !(isMobile && newChat);
@@ -65,6 +72,14 @@ const IconRail = ({ isMobile }: { isMobile?: boolean }) => {
     { key: 'mode', icon: darkNow ? 'sun' : 'moon', title: t('sidebar.toggleMode'), menuLabel: t(darkNow ? 'sidebar.lightMode' : 'sidebar.darkMode'), active: false, onClick: toggleMode },
     { key: 'settings', icon: 'settings', title: t('sidebar.settings'), menuLabel: t('sidebar.settings'), active: section === 'settings', onClick: () => go(sectionPath('settings')) },
   ];
+
+  if (header) {
+    return (
+      <Rail ref={railRef} mobile>
+        <MainHeaderContent isMobile />
+      </Rail>
+    );
+  }
 
   return (
     <Rail ref={railRef} mobile={!!isMobile}>

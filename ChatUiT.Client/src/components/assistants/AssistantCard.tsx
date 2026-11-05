@@ -1,3 +1,4 @@
+import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Icon, type IconName } from '../common/Icon';
 import IconButton from '../common/IconButton';
@@ -61,6 +62,18 @@ export default function AssistantCard({ assistant, selected, disabledReason, onS
   const { t } = useTranslation();
   const description = assistant.description?.trim();
   const disabled = disabledReason !== undefined;
+  const [descriptionElement, setDescriptionElement] = useState<HTMLParagraphElement | null>(null);
+  const [clamped, setClamped] = useState(false);
+
+  // Tracks whether the line clamp cuts the description off
+  useEffect(() => {
+    if (!descriptionElement) return;
+    const observer = new ResizeObserver(() => setClamped(descriptionElement.scrollHeight > descriptionElement.clientHeight));
+    observer.observe(descriptionElement);
+    return () => observer.disconnect();
+  }, [descriptionElement]);
+
+  const descriptionText = <p ref={setDescriptionElement} className="assistant-card-description">{description}</p>;
 
   return (
     <Card
@@ -108,11 +121,11 @@ export default function AssistantCard({ assistant, selected, disabledReason, onS
         />
       </div>
 
-      {description ? (
-        <Tooltip content={description} align="start" block>
-          <p className="assistant-card-description">{description}</p>
-        </Tooltip>
-      ) : (
+      {description && clamped && (
+        <Tooltip content={description} align="start" block>{descriptionText}</Tooltip>
+      )}
+      {description && !clamped && descriptionText}
+      {!description && (
         <p className="assistant-card-description assistant-card-description--empty">{t('assistants.noDescription')}</p>
       )}
 

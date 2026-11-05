@@ -1,13 +1,11 @@
 import { useState } from 'react';
-import { useSignals } from '@preact/signals-react/runtime';
 import { Outlet, useLocation } from 'react-router-dom';
 import IconRail from './IconRail';
 import ContextColumn from './ContextColumn';
 import MainHeader from './MainHeader';
 import ChatSurface from '../chat/ChatSurface';
 import useMediaQuery from '../../hooks/useMediaQuery';
-import ToastContainer from '../common/ToastContainer';
-import { notifications, removeNotification } from '../../services/notificationService';
+import Toasts from './Toasts';
 import { AppShell, AppShellMain, AppShellSidebar } from './AppShell';
 import { MOBILE, SIDEBAR_COLLAPSED } from '../common/breakpoints';
 import { parseRoute } from '../../utils/routes';
@@ -15,13 +13,12 @@ import { parseRoute } from '../../utils/routes';
 /**
  * App shell: icon rail | context column | main (header + content).
  * On mobile the rail is a top bar, and the context column and the main column show one at a
- * time: the section root shows the list, deeper routes show the detail with a back button in
- * the header. "/" shows a new chat, and "/chat" the chat list.
+ * time: the section root shows the list, deeper routes show the detail with the header's back
+ * button and title in the top bar. "/" shows a new chat, and "/chat" the chat list.
  *
  * Every viewport renders the same tree. Mobile only changes which columns are visible.
  */
 const MainLayout: React.FC = () => {
-  useSignals();
   const isMobile = useMediaQuery(MOBILE);
   const autoCollapsed = useMediaQuery(SIDEBAR_COLLAPSED);
   const [collapsed, setCollapsed] = useState(false);
@@ -41,7 +38,7 @@ const MainLayout: React.FC = () => {
         <IconRail isMobile={isMobile} />
         <ContextColumn isMobile={isMobile} collapsed={sidebarCollapsed} peek={sidebarCollapsed && peek} />
       </AppShellSidebar>
-      <ToastContainer notifications={notifications.value} onClose={removeNotification} />
+      <Toasts />
       <AppShellMain>
         <MainHeader
           isMobile={isMobile}

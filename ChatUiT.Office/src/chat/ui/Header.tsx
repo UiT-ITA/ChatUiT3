@@ -15,7 +15,7 @@ import {
 import { useEffect, useState, type ComponentType } from "react";
 import type { ChatList } from "../history/useChatHistory";
 import { ToolbarButton } from "./ToolbarButton";
-import { color, space, icon, size, typography } from "./tokens";
+import { color, typography } from "./tokens";
 
 export interface HeaderProps {
   logoUrl: string;
@@ -33,22 +33,22 @@ export interface HeaderProps {
 }
 
 const useStyles = makeStyles({
-  // Office draws its personality menu over the top-right corner of the task pane (Mac), so the
+  // Office draws its personality menu over the top-right 34x32 px of the task pane (Mac), so the
   // buttons end left of it.
   root: {
     flexShrink: 0,
     display: "flex",
     alignItems: "center",
-    gap: space.xs,
-    height: `calc(${space["2xl"]} + ${space.sm})`,
-    padding: `0 calc(${space["2xl"]} + ${space.sm}) 0 ${space.md}`,
+    gap: "0.125rem",
+    height: "2.5rem",
+    padding: "0 2.5rem 0 0.75rem",
   },
-  logo: { display: "block", width: icon.md, height: icon.md },
+  logo: { display: "block", width: "1.25rem", height: "1.25rem" },
   spacer: { flex: 1 },
-  history: { width: size.sm, maxWidth: `calc(100vw - ${space.xl})`, maxHeight: size.sm, overflowY: "auto" },
+  history: { width: "18rem", maxWidth: "calc(100vw - 1.5rem)", maxHeight: "20rem", overflowY: "auto" },
   chatTitle: { minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" },
   chatDate: { flexShrink: 0, whiteSpace: "nowrap" },
-  note: { ...typography.caption, padding: `${space.sm} ${space.sm}`, color: color.text3 },
+  note: { ...typography.caption, padding: "0.375rem 0.5rem", color: color.text3 },
 });
 
 const dateFormat = new Intl.DateTimeFormat(undefined, { dateStyle: "short", timeStyle: "short" });

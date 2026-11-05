@@ -260,6 +260,7 @@ export default function ChatInput() {
                   openOn="hover"
                   placement="top-end"
                   panelWidth="large"
+                  className="composer-toolbar__popover"
                   trigger={(
                     <IconButton
                       icon={<ProgressRing fraction={contextFraction} state={usage.level} />}

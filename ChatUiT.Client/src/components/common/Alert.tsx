@@ -15,7 +15,7 @@ const Alert: React.FC<AlertProps> = ({ tone = 'note', title, icon, className, ch
   return (
     <aside className={cx('alert', `alert--${tone}`, className)} style={style} {...rest}>
       {(title || icon) && (
-        <div className="alert__title t-caption-strong">
+        <div className="alert__title t-overline">
           {icon && <Icon name={icon} size="sm" />}
           {title}
         </div>

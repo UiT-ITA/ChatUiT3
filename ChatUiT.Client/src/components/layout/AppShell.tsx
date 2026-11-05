@@ -36,15 +36,9 @@ export const AppShellMain: React.FC<{ children?: React.ReactNode }> = ({ childre
   <main className="app-shell__main">{children}</main>
 );
 
-interface AppHeaderProps {
-  // The header has a back control, and replaces the top bar on narrow screens
-  back?: boolean;
-  children?: React.ReactNode;
-}
-
 /** The thin header at the top of the main column. */
-export const AppHeader: React.FC<AppHeaderProps> = ({ back = false, children }) => (
-  <header className={cx('app-header', back && 'app-header--back')}>{children}</header>
+export const AppHeader: React.FC<{ children?: React.ReactNode }> = ({ children }) => (
+  <header className="app-header">{children}</header>
 );
 
 /** The title in the main column header, cut with an ellipsis. */

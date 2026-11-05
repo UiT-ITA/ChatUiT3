@@ -17,7 +17,7 @@ export function capabilityKeys(assistant: { modelId: string }, models: UserLangu
   return CAPABILITIES.map(({ key }) => key).filter(key => has[key]);
 }
 
-/** Each assistant's capabilities without those every assistant in the list has, as those tell the assistants apart in no way. */
+/** Returns each assistant's capabilities, leaving out those that every assistant in the list has. */
 export function distinctCapabilities(list: AssistantListDto, models: UserLanguageModelDto[]): (assistant: { modelId: string }) => Capability[] {
   const all = [...list.owned, ...list.system, ...list.shared].map(assistant => capabilityKeys(assistant, models));
   const common = CAPABILITIES.map(({ key }) => key).filter(key => all.length > 0 && all.every(keys => keys.includes(key)));

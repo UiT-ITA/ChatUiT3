@@ -16,7 +16,7 @@ import { Header, type HeaderProps } from "./Header";
 import { MessageList } from "./MessageList";
 import { chatuitTheme } from "./theme";
 import { useApiClient } from "./useApiClient";
-import { color, font, space, fs, fw, lh, typography, paletteVariables, type PaneTheme } from "./tokens";
+import { color, font, paletteVariables, typography, type PaneTheme } from "./tokens";
 
 export interface AppProps {
   /** Null when the app is not supported. */
@@ -27,28 +27,22 @@ export interface AppProps {
 }
 
 const useStyles = makeStyles({
-  // The pane's layout, background and base text (instead of Fluent's own), inside the
+  // The pane's layout, background and base text (instead of Fluent's 14px, 20px line height), inside the
   // provider. The provider gets no class: Fluent also gives its class to the containers of menus.
   root: {
     display: "flex",
     flexDirection: "column",
     height: "100%",
     fontFamily: font.sans,
-    fontSize: fs.md,
-    fontWeight: fw.regular,
-    lineHeight: lh.base,
+    fontSize: "1rem",
+    fontWeight: 400,
+    lineHeight: 1.5,
     backgroundColor: color.bg,
     color: color.text,
   },
   chat: { display: "flex", flexDirection: "column", flex: 1, minHeight: 0 },
-  unsupported: {
-    ...typography.chat,
-    margin: 0,
-    padding: `${space["2xl"]} ${space.lg}`,
-    textAlign: "center",
-    color: color.text2,
-  },
-  error: { margin: `0 ${space.md} ${space.sm}` },
+  unsupported: { ...typography.chat, margin: 0, padding: "2rem 0.875rem", textAlign: "center", color: color.text2 },
+  error: { margin: "0 0.75rem 0.5rem" },
 });
 
 export function App({ adapter, unsupportedMessage, theme }: AppProps) {

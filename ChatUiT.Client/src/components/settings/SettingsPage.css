@@ -1,61 +1,50 @@
 /* A miniature of the app in one theme and mode: a rail, two text bars and a button */
 .theme-preview {
-  /* The miniature's geometry as fractions of its width: the rail, where the content starts, and the top and bottom ends of the slanted edge of the system preview */
-  --theme-preview-rail-width: 26%;
-  --theme-preview-content-start: 34%;
-  --theme-preview-slant-top: 55%;
-  --theme-preview-slant-bottom: 45%;
-  display: block;
+  display: flex;
   height: var(--space-3xl);
   border: var(--border-sm) solid var(--line-strong);
   border-radius: var(--radius-sm);
   overflow: hidden;
-  position: relative;
 }
 
 /* Each scene carries its own data-theme and data-mode, so its tokens are that theme's */
 .theme-preview__scene {
-  position: absolute;
-  inset: 0;
+  flex: 1;
+  display: flex;
+  gap: var(--space-sm);
+  overflow: hidden;
   background: var(--bg);
 }
 
-/* System: the dark scene covers the right half, along a slanted edge */
-.theme-preview__scene--dark-half {
-  clip-path: polygon(var(--theme-preview-slant-top) 0, 100% 0, 100% 100%, var(--theme-preview-slant-bottom) 100%);
-}
-
 .theme-preview__rail {
-  position: absolute;
-  left: 0;
-  top: 0;
-  bottom: 0;
-  width: var(--theme-preview-rail-width);
+  width: var(--space-xl);
   background: var(--panel);
 }
 
+.theme-preview__content {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: start;
+  gap: var(--space-xs);
+  padding: var(--space-md) var(--space-lg) 0 0;
+}
+
 .theme-preview__bar {
-  position: absolute;
-  left: var(--theme-preview-content-start);
+  align-self: stretch;
   height: var(--space-sm);
   background: var(--line);
 }
 
 .theme-preview__bar--1 {
-  top: var(--space-md);
-  right: var(--space-lg);
   background: var(--accent-2);
 }
 
 .theme-preview__bar--2 {
-  top: var(--space-xl);
-  right: var(--space-2xl);
+  margin-right: var(--space-lg);
 }
 
 .theme-preview__button {
-  position: absolute;
-  left: var(--theme-preview-content-start);
-  top: var(--space-2xl);
   width: var(--control-sm);
   height: var(--space-md);
   border-radius: var(--radius-sm);

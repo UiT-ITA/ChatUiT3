@@ -56,7 +56,7 @@ export default function AssistantSelector() {
       placement="top-start"
       panelWidth="xl"
       minWidth="0"
-      className="assistant-selector"
+      className="assistant-selector composer-toolbar__popover"
       trigger={(
         <Button
           variant="subtle"
@@ -68,18 +68,27 @@ export default function AssistantSelector() {
         >
           <span className="assistant-selector__label">
             {name}
-            <Icon name={isOpen ? 'arrowDown' : 'arrowUp'} size="sm" />
+            <Icon name="arrowUp" size="sm" className="assistant-selector__arrow" />
           </span>
         </Button>
       )}
     >
-      {close => <AssistantPicker assistants={assistants} selectedId={selected?.id} close={close} focusSearch={isOpen} />}
+      {close => <AssistantPicker assistants={assistants} selectedId={selected?.id} close={close} pin={() => setIsOpen(true)} focusSearch={isOpen} />}
     </Popover>
   );
 }
 
-/** The picker: search, capability filter, categories and the list. */
-function AssistantPicker({ assistants, selectedId, close, focusSearch }: { assistants: AssistantDto[]; selectedId?: string; close: () => void; focusSearch: boolean }) {
+interface AssistantPickerProps {
+  assistants: AssistantDto[];
+  selectedId?: string;
+  close: () => void;
+  // Keeps the picker open after the pointer leaves
+  pin: () => void;
+  focusSearch: boolean;
+}
+
+/** The picker: search, capability filter, categories and the list. A click or typing inside pins it open. */
+function AssistantPicker({ assistants, selectedId, close, pin, focusSearch }: AssistantPickerProps) {
   useSignals();
   const { t } = useTranslation();
   const [category, setCategory] = useState<Category>('all');
@@ -102,13 +111,16 @@ function AssistantPicker({ assistants, selectedId, close, focusSearch }: { assis
   );
 
   return (
-    <>
+    <div onClickCapture={pin}>
       <Stack direction="row" align="center" gap="sm" py="sm" px="lg" border borderSide="bottom" shrink={false}>
         <SearchField
           ref={searchRef}
           size="medium"
           value={query}
-          onChange={setQuery}
+          onChange={value => {
+            setQuery(value);
+            pin();
+          }}
           placeholder={t('assistants.picker.searchPlaceholder')}
         />
         <Popover
@@ -132,7 +144,7 @@ function AssistantPicker({ assistants, selectedId, close, focusSearch }: { assis
       </Stack>
 
       <Stack direction="row" gap="sm" p="md">
-        <div className="ap-rail">
+        <div className="assistant-selector__rail">
           {CATEGORIES.map(({ key, icon }, index) => (
             <Fragment key={key}>
               {index === 1 && <Box mx="sm" my="xs" border borderSide="top" />}
@@ -149,9 +161,9 @@ function AssistantPicker({ assistants, selectedId, close, focusSearch }: { assis
           ))}
         </div>
 
-        <div className="ap-list" role="listbox" aria-label={t('welcome.selectAssistant')}>
+        <div className="assistant-selector__list" role="listbox" aria-label={t('welcome.selectAssistant')}>
           {visibleAssistants.length === 0 && (
-            <div className="ap-empty t-ui-plain">{t(needle || capabilityFilter.length > 0 ? EMPTY_KEYS.all : EMPTY_KEYS[category])}</div>
+            <div className="assistant-selector__empty t-ui-plain">{t(needle || capabilityFilter.length > 0 ? EMPTY_KEYS.all : EMPTY_KEYS[category])}</div>
           )}
 
           {visibleAssistants.map(assistant => {
@@ -162,7 +174,7 @@ function AssistantPicker({ assistants, selectedId, close, focusSearch }: { assis
             return (
               <ListboxOption
                 key={assistant.id}
-                className="ap-row"
+                className="assistant-selector__row"
                 selected={selectedId === assistant.id}
                 disabled={disabledReason !== undefined}
                 title={disabledReason}
@@ -172,22 +184,22 @@ function AssistantPicker({ assistants, selectedId, close, focusSearch }: { assis
                   close();
                 }}
                 leading={(
-                  <span className="ap-row-leading">
+                  <span className="assistant-selector__row-leading">
                     <Icon name={CATEGORIES.find(category => category.key === assistant.type)?.icon ?? 'assistants'} color="muted" />
                   </span>
                 )}
                 description={(
-                  <span className="ap-row-line">
+                  <span className="assistant-selector__row-line">
                     {modelName && (
                       <>
                         <Text variant="meta" tone="muted" truncate>{modelName}</Text>
-                        <span className="ap-row-sep" aria-hidden="true" />
+                        <span className="assistant-selector__separator" aria-hidden="true" />
                       </>
                     )}
                     <ClassificationBadge classification={assistant.classification} />
                     {capabilities.length > 0 && (
                       <>
-                        <span className="ap-row-sep" aria-hidden="true" />
+                        <span className="assistant-selector__separator" aria-hidden="true" />
                         <Stack direction="row" gap="sm" align="center" shrink={false}>
                           {CAPABILITIES.filter(({ key }) => capabilities.includes(key)).map(({ key, icon }) => (
                             <Icon key={key} name={icon} color="accent" label={t(`assistants.capabilities.${key}`)} />
@@ -195,17 +207,17 @@ function AssistantPicker({ assistants, selectedId, close, focusSearch }: { assis
                         </Stack>
                       </>
                     )}
-                    <Tooltip content={description} focusable className="ap-row-end">
+                    <Tooltip content={description} focusable className="assistant-selector__row-end">
                       <Icon name="info" color="muted" label={description} />
                     </Tooltip>
                     <span id={`${descriptionId}-${assistant.id}`} hidden>{description}</span>
                   </span>
                 )}
               >
-                <span className="ap-row-line">
+                <span className="assistant-selector__row-line">
                   <Text variant="body-strong" truncate grow>{assistant.name}</Text>
                   <IconButton
-                    className="ap-row-end"
+                    className="assistant-selector__row-end"
                     icon={<Icon name={assistant.isFavorite ? 'star' : 'starOutline'} color={assistant.isFavorite ? 'accent' : 'muted'} />}
                     label={t(assistant.isFavorite ? 'assistants.actions.removeFavorite' : 'assistants.actions.addFavorite')}
                     size="small"
@@ -221,6 +233,6 @@ function AssistantPicker({ assistants, selectedId, close, focusSearch }: { assis
           })}
         </div>
       </Stack>
-    </>
+    </div>
   );
 }

@@ -5,7 +5,8 @@ import { useTranslation } from 'react-i18next';
 import { getAssistants, deleteAssistant, toggleFavorite, toggleVisibility, addSharedAssistant, invalidateAssistants, removeSharedAssistant, setDefaultAssistant, clearDefaultAssistant } from '../../services/assistantService';
 import { getModels } from '../../services/modelService';
 import { setUserSelectedAssistantId } from '../../services/chatService';
-import { ASSISTANT_SECTIONS, type AssistantDto, type FullAssistantDto, type AssistantSummaryDto } from '../../types/assistantModels';
+import type { AssistantDto, FullAssistantDto, AssistantSummaryDto } from '../../types/assistantModels';
+import { ASSISTANT_SECTIONS } from './assistantSections';
 import { capabilityKeys, distinctCapabilities } from './assistantCapabilities';
 import AssistantCard, { DefaultBadge } from './AssistantCard';
 import CapabilityTag from './CapabilityTag';
@@ -13,6 +14,7 @@ import { CardGrid } from '../common/CardGrid';
 import Scroller from '../common/Scroller';
 import PillButton from '../common/PillButton';
 import AssistantForm from './AssistantForm';
+import AssistantDeleteFooter from './AssistantDeleteFooter';
 import AddExternalAssistant from './AddExternalAssistant';
 import ShareModal from './ShareModal';
 import TagField from '../common/TagField';
@@ -140,17 +142,6 @@ const AssistantsPage: React.FC = () => {
         fillOnMobile
         mt="sm"
         mb="xl"
-        end={variant === 'shared' ? (
-          <Button
-            variant="danger"
-            size="medium"
-            startIcon="trash"
-            onClick={() => setPendingRemoval({ id: assistant.id, shared: true })}
-            title={t('common.delete')}
-          >
-            {t('common.delete')}
-          </Button>
-        ) : undefined}
       >
         <Button
           variant="primary"
@@ -256,18 +247,8 @@ const AssistantsPage: React.FC = () => {
           </>
         )}
 
-        {variant === 'owned' && (
-          <Stack direction="row" justify="start" mt="2xl" pt="xl" border borderSide="top">
-            <Button
-              variant="danger"
-              size="small"
-              startIcon="trash"
-              onClick={() => setPendingRemoval({ id: assistant.id, shared: false })}
-              title={t('assistants.actions.deleteAssistant')}
-            >
-              {t('assistants.actions.deleteAssistant')}
-            </Button>
-          </Stack>
+        {variant !== 'system' && (
+          <AssistantDeleteFooter onDelete={() => setPendingRemoval({ id: assistant.id, shared: variant === 'shared' })} />
         )}
 
         <ShareModal assistant={shareModalAssistant} onClose={() => setShareModalAssistant(null)} />

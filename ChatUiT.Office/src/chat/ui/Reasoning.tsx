@@ -2,17 +2,18 @@ import { makeStyles } from "@fluentui/react-components";
 import type { ReactNode } from "react";
 import type { ItemActivity } from "../conversation/conversation";
 import { renderMarkdown } from "./Message";
-import { color, space, typography } from "./tokens";
+import { color, typography } from "./tokens";
 
 const useStyles = makeStyles({
-  list: { display: "flex", flexDirection: "column", gap: space.xs },
+  list: { display: "flex", flexDirection: "column", gap: "0.25rem" },
   title: { ...typography.captionStrong, cursor: "pointer", color: color.text2 },
   text: {
     ...typography.caption,
+    lineHeight: 1.55,
     color: color.text2,
     overflowWrap: "anywhere",
-    padding: `${space.xs} 0 ${space.xs} ${space.md}`,
-    "& p": { marginTop: 0, marginBottom: space.sm },
+    padding: "0.25rem 0 0.25rem 0.75rem",
+    "& p": { marginTop: 0, marginBottom: "0.5rem" },
     "& > :last-child": { marginBottom: 0 },
   },
   call: { ...typography.meta, color: color.text3 },

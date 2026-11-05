@@ -4,6 +4,15 @@
   padding: var(--space-sm) 0;
 }
 
+/* A menu opened at the viewport point --menu-x, --menu-y, moved inside the viewport with a small step from its edges */
+.menu--at-point {
+  position: fixed;
+  z-index: var(--z-overlay);
+  left: max(var(--space-sm), var(--menu-x));
+  top: max(var(--space-sm), var(--menu-y));
+  translate: min(0rem, 100vw - var(--space-sm) - var(--menu-x) - 100%) min(0rem, 100dvh - var(--space-sm) - var(--menu-y) - 100%);
+}
+
 .menu__item {
   font-family: var(--font-sans);
   display: flex;

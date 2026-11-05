@@ -12,23 +12,30 @@ import { isHelpSection } from '../help/helpSections';
 import Badge from '../common/Badge';
 import { AppHeader, AppHeaderCrumb, AppHeaderStatus, AppHeaderTitle } from './AppShell';
 import { WIDE } from '../common/breakpoints';
-import { parseRoute, sectionPath } from '../../utils/routes';
+import { parseRoute } from '../../utils/routes';
+import { useHeaderBack } from './useHeaderBack';
+
+interface MainHeaderProps {
+  isMobile?: boolean;
+  sidebarCollapsed?: boolean;
+  onToggleSidebar?: () => void;
+}
 
 /**
- * The thin header at the top of the main column, in every section. Shows the sidebar toggle when
- * onToggleSidebar is set, the current title, an optional context chip, the conversation-panel toggle
- * on chat pages, and a back control on edit pages and on mobile detail views.
+ * The content of the main column header. Shows the sidebar toggle when onToggleSidebar is set, the current
+ * title, an optional context chip, the conversation-panel toggle on chat pages, and a back control on edit
+ * pages and on mobile detail views.
  */
-const MainHeader = ({ isMobile, sidebarCollapsed, onToggleSidebar }: { isMobile?: boolean; sidebarCollapsed?: boolean; onToggleSidebar?: () => void }) => {
+export const MainHeaderContent = ({ isMobile, sidebarCollapsed, onToggleSidebar }: MainHeaderProps) => {
   useSignals();
   const { t } = useTranslation();
   const navigate = useNavigate();
   const isWide = useMediaQuery(WIDE);
-  const { section, params, chatId, newChat, view } = parseRoute(useLocation().pathname);
-  const sectionTitle = t(`contextColumn.${section}`);
+  const { section, params, chatId } = parseRoute(useLocation().pathname);
+  const back = useHeaderBack(isMobile);
   const chat = chatId ? getChat(chatId).value : undefined;
 
-  let title = sectionTitle;
+  let title = t(`contextColumn.${section}`);
   let chip = '';
 
   if (section === 'chats') {
@@ -44,18 +51,11 @@ const MainHeader = ({ isMobile, sidebarCollapsed, onToggleSidebar }: { isMobile?
     chip = t(`help.sections.${params[0]}`);
   }
 
-  // An open edit page: back to its list, and save/cancel once the form has changes
+  // An open edit page: save/cancel once the form has changes
   const editor = editorHeaderSignal.value;
 
-  // The back control: to the list of an open edit page, or to the section root from a mobile detail view
-  const back = editor
-    ? { path: editor.backPath, label: editor.backLabel }
-    : isMobile && view === 'detail' && !newChat
-      ? { path: sectionPath(section), label: sectionTitle }
-      : undefined;
-
   return (
-    <AppHeader back={back !== undefined}>
+    <>
       {onToggleSidebar && (
         <IconButton icon="sidebarToggle" iconSize="md" label={t(sidebarCollapsed ? 'sidebar.expandSidebar' : 'sidebar.collapseSidebar')} variant="ghost" size="small" onClick={onToggleSidebar} />
       )}
@@ -87,6 +87,18 @@ const MainHeader = ({ isMobile, sidebarCollapsed, onToggleSidebar }: { isMobile?
           onClick={() => { conversationPanelOpenSignal.value = !conversationPanelOpenSignal.value; }}
         />
       )}
+    </>
+  );
+};
+
+/** The thin header at the top of the main column. On mobile views with a back control, the top bar shows its content instead. */
+const MainHeader = (props: MainHeaderProps) => {
+  useSignals();
+  const back = useHeaderBack(props.isMobile);
+  if (props.isMobile && back) return null;
+  return (
+    <AppHeader>
+      <MainHeaderContent {...props} />
     </AppHeader>
   );
 };

@@ -1,4 +1,4 @@
-import React, { useLayoutEffect, useRef, useState } from 'react';
+import React, { useRef } from 'react';
 import { createPortal } from 'react-dom';
 import useDismiss from '../../hooks/useDismiss';
 import { Icon, type IconName } from './Icon';
@@ -23,28 +23,14 @@ interface MenuProps extends LayoutProps, Omit<React.HTMLAttributes<HTMLDivElemen
 export const Menu: React.FC<MenuProps> = ({ floating = false, anchorPoint, onClose, closeOnEscape = true, closeOnOutsideClick = true, panelWidth = 'small', className, children, ...props }) => {
   const [layout, rest] = splitLayoutProps(props);
   const ref = useRef<HTMLDivElement>(null);
-  const [point, setPoint] = useState(anchorPoint);
   useDismiss(ref, floating && onClose !== undefined, () => onClose?.(), { escape: closeOnEscape, outsideClick: closeOnOutsideClick });
 
-  const anchorX = anchorPoint?.x;
-  const anchorY = anchorPoint?.y;
-
-  // Moves a menu opened at a point back inside the viewport
-  useLayoutEffect(() => {
-    if (anchorX === undefined || anchorY === undefined || !ref.current) return;
-    const { width, height } = ref.current.getBoundingClientRect();
-    setPoint({
-      x: Math.max(0, Math.min(anchorX, window.innerWidth - width)),
-      y: Math.max(0, Math.min(anchorY, window.innerHeight - height)),
-    });
-  }, [anchorX, anchorY]);
-
-  const style: React.CSSProperties | undefined = point
-    ? { position: 'fixed', left: point.x, top: point.y, zIndex: 'var(--z-overlay)', ...layout }
+  const style = anchorPoint
+    ? { '--menu-x': `${anchorPoint.x}px`, '--menu-y': `${anchorPoint.y}px`, ...layout } as React.CSSProperties
     : layout;
 
   const menu = (
-    <div ref={ref} role="menu" className={cx('menu', floating && floatingPanelClass(panelWidth), className)} style={style} {...rest}>
+    <div ref={ref} role="menu" className={cx('menu', anchorPoint && 'menu--at-point', floating && floatingPanelClass(panelWidth), className)} style={style} {...rest}>
       {children}
     </div>
   );

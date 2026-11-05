@@ -22,11 +22,12 @@ import Checkbox, { CheckboxGroup } from '../common/Checkbox';
 import Field, { FieldDescription } from '../common/Field';
 import Grid from '../common/Grid';
 import Stack from '../common/Stack';
-import { Icon } from '../common/Icon';
 import { Listbox, ListboxOption } from '../common/Listbox';
 import Popover from '../common/Popover';
 import KnowledgeFileList, { type KnowledgeFileCategory, type KnowledgeFileItemData } from './KnowledgeFileList';
 import KnowledgeSourceList from './KnowledgeSourceList';
+import CapabilityTag from './CapabilityTag';
+import { capabilityKeys } from './assistantCapabilities';
 import type { ChatFile } from '../../types/fileModels';
 import { getTokenizer, loadTokenizer } from '../../services/tokenizerService';
 import { alwaysLoadedLimit, formatTokens, parseScheme, type ParsedScheme, type Tokenizer } from '../../utils/tokenCounting';
@@ -124,8 +125,6 @@ interface AssistantFormProps {
   onUpdate?: (assistant: UpdateAssistantDto) => Promise<unknown>;
   /** Called after a successful save */
   onSaved?: () => void;
-  /** Extra buttons rendered in the footer */
-  footerExtra?: React.ReactNode;
   saveLabel?: string;
   /** Where the header's back and cancel buttons go */
   backPath: string;
@@ -139,7 +138,6 @@ const AssistantForm: React.FC<AssistantFormProps> = ({
   onCreate,
   onUpdate,
   onSaved,
-  footerExtra,
   saveLabel,
   backPath,
   backLabel,
@@ -600,9 +598,9 @@ const AssistantForm: React.FC<AssistantFormProps> = ({
                   <Text variant="ui" grow>{model.modelName}</Text>
                   <ClassificationBadge classification={model.classification} />
                   <Stack as="span" direction="row" gap="sm">
-                    {model.capabilities.vision && <Icon name="image" color="accent" label="Vision" />}
-                    {model.capabilities.tools && <Icon name="globe" color="accent" label="Tools" />}
-                    {model.capabilities.supportedEfforts.length > 0 && <Icon name="brain" color="accent" label="Reasoning" />}
+                    {capabilityKeys({ modelId: model.id }, models).map(key => (
+                      <CapabilityTag key={key} capability={key} iconOnly />
+                    ))}
                   </Stack>
                 </ListboxOption>
               );
@@ -806,12 +804,6 @@ const AssistantForm: React.FC<AssistantFormProps> = ({
           )}
         </Stack>
       </Grid>
-
-      {footerExtra && (
-        <Stack direction="row" align="center" gap="sm" pt="lg" border borderSide="top">
-          {footerExtra}
-        </Stack>
-      )}
     </Stack>
   );
 };

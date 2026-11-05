@@ -13,7 +13,10 @@
   transition: background var(--dur-fast) ease, color var(--dur-fast) ease;
 }
 
-.nav-item:hover:not(:disabled) { background: var(--panel); }
+.nav-item:hover:not(:disabled, .nav-item--editor) { background: var(--panel); }
+
+/* An entry that shows an editor in place of its content: no pointer cursor and no hover fill */
+.nav-item--editor { cursor: auto; }
 .nav-item:disabled {
   opacity: var(--opacity-disabled);
   cursor: not-allowed;

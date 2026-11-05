@@ -82,13 +82,8 @@
   padding: 0 var(--space-sm);
 }
 
-/* Mobile detail views with a back control: the header replaces the top bar */
-.app-shell--mobile:has(.app-header--back) .app-rail {
-  display: none;
-}
-
-/* The save state ends at the page gutter */
-.app-shell--mobile .app-header > .app-header__status:last-child {
+/* The save state in the top bar ends at the page gutter */
+.app-rail--mobile > .app-header__status:last-child {
   margin-right: var(--space-sm);
 }
 
@@ -121,6 +116,7 @@
   border-bottom: var(--border-sm) solid var(--line);
 }
 
+/* Top bar with the main column header's content: the height and background of the mobile header */
 .app-rail__seal {
   width: var(--control-lg);
   height: var(--control-lg);

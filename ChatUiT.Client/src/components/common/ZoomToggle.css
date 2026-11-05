@@ -1,8 +1,8 @@
-/* Content that toggles between fitted and full size on click */
-.zoom-toggle {
+/* An image or diagram that toggles between fitted and full size on click */
+.zoom-toggle :is(svg:not(.icon), img) {
   cursor: zoom-in;
 }
 
-.zoom-toggle--zoomed {
+.zoom-toggle--zoomed :is(svg:not(.icon), img) {
   cursor: zoom-out;
 }

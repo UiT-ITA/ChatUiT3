@@ -49,7 +49,7 @@ const Stack: React.FC<StackProps> = ({ direction = 'column', gap = 'md', rowGap,
     ...(mobileMaxWidth && { '--stack-max-width': layout?.maxWidth ?? 'none', '--stack-max-width-mobile': length(mobileMaxWidth), maxWidth: undefined }),
   };
   const style: React.CSSProperties = {
-    display: hidden ? 'none' : inline ? 'inline-flex' : 'flex',
+    display: hidden ? 'none' : undefined,
     flexDirection: responsive ? undefined : direction,
     rowGap: rowGap ? space(rowGap) : baseGap,
     columnGap: columnGap ? space(columnGap) : baseGap,
@@ -61,7 +61,7 @@ const Stack: React.FC<StackProps> = ({ direction = 'column', gap = 'md', rowGap,
     ...layout,
     ...(responsive && responsiveStyle),
   };
-  return <Element className={cx('stack', responsive && 'stack--responsive', responsive && breakpoint === 'narrow' && 'stack--narrow', mobileMaxWidth && 'stack--mobile-max-width', fade && scrollFadeClass(fade), hideClass, className)} style={style} {...rest} />;
+  return <Element className={cx('stack', inline && 'stack--inline', responsive && 'stack--responsive', responsive && breakpoint === 'narrow' && 'stack--narrow', mobileMaxWidth && 'stack--mobile-max-width', fade && scrollFadeClass(fade), hideClass, className)} style={style} {...rest} />;
 };
 
 export default Stack;

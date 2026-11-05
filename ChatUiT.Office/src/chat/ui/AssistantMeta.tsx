@@ -1,16 +1,16 @@
 import { makeStyles, mergeClasses } from "@fluentui/react-components";
 import { useState, type ReactNode } from "react";
 import { Icon } from "./icons";
-import { color, space, border, dur, typography } from "./tokens";
+import { color, typography } from "./tokens";
 
 const useStyles = makeStyles({
   summary: {
     ...typography.caption,
     display: "inline-flex",
     alignItems: "center",
-    gap: space.xs,
-    marginBottom: space.sm,
-    padding: `${space.xs} 0`,
+    gap: "0.25rem",
+    marginBottom: "0.5rem",
+    padding: "0.125rem 0",
     listStyleType: "none",
     cursor: "pointer",
     userSelect: "none",
@@ -18,15 +18,19 @@ const useStyles = makeStyles({
     ":hover": { color: color.text },
     "&::-webkit-details-marker": { display: "none" },
   },
-  chevron: { display: "flex", transitionProperty: "transform", transitionDuration: dur.fast },
+  chevron: {
+    display: "flex",
+    transitionProperty: "transform",
+    transitionDuration: "120ms",
+  },
   open: { transform: "rotate(90deg)" },
   body: {
     display: "flex",
     flexDirection: "column",
-    gap: space.sm,
-    margin: `0 0 ${space.md} ${space.xs}`,
-    padding: `${space.xs} 0 ${space.xs} ${space.md}`,
-    borderLeft: `${border.md} solid ${color.line}`,
+    gap: "0.375rem",
+    margin: "0 0 0.75rem 0.25rem",
+    padding: "0.125rem 0 0.125rem 0.75rem",
+    borderLeft: `2px solid ${color.line}`,
   },
 });
 
@@ -45,7 +49,7 @@ export function AssistantMeta({ activity }: { activity: TurnActivity }) {
       <summary className={styles.summary}>
         Worked for {activity.seconds}s
         <span className={mergeClasses(styles.chevron, open && styles.open)}>
-          <Icon name="chevron" />
+          <Icon name="chevron" size={0.75} />
         </span>
       </summary>
       <div className={styles.body}>{activity.children}</div>

@@ -2,7 +2,7 @@ import { Button, makeStyles, mergeClasses, shorthands, Textarea } from "@fluentu
 import { useState, type ReactNode } from "react";
 import type { ApprovalPreview, ApprovalPreviewField, PreviewFieldRole, PreviewKind } from "../api/types";
 import { Icon, type IconName } from "./icons";
-import { color, font, space, fw, lh, radius, border, opacity, control, icon, size, typography } from "./tokens";
+import { color, font, radius, typography } from "./tokens";
 import type { InteractionDock } from "./useInteractionDock";
 
 const KIND_ICONS: Record<PreviewKind, IconName> = {
@@ -26,20 +26,20 @@ const useStyles = makeStyles({
   card: {
     display: "flex",
     flexDirection: "column",
-    gap: space.md,
+    gap: "0.625rem",
     maxHeight: "60vh",
     overflowY: "auto",
-    padding: space.md,
-    borderBottom: `${border.sm} solid ${color.line}`,
+    padding: "0.75rem",
+    borderBottom: `1px solid ${color.line}`,
   },
-  header: { display: "flex", alignItems: "center", gap: space.sm },
+  header: { display: "flex", alignItems: "center", gap: "0.5rem" },
   icon: {
     flexShrink: 0,
     display: "flex",
     alignItems: "center",
     justifyContent: "center",
-    width: control.sm,
-    height: control.sm,
+    width: "1.75rem",
+    height: "1.75rem",
     borderRadius: radius.sm,
     backgroundColor: color.panel2,
     color: color.accent,
@@ -48,44 +48,44 @@ const useStyles = makeStyles({
   title: { ...typography.ui, color: color.text, overflowWrap: "anywhere" },
   subtitle: { ...typography.caption, color: color.text3 },
   position: { ...typography.caption, flexShrink: 0, color: color.text3 },
-  rows: { display: "grid", gridTemplateColumns: "max-content 1fr", gap: `${space.xs} ${space.md}`, margin: 0 },
+  rows: { display: "grid", gridTemplateColumns: "max-content 1fr", gap: "0.25rem 0.75rem", margin: 0 },
   row: { display: "contents" },
-  label: { ...typography.overline, paddingTop: space.xs, color: color.text3 },
+  label: { ...typography.overline, paddingTop: "0.125rem", color: color.text3 },
   value: { ...typography.uiPlain, margin: 0, overflowWrap: "anywhere", color: color.text },
-  strong: { fontWeight: fw.bold },
-  blockWrap: { display: "flex", flexDirection: "column", gap: space.xs },
+  strong: { fontWeight: 600 },
+  blockWrap: { display: "flex", flexDirection: "column", gap: "0.25rem" },
   block: {
     ...typography.uiPlain,
     margin: 0,
-    maxHeight: size["2xs"],
+    maxHeight: "10rem",
     overflowY: "auto",
-    padding: `${space.sm} ${space.sm}`,
+    padding: "0.375rem 0.5rem",
     whiteSpace: "pre-wrap",
     overflowWrap: "anywhere",
-    lineHeight: lh.base,
+    lineHeight: 1.5,
     backgroundColor: color.codeBg,
-    border: `${border.sm} solid ${color.lineSoft}`,
+    border: `1px solid ${color.lineSoft}`,
     borderRadius: radius.sm,
     color: color.text,
   },
   message: { backgroundColor: color.panel },
   code: { fontFamily: font.mono },
   summary: { ...typography.uiPlain, color: color.text2 },
-  options: { display: "flex", flexDirection: "column", gap: space.xs },
+  options: { display: "flex", flexDirection: "column", gap: "0.25rem" },
   option: {
     display: "flex",
     alignItems: "center",
-    gap: space.sm,
-    minHeight: control.lg,
-    padding: `${space.xs} ${space.md}`,
+    gap: "0.5rem",
+    minHeight: "2.5rem",
+    padding: "0.25rem 0.625rem",
     textAlign: "left",
-    border: `${border.sm} solid ${color.line}`,
+    border: `1px solid ${color.line}`,
     borderRadius: radius.sm,
     backgroundColor: color.surface,
     color: color.text,
     cursor: "pointer",
     ":hover:enabled": shorthands.borderColor(color.accent),
-    ":focus-visible": { outline: `${border.md} solid ${color.accent}`, outlineOffset: border.sm },
+    ":focus-visible": { outline: `2px solid ${color.accent}`, outlineOffset: "1px" },
   },
   picked: { backgroundColor: color.panel, ...shorthands.borderColor(color.accent) },
   mark: {
@@ -93,28 +93,28 @@ const useStyles = makeStyles({
     display: "flex",
     alignItems: "center",
     justifyContent: "center",
-    width: icon.sm,
-    height: icon.sm,
+    width: "1rem",
+    height: "1rem",
     boxSizing: "border-box",
-    border: `${border.sm} solid ${color.text3}`,
+    border: `1px solid ${color.text3}`,
     color: color.btnFg,
   },
   radio: { borderRadius: "50%" },
-  check: { borderRadius: radius.md },
-  radioPicked: { border: `${border.lg} solid ${color.btnBg}` },
+  check: { borderRadius: "3px" },
+  radioPicked: { border: `5px solid ${color.btnBg}` },
   checkPicked: { ...shorthands.borderColor(color.btnBg), backgroundColor: color.btnBg },
   optionText: { display: "flex", flexDirection: "column" },
   optionLabel: { ...typography.uiPlain },
   optionDescription: { ...typography.caption, color: color.text2 },
-  actions: { display: "flex", flexWrap: "wrap", alignItems: "center", gap: space.sm },
+  actions: { display: "flex", flexWrap: "wrap", alignItems: "center", gap: "0.5rem" },
   end: { justifyContent: "flex-end" },
-  stepper: { flexShrink: 0, display: "flex", alignItems: "center", gap: space.xs },
+  stepper: { flexShrink: 0, display: "flex", alignItems: "center", gap: "0.125rem" },
   arrow: {
     display: "flex",
     alignItems: "center",
     justifyContent: "center",
-    width: control.sm,
-    height: control.sm,
+    width: "1.75rem",
+    height: "1.75rem",
     padding: 0,
     border: "none",
     borderRadius: radius.sm,
@@ -122,8 +122,8 @@ const useStyles = makeStyles({
     color: color.text2,
     cursor: "pointer",
     ":hover:enabled": { backgroundColor: color.panel2, color: color.text },
-    ":disabled": { color: color.text3, cursor: "default", opacity: opacity.disabled },
-    ":focus-visible": { outline: `${border.md} solid ${color.accent}`, outlineOffset: border.sm },
+    ":disabled": { color: color.text3, cursor: "default", opacity: 0.5 },
+    ":focus-visible": { outline: `2px solid ${color.accent}`, outlineOffset: "1px" },
   },
   fill: { flex: 1 },
   hint: { ...typography.caption, color: color.text3 },
@@ -173,7 +173,7 @@ function Header({
   return (
     <div className={styles.header}>
       <span className={styles.icon} aria-hidden="true">
-        <Icon name={icon} />
+        <Icon name={icon} size={1} />
       </span>
       <div className={styles.heading}>
         <span className={styles.title}>{title}</span>
@@ -277,7 +277,7 @@ function QuestionBody({ dock }: { dock: InteractionDock }) {
         disabled={dock.busy || dock.step === 0}
         onClick={() => dock.goTo(dock.step - 1)}
       >
-        <Icon name="chevronLeft" />
+        <Icon name="chevronLeft" size={1} />
       </button>
       <span className={styles.position}>
         {dock.step + 1} of {count}
@@ -290,7 +290,7 @@ function QuestionBody({ dock }: { dock: InteractionDock }) {
         disabled={dock.busy || last}
         onClick={() => dock.goTo(dock.step + 1)}
       >
-        <Icon name="chevron" />
+        <Icon name="chevron" size={1} />
       </button>
     </div>
   );
@@ -320,7 +320,7 @@ function QuestionBody({ dock }: { dock: InteractionDock }) {
                   )}
                   aria-hidden="true"
                 >
-                  {picked && multi && <Icon name="check" />}
+                  {picked && multi && <Icon name="check" size={0.75} />}
                 </span>
                 <span className={styles.optionText}>
                   <span className={styles.optionLabel}>{option.label}</span>

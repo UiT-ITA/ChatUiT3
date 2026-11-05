@@ -6,7 +6,7 @@ import { createAdminAssistant, updateAdminAssistant, deleteAdminAssistant } from
 import { adminAssistantsSignal, loadAdminData } from '../../services/adminDataService';
 import type { CreateAdminAssistantDto, UpdateAdminAssistantDto } from '../../types/admin';
 import AssistantForm from '../assistants/AssistantForm';
-import Button from '../common/Button';
+import AssistantDeleteFooter from '../assistants/AssistantDeleteFooter';
 import { ConfirmDialog } from '../common/Dialog';
 import PageTitleBar from '../common/PageTitleBar';
 import EmptyNote from '../common/EmptyNote';
@@ -84,12 +84,9 @@ const AdminAssistantEditor: React.FC<AdminAssistantEditorProps> = ({ assistantId
         saveLabel={t('assistants.saveAssistant')}
         backPath="/admin/assistants"
         backLabel={t('admin.tabs.assistants')}
-        footerExtra={assistant && (
-          <Button variant="danger" ml="auto" onClick={() => setConfirmDelete(true)}>
-            {t('common.delete')}
-          </Button>
-        )}
       />
+
+      {assistant && <AssistantDeleteFooter onDelete={() => setConfirmDelete(true)} />}
 
       <ConfirmDialog
         isOpen={confirmDelete}

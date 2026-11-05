@@ -3,7 +3,7 @@
 import { makeStyles, mergeClasses } from "@fluentui/react-components";
 import { forwardRef, type ButtonHTMLAttributes } from "react";
 import { Icon, type IconName } from "./icons";
-import { color, radius, control, opacity } from "./tokens";
+import { color, radius } from "./tokens";
 
 export interface ToolbarButtonProps extends Omit<ButtonHTMLAttributes<HTMLButtonElement>, "children"> {
   icon: IconName;
@@ -19,8 +19,8 @@ const useStyles = makeStyles({
     display: "flex",
     alignItems: "center",
     justifyContent: "center",
-    width: control.sm,
-    height: control.sm,
+    width: "2rem",
+    height: "2rem",
     padding: 0,
     border: "none",
     borderRadius: radius.md,
@@ -28,7 +28,7 @@ const useStyles = makeStyles({
     color: color.text2,
     cursor: "pointer",
     ":hover:enabled": { backgroundColor: color.panel, color: color.text },
-    ":disabled": { opacity: opacity.disabled, cursor: "default" },
+    ":disabled": { opacity: 0.5, cursor: "default" },
   },
   active: { backgroundColor: color.panel, color: color.text },
 });
@@ -48,7 +48,7 @@ export const ToolbarButton = forwardRef<HTMLButtonElement, ToolbarButtonProps>(f
       title={title ?? label}
       {...props}
     >
-      <Icon name={icon} />
+      <Icon name={icon} size={1.0625} />
     </button>
   );
 });

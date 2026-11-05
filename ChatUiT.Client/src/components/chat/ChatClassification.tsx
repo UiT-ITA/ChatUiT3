@@ -34,6 +34,7 @@ export default function ChatClassification() {
       openOn="hover"
       placement="top-start"
       panelWidth="large"
+      className="composer-toolbar__popover"
       trigger={(
         <IconButton
           icon={<ClassificationBadge classification={classification} showTitle={false} />}

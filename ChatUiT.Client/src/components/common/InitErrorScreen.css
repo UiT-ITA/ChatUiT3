@@ -12,7 +12,6 @@
 
 .init-error-title {
   color: var(--text);
-  font-weight: var(--fw-bold);
 }
 
 .init-error-message {

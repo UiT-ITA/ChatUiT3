@@ -1,3 +1,7 @@
+/* The stack's display, at zero specificity so the hide-on classes of Box.css override it */
+:where(.stack) { display: flex; }
+:where(.stack--inline) { display: inline-flex; }
+
 /* A responsive stack: the custom properties set by Stack switch to their mobile values at the breakpoint */
 .stack--responsive {
   flex-direction: var(--stack-direction);

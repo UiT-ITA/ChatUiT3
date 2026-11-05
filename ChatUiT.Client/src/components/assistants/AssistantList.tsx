@@ -4,7 +4,8 @@ import { useTranslation } from 'react-i18next';
 import { getAssistants } from "../../services/assistantService";
 import { getModels } from "../../services/modelService";
 import { useSignals } from "@preact/signals-react/runtime";
-import { ASSISTANT_SECTIONS, type FullAssistantDto } from "../../types/assistantModels";
+import type { FullAssistantDto } from "../../types/assistantModels";
+import { ASSISTANT_SECTIONS } from './assistantSections';
 import NavItem from '../common/NavItem';
 import { Icon } from '../common/Icon';
 import ClassificationBadge from '../classification/ClassificationBadge';
@@ -53,7 +54,7 @@ export function AssistantList({ activeId, onNavigate }: AssistantListProps) {
                 key={assistant.id}
                 active={assistant.id === activeId}
                 description={assistant.description || undefined}
-                meta={(
+                meta={(metaText || mobileList) && (
                   <span className="assistant-list-meta">
                     {metaText && <span className="assistant-list-meta-text">{metaText}</span>}
                     {mobileList && <ClassificationBadge classification={assistant.classification} />}

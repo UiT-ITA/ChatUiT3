@@ -1,5 +1,6 @@
-/* Cards in columns of at least the minimum width, at most three to a row */
+/* Cards in columns of at least the minimum width, at most three to a row. The cards' offsets are measured against the grid. */
 .card-grid {
+  position: relative;
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(max(var(--size-xs), calc((100% - 2 * var(--space-sm)) / 3)), 1fr));
   gap: var(--space-sm);

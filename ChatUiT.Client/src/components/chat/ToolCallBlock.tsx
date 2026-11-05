@@ -5,12 +5,12 @@ import type { ActivityEntryDto, ToolCallStatus } from '../../types/chatModels';
 import { isAwaitingStatus } from '../../types/chatModels';
 import ToolPreview from './interaction/ToolPreview';
 import Badge from '../common/Badge';
-import Box from '../common/Box';
 import Card from '../common/Card';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '../common/Collapsible';
 import { ListItem } from '../common/List';
 import Stack from '../common/Stack';
 import Text, { type TextTone } from '../common/Text';
+import TextBlock from '../common/TextBlock';
 
 const STATUS_KEYS: Record<ToolCallStatus, string> = {
   running: 'chat.status.running',
@@ -24,21 +24,6 @@ const STATUS_KEYS: Record<ToolCallStatus, string> = {
   timeout: 'chat.status.timeout',
   error: 'chat.status.failed',
 };
-
-/** A part of an opened tool call: an overline title over its content. */
-function Section({ title, children }: { title: React.ReactNode; children: React.ReactNode }) {
-  return (
-    <Box mt="sm">
-      <Text as="div" variant="overline" tone="muted" mb="xs">{title}</Text>
-      {children}
-    </Box>
-  );
-}
-
-/** Preformatted code text, such as the arguments or the result of a call. */
-function CodeText({ children }: { children: React.ReactNode }) {
-  return <Text as="pre" variant="code" tone="secondary" p="sm" surface="code" border="soft" radius="sm" wrap="pre" breakWord>{children}</Text>;
-}
 
 /**
  * One tool call in a message's activity: its name and status, and when opened what the user was
@@ -85,14 +70,16 @@ export default function ToolCallBlock({ entry, durationMs }: { entry: ActivityEn
           />
         </CollapsibleTrigger>
         <CollapsibleContent>
-          <Box pt="sm" px="md" pb="md" border borderSide="top">
+          <Stack gap="sm" p="md" border borderSide="top">
             {entry.preview && (
-              <Section title={entry.preview.title}>
+              <Stack gap="xs">
+                <Text as="div" variant="overline" tone="muted">{entry.preview.title}</Text>
                 <ToolPreview preview={entry.preview} />
-              </Section>
+              </Stack>
             )}
             {entry.questions && entry.questions.length > 0 && (
-              <Section title={t('toolCall.questions', { count: entry.questions.length })}>
+              <Stack gap="xs">
+                <Text as="div" variant="overline" tone="muted">{t('toolCall.questions', { count: entry.questions.length })}</Text>
                 <Stack gap="sm">
                   {entry.questions.map((question, index) => {
                     const answer = answers === undefined ? undefined : answers?.[index] ?? null;
@@ -110,19 +97,21 @@ export default function ToolCallBlock({ entry, durationMs }: { entry: ActivityEn
                     );
                   })}
                 </Stack>
-              </Section>
+              </Stack>
             )}
             {prettyArgs && (
-              <Section title={t('toolCall.arguments')}>
-                <CodeText>{prettyArgs}</CodeText>
-              </Section>
+              <Stack gap="xs">
+                <Text as="div" variant="overline" tone="muted">{t('toolCall.arguments')}</Text>
+                <TextBlock monospace>{prettyArgs}</TextBlock>
+              </Stack>
             )}
             {prettyResult && (
-              <Section title={t('toolCall.result')}>
-                <CodeText>{prettyResult}</CodeText>
-              </Section>
+              <Stack gap="xs">
+                <Text as="div" variant="overline" tone="muted">{t('toolCall.result')}</Text>
+                <TextBlock monospace>{prettyResult}</TextBlock>
+              </Stack>
             )}
-          </Box>
+          </Stack>
         </CollapsibleContent>
       </Card>
     </Collapsible>

@@ -28,7 +28,7 @@
 
   a {
     color: var(--accent);
-    text-underline-offset: var(--border-md);
+    text-underline-offset: var(--space-xs);
   }
 
   a:hover {
