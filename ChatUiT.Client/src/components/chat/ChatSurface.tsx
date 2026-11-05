@@ -1,84 +1,68 @@
 import React, { useEffect } from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
+import { useTranslation } from 'react-i18next'
 import ChatHistory from './ChatHistory'
 import ChatInput from './ChatInput'
 import ConversationPanel from './ConversationPanel'
 import NewChatWelcome from './NewChatWelcome'
-import './ChatSurface.css'
+import Stack from '../common/Stack'
 import { setCurrentChatId, getChatNotFound } from '../../services/chatService'
 import { conversationPanelOpenSignal } from '../../services/uiService'
 import { useSignals } from '@preact/signals-react/runtime'
 import { addNotification } from '../../services/notificationService'
 import { useChatCache } from '../../hooks/useChatCache'
 import useMediaQuery from '../../hooks/useMediaQuery'
+import { WIDE } from '../common/breakpoints';
+import { parseRoute } from '../../utils/routes';
 
-interface ChatSurfaceProps {
-  /** Hides the surface without unmounting it — see the note below. */
-  hidden?: boolean
-}
+// A column that fills the remaining space of its parent and clips its content
+const PANE = { gap: 'none', expand: true, minHeight: '0', overflow: 'hidden' } as const
 
 /**
- * The chat surface is mounted once by MainLayout and lives for the whole session.
- * It is deliberately NOT a route element: routing swaps route elements out, which
- * would unmount every opened chat. Navigating only ever changes what is visible
- * here — a chat is mounted when you open it and unmounted only when the LRU
- * evicts it.
+ * The chat area: the opened chats, the new chat welcome, the composer and the conversation panel.
+ * MainLayout renders it for every route, hidden outside the chat routes. Each opened chat stays mounted,
+ * hidden while another chat is shown, until the chat cache evicts it.
  */
-const ChatSurface: React.FC<ChatSurfaceProps> = ({ hidden = false }) => {
+const ChatSurface: React.FC<{ hidden?: boolean }> = ({ hidden = false }) => {
   useSignals()
+  const { t } = useTranslation()
 
-  const location = useLocation()
   const navigate = useNavigate()
-
-  // useParams is unavailable here: this renders inside the parent route element,
-  // which cannot see child route params. Parse the path the way MainHeader does.
-  const pathParts = location.pathname.split('/').filter(Boolean)
-  const chatId = pathParts[0] === 'chat' && pathParts[1] && pathParts[1] !== 'new'
-    ? pathParts[1]
-    : undefined
+  const { chatId } = parseRoute(useLocation().pathname)
 
   const notFound = chatId ? getChatNotFound(chatId) : undefined
   const cachedIds = useChatCache(chatId)
-  const isWide = useMediaQuery('(min-width: 1100px)')
+  const isWide = useMediaQuery(WIDE)
 
   useEffect(() => {
     setCurrentChatId(chatId)
   }, [chatId])
 
-  // Redirect to "/" when the requested chat does not exist (404 from API)
+  // Goes to "/" when the requested chat does not exist
   useEffect(() => {
     if (chatId && notFound?.value) {
-      addNotification({ level: 'Warning', message: 'Chat not found. Redirecting…' })
+      addNotification({ level: 'Warning', message: t('chat.chatNotFound') })
       navigate('/')
     }
-  }, [chatId, notFound?.value, navigate])
+  }, [chatId, notFound?.value, navigate, t])
 
   const showPanel = chatId !== undefined && conversationPanelOpenSignal.value && isWide
 
   return (
-    <div className="chat-surface" style={hidden ? { display: 'none' } : undefined}>
-      <div className="chat-surface-body">
-        <div className="chat-surface-main">
-          {cachedIds.map((id) => (
-            <div
-              key={id}
-              className="chat-surface-pane"
-              style={{ display: id === chatId ? 'flex' : 'none' }}
-            >
-              <ChatHistory chatId={id} />
-            </div>
-          ))}
-          <div
-            className="chat-surface-pane"
-            style={{ display: chatId === undefined ? 'flex' : 'none' }}
-          >
-            <NewChatWelcome />
-          </div>
-          <ChatInput />
-        </div>
-        {showPanel && <ConversationPanel chatId={chatId} />}
-      </div>
-    </div>
+    <Stack direction="row" gap="none" height="full" width="full" overflow="hidden" hidden={hidden}>
+      <Stack {...PANE}>
+        {[...cachedIds].sort().map((id) => (
+          <Stack key={id} {...PANE} hidden={id !== chatId}>
+            <ChatHistory chatId={id} />
+          </Stack>
+        ))}
+        <Stack {...PANE} hidden={chatId !== undefined}>
+          <NewChatWelcome />
+        </Stack>
+        <ChatInput />
+      </Stack>
+      {showPanel && <ConversationPanel chatId={chatId} />}
+    </Stack>
   )
 }
 

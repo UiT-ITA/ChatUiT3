@@ -2,6 +2,7 @@ import React, { useId, useState } from 'react';
 import { Listbox, ListboxHeading, ListboxOption } from './Listbox';
 import { SelectChevron } from './Select';
 import TextInput, { type TextInputProps } from './TextInput';
+import type { Length } from './layout';
 import './Combobox.css';
 
 export interface ComboboxSection<T> {
@@ -32,7 +33,8 @@ interface ComboboxProps<T> extends Omit<TextInputProps, 'value' | 'defaultValue'
   openWhen?: boolean;
   // Shows the dropdown chevron at the right end
   showChevron?: boolean;
-  listMaxHeight?: string;
+  // The height past which the list scrolls
+  listMaxHeight?: Length;
 }
 
 /** A text input with a list of suggestions under it, picked by mouse or arrow keys and Enter. */
@@ -47,7 +49,7 @@ function Combobox<T>({
   status,
   openWhen = true,
   showChevron = false,
-  listMaxHeight = '18rem',
+  listMaxHeight = 'sm',
   onFocus,
   onBlur,
   onClick,

@@ -12,6 +12,11 @@ import TextInput from '../common/TextInput';
 import Button from '../common/Button';
 import Stack from '../common/Stack';
 import { hasChanges } from '../../utils/formChanges';
+import PageTitleBar from '../common/PageTitleBar';
+import EmptyNote from '../common/EmptyNote';
+import FormFooter from '../common/FormFooter';
+import Box from '../common/Box';
+import Text from '../common/Text';
 
 const PROVIDERS: EndpointType[] = ['AzureOpenAI', 'MicrosoftFoundry', 'Anthropic', 'OpenAI', 'LlamaCpp', 'Other'];
 /** The endpoint types that accept the app's Entra identity. */
@@ -52,11 +57,11 @@ const EndpointEditor: React.FC<EndpointEditorProps> = ({ endpointId }) => {
   }
 
   if (endpointId && endpoints === undefined) {
-    return <div className="admin-empty t-ui-plain">{t('common.loading')}</div>;
+    return <EmptyNote>{t('common.loading')}</EmptyNote>;
   }
 
   if (endpointId && endpoints !== undefined && !endpoint) {
-    return <div className="admin-empty t-ui-plain">{t('common.notFound')}</div>;
+    return <EmptyNote>{t('common.notFound')}</EmptyNote>;
   }
 
   const handleSave = async () => {
@@ -105,7 +110,7 @@ const EndpointEditor: React.FC<EndpointEditorProps> = ({ endpointId }) => {
   };
 
   return (
-    <div className="admin-form">
+    <Box maxWidth="md">
       <EditorHeader
         backPath="/admin/endpoints"
         backLabel={t('admin.tabs.endpoints')}
@@ -115,10 +120,10 @@ const EndpointEditor: React.FC<EndpointEditorProps> = ({ endpointId }) => {
         onSave={handleSave}
         onCancel={() => navigate('/admin/endpoints')}
       />
-      <h1 className="t-page-title">
+      <Text as="h1" variant="page-title">
         {endpoint ? t('admin.endpoints.dialog.edit.title') : t('admin.endpoints.add.title')}
-      </h1>
-      <div className="page-title-bar" />
+      </Text>
+      <PageTitleBar />
 
       <Stack gap="xl">
         <TextInput
@@ -173,11 +178,11 @@ const EndpointEditor: React.FC<EndpointEditorProps> = ({ endpointId }) => {
       </Stack>
 
       {endpoint && (
-        <div className="admin-form-footer">
+        <FormFooter>
           <Button variant="danger" ml="auto" onClick={() => setConfirmDelete(true)}>
             {t('admin.endpoints.actions.delete')}
           </Button>
-        </div>
+        </FormFooter>
       )}
 
       <Dialog
@@ -186,18 +191,18 @@ const EndpointEditor: React.FC<EndpointEditorProps> = ({ endpointId }) => {
         title={t('admin.endpoints.dialog.delete.title')}
         size="medium"
       >
-        <p className="t-body">{t('admin.endpoints.dialog.delete.confirm')}</p>
+        <Text as="p" variant="body">{t('admin.endpoints.dialog.delete.confirm')}</Text>
         {connectedModels.length > 0 ? (
           <>
-            <p className="t-body">{t('admin.endpoints.dialog.delete.modelsIntro', { count: connectedModels.length })}</p>
-            <ul className="t-body">
+            <Text as="p" variant="body">{t('admin.endpoints.dialog.delete.modelsIntro', { count: connectedModels.length })}</Text>
+            <Text as="ul" variant="body">
               {connectedModels.map(m => (
                 <li key={m.id}>{m.modelName} ({m.modelId})</li>
               ))}
-            </ul>
+            </Text>
           </>
         ) : (
-          <p className="t-body">{t('admin.endpoints.dialog.delete.noModels')}</p>
+          <Text as="p" variant="body">{t('admin.endpoints.dialog.delete.noModels')}</Text>
         )}
         <DialogButton variant="secondary" onClick={() => setConfirmDelete(false)} disabled={deleting}>
           {t('common.cancel')}
@@ -218,7 +223,7 @@ const EndpointEditor: React.FC<EndpointEditorProps> = ({ endpointId }) => {
           </DialogButton>
         )}
       </Dialog>
-    </div>
+    </Box>
   );
 };
 

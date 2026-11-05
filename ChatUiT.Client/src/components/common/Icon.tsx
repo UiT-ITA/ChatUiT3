@@ -2,20 +2,21 @@ import React from 'react';
 import { cx, splitLayoutProps, type LayoutProps } from './layout';
 import './Icon.css';
 import { PiSidebarSimple } from "react-icons/pi";
-import { VscLayoutSidebarLeft, VscLayoutSidebarLeftOff  } from "react-icons/vsc";
-import { RiSettings3Line, RiChat1Line, RiChatAiLine, RiAdminLine, RiUserLine, RiRobot2Line, RiMenuLine, RiServerLine, RiCpuLine, RiToolsLine, RiCodeBoxLine } from 'react-icons/ri';
+import { VscLayoutSidebarLeft, VscLayoutSidebarLeftOff } from "react-icons/vsc";
+import { RiSettings3Line, RiChat1Line, RiChatAiLine, RiUserLine, RiRobot2Line, RiMenuLine, RiServerLine, RiCpuLine, RiToolsLine, RiCodeBoxLine, RiPulseLine } from 'react-icons/ri';
 import { GrHelpBook } from "react-icons/gr";
-import { MdOutlineVpnKey, MdContentCopy, MdCheck, MdRefresh, MdEdit, MdCallSplit, MdKeyboardArrowDown, MdMoreHoriz, MdAttachFile, MdSend, MdKeyboardArrowUp, MdInfo, MdRemoveRedEye, MdPublic, MdPsychology, MdMoreVert, MdClose, MdInsertDriveFile, MdOutlineLightMode, MdOutlineDarkMode, MdSearch, MdAdd, MdArrowBack, MdStop, MdGridView, MdOutlineVerifiedUser, MdOutlinePeopleAlt, MdFilterList, MdLock, MdPushPin, MdOutlinePushPin, MdVisibility, MdVisibilityOff, MdImage, MdOutlineMail, MdOutlineEvent, MdHelpOutline, MdChevronLeft, MdChevronRight } from "react-icons/md";
-import { FaStar, FaRegStar, FaTrash } from "react-icons/fa";
+import { MdOutlineVpnKey, MdContentCopy, MdCheck, MdRefresh, MdOutlineEdit, MdKeyboardArrowDown, MdMoreHoriz, MdAttachFile, MdSend, MdKeyboardArrowUp, MdInfoOutline, MdOutlineRemoveRedEye, MdPublic, MdOutlinePsychology, MdMoreVert, MdClose, MdOutlineInsertDriveFile, MdOutlineLightMode, MdOutlineDarkMode, MdSearch, MdAdd, MdArrowBack, MdStop, MdOutlineGridView, MdOutlineVerifiedUser, MdOutlinePeopleAlt, MdLockOutline, MdCheckCircle, MdOutlineCheckCircle, MdVisibility, MdVisibilityOff, MdOutlineImage, MdDeleteOutline, MdOutlineMail, MdOutlineEvent, MdHelpOutline, MdChevronLeft, MdChevronRight, MdOutlineSchedule, MdOutlineFilterAlt, MdOutlineShield, MdOutlineFileUpload, MdErrorOutline, MdOutlineVolumeUp, MdZoomIn, MdZoomOut, MdWrapText, MdArrowOutward } from "react-icons/md";
+import { FaStar } from "react-icons/fa";
+import { LuGitBranch, LuStar } from "react-icons/lu";
 
 const iconMap = {
-  sidebar:  VscLayoutSidebarLeftOff, // Not in use
-  sidebarOpen: VscLayoutSidebarLeft, // Not in use
+  sidebar: VscLayoutSidebarLeftOff,
+  sidebarOpen: VscLayoutSidebarLeft,
   sidebarToggle: PiSidebarSimple,
   settings: RiSettings3Line,
   chat: RiChat1Line,
   chatNew: RiChatAiLine,
-  admin: RiAdminLine,
+  admin: MdOutlineShield,
   user: RiUserLine,
   assistants: RiRobot2Line,
   help: GrHelpBook,
@@ -23,41 +24,42 @@ const iconMap = {
   copy: MdContentCopy,
   check: MdCheck,
   refresh: MdRefresh,
-  edit: MdEdit,
-  branch: MdCallSplit,
+  edit: MdOutlineEdit,
+  branch: LuGitBranch,
   arrowDown: MdKeyboardArrowDown,
   more: MdMoreHoriz,
   attach: MdAttachFile,
   send: MdSend,
   stop: MdStop,
   arrowUp: MdKeyboardArrowUp,
-  info: MdInfo,
-  eye: MdRemoveRedEye,
+  info: MdInfoOutline,
+  eye: MdOutlineRemoveRedEye,
   globe: MdPublic,
-  brain: MdPsychology,
+  brain: MdOutlinePsychology,
   menu: RiMenuLine,
   star: FaStar,
-  trash: FaTrash,
+  trash: MdDeleteOutline,
   moreVert: MdMoreVert,
   close: MdClose,
-  file: MdInsertDriveFile,
+  file: MdOutlineInsertDriveFile,
   sun: MdOutlineLightMode,
   moon: MdOutlineDarkMode,
   search: MdSearch,
   add: MdAdd,
   back: MdArrowBack,
-  grid: MdGridView,
+  grid: MdOutlineGridView,
   shield: MdOutlineVerifiedUser,
   people: MdOutlinePeopleAlt,
-  filter: MdFilterList,
-  lock: MdLock,
-  pin: MdPushPin,
-  pinOutline: MdOutlinePushPin,
+  filter: MdOutlineFilterAlt,
+  lock: MdLockOutline,
+  checkCircle: MdCheckCircle,
+  checkCircleOutline: MdOutlineCheckCircle,
   visible: MdVisibility,
   hidden: MdVisibilityOff,
-  image: MdImage,
-  starOutline: FaRegStar,
+  image: MdOutlineImage,
+  starOutline: LuStar,
   server: RiServerLine,
+  pulse: RiPulseLine,
   cpu: RiCpuLine,
   tools: RiToolsLine,
   code: RiCodeBoxLine,
@@ -66,10 +68,18 @@ const iconMap = {
   question: MdHelpOutline,
   chevronLeft: MdChevronLeft,
   chevronRight: MdChevronRight,
+  clock: MdOutlineSchedule,
+  upload: MdOutlineFileUpload,
+  error: MdErrorOutline,
+  speaker: MdOutlineVolumeUp,
+  zoomIn: MdZoomIn,
+  zoomOut: MdZoomOut,
+  wrap: MdWrapText,
+  externalLink: MdArrowOutward,
 } as const;
 
 export type IconName = keyof typeof iconMap;
-export type IconSize = 'xs' | 'small' | 'medium' | 'large' | 'xl';
+export type IconSize = 'sm' | 'md' | 'lg';
 export type IconColor = 'inherit' | 'secondary' | 'muted' | 'accent' | 'danger' | 'warning' | 'success';
 
 interface IconProps extends LayoutProps {
@@ -88,7 +98,7 @@ interface IconProps extends LayoutProps {
 }
 
 /** The app's icon. Every icon in the app goes through this component. */
-export const Icon: React.FC<IconProps> = ({ name, size = 'medium', color = 'inherit', label, rotate = 0, mirror = false, spin = false, className, ...props }) => {
+export const Icon: React.FC<IconProps> = ({ name, size = 'sm', color = 'inherit', label, rotate = 0, mirror = false, spin = false, className, ...props }) => {
   const [style, rest] = splitLayoutProps(props);
   const IconComponent = iconMap[name];
   return (

@@ -7,7 +7,8 @@ import FilePreviewModal from '../chat/FilePreviewModal';
 import { addNotification } from '../../services/notificationService';
 import Button from '../common/Button';
 import KnowledgeFileItem, { type KnowledgeFileItemData } from './KnowledgeFileItem';
-import './KnowledgeFileList.css';
+import PanelSection from '../common/PanelSection';
+import Text from '../common/Text';
 import Badge from '../common/Badge';
 
 export type { KnowledgeFileCategory, KnowledgeFileItemData } from './KnowledgeFileItem';
@@ -54,124 +55,88 @@ const KnowledgeFileList = ({
 
   const isDisabled = disabled || unavailable;
 
-  const handleAddClick = () => {
-    if (isDisabled) {
-      return;
-    }
-
-    fileInputRef.current?.click();
-  };
-
   const handleFileChange = async (event: React.ChangeEvent<HTMLInputElement>) => {
-    const files = event.target.files;
+    const files = Array.from(event.target.files ?? []);
 
-    if (files && files.length > 0) {
-      const validFiles = Array.from(files)
-        .filter((file) => isValidFileType(file));
+    if (files.length > 0) {
+      const validFiles = files.filter((file) => isValidFileType(file));
+      const results = await Promise.allSettled(validFiles.map((file) => FileProcessingService.processFile(file)));
 
-      const processingResults = await Promise.allSettled(
-        validFiles.map((file) => FileProcessingService.processFile(file))
-      );
-
-      const ChatFiles = processingResults.flatMap((result) => {
-        return result.status === 'fulfilled' ? [result.value] : [];
-      });
-
-      processingResults.forEach((result, index) => {
-        if (result.status !== 'rejected') {
-          return;
-        }
-
+      results.forEach((result, index) => {
+        if (result.status === 'fulfilled') return;
         const file = validFiles[index];
-        if (!file) {
-          return;
-        }
-
-          const reason = result.reason instanceof Error ? result.reason.message : 'File processing failed';
-          console.error(`Failed to process knowledge file ${file.name}:`, result.reason);
-          addNotification({
-            level: 'Error',
-            message: `${file.name}: ${reason}`
-          });
+        const reason = result.reason instanceof Error ? result.reason.message : 'File processing failed';
+        console.error(`Failed to process knowledge file ${file.name}:`, result.reason);
+        addNotification({ level: 'Error', message: `${file.name}: ${reason}` });
       });
 
-      onFilesSelected(ChatFiles);
+      onFilesSelected(results.flatMap((result) => result.status === 'fulfilled' ? [result.value] : []));
     }
 
     event.target.value = '';
   };
 
   const handlePreview = async (item: KnowledgeFileItemData) => {
-    if (item.ChatFile) {
-      setPreviewFile(item.ChatFile);
-      return;
-    }
-
-    if (onLoadFile) {
-      const loaded = await onLoadFile(item);
-      if (loaded) {
-        setPreviewFile(loaded);
-      }
-    }
+    const file = item.ChatFile ?? (await onLoadFile?.(item));
+    if (file) setPreviewFile(file);
   };
 
   return (
     <>
-      <section
-        className={`knowledge-file-list${unavailable ? ' knowledge-file-list--unavailable' : ''}`}
+      <PanelSection
+        dimmed={unavailable}
         aria-label={title}
-      >
-        <div className="knowledge-file-list__header">
-          <div className="knowledge-file-list__heading">
-            <h3 className="knowledge-file-list__title t-body-strong">
-              {title}
-              {unavailable && (
-                <Badge ml="sm">{t('assistants.knowledge.notAvailableYet')}</Badge>
-              )}
-            </h3>
-            <p className="knowledge-file-list__description t-ui-plain">{description}</p>
-          </div>
-
+        title={(
+          <>
+            {title}
+            {unavailable && (
+              <Badge ml="sm">{t('assistants.knowledge.notAvailableYet')}</Badge>
+            )}
+          </>
+        )}
+        description={description}
+        action={(
           <Button
             variant="subtle"
             size="small"
-            onClick={handleAddClick}
+            onClick={() => fileInputRef.current?.click()}
             disabled={isDisabled}
           >
             {t('assistants.knowledge.addFiles')}
           </Button>
-        </div>
+        )}
+        between={(
+          <>
+            {status}
 
-        {status}
-
-        <input
-          ref={fileInputRef}
-          type="file"
-          className="knowledge-file-list__file-input"
-          multiple
-          accept={SUPPORTED_IMPORT_ACCEPT}
-          onChange={handleFileChange}
-          disabled={isDisabled}
-        />
-
-        <div className="knowledge-file-list__items">
-          {items.length > 0 ? items.map((item) => (
-            <KnowledgeFileItem
-              key={item.id}
-              item={item}
-              onPreview={item.ChatFile || (onLoadFile && item.fileId) ? () => void handlePreview(item) : undefined}
-              onRemove={onItemRemove ? () => onItemRemove(item.id) : undefined}
-              allowDescription={allowItemDescription}
-              descriptionPlaceholder={itemDescriptionPlaceholder}
-              onDescriptionChange={(value) => onItemDescriptionChange?.(item.id, value)}
+            <input
+              ref={fileInputRef}
+              type="file"
+              hidden
+              multiple
+              accept={SUPPORTED_IMPORT_ACCEPT}
+              onChange={handleFileChange}
               disabled={isDisabled}
-              tokenLabel={itemTokenLabel?.(item)}
             />
-          )) : (
-            <div className="knowledge-file-list__empty t-ui-plain">{emptyLabel}</div>
-          )}
-        </div>
-      </section>
+          </>
+        )}
+      >
+        {items.length > 0 ? items.map((item) => (
+          <KnowledgeFileItem
+            key={item.id}
+            item={item}
+            onPreview={item.ChatFile || (onLoadFile && item.fileId) ? () => void handlePreview(item) : undefined}
+            onRemove={onItemRemove ? () => onItemRemove(item.id) : undefined}
+            allowDescription={allowItemDescription}
+            descriptionPlaceholder={itemDescriptionPlaceholder}
+            onDescriptionChange={(value) => onItemDescriptionChange?.(item.id, value)}
+            disabled={isDisabled}
+            tokenLabel={itemTokenLabel?.(item)}
+          />
+        )) : (
+          <Text as="div" variant="ui-plain" tone="muted" leading="base">{emptyLabel}</Text>
+        )}
+      </PanelSection>
 
       <FilePreviewModal
         file={previewFile}

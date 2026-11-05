@@ -27,6 +27,9 @@ import Grid from '../common/Grid';
 import { hasChanges } from '../../utils/formChanges';
 import { AllowedRolesField, EndpointSelect, KnownModelSelect, ModelEditorFooter, ModelIdField } from './ModelEditorParts';
 import { ALL_ROLES, catalogEntryForModelId, modelIdOptions, useEndpointDeployments, useModelCatalog } from './modelEditorShared';
+import PageTitleBar from '../common/PageTitleBar';
+import EmptyNote from '../common/EmptyNote';
+import Text from '../common/Text';
 
 const TEMPERATURE_OPTIONS: TemperatureSupport[] = [
   'Unsupported',
@@ -129,11 +132,11 @@ const LanguageModelEditor: React.FC<LanguageModelEditorProps> = ({ modelId: edit
   }
 
   if (editId && models === undefined) {
-    return <div className="admin-empty t-ui-plain">{t('common.loading')}</div>;
+    return <EmptyNote>{t('common.loading')}</EmptyNote>;
   }
 
   if (editId && models !== undefined && !model) {
-    return <div className="admin-empty t-ui-plain">{t('common.notFound')}</div>;
+    return <EmptyNote>{t('common.notFound')}</EmptyNote>;
   }
 
   const updateCaps = <K extends keyof LanguageModelCapabilities>(key: K, value: LanguageModelCapabilities[K]) => {
@@ -221,7 +224,7 @@ const LanguageModelEditor: React.FC<LanguageModelEditorProps> = ({ modelId: edit
   );
 
   return (
-    <div className="admin-form admin-form-wide">
+    <>
       <EditorHeader
         backPath="/admin/models"
         backLabel={t('admin.tabs.models')}
@@ -231,10 +234,10 @@ const LanguageModelEditor: React.FC<LanguageModelEditorProps> = ({ modelId: edit
         onSave={handleSave}
         onCancel={() => navigate('/admin/models')}
       />
-      <h1 className="t-page-title">
+      <Text as="h1" variant="page-title">
         {model ? t('admin.models.dialog.edit.title') : t('admin.models.add.title')}
-      </h1>
-      <div className="page-title-bar" />
+      </Text>
+      <PageTitleBar />
 
       <Stack gap="xl">
         <EndpointSelect value={endpointId} endpoints={endpoints} onChange={setEndpointId} />
@@ -254,7 +257,7 @@ const LanguageModelEditor: React.FC<LanguageModelEditorProps> = ({ modelId: edit
 
         {showDetails && (
           <>
-            <Grid minColumnWidth="12rem" gap="lg">
+            <Grid gap="lg">
               <TextInput
                 label={t('admin.models.fields.modelName')}
                 value={modelName}
@@ -304,7 +307,7 @@ const LanguageModelEditor: React.FC<LanguageModelEditorProps> = ({ modelId: edit
             </Checkbox>
 
             <Stack gap="sm">
-              <div className="t-overline">{t('admin.models.fields.capabilities')}</div>
+              <Text as="div" variant="overline">{t('admin.models.fields.capabilities')}</Text>
               <CheckboxGroup>
                 <Checkbox
                   checked={capabilities.supportsVision}
@@ -348,7 +351,7 @@ const LanguageModelEditor: React.FC<LanguageModelEditorProps> = ({ modelId: edit
               </CheckboxGroup>
             </Field>
 
-            <Grid minColumnWidth="12rem" gap="lg">
+            <Grid gap="lg">
               <TextInput
                 label={t('admin.models.fields.maxContextTokens')}
                 type="number"
@@ -410,7 +413,7 @@ const LanguageModelEditor: React.FC<LanguageModelEditorProps> = ({ modelId: edit
       </Stack>
 
       {model && <ModelEditorFooter modelId={model.id} dirty={dirty} />}
-    </div>
+    </>
   );
 };
 

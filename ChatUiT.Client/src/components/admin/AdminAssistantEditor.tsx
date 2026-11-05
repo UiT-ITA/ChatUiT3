@@ -6,8 +6,11 @@ import { createAdminAssistant, updateAdminAssistant, deleteAdminAssistant } from
 import { adminAssistantsSignal, loadAdminData } from '../../services/adminDataService';
 import type { CreateAdminAssistantDto, UpdateAdminAssistantDto } from '../../types/admin';
 import AssistantForm from '../assistants/AssistantForm';
-import Button from '../common/Button';
+import AssistantDeleteFooter from '../assistants/AssistantDeleteFooter';
 import { ConfirmDialog } from '../common/Dialog';
+import PageTitleBar from '../common/PageTitleBar';
+import EmptyNote from '../common/EmptyNote';
+import Text from '../common/Text';
 
 interface AdminAssistantEditorProps {
   assistantId?: string;
@@ -32,11 +35,11 @@ const AdminAssistantEditor: React.FC<AdminAssistantEditorProps> = ({ assistantId
   }, []);
 
   if (assistantId && assistants === undefined) {
-    return <div className="admin-empty t-ui-plain">{t('common.loading')}</div>;
+    return <EmptyNote>{t('common.loading')}</EmptyNote>;
   }
 
   if (assistantId && assistants !== undefined && !assistant) {
-    return <div className="admin-empty t-ui-plain">{t('common.notFound')}</div>;
+    return <EmptyNote>{t('common.notFound')}</EmptyNote>;
   }
 
   const handleCreate = async (payload: CreateAdminAssistantDto) => {
@@ -66,11 +69,11 @@ const AdminAssistantEditor: React.FC<AdminAssistantEditorProps> = ({ assistantId
   };
 
   return (
-    <div>
-      <h1 className="t-page-title">
+    <>
+      <Text as="h1" variant="page-title">
         {assistant ? assistant.name : t('admin.assistants.add.title')}
-      </h1>
-      <div className="page-title-bar" />
+      </Text>
+      <PageTitleBar />
 
       <AssistantForm
         key={assistant?.id ?? 'new'}
@@ -81,12 +84,9 @@ const AdminAssistantEditor: React.FC<AdminAssistantEditorProps> = ({ assistantId
         saveLabel={t('assistants.saveAssistant')}
         backPath="/admin/assistants"
         backLabel={t('admin.tabs.assistants')}
-        footerExtra={assistant && (
-          <Button variant="danger" ml="auto" onClick={() => setConfirmDelete(true)}>
-            {t('common.delete')}
-          </Button>
-        )}
       />
+
+      {assistant && <AssistantDeleteFooter onDelete={() => setConfirmDelete(true)} />}
 
       <ConfirmDialog
         isOpen={confirmDelete}
@@ -97,7 +97,7 @@ const AdminAssistantEditor: React.FC<AdminAssistantEditorProps> = ({ assistantId
         onConfirm={handleDelete}
         onCancel={() => setConfirmDelete(false)}
       />
-    </div>
+    </>
   );
 };
 

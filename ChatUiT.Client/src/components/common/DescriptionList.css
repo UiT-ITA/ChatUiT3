@@ -1,0 +1,44 @@
+/* Terms in one column, their values in the next */
+.description-list {
+  display: grid;
+  grid-template-columns: max-content 1fr;
+  gap: var(--space-sm) var(--space-xl);
+  margin: 0;
+}
+
+.description-list__term {
+  color: var(--text-3);
+}
+
+.description-list__details {
+  margin: 0;
+  white-space: pre-wrap;
+  word-break: break-all;
+}
+
+/* Compact: tighter gaps, the term set a little lower, values wrap anywhere in the main text colour */
+.description-list--compact {
+  gap: var(--space-sm) var(--space-lg);
+}
+
+.description-list--compact .description-list__term {
+  padding-top: var(--space-xs);
+}
+
+.description-list--compact .description-list__details {
+  color: var(--text);
+  white-space: normal;
+  word-break: normal;
+  overflow-wrap: anywhere;
+}
+
+@media (width <= 36rem) {
+  .description-list--compact {
+    grid-template-columns: 1fr;
+    gap: var(--space-xs);
+  }
+
+  .description-list--compact .description-list__details {
+    margin-bottom: var(--space-sm);
+  }
+}

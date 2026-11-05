@@ -1,0 +1,21 @@
+/* A full-width bar that fills with how much of a limit is used */
+.progress-bar {
+  height: var(--space-sm);
+  border-radius: var(--radius-pill);
+  background: var(--panel-2);
+  overflow: hidden;
+}
+
+.progress-bar__fill {
+  height: 100%;
+  background: var(--accent);
+  transition: width var(--dur-base) ease;
+}
+
+.progress-bar--warn .progress-bar__fill {
+  background: var(--warn);
+}
+
+.progress-bar--danger .progress-bar__fill {
+  background: var(--danger);
+}

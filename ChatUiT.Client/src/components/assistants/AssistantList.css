@@ -1,0 +1,37 @@
+/* Favorite star at the end of an assistant row */
+.assistant-list-marks {
+  display: inline-flex;
+  align-items: center;
+}
+
+.assistant-list-marks--spaced {
+  margin-right: var(--space-sm);
+}
+
+/* Assistant row meta: files and model, then the classification and the capability icons */
+.assistant-list-meta {
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+  min-width: 0;
+  margin-top: var(--space-xs);
+}
+
+.assistant-list-meta-text,
+.assistant-list-name {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* Assistant name with the default badge after it, as on the cards */
+.assistant-list-title {
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+  min-width: 0;
+}
+
+.assistant-list-default {
+  flex: 0 0 auto;
+}

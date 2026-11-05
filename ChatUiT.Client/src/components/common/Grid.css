@@ -1,0 +1,26 @@
+/* Column counts that change with the screen width */
+.grid--responsive {
+  grid-template-columns: var(--grid-template);
+}
+
+@media (width <= 50rem) {
+  .grid--responsive {
+    grid-template-columns: var(--grid-template-mobile, var(--grid-template));
+  }
+}
+
+@media (width <= 36rem) {
+  .grid--responsive {
+    grid-template-columns: var(--grid-template-narrow, var(--grid-template-mobile, var(--grid-template)));
+  }
+}
+
+.grid--equal-rows-always {
+  grid-auto-rows: 1fr;
+}
+
+@media (width > 50rem) {
+  .grid--equal-rows-desktop {
+    grid-auto-rows: 1fr;
+  }
+}

@@ -1,0 +1,32 @@
+/* The stack's display, at zero specificity so the hide-on classes of Box.css override it */
+:where(.stack) { display: flex; }
+:where(.stack--inline) { display: inline-flex; }
+
+/* A responsive stack: the custom properties set by Stack switch to their mobile values at the breakpoint */
+.stack--responsive {
+  flex-direction: var(--stack-direction);
+  gap: var(--stack-gap);
+  align-items: var(--stack-align);
+}
+
+.stack--mobile-max-width { max-width: var(--stack-max-width); }
+
+@media (width <= 50rem) {
+  .stack--responsive:not(.stack--narrow) {
+    flex-direction: var(--stack-direction-mobile);
+    gap: var(--stack-gap-mobile);
+    align-items: var(--stack-align-mobile);
+  }
+
+  .stack--mobile-max-width:not(.stack--narrow) { max-width: var(--stack-max-width-mobile); }
+}
+
+@media (width <= 36rem) {
+  .stack--narrow {
+    flex-direction: var(--stack-direction-mobile);
+    gap: var(--stack-gap-mobile);
+    align-items: var(--stack-align-mobile);
+  }
+
+  .stack--narrow.stack--mobile-max-width { max-width: var(--stack-max-width-mobile); }
+}

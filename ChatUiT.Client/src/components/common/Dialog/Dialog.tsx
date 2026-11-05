@@ -1,13 +1,14 @@
-import React, { useState, useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import type { IconName } from '../Icon';
 import Button from '../Button';
 import IconButton from '../IconButton';
 import NavItem from '../NavItem';
 import useMediaQuery from '../../../hooks/useMediaQuery';
+import { MOBILE } from '../breakpoints';
+import { cx } from '../layout';
 import './Dialog.css';
 
-// Main Dialog component
 interface DialogProps {
   isOpen: boolean;
   onClose: () => void;
@@ -19,6 +20,10 @@ interface DialogProps {
   children: React.ReactNode;
 }
 
+/**
+ * A modal over a scrim: a title bar, the content, and the DialogButton children in a footer.
+ * Two or more DialogPage children show as pages with a sidebar to switch between them.
+ */
 export const Dialog: React.FC<DialogProps> = ({
   isOpen,
   onClose,
@@ -27,13 +32,12 @@ export const Dialog: React.FC<DialogProps> = ({
   closeOnEscape = true,
   closeOnOverlayClick = true,
   preventBodyScroll = true,
-  children
+  children,
 }) => {
   const { t } = useTranslation();
-  const mobile = useMediaQuery('(max-width: 48rem)');
+  const mobile = useMediaQuery(MOBILE);
   const [activePageId, setActivePageId] = useState<string | null>(null);
 
-  // Analyze children to determine layout
   const childrenArray = React.Children.toArray(children);
   const dialogPages = childrenArray.filter(
     child => React.isValidElement(child) && child.type === DialogPage
@@ -42,104 +46,69 @@ export const Dialog: React.FC<DialogProps> = ({
     child => React.isValidElement(child) && child.type === DialogButton
   ) as React.ReactElement<DialogButtonProps>[];
   const otherChildren = childrenArray.filter(
-    child => !React.isValidElement(child) ||
-    (child.type !== DialogPage && child.type !== DialogButton)
+    child => !React.isValidElement(child) || (child.type !== DialogPage && child.type !== DialogButton)
   );
 
   const hasSidebar = dialogPages.length >= 2;
-  const hasFooter = dialogButtons.length > 0;
 
-  // Set initial active page
+  // The first page is active when the dialog opens
   if (isOpen && dialogPages.length > 0 && !activePageId) {
     setActivePageId(dialogPages[0].props.id);
   }
 
-  // Handle body scroll
+  // Stops the page behind the dialog from scrolling while it is open
   useEffect(() => {
-    if (isOpen && preventBodyScroll) {
-      document.body.style.overflow = 'hidden';
-    } else {
-      document.body.style.overflow = '';
-    }
-
+    if (!isOpen || !preventBodyScroll) return;
+    document.body.style.overflow = 'hidden';
     return () => {
       document.body.style.overflow = '';
     };
   }, [isOpen, preventBodyScroll]);
 
-  // Handle escape key
   useEffect(() => {
+    if (!isOpen || !closeOnEscape) return;
     const handleEscape = (e: KeyboardEvent) => {
-      if (e.key === 'Escape' && closeOnEscape) {
-        onClose();
-      }
+      if (e.key === 'Escape') onClose();
     };
-
-    if (isOpen) {
-      document.addEventListener('keydown', handleEscape);
-    }
-
-    return () => {
-      document.removeEventListener('keydown', handleEscape);
-    };
+    document.addEventListener('keydown', handleEscape);
+    return () => document.removeEventListener('keydown', handleEscape);
   }, [isOpen, onClose, closeOnEscape]);
 
   if (!isOpen) return null;
 
-  const handleOverlayClick = (e: React.MouseEvent) => {
-    if (e.target === e.currentTarget && closeOnOverlayClick) {
-      onClose();
-    }
-  };
-
-  const renderContent = () => {
-    if (hasSidebar) {
-      // Render active page content
-      const activePage = dialogPages.find(page => page.props.id === activePageId);
-      return activePage ? activePage.props.children : null;
-    } else {
-      // Render all non-button children
-      return otherChildren;
-    }
-  };
+  const content = hasSidebar
+    ? dialogPages.find(page => page.props.id === activePageId)?.props.children ?? null
+    : otherChildren;
 
   return (
-    <div className="dialog-overlay" onClick={handleOverlayClick}>
+    <div className="dialog-overlay" onClick={(e) => { if (closeOnOverlayClick && e.target === e.currentTarget) onClose(); }}>
       <div className={`dialog-container dialog-size-${size}`} onClick={(e) => e.stopPropagation()}>
-        {/* Header */}
         <div className="dialog-header">
           <h2 className="dialog-title t-title">{title}</h2>
           <IconButton icon="close" label={t('common.close')} onClick={onClose} />
         </div>
 
-        {/* Content */}
-        <div className={`dialog-content ${hasSidebar ? 'with-sidebar' : ''}`}>
+        <div className={cx('dialog-content', hasSidebar && 'dialog-content--with-sidebar')}>
           {hasSidebar && (
             <div className="dialog-sidebar">
-              {dialogPages.map((page) => {
-                const { id, label, icon } = page.props;
-                return (
-                  <NavItem
-                    key={id}
-                    icon={icon}
-                    active={activePageId === id}
-                    indicator={mobile ? 'bottom' : 'start'}
-                    onClick={() => setActivePageId(id)}
-                  >
-                    {label}
-                  </NavItem>
-                );
-              })}
+              {dialogPages.map(({ props: { id, label, icon } }) => (
+                <NavItem
+                  key={id}
+                  icon={icon}
+                  active={activePageId === id}
+                  indicator={mobile ? 'bottom' : 'start'}
+                  onClick={() => setActivePageId(id)}
+                >
+                  {label}
+                </NavItem>
+              ))}
             </div>
           )}
 
-          <div className="dialog-main">
-            {renderContent()}
-          </div>
+          <div className="dialog-main">{content}</div>
         </div>
 
-        {/* Footer */}
-        {hasFooter && (
+        {dialogButtons.length > 0 && (
           <div className="dialog-footer">
             {dialogButtons.map(button => React.cloneElement(button, { fullWidth: mobile }))}
           </div>
@@ -149,7 +118,6 @@ export const Dialog: React.FC<DialogProps> = ({
   );
 };
 
-// DialogPage component
 interface DialogPageProps {
   id: string;
   label: string;
@@ -157,13 +125,9 @@ interface DialogPageProps {
   children: React.ReactNode;
 }
 
-export const DialogPage: React.FC<DialogPageProps> = ({ children }) => {
-  // This component's children are rendered by the Dialog component
-  // The component itself is just a marker for the Dialog to detect
-  return <>{children}</>;
-};
+/** A page of a Dialog, listed in its sidebar. The Dialog renders the children of the active page. */
+export const DialogPage: React.FC<DialogPageProps> = ({ children }) => <>{children}</>;
 
-// DialogButton component
 interface DialogButtonProps {
   variant?: 'primary' | 'secondary' | 'danger';
   onClick: () => void;
@@ -175,25 +139,9 @@ interface DialogButtonProps {
   children: React.ReactNode;
 }
 
-export const DialogButton: React.FC<DialogButtonProps> = ({
-  variant = 'secondary',
-  onClick,
-  disabled = false,
-  loading = false,
-  autoFocus = false,
-  fullWidth = false,
-  children
-}) => {
-  return (
-    <Button
-      variant={variant}
-      fullWidth={fullWidth}
-      onClick={onClick}
-      disabled={disabled}
-      loading={loading}
-      autoFocus={autoFocus}
-    >
-      {children}
-    </Button>
-  );
-};
+/** A button in the dialog's footer. */
+export const DialogButton: React.FC<DialogButtonProps> = ({ variant = 'secondary', onClick, disabled = false, loading = false, autoFocus = false, fullWidth = false, children }) => (
+  <Button variant={variant} fullWidth={fullWidth} onClick={onClick} disabled={disabled} loading={loading} autoFocus={autoFocus}>
+    {children}
+  </Button>
+);

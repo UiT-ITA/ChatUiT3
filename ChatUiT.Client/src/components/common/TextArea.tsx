@@ -18,7 +18,6 @@ export interface TextAreaProps extends InputBaseProps, NativeTextAreaProps {
   resize?: 'none' | 'vertical';
 }
 
-const LINE_HEIGHT = 1.6;
 
 const supportsFieldSizing = typeof CSS !== 'undefined' && CSS.supports('field-sizing', 'content');
 
@@ -42,8 +41,8 @@ const TextArea: React.FC<TextAreaProps> = (props) => {
 
   const style: React.CSSProperties = {
     resize: autoResize ? 'none' : resize,
-    minHeight: minRows ? `calc(${minRows * LINE_HEIGHT}em + 1.25rem + 2px)` : undefined,
-    maxHeight: maxRows ? `calc(${maxRows * LINE_HEIGHT}em + 1.25rem + 2px)` : undefined,
+    minHeight: minRows ? `calc(${minRows}lh + 2 * var(--space-md) + 2 * var(--border-sm))` : undefined,
+    maxHeight: maxRows ? `calc(${maxRows}lh + 2 * var(--space-md) + 2 * var(--border-sm))` : undefined,
     ...boxStyle,
   };
 

@@ -1,0 +1,188 @@
+/* Rendered markdown: headings, paragraphs, lists, tables, images, code, quotes, rules, math and links */
+.rich-text--message {
+  font-size: var(--fs-md);
+  line-height: var(--lh-base);
+}
+
+.rich-text--message :is(h1, h2, h3, h4, h5, h6) {
+  margin-top: var(--space-2xl);
+  margin-bottom: var(--space-sm);
+  color: var(--text);
+  line-height: var(--lh-tight);
+}
+
+.rich-text--message h1 { font-size: var(--fs-xl); }
+.rich-text--message :is(h2, h3) { font-size: var(--fs-lg); }
+.rich-text--message h4 { font-size: var(--fs-md); }
+/* Section headings: more space above, so they separate from the bold list leads */
+.rich-text--message :is(h1, h2) { margin-top: calc(var(--space-2xl) + var(--space-sm)); }
+.rich-text--message :is(h1, h2, h3, h4, h5, h6) + p { margin-top: 0; }
+
+.rich-text--message p { margin-block: var(--space-md); }
+.rich-text--message p + p { margin-top: var(--space-sm); }
+.rich-text--message p:has(+ :is(ul, ol)) { margin-bottom: 0; }
+/* A paragraph after a list stands apart from the last item */
+.rich-text--message :is(ul, ol) + p { margin-top: var(--space-xl); }
+
+.rich-text--message :is(ul, ol) {
+  margin: var(--space-md) 0;
+  padding-left: 0;
+  list-style-position: outside;
+}
+.rich-text--message :is(ul, ol) > li { margin: var(--space-sm) 0 var(--space-sm) var(--space-xl); }
+/* Top-level bullets sit at the left edge of the text column */
+.rich-text--message > ul > li { margin-left: var(--space-lg); }
+/* Nested lists and their items are tighter */
+.rich-text--message li :is(ul, ol),
+.rich-text--message li :is(ul, ol) > li { margin: var(--space-xs) 0 var(--space-xs) var(--space-xl); }
+
+.rich-text--message ol > li::marker {
+  color: var(--text-2);
+  font-weight: var(--fw-medium);
+  font-variant-numeric: tabular-nums;
+}
+
+/* Tables: flat, a brand rule under the header */
+.rich-text--message :is(.table-wrapper, table) { margin: var(--space-lg) 0; }
+.rich-text--message table {
+  width: 100%;
+  border-collapse: collapse;
+}
+.rich-text--message :is(th, td) { padding: var(--space-sm) var(--space-md); }
+
+.rich-text--message th {
+  border-bottom: var(--border-md) solid var(--brand);
+  color: var(--text);
+  font-weight: var(--fw-bold);
+  text-align: left;
+}
+
+.rich-text--message td {
+  border-bottom: var(--border-sm) solid var(--line-soft);
+  color: var(--text-2);
+}
+.rich-text--message td:first-child {
+  color: var(--text);
+  font-weight: var(--fw-bold);
+}
+
+.rich-text--message img {
+  display: block;
+  max-width: 100%;
+  height: auto;
+  margin: var(--space-sm) 0;
+  border-radius: var(--radius-sm);
+}
+
+.rich-text--message :not(pre) > code {
+  padding: 0 var(--space-xs);
+  border-radius: var(--radius-sm);
+  background: var(--panel-2);
+  font-family: var(--font-mono);
+  font-size: var(--fs-md);
+}
+
+.rich-text--message .code-block-wrapper :is(pre, code) {
+  font-family: var(--font-mono);
+  font-size: var(--fs-sm);
+  line-height: var(--lh-base);
+}
+
+/* Light modes: code one weight heavier, so the token colours read on the light fill */
+[data-mode="light"] .rich-text--message .code-block-wrapper code { font-weight: var(--fw-medium); }
+.rich-text--message .code-block-wrapper .token.comment { font-style: italic; }
+
+.rich-text--message blockquote {
+  margin: var(--space-md) 0;
+  padding: var(--space-xs) 0 var(--space-xs) var(--space-lg);
+  border-left: var(--border-lg) solid var(--accent-2);
+  color: var(--text-2);
+}
+
+.rich-text--message hr {
+  margin: var(--space-xl) 0;
+  border: none;
+  border-top: var(--border-sm) solid var(--line);
+}
+
+/* Math: inline at the size of the surrounding text, display math a step larger, apart from the paragraphs around it */
+.rich-text--message .katex { font-size: inherit; }
+.rich-text--message .katex-display { margin: var(--space-xl) 0; }
+.rich-text--message .katex-display > .katex { font-size: var(--fs-lg); }
+
+.rich-text--message :is(a, a:visited) {
+  color: var(--accent);
+  text-decoration: underline;
+  text-underline-offset: var(--space-xs);
+}
+.rich-text--message :is(a:hover, a:focus-visible) { color: var(--brand); }
+
+.rich-text--message > :first-child { margin-top: 0; }
+.rich-text--message > :last-child { margin-bottom: 0; }
+
+/* The arrow icon of RichTextLink */
+.rich-text__link-icon {
+  width: var(--space-md);
+  height: var(--space-md);
+  margin-left: var(--space-xs);
+  vertical-align: baseline;
+}
+
+/* Narrow screens: a link moves to the next line as a whole, and wraps inside only when it is wider than the line */
+@media (width <= 50rem) {
+  .rich-text--message a {
+    display: inline-block;
+    max-width: 100%;
+  }
+}
+
+/* Framed: a bordered surface, for a markdown document shown on its own */
+.rich-text--framed {
+  padding: var(--space-lg);
+  border: var(--border-sm) solid var(--line);
+  border-radius: var(--radius-sm);
+  background: var(--surface);
+}
+
+/* Document: sections separated by a hairline above each h2, and numbered steps in accent circles */
+.rich-text--document h2 {
+  margin-bottom: var(--space-md);
+  padding-top: var(--space-xl);
+  border-top: var(--border-sm) solid var(--line);
+}
+
+.rich-text--document ol {
+  counter-reset: document-step;
+  list-style: none;
+}
+.rich-text--document ol > li {
+  counter-increment: document-step;
+  position: relative;
+  margin-left: var(--space-2xl);
+}
+
+.rich-text--document ol > li::before {
+  content: counter(document-step);
+  position: absolute;
+  left: calc(-1 * var(--space-2xl));
+  width: var(--icon-lg);
+  height: var(--icon-lg);
+  border-radius: 50%;
+  background: var(--accent);
+  color: var(--btn-fg);
+  font-size: var(--fs-sm);
+  font-weight: var(--fw-bold);
+  line-height: var(--icon-lg);
+  text-align: center;
+}
+
+.rich-text--document td:first-child { white-space: nowrap; }
+
+/* Notes: short markdown in secondary text at caption size, such as reasoning summaries */
+.rich-text--notes {
+  color: var(--text-2);
+  font-size: var(--fs-sm);
+  line-height: var(--lh-base);
+}
+.rich-text--notes p { margin: 0 0 var(--space-sm); }
+.rich-text--notes p:last-child { margin-bottom: 0; }

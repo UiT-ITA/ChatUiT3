@@ -1,0 +1,22 @@
+/* Keyboard keys joined by plus signs */
+.key-combo {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-xs);
+  vertical-align: baseline;
+}
+
+.key-combo__key {
+  display: inline-block;
+  padding: 0 var(--space-sm);
+  border: var(--border-sm) solid var(--line);
+  border-bottom-width: var(--border-md);
+  border-radius: var(--radius-md);
+  background: var(--surface);
+  color: var(--text);
+}
+
+.key-combo__plus {
+  color: var(--text-3);
+  padding: 0 var(--space-xs);
+}

@@ -18,15 +18,17 @@ interface SegmentedControlProps<V extends string> extends LayoutProps {
   // Accessible name of the group
   label: string;
   disabled?: boolean;
+  // Spans the width of its container, with options of equal width
+  stretch?: boolean;
   className?: string;
   style?: React.CSSProperties;
 }
 
 /** A row of mutually exclusive options. */
-function SegmentedControl<V extends string>({ value, onChange, options, size = 'medium', label, disabled = false, className, ...props }: SegmentedControlProps<V>) {
+function SegmentedControl<V extends string>({ value, onChange, options, size = 'medium', label, disabled = false, stretch = false, className, ...props }: SegmentedControlProps<V>) {
   const [style] = splitLayoutProps(props);
   return (
-    <div role="radiogroup" aria-label={label} className={cx('segmented-control', className)} style={style}>
+    <div role="radiogroup" aria-label={label} className={cx('segmented-control', stretch && 'segmented-control--stretch', className)} style={style}>
       {options.map(option => (
         <button
           key={option.value}

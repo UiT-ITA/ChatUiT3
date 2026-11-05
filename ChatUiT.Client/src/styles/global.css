@@ -1,0 +1,98 @@
+@layer base {
+  /* Reset styles */
+  * {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+  }
+
+  html, body, #root {
+    height: 100%;
+    width: 100%;
+    min-width: var(--size-sm);
+    overflow-x: auto;
+  }
+
+  #root {
+    display: flex;
+    flex-direction: column;
+  }
+
+  /* Base text setup — the faces themselves live in styles/typography.css */
+  :root {
+    line-height: var(--lh-base);
+    color: var(--text);
+    background: var(--bg);
+    -webkit-font-smoothing: antialiased;
+  }
+
+  a {
+    color: var(--accent);
+    text-underline-offset: var(--space-xs);
+  }
+
+  a:hover {
+    color: var(--brand);
+  }
+
+  ::selection {
+    background: var(--sel-bg);
+    color: var(--sel-fg);
+  }
+
+  /* No focus outline anywhere in the app, by design. Do not add one back. */
+  :focus,
+  :focus-visible {
+    outline: none;
+  }
+
+  /* Default colours for the typography roles (faces defined in typography.css) */
+  .t-overline {
+    color: var(--text-3);
+  }
+
+  .t-page-title {
+    color: var(--text);
+  }
+
+  /* Menu fade-in */
+  @keyframes fade-in {
+    from { opacity: 0; }
+    to { opacity: 1; }
+  }
+
+  /* Custom scrollbars: a thin thumb, shown while the pointer is over the scroll area */
+  ::-webkit-scrollbar {
+    width: var(--space-sm);
+    height: var(--space-sm);
+  }
+
+  ::-webkit-scrollbar-thumb {
+    border: var(--border-md) solid transparent;
+    border-radius: var(--radius-md);
+    background-clip: content-box;
+  }
+
+  :hover::-webkit-scrollbar-thumb {
+    background-color: var(--line-strong);
+  }
+
+  ::-webkit-scrollbar-thumb:hover {
+    background-color: var(--text-3);
+  }
+
+  /* Touch screens: scroll areas take no room for a scrollbar */
+  @media (hover: none) {
+    ::-webkit-scrollbar {
+      width: 0;
+      height: 0;
+    }
+  }
+
+  @-moz-document url-prefix() {
+    * {
+      scrollbar-width: thin;
+      scrollbar-color: var(--line-strong) transparent;
+    }
+  }
+}

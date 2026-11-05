@@ -1,47 +1,151 @@
-/* =============================================================================
-   APP THEME ALIASES
-   Two axes:
-     data-theme: "blue" (UiT profile) | "grey" (neutral variant)
-     data-mode:  "light" | "dark"  (resolved from light/dark/system setting)
-   Every component styles against these aliases only.
-============================================================================= */
+/* Semantic colour tokens per data-theme ("blue" UiT profile, "grey" neutral) and data-mode ("light", "dark").
+   Every selector also matches nested elements, so an element with its own data-theme and data-mode renders in that theme. */
 
 @import './tokens.css';
 
-/* =============================================================================
-   SIZE CONTROL — root font-size scales the whole app (all sizes are in rem)
-============================================================================= */
+/* Primitive palette: the shared UiT colours, tints, neutrals and dark surfaces. Every colour value in this file appears once */
 :root {
-  font-size: 16px;
+  /* ---- UiT profile palette ---- */
+  --uit-dark-blue: #003349;
+  --uit-blue: #007396;
+  --uit-light-blue: #59BEC9;
+  --uit-red: #CB333B;
+  --uit-yellow: #F2A900;
+  --uit-black: #000000;
+  --uit-white: #FFFFFF;
+
+  /* ---- Tints: profile colours mixed toward white ---- */
+  --dark-blue-80: #335c6d;
+  --dark-blue-60: #668592;
+  --dark-blue-40: #99adb8;
+  --dark-blue-20: #ccd6db;
+  --dark-blue-10: #e6eaed;
+  --dark-blue-05: #f2f5f6;
+  --blue-80: #338fab;
+  --blue-60: #66abc0;
+  --blue-40: #99c7d5;
+  --blue-20: #cce3ea;
+  --blue-10: #e6f1f5;
+  --blue-05: #f2f8fa;
+  --light-blue-80: #7acbd4;
+  --light-blue-60: #9bd8df;
+  --light-blue-40: #bce5e9;
+  --light-blue-20: #def2f4;
+  --light-blue-10: #eef9fa;
+  --red-80: #d55c62;
+  --red-60: #e08589;
+  --red-40: #eaadb0;
+  --red-20: #f5d6d8;
+  --red-10: #faeaeb;
+  --yellow-80: #f5ba33;
+  --yellow-60: #f7cb66;
+  --yellow-40: #fadd99;
+  --yellow-20: #fceecc;
+  --yellow-10: #fef6e6;
+  --green: #2e7d5b;
+  --green-60: #5cb893;
+
+  /* ---- Neutrals: cool greys pulled toward the Arctic blue ---- */
+  --grey-900: #1b2429;
+  --grey-700: #3f4c53;
+  --grey-600: #5f6b71;
+  --grey-500: #6a767c;
+  --grey-400: #9aa4a9;
+  --grey-300: #b4bcc0;
+  --grey-200: #d7dcde;
+  --grey-100: #ebeeef;
+  --grey-50: #f6f7f8;
+
+  /* ---- Dark surfaces ---- */
+  --night-blue-800: #002230;
+  --night-blue-700: #062f41;
+  --night-grey-900: #16191b;
+  --night-grey-800: #1b1f22;
+  --night-grey-700: #23282b;
 }
 
+/* SIZE CONTROL — root font-size scales the whole app (all sizes are in rem) */
 [data-size="small"] {
-  font-size: 14px;
+  font-size: 87.5%;
 }
 
 [data-size="large"] {
-  font-size: 18px;
+  font-size: 112.5%;
 }
 
 [data-size="xl"] {
-  font-size: 20px;
+  font-size: 125%;
 }
 
-/* =============================================================================
-   BLUE · LIGHT (default)
-============================================================================= */
-:root {
+/* LIGHT MODE — status, code, scrim and shadows shared by both themes */
+:root,
+[data-mode="light"] {
+  --danger: var(--uit-red);
+  --danger-soft: var(--red-10);
+  --warn: var(--uit-yellow);
+  --warn-soft: var(--yellow-10);
+  --success: var(--green);
+  --success-soft: #e7f2ed;
+
+  --code-text: var(--text);
+  --code-comment: var(--grey-600);
+  --code-punctuation: var(--grey-700);
+  --code-keyword: #8a00c8;
+  --code-string: #00782e;
+  --code-number: #a34700;
+  --code-function: #0b54a8;
+  --code-type: #8a3d00;
+  --code-property: #a8121c;
+
+  --scrim: rgba(0, 27, 40, .6);
+  --shadow-color: var(--uit-dark-blue);
+  --shadow-card: 0 1px 2px color-mix(in srgb, var(--shadow-color) 8%, transparent), 0 2px 8px color-mix(in srgb, var(--shadow-color) 10%, transparent);
+  --shadow-overlay: 0 8px 40px color-mix(in srgb, var(--shadow-color) 22%, transparent);
+}
+
+/* DARK MODE — status, code, scrim and shadows shared by both themes */
+[data-mode="dark"] {
+  --danger: var(--red-60);
+  --danger-soft: #3a1418;
+  --warn: var(--yellow-60);
+  --warn-soft: #3a2c08;
+  --success: var(--green-60);
+  --success-soft: #0d2b20;
+
+  --code-text: #e4e8ea;
+  --code-comment: #8a9aa1;
+  --code-punctuation: #a3b0b5;
+  --code-keyword: #d09cf0;
+  --code-string: #a8d8a0;
+  --code-number: #f2c27a;
+  --code-function: #8fb8ff;
+  --code-type: #ffcf7a;
+  --code-property: #f29b9b;
+
+  --scrim: rgba(0, 0, 0, .6);
+  --shadow-color: var(--uit-black);
+  --shadow-card: 0 1px 2px color-mix(in srgb, var(--shadow-color) 25%, transparent), 0 2px 8px color-mix(in srgb, var(--shadow-color) 30%, transparent);
+  --shadow-overlay: 0 8px 40px color-mix(in srgb, var(--shadow-color) 50%, transparent);
+}
+
+/* BLUE · LIGHT (default) */
+:root,
+[data-theme="blue"][data-mode="light"] {
   --bg: var(--uit-white);
   --panel: var(--dark-blue-05);
   --panel-2: var(--dark-blue-10);
   --surface: var(--uit-white);
+  --surface-raised: var(--uit-white);
+  --tint: var(--blue-05);
 
   --text: var(--uit-dark-blue);
   --text-2: var(--grey-700);
-  --text-3: var(--grey-500);
+  --text-3: var(--grey-600);
 
   --line: var(--grey-200);
   --line-soft: var(--grey-100);
+  --line-strong: var(--grey-300);
+  --line-frame: var(--line);
 
   --brand: var(--uit-dark-blue);
   --accent: var(--uit-blue);
@@ -51,43 +155,38 @@
   --btn-fg: var(--uit-white);
   --btn-hover: #002536;
 
-  --tint: var(--blue-05);
   --sel: var(--blue-10);
-  --code-bg: var(--grey-50);
-  --info-soft: var(--blue-10);
-
-  --warn: var(--uit-yellow);
-  --danger: var(--uit-red);
-  --danger-soft: var(--red-10);
-  --success: var(--status-success);
-  --success-soft: var(--status-success-soft);
-
   --sel-bg: var(--uit-light-blue);
   --sel-fg: var(--uit-dark-blue);
 
-  /* Categorical colours for the context composition bar */
+  --info-soft: var(--blue-10);
+  --code-bg: #f1f4f6;
+
+  /* Categorical colours for charts */
   --viz-1: var(--uit-dark-blue);
   --viz-2: var(--uit-blue);
   --viz-3: var(--uit-light-blue);
-  --viz-4: var(--status-success);
+  --viz-4: var(--green);
   --viz-5: var(--grey-300);
 }
 
-/* =============================================================================
-   BLUE · DARK — ton-i-ton: light blue on dark blue
-============================================================================= */
+/* BLUE · DARK — ton-i-ton: light blue on dark blue */
 [data-theme="blue"][data-mode="dark"] {
   --bg: #00202e;
   --panel: #001926;
-  --panel-2: #002b3d;
-  --surface: #002230;
+  --panel-2: #003247;
+  --surface: var(--night-blue-800);
+  --surface-raised: var(--night-blue-800);
+  --tint: var(--night-blue-700);
 
   --text: #e9eef0;
   --text-2: #a8bcc4;
-  --text-3: #7d939c;
+  --text-3: #92a8b1;
 
-  --line: #0e3d51;
-  --line-soft: #0a3244;
+  --line: #1f5a72;
+  --line-soft: #134458;
+  --line-strong: #3f7890;
+  --line-frame: var(--line-strong);
 
   --brand: var(--uit-light-blue);
   --accent: var(--light-blue-80);
@@ -97,42 +196,37 @@
   --btn-fg: var(--uit-dark-blue);
   --btn-hover: var(--light-blue-80);
 
-  --tint: #062f41;
-  --sel: #083a4e;
-  --code-bg: #001b28;
-  --info-soft: #062f41;
-
-  --warn: var(--yellow-60);
-  --danger: #e08589;
-  --danger-soft: #3a1418;
-  --success: #5cb893;
-  --success-soft: #0d2b20;
-
+  --sel: #0b4259;
   --sel-bg: var(--uit-light-blue);
   --sel-fg: var(--uit-dark-blue);
+
+  --info-soft: var(--night-blue-700);
+  --code-bg: #00151f;
 
   --viz-1: var(--light-blue-40);
   --viz-2: var(--uit-light-blue);
   --viz-3: var(--blue-60);
-  --viz-4: #5cb893;
+  --viz-4: var(--green-60);
   --viz-5: var(--grey-500);
 }
 
-/* =============================================================================
-   GREY · LIGHT — same structure, greys instead of blues
-============================================================================= */
+/* GREY · LIGHT — same structure, greys instead of blues */
 [data-theme="grey"][data-mode="light"] {
   --bg: var(--uit-white);
   --panel: var(--grey-50);
   --panel-2: var(--grey-100);
   --surface: var(--uit-white);
+  --surface-raised: var(--uit-white);
+  --tint: var(--grey-50);
 
   --text: var(--grey-900);
   --text-2: var(--grey-700);
-  --text-3: var(--grey-500);
+  --text-3: var(--grey-600);
 
   --line: var(--grey-200);
   --line-soft: var(--grey-100);
+  --line-strong: var(--grey-300);
+  --line-frame: var(--line);
 
   --brand: var(--grey-900);
   --accent: var(--grey-700);
@@ -142,69 +236,56 @@
   --btn-fg: var(--uit-white);
   --btn-hover: #0f1418;
 
-  --tint: var(--grey-50);
   --sel: var(--grey-100);
-  --code-bg: var(--grey-50);
-  --info-soft: var(--grey-100);
-
   --sel-bg: var(--grey-300);
   --sel-fg: var(--grey-900);
+
+  --info-soft: var(--grey-100);
+  --code-bg: #f2f3f4;
 
   --viz-1: var(--grey-900);
   --viz-2: var(--grey-700);
   --viz-3: var(--grey-500);
-  --viz-4: var(--status-success);
+  --viz-4: var(--green);
   --viz-5: var(--grey-300);
 }
 
-/* =============================================================================
-   GREY · DARK — neutral near-black
-============================================================================= */
+/* GREY · DARK — neutral near-black */
 [data-theme="grey"][data-mode="dark"] {
-  --bg: #16191b;
+  --bg: var(--night-grey-900);
   --panel: #101315;
-  --panel-2: #23282b;
-  --surface: #1b1f22;
+  --panel-2: #262c2f;
+  --surface: var(--night-grey-800);
+  --surface-raised: var(--night-grey-800);
+  --tint: var(--night-grey-700);
 
   --text: #e8eaec;
   --text-2: #b0b8bc;
-  --text-3: #818c91;
+  --text-3: #949fa4;
 
-  --line: #343c41;
-  --line-soft: #272e32;
+  --line: #4a565d;
+  --line-soft: #353d42;
+  --line-strong: #6a777e;
+  --line-frame: var(--line-strong);
 
   --brand: var(--grey-200);
   --accent: var(--grey-300);
-  --accent-2: #9aa4a9;
+  --accent-2: var(--grey-400);
 
   --btn-bg: var(--grey-200);
-  --btn-fg: #16191b;
+  --btn-fg: var(--night-grey-900);
   --btn-hover: var(--grey-300);
 
-  --tint: #23282b;
-  --sel: #2b3236;
-  --code-bg: #101315;
-  --info-soft: #23282b;
-
-  --warn: var(--yellow-60);
-  --danger: #e08589;
-  --danger-soft: #3a1418;
-  --success: #5cb893;
-  --success-soft: #0d2b20;
-
+  --sel: #323a3f;
   --sel-bg: var(--grey-300);
-  --sel-fg: #16191b;
+  --sel-fg: var(--night-grey-900);
+
+  --info-soft: var(--night-grey-700);
+  --code-bg: #0d1012;
 
   --viz-1: var(--grey-200);
-  --viz-2: #9aa4a9;
+  --viz-2: var(--grey-400);
   --viz-3: var(--grey-500);
-  --viz-4: #5cb893;
+  --viz-4: var(--green-60);
   --viz-5: #4a5459;
-}
-
-/* Dark modes share a heavier, colour-neutral shadow + scrim */
-[data-mode="dark"] {
-  --shadow-card: 0 1px 2px rgba(0, 0, 0, .25), 0 2px 8px rgba(0, 0, 0, .30);
-  --shadow-overlay: 0 8px 40px rgba(0, 0, 0, .5);
-  --scrim: rgba(0, 0, 0, .55);
 }

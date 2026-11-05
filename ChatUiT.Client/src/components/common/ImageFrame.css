@@ -1,0 +1,12 @@
+/* A framed image at the width of its container; a checkerboard shows transparent areas */
+.image-frame {
+  width: 100%;
+  height: auto;
+  border: var(--border-sm) solid var(--line);
+  border-radius: var(--radius-sm);
+  background: repeating-conic-gradient(var(--panel-2) 0% 25%, var(--bg) 0% 50%) 50% / var(--space-lg) var(--space-lg);
+}
+
+.image-frame--dimmed {
+  opacity: var(--opacity-muted);
+}

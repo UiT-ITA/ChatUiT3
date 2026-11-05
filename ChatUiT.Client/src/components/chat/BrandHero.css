@@ -1,0 +1,90 @@
+/* Brand hero banner with the UiT skew element */
+.brand-hero {
+  position: relative;
+  overflow: hidden;
+  background: var(--brand);
+  padding: var(--space-sm) var(--space-2xl) var(--space-md);
+}
+
+/* Dark modes: a raised surface with a hairline frame instead of the brand fill */
+[data-mode="dark"] .brand-hero {
+  background: var(--surface-raised);
+  box-shadow: inset 0 0 0 1px var(--line);
+}
+
+/* A narrow gap stripe, a space to the left of the stripe */
+.brand-hero__stripe-gap {
+  position: absolute;
+  top: calc(-1 * var(--space-xl));
+  bottom: calc(-1 * var(--space-xl));
+  right: calc(var(--space-3xl) + var(--control-lg) + var(--space-lg));
+  width: var(--space-sm);
+  background: var(--bg);
+  transform: skewX(-20deg);
+}
+
+.brand-hero__stripe {
+  position: absolute;
+  top: calc(-1 * var(--space-xl));
+  bottom: calc(-1 * var(--space-xl));
+  right: var(--space-3xl);
+  width: var(--control-lg);
+  background: var(--accent-2);
+  transform: skewX(-20deg);
+}
+
+.brand-hero__content {
+  position: relative;
+  max-width: min(var(--size-md), calc(100% - var(--size-2xs)));
+}
+
+.brand-hero__overline {
+  color: var(--accent-2);
+}
+
+.brand-hero__title {
+  color: var(--btn-fg);
+  margin-top: var(--space-xs);
+}
+
+.brand-hero__sub {
+  color: color-mix(in srgb, var(--btn-fg) 80%, var(--brand));
+  margin-top: var(--space-xs);
+  text-wrap: pretty;
+}
+
+[data-mode="dark"] .brand-hero__stripe-gap {
+  background: color-mix(in srgb, var(--accent-2) 45%, transparent);
+}
+
+[data-mode="dark"] .brand-hero__title {
+  color: var(--text);
+}
+
+[data-mode="dark"] .brand-hero__sub {
+  color: var(--text-2);
+}
+
+/* Narrow screens: the same banner with narrower stripes closer to the right edge */
+@media (width <= 50rem) {
+  .brand-hero {
+    padding: var(--space-sm) var(--space-lg) var(--space-md);
+  }
+
+  .brand-hero__stripe-gap {
+    right: calc(var(--space-2xl) + var(--space-lg));
+  }
+
+  .brand-hero__stripe {
+    right: var(--space-lg);
+    width: var(--control-sm);
+  }
+
+  .brand-hero__title {
+    font-size: var(--fs-xl);
+  }
+
+  .brand-hero__content {
+    max-width: calc(100% - var(--space-3xl));
+  }
+}

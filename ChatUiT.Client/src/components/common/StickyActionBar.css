@@ -1,0 +1,36 @@
+/* Action bar with its buttons at the end; stays at the bottom of the view while the content above scrolls */
+.sticky-action-bar {
+  position: sticky;
+  bottom: 0;
+  z-index: var(--z-sticky);
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: var(--space-md);
+  padding: var(--space-md) 0;
+}
+
+/* The fill and the top line of the bar: a band as wide as the viewport, centred on the bar, under its content */
+.sticky-action-bar::before {
+  content: '';
+  position: absolute;
+  inset: 0 calc((100% - 100vw) / 2);
+  border-top: var(--border-sm) solid var(--line-strong);
+  background: var(--panel);
+}
+
+.sticky-action-bar > * {
+  position: relative;
+}
+
+/* Fade above the bar: content scrolling under it fades out instead of showing cut */
+.sticky-action-bar::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 100%;
+  height: var(--space-xl);
+  background: linear-gradient(to bottom, transparent, var(--bg));
+  pointer-events: none;
+}

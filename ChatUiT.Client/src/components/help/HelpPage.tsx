@@ -7,24 +7,26 @@ import type { Components } from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import remarkMath from 'remark-math';
 import rehypeKatex from 'rehype-katex';
-import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter';
-import { atomDark, oneLight } from 'react-syntax-highlighter/dist/esm/styles/prism';
 import 'katex/dist/katex.min.css';
 import { Icon } from '../common/Icon';
 import type { IconName } from '../common/Icon';
 import Button from '../common/Button';
-import { useSettings } from '../../hooks/useSettings';
-import { getCodeblockTheme } from '../../utils/themeUtils';
 import { helpActiveHeadingSignal } from '../../services/uiService';
 import { DEFAULT_HELP_SECTION, HELP_SECTIONS, isHelpSection } from './helpSections';
 import { parseHeadings, slugify } from './helpHeadings';
 import { useHelpDoc } from './useHelpDoc';
-import '../chat/ChatMessageMarkdown.css';
-import './HelpPage.css';
+import CodeBlock from '../common/CodeBlock';
+import CodeHighlighter from '../common/CodeHighlighter';
 import Card from '../common/Card';
 import Stack from '../common/Stack';
 import Badge from '../common/Badge';
 import Alert from '../common/Alert';
+import PageTitleBar from '../common/PageTitleBar';
+import Page, { PageIntro } from '../common/Page';
+import Text from '../common/Text';
+import Box from '../common/Box';
+import RichText, { RichTextLink } from '../common/RichText';
+import KeyCombo from '../common/KeyCombo';
 
 /**
  * Blockquotes whose first paragraph is one of these markers render as callouts.
@@ -37,14 +39,12 @@ const CALLOUTS: Record<string, { kind: 'tip' | 'note' | 'warning' | 'not-impleme
   '[!NOT_IMPLEMENTED]': { kind: 'not-implemented', icon: 'info' },
 };
 
-/** Image src that renders a screenshot placeholder box showing the alt text. */
+/** Image src of a screenshot that is not made yet. Such images are left out. */
 const PLACEHOLDER_IMAGE_SRC = 'placeholder';
 
 /** Inline code that names keys renders as keyboard keys: `Enter`, `Shift + Enter`, `Ctrl + V`. */
 const KEY_NAME = '(Enter|Shift|Ctrl|Cmd|Alt|Esc|Escape|Tab|Space|[A-Z])';
 const KEY_PATTERN = new RegExp(`^${KEY_NAME}(\\s*\\+\\s*${KEY_NAME})*$`);
-
-const CODE_STYLES = { oneLight, atomDark } as const;
 
 /** Distance from the top of the scroll container at which a heading counts as current. */
 const SCROLL_SPY_OFFSET_PX = 96;
@@ -68,11 +68,6 @@ function childrenText(children: ReactNode): string {
   return '';
 }
 
-function headingLine(node: unknown): number | undefined {
-  const n = node as { position?: { start?: { line?: number } } } | undefined;
-  return n?.position?.start?.line;
-}
-
 /** The blockquote's first paragraph as text, and everything after it. */
 function splitFirstParagraph(children: ReactNode): { first: string; rest: ReactNode[] } {
   const items = (Array.isArray(children) ? children : [children])
@@ -86,18 +81,12 @@ const HelpPage = () => {
   const { section } = useParams<{ section?: string }>();
   const { hash } = useLocation();
   const navigate = useNavigate();
-  const { settings } = useSettings();
   const containerRef = useRef<HTMLDivElement>(null);
 
   const activeSection = isHelpSection(section) ? section : DEFAULT_HELP_SECTION;
   const sectionIndex = HELP_SECTIONS.indexOf(activeSection);
   const nextSection = HELP_SECTIONS[sectionIndex + 1];
   const doc = useHelpDoc(activeSection);
-
-  const codeStyle = useMemo(() => {
-    const name = getCodeblockTheme(settings.mode) as keyof typeof CODE_STYLES;
-    return CODE_STYLES[name] ?? atomDark;
-  }, [settings.mode]);
 
   const markdown = doc.status === 'ready' ? doc.markdown : '';
   const headings = useMemo(() => parseHeadings(markdown), [markdown]);
@@ -131,6 +120,8 @@ const HelpPage = () => {
       // At the very bottom the last heading may never reach the top; it is still the one in view.
       const atBottom = container.scrollTop + container.clientHeight >= container.scrollHeight - 2;
       if (atBottom && ids.length > 0) current = ids[ids.length - 1];
+      // Above the first heading, the first heading is the current one.
+      if (current === null && ids.length > 0) current = ids[0];
       helpActiveHeadingSignal.value = current;
     };
 
@@ -144,13 +135,8 @@ const HelpPage = () => {
 
   const components = useMemo<Components>(() => {
     const headingId = (node: unknown) => {
-      const line = headingLine(node);
+      const line = (node as { position?: { start?: { line?: number } } } | undefined)?.position?.start?.line;
       return (line !== undefined && headingIds.get(line)) || slugify(nodeText(node)) || 'section';
-    };
-
-    const copyCode = (code: string) => {
-      navigator.clipboard.writeText(code)
-        .catch(err => console.error('Failed to copy code:', err));
     };
 
     return {
@@ -176,22 +162,10 @@ const HelpPage = () => {
             </a>
           );
         }
-        return <a href={url} target="_blank" rel="noopener noreferrer">{children}</a>;
+        return <RichTextLink href={url} target="_blank" rel="noopener noreferrer">{children}</RichTextLink>;
       },
       img({ src, alt }) {
-        if (src === PLACEHOLDER_IMAGE_SRC) {
-          return (
-            <span className="help-screenshot" role="img" aria-label={alt ?? ''}>
-              <span className="help-screenshot-bar" aria-hidden="true">
-                <span /><span /><span />
-              </span>
-              <span className="help-screenshot-body">
-                <Icon name="file" size="xl" />
-                <span className="t-caption">{alt}</span>
-              </span>
-            </span>
-          );
-        }
+        if (src === PLACEHOLDER_IMAGE_SRC) return null;
         return <img src={src} alt={alt ?? ''} loading="lazy" />;
       },
       blockquote({ children }) {
@@ -202,9 +176,9 @@ const HelpPage = () => {
         }
         if (callout.kind === 'not-implemented') {
           return (
-            <div className="help-not-implemented">
+            <Box mt="xl">
               <Badge variant="solid" tone="warning" size="medium" icon={callout.icon}>{t('help.notImplemented')}</Badge>
-            </div>
+            </Box>
           );
         }
         return (
@@ -218,93 +192,78 @@ const HelpPage = () => {
         if (!match) {
           const text = childrenText(children);
           if (KEY_PATTERN.test(text)) {
-            const keys = text.split('+').map(k => k.trim());
-            return (
-              <span className="help-keys">
-                {keys.map((key, index) => (
-                  <span key={index}>
-                    {index > 0 && <span className="help-keys-plus">+</span>}
-                    <kbd className="t-caption-strong">{key}</kbd>
-                  </span>
-                ))}
-              </span>
-            );
+            return <KeyCombo keys={text.split('+').map(k => k.trim())} />;
           }
           return <code className={className}>{children}</code>;
         }
         const language = match[1];
         const codeText = String(children).replace(/\n$/, '');
         return (
-          <div className="code-block-wrapper">
-            <div className="code-block-header">
-              <span className="language-name t-overline">{language}</span>
+          <CodeBlock
+            label={language}
+            wrap
+            actions={(
               <Button
                 variant="ghost"
                 size="small"
                 startIcon="copy"
-                onClick={() => copyCode(codeText)}
+                onClick={() => navigator.clipboard.writeText(codeText).catch(err => console.error('Failed to copy code:', err))}
                 title={t('chat.actions.copyCode')}
               >
                 {t('chat.actions.copyCode')}
               </Button>
-            </div>
-            <SyntaxHighlighter style={codeStyle} language={language}>
-              {codeText}
-            </SyntaxHighlighter>
-          </div>
+            )}
+          >
+            <CodeHighlighter code={codeText} language={language} />
+          </CodeBlock>
         );
       },
     };
-  }, [codeStyle, headingIds, navigate, t]);
+  }, [headingIds, navigate, t]);
 
   return (
-    <div className="help-page" ref={containerRef}>
-      <div className="help-page-content">
-        <header className="help-header">
-          <div className="help-kicker t-overline">
-            {t('help.partOf', { n: sectionIndex + 1, total: HELP_SECTIONS.length })}
-          </div>
-          <h1 className="t-page-title">{t(`help.sections.${activeSection}`)}</h1>
-          <div className="page-title-bar" />
-          <p className="help-lead t-lead">{t(`help.descriptions.${activeSection}`)}</p>
-        </header>
+    <Page fill="grow" flow="block" mobileEndSpace="large" ref={containerRef}>
+      <Box as="header" mb="xl">
+        <Text as="div" variant="overline" tone="accent" mb="sm">
+          {t('help.partOf', { n: sectionIndex + 1, total: HELP_SECTIONS.length })}
+        </Text>
+        <Text as="h1" variant="page-title">{t(`help.sections.${activeSection}`)}</Text>
+        <PageTitleBar />
+        <PageIntro size="large" mb="none" maxWidth="none">{t(`help.descriptions.${activeSection}`)}</PageIntro>
+      </Box>
 
-        {doc.status === 'loading' && (
-          <p className="help-status t-body">{t('help.loading')}</p>
-        )}
-        {doc.status === 'error' && (
-          <p className="help-status t-body">{t('help.loadError')}</p>
-        )}
-        {doc.status === 'ready' && (
-          <>
-            <div className="message-content help-doc">
-              <ReactMarkdown
-                remarkPlugins={[remarkGfm, remarkMath]}
-                rehypePlugins={[rehypeKatex]}
-                components={components}
-              >
-                {doc.markdown}
-              </ReactMarkdown>
-            </div>
+      {doc.status !== 'ready' && (
+        <Text as="p" variant="body" tone="secondary">{t(doc.status === 'loading' ? 'help.loading' : 'help.loadError')}</Text>
+      )}
+      {doc.status === 'ready' && (
+        <>
+          <RichText document>
+            <ReactMarkdown
+              remarkPlugins={[remarkGfm, remarkMath]}
+              rehypePlugins={[rehypeKatex]}
+              components={components}
+            >
+              {doc.markdown}
+            </ReactMarkdown>
+          </RichText>
 
-            {nextSection && (
-              <Card as="button" elevated accent="start" padding="lg" mt="2xl" width="full" onClick={() => navigate(`/help/${nextSection}`)}>
-                <Stack direction="row" align="center" justify="between" gap="lg">
-                  <Stack gap="2xs">
-                    <span className="help-next-label t-overline">
-                      {t('help.next', { n: sectionIndex + 2 })}
-                    </span>
-                    <span className="t-title">{t(`help.sections.${nextSection}`)}</span>
-                    <span className="help-next-description t-caption">{t(`help.descriptions.${nextSection}`)}</span>
-                  </Stack>
-                  <Icon name="arrowUp" size="large" color="accent" rotate={90} />
+          {nextSection && (
+            <Card as="button" elevated accent="start" padding="lg" mt="2xl" width="full" onClick={() => navigate(`/help/${nextSection}`)}>
+              <Stack direction="row" align="center" justify="between" gap="lg">
+                <Stack gap="xs">
+                  <Text variant="overline" tone="accent">
+                    {t('help.next', { n: sectionIndex + 2 })}
+                  </Text>
+                  <Text as="span" variant="title">{t(`help.sections.${nextSection}`)}</Text>
+                  <Text variant="caption" tone="secondary">{t(`help.descriptions.${nextSection}`)}</Text>
                 </Stack>
-              </Card>
-            )}
-          </>
-        )}
-      </div>
-    </div>
+                <Icon name="arrowUp" size="md" color="accent" rotate={90} />
+              </Stack>
+            </Card>
+          )}
+        </>
+      )}
+    </Page>
   );
 };
 

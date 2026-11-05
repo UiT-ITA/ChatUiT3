@@ -1,16 +1,15 @@
 import { useSignals } from '@preact/signals-react/runtime';
 import { useTranslation } from 'react-i18next';
+import Box from '../common/Box';
 import { Icon } from '../common/Icon';
+import Stack from '../common/Stack';
+import Text from '../common/Text';
 import { getChat, getSelectableAssistants } from '../../services/chatService';
 import { getContextUsage } from '../../services/contextUsageService';
 import ContextUsageDetails from './ContextUsageDetails';
-import './ConversationPanel.css';
 
-interface ConversationPanelProps {
-  chatId: string;
-}
-
-function ConversationPanel({ chatId }: ConversationPanelProps) {
+/** The side panel of an open chat: its files, context usage, assistant and dates. */
+function ConversationPanel({ chatId }: { chatId: string }) {
   useSignals();
   const { t, i18n } = useTranslation();
 
@@ -21,46 +20,39 @@ function ConversationPanel({ chatId }: ConversationPanelProps) {
   const files = chat?.messages.flatMap((message) => message.files || []) || [];
   const usage = getContextUsage(chatId).value;
 
-  const formatDate = (value: string | undefined) => {
-    if (!value) return '';
-    return new Date(value).toLocaleDateString(i18n.language, {
-      day: '2-digit',
-      month: '2-digit',
-      year: 'numeric',
-    });
-  };
+  const formatDate = (value: string) => new Date(value).toLocaleDateString(i18n.language, { day: '2-digit', month: '2-digit', year: 'numeric' });
 
   return (
-    <aside className="conversation-panel">
-      <div className="conversation-panel-title t-overline">{t('chat.panel.title')}</div>
+    <Box as="aside" width="xs" grow={false} shrink={false} pt="xl" pb="xl" px="lg" overflow="y-auto" border borderSide="left">
+      <Text as="div" variant="overline" pb="sm" mb="md" border="accent-2" borderWidth="lg" borderSide="bottom">{t('chat.panel.title')}</Text>
 
-      <div className="conversation-panel-section t-overline">{t('chat.panel.files')}</div>
+      <Text as="div" variant="overline" mt="xl" pb="sm" mb="md" border borderSide="bottom">{t('chat.panel.files')}</Text>
       {files.length > 0 ? (
-        <div className="conversation-panel-files">
+        <Stack gap="sm">
           {files.map((file) => (
-            <div key={file.id} className="conversation-panel-file t-caption">
-              <Icon name="file" size="small" color="accent" />
-              <span>{file.sourceFilename}</span>
-            </div>
+            <Stack key={file.id} direction="row" align="center" gap="sm">
+              <Icon name="file" size="sm" color="accent" />
+              <Text variant="caption" tone="secondary" truncate>{file.sourceFilename}</Text>
+            </Stack>
           ))}
-        </div>
+        </Stack>
       ) : (
-        <div className="conversation-panel-empty t-caption">{t('chat.panel.noFiles')}</div>
+        <Text as="div" variant="caption" tone="muted">{t('chat.panel.noFiles')}</Text>
       )}
 
-      <div className="conversation-panel-section t-overline">{t('chat.panel.context')}</div>
+      <Text as="div" variant="overline" mt="xl" pb="sm" mb="md" border borderSide="bottom">{t('chat.panel.context')}</Text>
       {usage.available ? (
         <ContextUsageDetails usage={usage} />
       ) : (
-        <div className="conversation-panel-empty t-caption">{t('chat.panel.contextUnavailable')}</div>
+        <Text as="div" variant="caption" tone="muted">{t('chat.panel.contextUnavailable')}</Text>
       )}
 
-      <div className="conversation-panel-meta t-hint">
+      <Text as="div" variant="hint" tone="muted" leading="base" mt="xl">
         {assistant && <>{t('chat.panel.assistant')}: {assistant.name}<br /></>}
         {chat?.createdAt && <>{t('chat.panel.created')}: {formatDate(chat.createdAt)}<br /></>}
         {chat?.updatedAt && <>{t('chat.panel.updated')}: {formatDate(chat.updatedAt)}</>}
-      </div>
-    </aside>
+      </Text>
+    </Box>
   );
 }
 

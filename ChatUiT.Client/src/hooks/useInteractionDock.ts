@@ -12,38 +12,9 @@ import { isAwaitingStatus } from '../types/chatModels';
 import type { ActivityEntryDto, PendingAnswerDto, ToolPreviewDto, UserAnswerDto, UserQuestionDto } from '../types/chatModels';
 
 /** A call the chat's last message waits on that the user must answer. */
-export type Interaction =
+type Interaction =
   | { kind: 'approval'; messageId: string; entry: ActivityEntryDto; preview: ToolPreviewDto; source: 'server' | 'client' }
   | { kind: 'question'; messageId: string; entry: ActivityEntryDto; questions: UserQuestionDto[] };
-
-export interface InteractionDock {
-  /** The interaction shown, or null when nothing waits on the user. */
-  current: Interaction | null;
-  /** 1-based position of the current interaction among those waiting. */
-  position: number;
-  count: number;
-  /** Questions: the 0-based question shown, of `current.questions`. */
-  step: number;
-  /** Questions: the option labels picked for the question shown. */
-  selected: string[];
-  /** Questions: what the user wrote for the question shown. */
-  text: string;
-  /** Questions: picks or unpicks an option. On a single-choice question the pick also shows the next question or sends. */
-  toggleOption: (label: string) => void;
-  setText: (text: string) => void;
-  busy: boolean;
-  error: string | null;
-  approve: (editedArgumentsJson?: string | null) => Promise<void>;
-  reject: () => Promise<void>;
-  /** Questions: shows the next question, or sends every answer from the last one. */
-  next: () => Promise<void>;
-  /** Questions: clears the answer to the question shown, then shows the next or sends every answer. */
-  skip: () => Promise<void>;
-  /** Questions: shows another question; what was picked or written stays. */
-  goTo: (step: number) => void;
-  /** The answers filled in on the card shown, to send with a new message the user writes instead. */
-  pendingAnswers: () => PendingAnswerDto[];
-}
 
 /** What the user has picked and written for one question so far. */
 interface Draft {
@@ -56,7 +27,7 @@ interface Draft {
  * that answer them. Calls to this client's own tools run here: right away, or after the user
  * approves when the tool has a preview.
  */
-export function useInteractionDock(chatId: string | undefined): InteractionDock {
+export function useInteractionDock(chatId: string | undefined) {
   const { t } = useTranslation();
   const chat = chatId !== undefined ? getChat(chatId).value : undefined;
   const message = [...(chat?.messages ?? [])].reverse().find(m => m.role === 'Assistant' && m.status === 'AwaitingUser');
@@ -169,6 +140,18 @@ export function useInteractionDock(chatId: string | undefined): InteractionDock 
   const respond = (body: Parameters<typeof respondToToolCall>[3]) =>
     respondToToolCall(chatId!, current!.messageId, current!.entry.toolCallId!, body);
 
+  /** Approves or rejects the approval shown: runs or declines a call to this client's tools, or sends the decision to the server. */
+  const decide = (decision: 'approve' | 'reject', editedArgumentsJson: string | null) => settle(async () => {
+    if (current?.kind !== 'approval') return;
+    if (current.source === 'server') {
+      await respond({ kind: 'confirmation', decision, editedArgumentsJson });
+    } else if (decision === 'approve') {
+      await runClientToolCall(chatId!, current.messageId, current.entry);
+    } else {
+      await declineClientToolCall(chatId!, current.messageId, current.entry);
+    }
+  });
+
   return {
     current,
     position: total - interactions.length + 1,
@@ -176,7 +159,7 @@ export function useInteractionDock(chatId: string | undefined): InteractionDock 
     step,
     selected,
     text,
-    toggleOption: label => {
+    toggleOption: (label: string) => {
       if (current?.kind !== 'question' || busy) return;
       if (!current.questions[step].multiSelect) {
         const picked = [...drafts];
@@ -187,25 +170,11 @@ export function useInteractionDock(chatId: string | undefined): InteractionDock 
       }
       updateDraft({ selected: selected.includes(label) ? selected.filter(l => l !== label) : [...selected, label], text });
     },
-    setText: value => updateDraft({ selected, text: value }),
+    setText: (value: string) => updateDraft({ selected, text: value }),
     busy,
     error,
-    approve: editedArgumentsJson => settle(async () => {
-      if (current?.kind !== 'approval') return;
-      if (current.source === 'client') {
-        await runClientToolCall(chatId!, current.messageId, current.entry);
-      } else {
-        await respond({ kind: 'confirmation', decision: 'approve', editedArgumentsJson: editedArgumentsJson ?? null });
-      }
-    }),
-    reject: () => settle(async () => {
-      if (current?.kind !== 'approval') return;
-      if (current.source === 'client') {
-        await declineClientToolCall(chatId!, current.messageId, current.entry);
-      } else {
-        await respond({ kind: 'confirmation', decision: 'reject', editedArgumentsJson: null });
-      }
-    }),
+    approve: (editedArgumentsJson?: string | null) => decide('approve', editedArgumentsJson ?? null),
+    reject: () => decide('reject', null),
     next: () => advance(drafts),
     skip: () => {
       const cleared = [...drafts];
@@ -213,14 +182,16 @@ export function useInteractionDock(chatId: string | undefined): InteractionDock 
       setDrafts(cleared);
       return advance(cleared);
     },
-    goTo: target => {
+    goTo: (target: number) => {
       if (current?.kind === 'question' && target >= 0 && target < current.questions.length) {
         setStep(target);
       }
     },
-    pendingAnswers: () => {
+    pendingAnswers: (): PendingAnswerDto[] => {
       const answers = current?.kind === 'question' ? toAnswers(current.questions, drafts) : null;
       return current && answers ? [{ toolCallId: current.entry.toolCallId!, response: { kind: 'answer', answers } }] : [];
     },
   };
 }
+
+export type InteractionDock = ReturnType<typeof useInteractionDock>;

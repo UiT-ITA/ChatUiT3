@@ -1,6 +1,5 @@
 import React, { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { resolveAdminGroups, searchAdminGroups } from '../../services/adminService';
 import type { DirectoryGroupDto } from '../../types/admin';
 import Combobox from './Combobox';
 import { Icon } from './Icon';
@@ -12,45 +11,46 @@ interface GroupPickerProps {
   /** Selected Entra group object ids. */
   value: string[];
   onChange: (ids: string[]) => void;
+  // Finds groups whose name or object id matches the text
+  search: (text: string) => Promise<DirectoryGroupDto[]>;
+  // Looks up the groups of the given ids
+  resolve: (ids: string[]) => Promise<DirectoryGroupDto[]>;
   disabled?: boolean;
 }
 
 /** Names already looked up, shared by every picker on the page. */
 const nameCache = new Map<string, DirectoryGroupDto>();
 
-/**
- * Search Entra groups by name or object id and pick them. Stores ids, shows names. Admin only:
- * the search endpoint runs with the API's own directory permission.
- */
-const GroupPicker: React.FC<GroupPickerProps> = ({ value, onChange, disabled = false }) => {
+/** Searches Entra groups by name or object id and picks them. Stores ids, shows names. */
+const GroupPicker: React.FC<GroupPickerProps> = ({ value, onChange, search, resolve, disabled = false }) => {
   const { t } = useTranslation();
   const [query, setQuery] = useState('');
-  // Results are tagged with the text they answer, so a stale list is never shown for a newer query.
+  // The latest results and the text they answer
   const [results, setResults] = useState<{ text: string; groups: DirectoryGroupDto[] }>({ text: '', groups: [] });
   const [error, setError] = useState<string | null>(null);
   const [, setResolvedTick] = useState(0);
 
-  // Names for ids that arrived from storage rather than from a search.
+  // Looks up the names of the ids that are not in the cache
   useEffect(() => {
     const unknown = value.filter(id => !nameCache.has(id));
     if (unknown.length === 0) return;
     let cancelled = false;
-    resolveAdminGroups(unknown)
+    resolve(unknown)
       .then(groups => {
         if (cancelled) return;
         groups.forEach(group => nameCache.set(group.id, group));
         setResolvedTick(tick => tick + 1);
       })
-      .catch(() => { /* the toast has been shown; ids stay visible as ids */ });
+      .catch(() => {});
     return () => { cancelled = true; };
-  }, [value]);
+  }, [value, resolve]);
 
   useEffect(() => {
     const text = query.trim();
     if (text.length < 2) return;
     let cancelled = false;
     const timer = window.setTimeout(() => {
-      searchAdminGroups(text)
+      search(text)
         .then(groups => {
           if (cancelled) return;
           groups.forEach(group => nameCache.set(group.id, group));
@@ -60,7 +60,7 @@ const GroupPicker: React.FC<GroupPickerProps> = ({ value, onChange, disabled = f
         .catch(() => { if (!cancelled) setError(t('groupPicker.error')); });
     }, 300);
     return () => { cancelled = true; window.clearTimeout(timer); };
-  }, [query, t]);
+  }, [query, search, t]);
 
   const add = (group: DirectoryGroupDto) => {
     nameCache.set(group.id, group);
@@ -95,7 +95,7 @@ const GroupPicker: React.FC<GroupPickerProps> = ({ value, onChange, disabled = f
         inputValue={query}
         onInputChange={next => { setQuery(next); setError(null); }}
         placeholder={t('groupPicker.placeholder')}
-        leading={<Icon name="search" size="small" />}
+        leading={<Icon name="search" size="sm" />}
         disabled={disabled}
         openWhen={text.length >= 2}
         items={searching || error ? [] : candidates}

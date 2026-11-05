@@ -1,106 +1,81 @@
-/* =============================================================================
-   UiT DESIGN TOKENS
-   Profile palette, tints, neutrals, semantic tokens, shape, elevation, motion.
-   Source: UiT design system (profilmanual). App-level theme aliases live in
-   theme.css and are derived from these.
-============================================================================= */
+/* UiT design tokens: the fixed non-colour scale. Colours and the mode-dependent shadows live in theme.css. */
 
 :root {
-  /* ---- Profile palette ---- */
-  --uit-dark-blue: #003349;   /* Hovedfarge. PMS 2189 */
-  --uit-blue: #007396;        /* PMS 633 */
-  --uit-light-blue: #59BEC9;  /* PMS 2227 */
-  --uit-red: #CB333B;         /* PMS 1797 */
-  --uit-yellow: #F2A900;      /* PMS 130 */
-  --uit-black: #000000;
-  --uit-white: #FFFFFF;
-
-  /* ---- Tints. Profile colours mixed toward white — never new hues. ---- */
-  --dark-blue-80: #335c6d; --dark-blue-60: #668592; --dark-blue-40: #99adb8;
-  --dark-blue-20: #ccd6db; --dark-blue-10: #e6eaed; --dark-blue-05: #f2f5f6;
-  --blue-80: #338fab; --blue-60: #66abc0; --blue-40: #99c7d5;
-  --blue-20: #cce3ea; --blue-10: #e6f1f5; --blue-05: #f2f8fa;
-  --light-blue-80: #7acbd4; --light-blue-60: #9bd8df; --light-blue-40: #bce5e9;
-  --light-blue-20: #def2f4; --light-blue-10: #eef9fa;
-  --red-80: #d55c62; --red-60: #e08589; --red-40: #eaadb0;
-  --red-20: #f5d6d8; --red-10: #faeaeb;
-  --yellow-80: #f5ba33; --yellow-60: #f7cb66; --yellow-40: #fadd99;
-  --yellow-20: #fceecc; --yellow-10: #fef6e6;
-
-  /* ---- Neutrals. Cool greys pulled toward the Arctic blue. ---- */
-  --grey-900: #1b2429; --grey-700: #3f4c53; --grey-500: #6a767c;
-  --grey-300: #b4bcc0; --grey-200: #d7dcde; --grey-100: #ebeeef;
-  --grey-50: #f6f7f8;
-
-  /* ---- Status ---- */
-  --status-critical: var(--uit-red);
-  --status-critical-soft: var(--red-10);
-  --status-warning: var(--uit-yellow);
-  --status-warning-soft: var(--yellow-10);
-  --status-info: var(--uit-blue);
-  --status-info-soft: var(--blue-10);
-  --status-success: #2e7d5b;
-  --status-success-soft: #e7f2ed;
-
-  /* ---- Typography ---- */
+  /* ---- Font families ---- */
   --font-sans: "Open Sans", "Segoe UI", Arial, Helvetica, sans-serif;
   --font-serif: "Source Serif 4", "Minion Pro", "Times New Roman", Times, serif;
   --font-mono: "IBM Plex Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
 
-  /* Type scale — every font-size in the app comes from these tokens */
-  --fs-2xs: 0.625rem;        /* tiny tags/badges */
-  --fs-overline: 0.6875rem;  /* overlines, mono meta, hints */
-  --fs-caption: 0.75rem;     /* secondary text, descriptions */
-  --fs-code: 0.7813rem;      /* code blocks, pre */
-  --fs-ui: 0.8125rem;        /* buttons, list rows, controls */
-  --fs-table: 0.8438rem;     /* tables, dense rows */
-  --fs-body-sm: 0.875rem;    /* default UI body */
-  --fs-chat: 0.9063rem;      /* chat message text */
-  --fs-title-sm: 0.9375rem;  /* header titles, composer text */
-  --fs-base: 1rem;           /* dialog titles */
-  --fs-h3: 1.0625rem;
-  --fs-lead: 1.0938rem;      /* serif lead paragraph */
-  --fs-lg: 1.125rem;
-  --fs-h2: 1.1875rem;
-  --fs-xl: 1.25rem;
-  --fs-h1: 1.375rem;
-  --fs-page-title: 1.5rem;   /* page titles */
-  --fs-hero: 1.8125rem;      /* hero greeting */
-
-  /* ---- Spacing. Margins and gaps of the shared components use these steps. ---- */
-  --space-none: 0;
-  --space-2xs: 0.125rem;
+  /* ---- Spacing ---- */
   --space-xs: 0.25rem;
   --space-sm: 0.5rem;
   --space-md: 0.75rem;
   --space-lg: 1rem;
-  --space-xl: 1.375rem;
+  --space-xl: 1.5rem;
   --space-2xl: 2rem;
+  --space-3xl: 4rem;
 
-  /* ---- Icon sizes ---- */
-  --icon-xs: 0.75rem;
-  --icon-small: 0.875rem;
-  --icon-medium: 1rem;
-  --icon-large: 1.25rem;
-  --icon-xl: 1.5rem;
+  /* ---- Font sizes ---- */
+  --fs-xs: 0.75rem;
+  --fs-sm: 0.8125rem;
+  --fs-md: 0.9375rem;
+  --fs-lg: 1.125rem;
+  --fs-xl: 1.375rem;
+  --fs-2xl: 1.75rem;
 
-  /* ---- Shape. Flat-first: hairlines and small radii. ---- */
-  --radius-sm: 2px;
-  --radius-md: 4px;
-  --radius-lg: 8px;
+  /* ---- Font weights ---- */
+  --fw-regular: 400;
+  --fw-medium: 500;
+  --fw-bold: 600;
 
-  /* ---- Elevation. Shadow only lifts interactive cards and overlays. ---- */
-  --shadow-card: 0 1px 2px rgba(0, 51, 73, .08), 0 2px 8px rgba(0, 51, 73, .10);
-  --shadow-overlay: 0 8px 40px rgba(0, 51, 73, .22);
-  --scrim: rgba(0, 27, 40, .5);
+  /* ---- Line heights ---- */
+  --lh-tight: 1.25;
+  --lh-base: 1.5;
 
-  /* ---- Motion. No bounce, no spring. ---- */
+  /* ---- Radii ---- */
+  --radius-sm: 0.125rem;
+  --radius-md: 0.25rem;
+  --radius-lg: 0.5rem;
+  --radius-pill: 999rem;
+
+  /* ---- Border widths ---- */
+  --border-sm: 1px;
+  --border-md: 2px;
+  --border-lg: 3px;
+
+  /* ---- Durations ---- */
   --dur-fast: 120ms;
   --dur-base: 180ms;
   --dur-slow: 320ms;
-  --ease-standard: cubic-bezier(.2, 0, .2, 1);
+  --dur-loop: 1s;
 
-  /* ---- Skråelement (brand skew) ---- */
-  --skew-angle: -20deg;
-  --skew-stripe: 6px;
+  /* ---- Opacity ---- */
+  --opacity-muted: 0.6;
+  --opacity-disabled: 0.45;
+
+  /* ---- Stacking order ---- */
+  --z-sticky: 10;
+  --z-overlay: 1000;
+  --z-dropdown: 1100;
+  --z-toast: 1200;
+
+  /* ---- Control and icon sizes ---- */
+  --control-sm: 1.75rem;
+  --control-md: 2.25rem;
+  --control-lg: 2.75rem;
+  --icon-sm: 1rem;
+  --icon-md: 1.25rem;
+  --icon-lg: 1.5rem;
+
+  /* ---- Layout widths ---- */
+  --size-3xs: 5rem;
+  --size-2xs: 10rem;
+  --size-xs: 16rem;
+  --size-sm: 20rem;
+  --size-md: 32rem;
+  --size-lg: 48rem;
+  --size-xl: 72rem;
+  --page-max-width: 51.25rem;
+  --context-column-width: 17.125rem;
+  --rail-width: 3.75rem;
 }

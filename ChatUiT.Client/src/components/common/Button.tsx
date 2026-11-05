@@ -6,7 +6,8 @@ import './Button.css';
 
 // 'inherit' is transparent and takes the text color of its container, for buttons inside chips and tags.
 // 'dashed' is the add-a-new-item action at the end of a list.
-export type ButtonVariant = 'primary' | 'secondary' | 'danger' | 'subtle' | 'ghost' | 'inherit' | 'dashed';
+// 'outline' is a hairline frame in the strong line colour with muted text, such as the send button of an empty message box.
+export type ButtonVariant = 'primary' | 'secondary' | 'danger' | 'subtle' | 'ghost' | 'inherit' | 'dashed' | 'outline';
 
 /** Parameters Button and IconButton share. */
 export interface ButtonBaseProps extends LayoutProps, Omit<React.ComponentProps<'button'>, 'type' | 'width'> {
@@ -51,15 +52,20 @@ export interface ButtonProps extends ButtonBaseProps {
   active?: boolean;
   // Text color of the ghost, subtle and dashed variants
   tone?: 'default' | 'warning' | 'danger';
+  // A hairline frame; 'line-hover' strengthens it on hover. An active framed button shows an accent tint.
+  frame?: 'none' | 'line' | 'line-hover';
+  // Tighter gap and padding on narrow screens
+  compactOnMobile?: boolean;
 }
 
-/** The app's text button. */
+/** A named icon at the size that matches the button, or a custom icon element as given. */
 const renderIcon = (icon: IconName | React.ReactElement | undefined, size: ButtonSize) =>
   typeof icon === 'string' ? <Icon name={icon} size={BUTTON_ICON_SIZE[size]} /> : icon;
 
-const Button: React.FC<ButtonProps> = ({ variant = 'secondary', size = 'medium', startIcon, endIcon, fullWidth = false, justify = 'center', tone = 'default', active = false, loading = false, className, children, ...rest }) => (
+/** The app's text button. */
+const Button: React.FC<ButtonProps> = ({ variant = 'secondary', size = 'medium', startIcon, endIcon, fullWidth = false, justify = 'center', tone = 'default', active = false, loading = false, frame = 'none', compactOnMobile = false, className, children, ...rest }) => (
   <ButtonRoot
-    classes={cx('button', `button--${variant}`, `button--${size}`, fullWidth && 'button--full-width', justify === 'start' && 'button--justify-start', active && 'button--active', tone !== 'default' && `button--tone-${tone}`, 't-ui', className)}
+    classes={cx('button', `button--${variant}`, `button--${size}`, fullWidth && 'button--full-width', justify === 'start' && 'button--justify-start', active && 'button--active', tone !== 'default' && `button--tone-${tone}`, frame !== 'none' && `button--frame-${frame}`, compactOnMobile && 'button--compact-mobile', 't-ui', className)}
     loading={loading}
     {...rest}
   >

@@ -1,0 +1,14 @@
+.setting-row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-xl);
+  min-width: 0;
+  max-width: var(--size-lg);
+  padding: var(--space-md) 0;
+  border-bottom: var(--border-sm) solid var(--line-soft);
+}
+
+.setting-row__label {
+  flex: 1;
+  min-width: 0;
+}

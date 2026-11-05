@@ -14,7 +14,7 @@ const InitErrorScreen: React.FC<InitErrorScreenProps> = ({ message, onRetry, onS
   const { t } = useTranslation();
   return (
     <div className="init-error-container">
-      <div className="init-error-title">{t('initError.title')}</div>
+      <div className="init-error-title t-title">{t('initError.title')}</div>
       {message && <div className="init-error-message t-caption">{message}</div>}
       <Stack direction="row" gap="md" mt="sm">
         <Button variant="primary" onClick={onRetry}>

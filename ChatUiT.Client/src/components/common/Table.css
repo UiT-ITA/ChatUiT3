@@ -1,0 +1,18 @@
+/* A full-width table of text rows, separated by soft lines */
+.table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.table__cell {
+  padding: var(--space-sm) var(--space-md) var(--space-sm) 0;
+  text-align: left;
+  vertical-align: top;
+  border-top: var(--border-sm) solid var(--line-soft);
+  word-break: break-all;
+}
+
+.table__cell--head {
+  border-top: none;
+  color: var(--text-3);
+}

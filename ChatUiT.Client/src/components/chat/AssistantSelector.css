@@ -1,0 +1,77 @@
+.assistant-selector__rail {
+  display: flex;
+  flex-direction: column;
+  flex: 0 0 auto;
+  padding: var(--space-xs) 0;
+  background: var(--panel-2);
+  border: var(--border-sm) solid var(--line-soft);
+  overflow: hidden;
+}
+
+.assistant-selector__list {
+  flex: 1;
+  min-width: 0;
+  height: var(--size-md);
+  overflow-y: auto;
+  overflow-x: hidden;
+}
+
+/* The list's scrollbar shows also while the pointer is outside the list */
+.assistant-selector__list::-webkit-scrollbar-thumb {
+  background-color: var(--line-strong);
+}
+
+.assistant-selector__list::-webkit-scrollbar-thumb:hover {
+  background-color: var(--text-3);
+}
+
+.assistant-selector__empty {
+  color: var(--text-3);
+  padding: var(--space-xl) var(--space-lg);
+  text-align: center;
+}
+
+.assistant-selector__row {
+  align-items: flex-start;
+}
+
+.assistant-selector__row-leading,
+.assistant-selector__row-line {
+  display: flex;
+  align-items: center;
+  height: var(--control-sm);
+}
+
+.assistant-selector__row-line {
+  gap: var(--space-sm);
+  width: 100%;
+  min-width: 0;
+}
+
+.assistant-selector__row-end {
+  justify-content: center;
+  min-width: var(--control-sm);
+  margin-left: auto;
+}
+
+.assistant-selector__separator {
+  height: var(--space-md);
+  border-left: var(--border-sm) solid var(--line);
+  flex: 0 0 auto;
+}
+
+@media (width <= 50rem) {
+  .assistant-selector__list {
+    height: var(--size-sm);
+  }
+}
+
+/* The arrow after the assistant name in the composer button, which points down while the picker is open */
+.assistant-selector__arrow {
+  margin-left: var(--space-xs);
+  vertical-align: middle;
+}
+
+[aria-expanded='true'] .assistant-selector__arrow {
+  transform: rotate(180deg);
+}

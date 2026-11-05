@@ -1,13 +1,14 @@
-import { useSignals } from '@preact/signals-react/runtime';
+import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Icon, type IconName } from '../common/Icon';
 import IconButton from '../common/IconButton';
+import Badge from '../common/Badge';
 import Card from '../common/Card';
-import ClassificationBadge from '../common/ClassificationBadge';
-import { CAPABILITIES, capabilitiesOf } from '../common/assistantCapabilities';
+import ClassificationBadge from '../classification/ClassificationBadge';
+import CapabilityTag from './CapabilityTag';
+import Tooltip from '../common/Tooltip';
+import type { Capability } from './assistantCapabilities';
 import { cx } from '../common/layout';
-import { toggleFavorite } from '../../services/assistantService';
-import { getModels } from '../../services/modelService';
 import type { AssistantDto } from '../../types/assistantModels';
 import './AssistantCard.css';
 
@@ -23,22 +24,56 @@ interface AssistantCardProps {
   /** Shown but not selectable, with this text as the reason. */
   disabledReason?: string;
   onSelect: (assistant: AssistantDto) => void;
-  /** Shows a pin, for the assistant the user pinned as default. */
+  onToggleFavorite: (assistant: AssistantDto) => void;
+  /** The name of the assistant's model, shown at the start of the specs line. */
+  modelName?: string;
+  /** Shows the default badge, for the assistant the user chose as default. */
   isDefault?: boolean;
   /** Shows a hidden icon, for an assistant hidden from the picker. */
   hidden?: boolean;
+  /** Shows the assistant's type under the name. */
+  showType?: boolean;
+  /** Number of knowledge files, shown after the model when above zero. */
+  fileCount?: number;
+  /** Capabilities shown as icon and name at the end of the specs line. */
+  capabilities?: Capability[];
+  /** Smaller padding and a one-line description. */
+  compact?: boolean;
+  /** Shows a chevron, or a check when selected, at the end of the specs line. */
+  showAction?: boolean;
 }
 
-/** A selectable assistant with its description and a list of its model, classification and capabilities. */
-export default function AssistantCard({ assistant, selected, disabledReason, onSelect, isDefault = false, hidden = false }: AssistantCardProps) {
-  useSignals();
+/** Marks the assistant the user chose as default, muted when its model can no longer be default. */
+export function DefaultBadge({ canBeDefault, className }: { canBeDefault: boolean; className?: string }) {
   const { t } = useTranslation();
-  const models = getModels().value ?? [];
-  const capabilities = capabilitiesOf(assistant, models);
-  const activeCapabilities = CAPABILITIES.filter(({ key }) => capabilities[key]);
-  const modelName = models.find(m => m.id === assistant.modelId)?.modelName;
+  return (
+    <Badge
+      tone={canBeDefault ? 'accent' : 'neutral'}
+      title={canBeDefault ? t('assistants.actions.isDefault') : t('assistants.defaultInactiveNote')}
+      className={className}
+    >
+      {t('assistants.defaultBadge')}
+    </Badge>
+  );
+}
+
+/** A selectable assistant with its description, and its model, classification and capabilities on one line. */
+export default function AssistantCard({ assistant, selected, disabledReason, onSelect, onToggleFavorite, modelName, isDefault = false, hidden = false, showType = true, fileCount = 0, capabilities = [], compact = false, showAction = false }: AssistantCardProps) {
+  const { t } = useTranslation();
   const description = assistant.description?.trim();
   const disabled = disabledReason !== undefined;
+  const [descriptionElement, setDescriptionElement] = useState<HTMLParagraphElement | null>(null);
+  const [clamped, setClamped] = useState(false);
+
+  // Tracks whether the line clamp cuts the description off
+  useEffect(() => {
+    if (!descriptionElement) return;
+    const observer = new ResizeObserver(() => setClamped(descriptionElement.scrollHeight > descriptionElement.clientHeight));
+    observer.observe(descriptionElement);
+    return () => observer.disconnect();
+  }, [descriptionElement]);
+
+  const descriptionText = <p ref={setDescriptionElement} className="assistant-card-description">{description}</p>;
 
   return (
     <Card
@@ -47,11 +82,11 @@ export default function AssistantCard({ assistant, selected, disabledReason, onS
       aria-selected={selected}
       aria-disabled={disabled || undefined}
       title={disabledReason}
-      padding="lg"
-      gap="md"
+      padding={compact ? 'md' : 'lg'}
+      gap={compact ? 'sm' : 'md'}
       interactive={!disabled}
       selected={selected}
-      className={cx('assistant-card', disabled && 'assistant-card--disabled')}
+      className={cx('assistant-card', compact && 'assistant-card--compact', disabled && 'assistant-card--disabled')}
       onClick={() => { if (!disabled) onSelect(assistant); }}
       onKeyDown={(e) => {
         if (!disabled && e.target === e.currentTarget && (e.key === 'Enter' || e.key === ' ')) {
@@ -62,22 +97,18 @@ export default function AssistantCard({ assistant, selected, disabledReason, onS
     >
       <div className="assistant-card-top">
         <div className="assistant-card-heading">
-          <span className="assistant-card-name">{assistant.name}</span>
-          <span className="assistant-card-type">
-            <Icon name={TYPE_ICON[assistant.type] ?? 'assistants'} size="xs" color="accent" />
-            {t(`assistants.picker.categories.${assistant.type}`)}
-          </span>
+          <span className="assistant-card-title"><span title={assistant.name}>{assistant.name}</span></span>
+          {showType && (
+            <span className="assistant-card-type">
+              <Icon name={TYPE_ICON[assistant.type] ?? 'assistants'} size="sm" color="secondary" />
+              {t(`assistants.picker.categories.${assistant.type}`)}
+            </span>
+          )}
         </div>
-        {isDefault && (
-          <Icon
-            name={assistant.canBeDefault ? 'pin' : 'pinOutline'}
-            color="muted"
-            label={assistant.canBeDefault ? t('assistants.actions.isDefault') : t('assistants.defaultInactiveNote')}
-          />
-        )}
+        {isDefault && <DefaultBadge canBeDefault={assistant.canBeDefault} className="assistant-card-default" />}
         {hidden && <Icon name="hidden" color="muted" label={t('assistants.actions.showInSelector')} />}
         <IconButton
-          icon={<Icon name={assistant.isFavorite ? 'star' : 'starOutline'} color={assistant.isFavorite ? 'accent' : 'muted'} />}
+          icon={<Icon name={assistant.isFavorite ? 'star' : 'starOutline'} color={assistant.isFavorite ? 'accent' : 'secondary'} />}
           label={assistant.isFavorite
             ? t('assistants.actions.removeFavorite')
             : t('assistants.actions.addFavorite')}
@@ -85,30 +116,41 @@ export default function AssistantCard({ assistant, selected, disabledReason, onS
           aria-pressed={assistant.isFavorite}
           onClick={(e) => {
             e.stopPropagation();
-            // The server pushes AssistantsUpdated, which re-fetches the list.
-            void toggleFavorite(assistant.id);
+            onToggleFavorite(assistant);
           }}
         />
       </div>
 
-      <p className="assistant-card-description">{description}</p>
+      {description && clamped && (
+        <Tooltip content={description} align="start" block>{descriptionText}</Tooltip>
+      )}
+      {description && !clamped && descriptionText}
+      {!description && (
+        <p className="assistant-card-description assistant-card-description--empty">{t('assistants.noDescription')}</p>
+      )}
 
-      <dl className="assistant-card-specs">
-        <dt>{t('assistantCard.model')}</dt>
-        <dd>{modelName ? <span className="assistant-card-model">{modelName}</span> : '–'}</dd>
-        <dt>{t('assistantCard.classification')}</dt>
-        <dd><ClassificationBadge classification={assistant.classification} /></dd>
-        <dt>{t('assistantCard.capabilities')}</dt>
-        <dd>
-          {activeCapabilities.length > 0 ? (
-            <span className="assistant-card-cap-icons">
-              {activeCapabilities.map(({ key, icon }) => (
-                <Icon key={key} name={icon} size="small" color="accent" label={t(`assistants.capabilities.${key}`)} />
-              ))}
-            </span>
-          ) : '–'}
-        </dd>
-      </dl>
+      <div className="assistant-card-specs">
+        {(modelName || fileCount > 0) && (
+          <span className="assistant-card-model" title={t('assistantCard.model')}>
+            {[modelName, fileCount > 0 ? t('assistants.fileCount', { count: fileCount }) : undefined].filter(Boolean).join(' · ')}
+          </span>
+        )}
+        <ClassificationBadge classification={assistant.classification} />
+        {capabilities.length > 0 && (
+          <span className="assistant-card-cap-icons">
+            {capabilities.map(key => (
+              <CapabilityTag key={key} capability={key} />
+            ))}
+          </span>
+        )}
+        {showAction && !disabled && (
+          <span className={cx('assistant-card-action', selected && 'assistant-card-action--selected')}>
+            {selected
+              ? <Icon name="check" size="sm" label={t('welcome.assistantSelected')} className="assistant-card-action__icon" />
+              : <Icon name="chevronRight" size="md" label={t('welcome.useAssistant')} className="assistant-card-action__icon" />}
+          </span>
+        )}
+      </div>
     </Card>
   );
 }

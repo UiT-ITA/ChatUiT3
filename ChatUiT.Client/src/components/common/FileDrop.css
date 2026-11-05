@@ -1,0 +1,31 @@
+/* A dashed drop area with an icon and a label around an invisible native file input that takes clicks and dropped files */
+.file-drop {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-sm);
+  min-height: var(--space-3xl);
+  padding: var(--space-md) var(--space-lg);
+  border: var(--border-sm) dashed var(--line-strong);
+  border-radius: var(--radius-md);
+  background: transparent;
+  color: var(--text);
+  cursor: pointer;
+  transition: border-color var(--dur-fast) ease, background var(--dur-fast) ease;
+}
+
+.file-drop:hover,
+.file-drop:focus-within {
+  border-color: var(--accent);
+  background: var(--tint);
+}
+
+.file-drop__input {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  opacity: 0;
+  cursor: pointer;
+}

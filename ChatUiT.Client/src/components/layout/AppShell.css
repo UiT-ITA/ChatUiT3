@@ -1,0 +1,295 @@
+/* App shell: icon rail | side column | main column (header + content).
+   Mobile: the rail is a top bar, and the side column and the main column are a list/detail pair */
+.app-shell {
+  display: flex;
+  height: 100dvh;
+  width: 100vw;
+  min-width: var(--size-sm);
+  overflow: hidden;
+  background: var(--bg);
+  position: relative;
+}
+
+/* Groups the rail and the side column for hover without adding a box */
+.app-shell__sidebar {
+  display: contents;
+}
+
+.app-shell__main {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  background: var(--bg);
+}
+
+.app-shell--mobile {
+  flex-direction: column;
+}
+
+/* Mobile shows one of the pair at a time. Both stay mounted and only their visibility changes */
+.app-shell--mobile.app-shell--list > .app-shell__main {
+  display: none;
+}
+
+.app-shell--mobile.app-shell--detail .side-column {
+  display: none;
+}
+
+/* ---------- Header of the main column ---------- */
+
+.app-header {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  min-height: calc(var(--control-lg) + var(--space-sm));
+  gap: var(--space-md);
+  padding: 0 var(--space-md);
+  border-bottom: var(--border-sm) solid var(--line);
+}
+
+.app-header__title {
+  flex: 1;
+  min-width: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  color: var(--text);
+}
+
+/* Breadcrumb to the list of an open edit page: equal space on both sides of the separator */
+.app-header__crumb {
+  padding: 0 var(--space-sm);
+}
+
+.app-header__crumb-sep {
+  margin-right: var(--space-sm);
+}
+
+/* Save state of an open edit page */
+.app-header__status {
+  flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-xs);
+  color: var(--text-3);
+}
+
+.app-shell--mobile .app-header {
+  min-height: calc(var(--control-lg) + var(--space-xs));
+  gap: var(--space-xs);
+  padding: 0 var(--space-sm);
+}
+
+/* The save state in the top bar ends at the page gutter */
+.app-rail--mobile > .app-header__status:last-child {
+  margin-right: var(--space-sm);
+}
+
+/* A title without a back button lines up with the page gutter */
+.app-shell--mobile .app-header > .app-header__title:first-child {
+  padding-left: var(--space-sm);
+}
+
+/* ---------- Icon rail: a narrow brand column, a top bar on mobile ---------- */
+
+.app-rail {
+  width: var(--rail-width);
+  flex: 0 0 var(--rail-width);
+  background: var(--panel);
+  border-right: var(--border-sm) solid var(--line);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: var(--space-md) 0;
+  gap: var(--space-xs);
+}
+
+.app-rail--mobile {
+  width: 100%;
+  flex: 0 0 auto;
+  height: calc(var(--space-2xl) + var(--space-lg));
+  flex-direction: row;
+  padding: 0 var(--space-sm);
+  border-right: none;
+  border-bottom: var(--border-sm) solid var(--line);
+}
+
+/* Top bar with the main column header's content: the height and background of the mobile header */
+.app-rail__seal {
+  width: var(--control-lg);
+  height: var(--control-lg);
+  flex: 0 0 auto;
+  display: block;
+  object-fit: contain;
+  margin: 0 0 var(--space-xs);
+}
+
+/* Top bar: a smaller seal before the section buttons */
+.app-rail--mobile .app-rail__seal {
+  width: var(--space-2xl);
+  height: var(--space-2xl);
+  margin: 0 var(--space-sm) 0 0;
+}
+
+.app-rail__gap {
+  height: var(--space-sm);
+  flex: 0 0 auto;
+}
+
+.app-rail__spacer {
+  flex: 1;
+}
+
+.app-rail__avatar {
+  width: var(--control-md);
+  height: var(--control-md);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--accent);
+  color: var(--surface);
+  border-radius: var(--radius-md);
+}
+
+[data-mode="dark"] .app-rail__avatar {
+  color: var(--bg);
+}
+
+.app-rail__menu-header {
+  padding: var(--space-md) var(--space-lg);
+  border-bottom: var(--border-sm) solid var(--line-soft);
+}
+
+.app-rail__menu-email {
+  color: var(--text-3);
+  margin-top: var(--space-xs);
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* ---------- Side column: the list panel between the rail and the main column ---------- */
+
+.side-column {
+  width: var(--context-column-width);
+  flex: 0 0 var(--context-column-width);
+  background: var(--bg);
+  border-right: var(--border-sm) solid var(--line);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.side-column__header {
+  padding: var(--space-lg) var(--space-lg) var(--space-md);
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--space-sm);
+}
+
+.side-column__count {
+  color: var(--text-3);
+}
+
+.side-column__search {
+  padding: 0 var(--space-md) var(--space-md);
+}
+
+.side-column__scroll {
+  flex: 1;
+  overflow-y: auto;
+  overflow-x: hidden;
+  padding: 0 var(--space-sm) var(--space-lg);
+}
+
+.side-column__note {
+  padding: var(--space-sm) var(--space-md);
+  color: var(--text-3);
+}
+
+/* Empty list: an icon over a short note */
+.side-column__empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-sm);
+  margin-top: var(--space-lg);
+  padding: var(--space-sm) var(--space-md);
+  color: var(--text-2);
+  text-align: center;
+}
+
+.side-column__empty-title {
+  color: var(--text);
+}
+
+/* Group label above list rows (Today / Yesterday / Earlier, assistant groups) */
+.side-column__group-label {
+  color: var(--text-3);
+  padding: var(--space-sm) var(--space-sm) var(--space-xs);
+}
+
+/* Collapsed: taken out of the row and hidden behind its left edge, next to the icon rail */
+.side-column--collapsed {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: var(--rail-width);
+  z-index: var(--z-overlay);
+  visibility: hidden;
+  clip-path: inset(0 100% 0 0);
+  transition: clip-path var(--dur-base) ease, visibility 0s var(--dur-base);
+}
+
+/* Shown over the main column with its shadow: the clip reaches past the right edge */
+.side-column--peek {
+  visibility: visible;
+  clip-path: inset(0 calc(-1 * (var(--space-2xl) + var(--space-lg))) 0 0);
+  box-shadow: var(--shadow-overlay);
+  transition: clip-path var(--dur-base) ease, visibility 0s;
+}
+
+/* Mobile: the column is the list view, full width under the top bar */
+.side-column--mobile {
+  width: 100%;
+  flex: 1;
+  min-height: 0;
+  border-right: none;
+}
+
+/* Mobile list view: page title, accent bar and intro above the list */
+.side-column__page-head {
+  padding: var(--space-xl) var(--space-lg) var(--space-sm);
+}
+
+.side-column__page-title {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--space-sm);
+}
+
+.side-column__intro {
+  margin: 0 0 var(--space-sm);
+  color: var(--text-2);
+}
+
+/* Mobile list view: side gutters */
+.side-column--mobile .side-column__scroll {
+  padding: 0 var(--space-lg) var(--space-lg);
+}
+
+.side-column--mobile .side-column__group-label,
+.side-column--mobile .side-column__note {
+  padding-left: 0;
+  padding-right: 0;
+}
+
+/* Entries of an open group, indented to the start of the group's name after its icon */
+.side-column__children {
+  padding-left: var(--space-xl);
+  margin-bottom: var(--space-sm);
+}

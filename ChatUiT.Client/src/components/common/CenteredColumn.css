@@ -1,0 +1,18 @@
+/* A centred column with a maximum width and its own padding, with other padding on narrow screens */
+.centered-column {
+  max-width: var(--centered-column-max-width);
+  width: 100%;
+  margin: 0 auto;
+  padding: var(--centered-column-pt) var(--centered-column-px) var(--centered-column-pb);
+}
+
+/* Centres the column vertically too, in the free space of a flex column */
+.centered-column--middle {
+  margin: auto;
+}
+
+@media (width <= 50rem) {
+  .centered-column {
+    padding: var(--centered-column-mobile-pt) var(--centered-column-mobile-px) var(--centered-column-mobile-pb);
+  }
+}

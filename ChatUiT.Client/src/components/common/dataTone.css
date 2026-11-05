@@ -1,0 +1,13 @@
+/* Fill colours of bars and legend swatches */
+.data-tone--accent { background: var(--accent); }
+.data-tone--warn { background: var(--warn); }
+.data-tone--danger { background: var(--danger); }
+.data-tone--reserved {
+  background: var(--accent);
+  opacity: var(--opacity-disabled);
+}
+.data-tone--viz-1 { background: var(--viz-1); }
+.data-tone--viz-2 { background: var(--viz-2); }
+.data-tone--viz-3 { background: var(--viz-3); }
+.data-tone--viz-4 { background: var(--viz-4); }
+.data-tone--viz-5 { background: var(--viz-5); }

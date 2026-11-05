@@ -8,139 +8,98 @@ import { getChat } from '../../services/chatService';
 import { getAssistants } from '../../services/assistantService';
 import { conversationPanelOpenSignal, editorHeaderSignal } from '../../services/uiService';
 import useMediaQuery from '../../hooks/useMediaQuery';
-import type { SettingsCategory } from '../../types/settingsModels';
 import { isHelpSection } from '../help/helpSections';
 import Badge from '../common/Badge';
-
-const SETTINGS_TABS: SettingsCategory[] = ['appearance', 'personalization', 'dataControl'];
+import { AppHeader, AppHeaderCrumb, AppHeaderStatus, AppHeaderTitle } from './AppShell';
+import { WIDE } from '../common/breakpoints';
+import { parseRoute } from '../../utils/routes';
+import { useHeaderBack } from './useHeaderBack';
 
 interface MainHeaderProps {
   isMobile?: boolean;
   sidebarCollapsed?: boolean;
-  // Shows the sidebar collapse/expand button when set
   onToggleSidebar?: () => void;
 }
 
 /**
- * The thin header at the top of the main column — present in every section,
- * as in the design. Shows the sidebar toggle on wide screens, the current title,
- * an optional context chip, the conversation-panel toggle on chat pages, and a
- * back-to-list button on mobile.
+ * The content of the main column header. Shows the sidebar toggle when onToggleSidebar is set, the current
+ * title, an optional context chip, the conversation-panel toggle on chat pages, and a back control on edit
+ * pages and on mobile detail views.
  */
-const MainHeader = ({ isMobile, sidebarCollapsed, onToggleSidebar }: MainHeaderProps) => {
+export const MainHeaderContent = ({ isMobile, sidebarCollapsed, onToggleSidebar }: MainHeaderProps) => {
   useSignals();
   const { t } = useTranslation();
-  const location = useLocation();
   const navigate = useNavigate();
-  const isWide = useMediaQuery('(min-width: 1100px)');
-
-  const pathParts = location.pathname.split('/').filter(Boolean);
-
-  const section = location.pathname.startsWith('/assistants') ? 'assistants'
-    : location.pathname.startsWith('/generate') ? 'generate'
-    : location.pathname.startsWith('/admin') ? 'admin'
-    : location.pathname.startsWith('/settings') ? 'settings'
-    : location.pathname.startsWith('/help') ? 'help'
-    : location.pathname.startsWith('/status') ? 'status'
-    : 'chats';
-
-  const sectionTitles: Record<string, string> = {
-    chats: t('contextColumn.chats'),
-    assistants: t('contextColumn.assistants'),
-    generate: t('contextColumn.generate'),
-    admin: t('contextColumn.admin'),
-    settings: t('contextColumn.settings'),
-    help: t('contextColumn.help'),
-    status: t('contextColumn.status'),
-  };
-
-  const sectionRoots: Record<string, string> = {
-    chats: '/',
-    assistants: '/assistants',
-    generate: '/generate',
-    admin: '/admin',
-    settings: '/settings',
-    help: '/help',
-    status: '/status',
-  };
-
-  // Chat: the header carries the conversation title
-  const chatId = section === 'chats' && pathParts[0] === 'chat' && pathParts[1] && pathParts[1] !== 'new'
-    ? pathParts[1]
-    : undefined;
+  const isWide = useMediaQuery(WIDE);
+  const { section, params, chatId } = parseRoute(useLocation().pathname);
+  const back = useHeaderBack(isMobile);
   const chat = chatId ? getChat(chatId).value : undefined;
 
-  let title: string;
+  let title = t(`contextColumn.${section}`);
   let chip = '';
 
   if (section === 'chats') {
     title = chatId ? (chat?.name || '…') : t('chat.newChat');
-  } else {
-    title = sectionTitles[section];
-    if (section === 'settings' && SETTINGS_TABS.includes(pathParts[1] as SettingsCategory)) {
-      chip = t(`settings.categories.${pathParts[1]}`);
-    } else if (section === 'assistants' && pathParts[1] && pathParts[1] !== 'new') {
-      const assistantList = getAssistants().value;
-      const all = assistantList
-        ? [...assistantList.owned, ...assistantList.system, ...assistantList.shared]
-        : [];
-      chip = all.find(a => a.id === pathParts[1])?.name ?? '';
-    } else if (section === 'admin' && pathParts[1]) {
-      chip = t(`admin.tabs.${pathParts[1]}`, { defaultValue: '' });
-    } else if (section === 'help' && isHelpSection(pathParts[1])) {
-      chip = t(`help.sections.${pathParts[1]}`);
-    }
+  } else if (section === 'assistants' && params[0] && params[0] !== 'new') {
+    const list = getAssistants().value;
+    title = [...(list?.owned ?? []), ...(list?.system ?? []), ...(list?.shared ?? [])].find(a => a.id === params[0])?.name ?? title;
+  } else if (section === 'settings' && params[0]) {
+    chip = t(`settings.categories.${params[0]}`, { defaultValue: '' });
+  } else if (section === 'admin' && params[0]) {
+    chip = t(`admin.tabs.${params[0]}`, { defaultValue: '' });
+  } else if (section === 'help' && isHelpSection(params[0])) {
+    chip = t(`help.sections.${params[0]}`);
   }
 
-  const showPanelToggle = section === 'chats' && chatId !== undefined && isWide;
-  const panelOpen = conversationPanelOpenSignal.value;
-
-  // An open edit page: back to its list, and save/cancel once the form has changes
+  // An open edit page: save/cancel once the form has changes
   const editor = editorHeaderSignal.value;
 
   return (
-    <header className="main-header">
+    <>
       {onToggleSidebar && (
-        <IconButton
-          icon="sidebarToggle"
-          iconSize="large"
-          label={t(sidebarCollapsed ? 'sidebar.expandSidebar' : 'sidebar.collapseSidebar')}
-          variant="ghost"
-          size="small"
-          onClick={onToggleSidebar}
-        />
+        <IconButton icon="sidebarToggle" iconSize="md" label={t(sidebarCollapsed ? 'sidebar.expandSidebar' : 'sidebar.collapseSidebar')} variant="ghost" size="small" onClick={onToggleSidebar} />
       )}
-      {editor ? (
-        <Button variant="ghost" startIcon="back" shrink minWidth="0" onClick={() => navigate(editor.backPath)}>
-          {editor.backLabel}
-        </Button>
-      ) : isMobile && (
-        <Button variant="ghost" startIcon="back" shrink minWidth="0" onClick={() => navigate(sectionRoots[section])}>
-          {sectionTitles[section]}
-        </Button>
+      {back && (isMobile ? (
+        <IconButton icon="back" label={back.label} variant="ghost" onClick={() => navigate(back.path)} />
+      ) : (
+        <AppHeaderCrumb onClick={() => navigate(back.path)}>{back.label}</AppHeaderCrumb>
+      ))}
+      <AppHeaderTitle>{title}</AppHeaderTitle>
+      {chip && !isMobile && <Badge tone="accent" size="medium" maxWidth="2xs">{chip}</Badge>}
+      {editor && !editor.dirty && (
+        <AppHeaderStatus title={t('common.allChangesSaved')}>
+          <Icon name="check" size="sm" color="success" />
+          {isMobile ? t('common.saved') : t('common.allChangesSaved')}
+        </AppHeaderStatus>
       )}
-      <div className="main-header-title t-title">{title}</div>
-      {chip && !isMobile && <Badge tone="accent" size="medium" maxWidth="12rem">{chip}</Badge>}
       {editor?.dirty && (
         <>
-          <Button variant="primary" size="small" onClick={editor.onSave} disabled={editor.saveDisabled}>
-            {editor.saveLabel}
-          </Button>
-          <Button variant="secondary" size="small" onClick={editor.onCancel}>
-            {t('common.cancel')}
-          </Button>
+          <Button variant="primary" size="small" onClick={editor.onSave} disabled={editor.saveDisabled}>{editor.saveLabel}</Button>
+          <Button variant="secondary" size="small" onClick={editor.onCancel}>{t('common.cancel')}</Button>
         </>
       )}
-      {showPanelToggle && (
+      {section === 'chats' && chatId !== undefined && isWide && (
         <IconButton
-          icon={<Icon name="sidebarToggle" size="large" mirror />}
+          icon={<Icon name="sidebarToggle" size="md" mirror />}
           label={t('chat.togglePanel')}
           variant="ghost"
           size="small"
-          onClick={() => { conversationPanelOpenSignal.value = !panelOpen; }}
+          onClick={() => { conversationPanelOpenSignal.value = !conversationPanelOpenSignal.value; }}
         />
       )}
-    </header>
+    </>
+  );
+};
+
+/** The thin header at the top of the main column. On mobile views with a back control, the top bar shows its content instead. */
+const MainHeader = (props: MainHeaderProps) => {
+  useSignals();
+  const back = useHeaderBack(props.isMobile);
+  if (props.isMobile && back) return null;
+  return (
+    <AppHeader>
+      <MainHeaderContent {...props} />
+    </AppHeader>
   );
 };
 

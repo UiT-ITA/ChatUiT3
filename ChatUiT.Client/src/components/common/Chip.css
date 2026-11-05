@@ -1,26 +1,31 @@
 .chip {
   display: inline-flex;
   align-items: center;
-  gap: 0.25rem;
+  gap: var(--space-xs);
   max-width: 100%;
-  border-radius: var(--radius-md);
-  line-height: 1.2;
+  border-radius: var(--radius-pill);
+  line-height: var(--lh-tight);
   white-space: nowrap;
 }
 
-.chip--small { padding: 0.25rem 0.5rem; }
-.chip--medium { padding: 0.25rem 0.625rem; }
+.chip--small { padding: var(--space-xs) var(--space-sm); }
+.chip--medium { padding: var(--space-xs) var(--space-md); }
 
-.chip--removable.chip--small { padding-right: 0.25rem; }
-.chip--removable.chip--medium { padding-right: 0.375rem; }
+.chip--removable.chip--small { padding-right: var(--space-xs); }
+.chip--removable.chip--medium { padding-right: var(--space-sm); }
 
+/* Tinted fill with accent text, the same in light and dark modes */
 .chip--solid {
-  background: var(--accent);
-  color: var(--btn-fg);
+  background: color-mix(in srgb, var(--accent) 14%, transparent);
+  color: var(--accent);
+}
+
+[data-mode="dark"] .chip--solid {
+  background: color-mix(in srgb, var(--accent) 22%, transparent);
 }
 
 .chip--subtle {
-  border: 1px solid var(--line);
+  border: var(--border-sm) solid var(--line);
   background: var(--panel);
   color: var(--text);
 }
@@ -28,7 +33,7 @@
 .chip__label {
   display: inline-flex;
   align-items: center;
-  gap: 0.375rem;
+  gap: var(--space-sm);
   min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;

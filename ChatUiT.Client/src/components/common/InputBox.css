@@ -4,11 +4,17 @@
   align-items: center;
   gap: var(--space-sm);
   min-width: 0;
-  border: 1px solid var(--line);
+  --input-frame: var(--line);
+  border: var(--border-sm) solid var(--input-frame);
   border-radius: var(--radius-md);
-  background: var(--surface);
+  background: var(--surface-raised);
   color: var(--text);
-  transition: border-color var(--dur-fast) var(--ease-standard);
+  transition: border-color var(--dur-fast) ease;
+}
+
+/* Dark modes: a neutral frame at rest; the accent frame marks focus only */
+[data-mode="dark"] .input-box {
+  --input-frame: color-mix(in srgb, var(--text) 36%, var(--surface-raised));
 }
 
 .input-box--full-width {
@@ -27,7 +33,7 @@
 }
 
 .input-box--disabled {
-  opacity: 0.6;
+  opacity: var(--opacity-muted);
   cursor: not-allowed;
 }
 
@@ -36,18 +42,18 @@
 }
 
 .input-box--small {
-  min-height: 2rem;
-  padding: 0 0.5rem;
+  min-height: var(--control-sm);
+  padding: 0 var(--space-sm);
 }
 
 .input-box--medium {
-  min-height: 2.75rem;
-  padding: 0 0.75rem;
+  min-height: var(--control-lg);
+  padding: 0 var(--space-md);
 }
 
 .input-box--large {
-  min-height: 3.25rem;
-  padding: 0 1rem;
+  min-height: calc(var(--control-lg) + var(--space-sm));
+  padding: 0 var(--space-lg);
 }
 
 /* The native element inside the box */
@@ -55,7 +61,7 @@
   flex: 1;
   min-width: 0;
   align-self: stretch;
-  padding: 0;
+  padding: 0 0 0 var(--space-xs);
   border: none;
   background: transparent;
   color: inherit;
@@ -80,9 +86,9 @@
 /* A textarea is the box itself */
 .input-box--textarea {
   display: block;
-  padding-top: 0.625rem;
-  padding-bottom: 0.625rem;
-  line-height: 1.6;
+  padding-top: var(--space-md);
+  padding-bottom: var(--space-md);
+  line-height: var(--lh-base);
   outline: none;
 }
 
@@ -109,4 +115,9 @@
   background: transparent;
   box-shadow: none;
   outline: none;
+}
+
+/* The placeholder starts a little after the caret */
+.input-box--unstyled::placeholder {
+  padding-left: var(--space-xs);
 }

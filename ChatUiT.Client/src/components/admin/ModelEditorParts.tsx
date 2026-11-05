@@ -12,6 +12,8 @@ import Button from '../common/Button';
 import { ConfirmDialog } from '../common/Dialog';
 import ModelCombobox, { type ModelComboboxOption } from './ModelCombobox';
 import { ALL_ROLES } from './modelEditorShared';
+import FormFooter from '../common/FormFooter';
+import Text from '../common/Text';
 
 /** The fields and footer every model type's editor shares. */
 
@@ -150,7 +152,7 @@ export const ModelEditorFooter: React.FC<{ modelId: string; dirty: boolean }> = 
 
   return (
     <>
-      <div className="admin-form-footer">
+      <FormFooter>
         <Button
           variant="secondary"
           onClick={handleTest}
@@ -160,17 +162,15 @@ export const ModelEditorFooter: React.FC<{ modelId: string; dirty: boolean }> = 
           {testing ? t('admin.models.test.running') : t('admin.models.test.button')}
         </Button>
         {testResult?.success && (
-          <span className="admin-test-success" title={testResult.response ?? undefined}>
-            <Icon name="check" size="xl" color="success" />
-          </span>
+          <Icon name="check" size="lg" color="success" label={testResult.response ?? undefined} />
         )}
         {testResult && !testResult.success && (
-          <span className="admin-test-error t-caption">{testResult.error}</span>
+          <Text variant="caption" tone="danger" breakWord>{testResult.error}</Text>
         )}
         <Button variant="danger" ml="auto" onClick={() => setConfirmDelete(true)}>
           {t('admin.models.actions.delete')}
         </Button>
-      </div>
+      </FormFooter>
 
       <ConfirmDialog
         isOpen={confirmDelete}

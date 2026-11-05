@@ -61,7 +61,7 @@ interface CheckboxGroupProps extends LayoutProps, Omit<React.HTMLAttributes<HTML
 }
 
 /** A row or column of checkboxes. */
-export const CheckboxGroup: React.FC<CheckboxGroupProps> = ({ direction = 'column', gap = 'sm', ...rest }) => (
+export const CheckboxGroup: React.FC<CheckboxGroupProps> = ({ direction = 'column', gap = 'md', ...rest }) => (
   <Stack role="group" direction={direction} gap={gap} wrap={direction === 'row'} {...rest} />
 );
 

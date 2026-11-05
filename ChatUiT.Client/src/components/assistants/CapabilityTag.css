@@ -1,0 +1,9 @@
+/* Icon and name of a capability, in the secondary text color */
+.capability-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-xs);
+  flex: 0 0 auto;
+  color: var(--text-2);
+  white-space: nowrap;
+}

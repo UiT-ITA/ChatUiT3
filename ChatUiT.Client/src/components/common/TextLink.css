@@ -1,0 +1,9 @@
+/* A link in the accent colour, underlined on hover */
+.text-link {
+  color: var(--accent);
+  text-decoration: none;
+}
+
+.text-link:hover {
+  text-decoration: underline;
+}

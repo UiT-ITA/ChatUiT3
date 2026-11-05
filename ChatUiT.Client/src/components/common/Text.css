@@ -1,0 +1,39 @@
+.text--tone-default { color: var(--text); }
+.text--tone-secondary { color: var(--text-2); }
+.text--tone-muted { color: var(--text-3); }
+.text--tone-accent { color: var(--accent); }
+.text--tone-brand { color: var(--brand); }
+.text--tone-danger { color: var(--danger); }
+.text--tone-warning { color: var(--warn); }
+.text--tone-success { color: var(--success); }
+
+.text--truncate {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.text--clamp {
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: var(--text-lines);
+  line-clamp: var(--text-lines);
+  overflow: hidden;
+}
+
+.text--wrap-nowrap { white-space: nowrap; }
+.text--wrap-pre { white-space: pre-wrap; }
+.text--wrap-anywhere { overflow-wrap: anywhere; }
+.text--wrap-break-all { word-break: break-all; }
+.text--align-start { text-align: left; }
+.text--align-center { text-align: center; }
+.text--align-end { text-align: right; }
+.text--block { display: block; }
+.text--numeric { font-variant-numeric: tabular-nums; }
+.text--plain-case {
+  text-transform: none;
+  letter-spacing: 0;
+}
+.text--break-word { word-break: break-word; }
+.text--strike { text-decoration: line-through; }

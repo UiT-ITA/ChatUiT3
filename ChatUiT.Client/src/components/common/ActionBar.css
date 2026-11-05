@@ -1,0 +1,43 @@
+/* A wrapping row of action buttons */
+.action-bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-md);
+}
+
+/* A line under the actions that separates them from what follows */
+.action-bar--divided {
+  padding-bottom: var(--space-xl);
+  border-bottom: var(--border-sm) solid var(--line);
+}
+
+[data-mode="dark"] .action-bar--divided {
+  border-bottom-color: var(--line-strong);
+}
+
+.action-bar__end {
+  margin-left: auto;
+}
+
+/* Narrow screens: the buttons share the row, a primary button takes the full row, and the far-end action joins it */
+@media (width <= 50rem) {
+  .action-bar--fill-mobile {
+    gap: var(--space-sm);
+  }
+
+  .action-bar--fill-mobile > .button {
+    flex: 1 1 0;
+    min-width: 0;
+    height: var(--control-lg);
+    padding: 0 var(--space-sm);
+  }
+
+  .action-bar--fill-mobile > .button--primary {
+    flex-basis: 100%;
+  }
+
+  .action-bar--fill-mobile > .action-bar__end {
+    margin-left: 0;
+  }
+}

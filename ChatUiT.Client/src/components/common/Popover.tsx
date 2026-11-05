@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { createContext, useContext, useEffect, useId, useRef, useState } from 'react';
 import useDismiss from '../../hooks/useDismiss';
 import { floatingPanelClass, type PanelWidth } from './floatingPanel';
 import { cx, space, splitLayoutProps, type LayoutProps, type Space } from './layout';
@@ -6,6 +6,20 @@ import './Popover.css';
 
 type Side = 'top' | 'bottom' | 'left' | 'right';
 export type PopoverPlacement = Side | `${Side}-start` | `${Side}-end`;
+
+interface PopoverGroupValue {
+  // The popover in the group that was opened with a click
+  pinnedId: string | undefined;
+  setPinnedId: (id: string | undefined) => void;
+}
+
+const PopoverGroupContext = createContext<PopoverGroupValue | null>(null);
+
+/** Popovers inside open one at a time: while one is opened with a click, hovering the others does not open them. */
+export const PopoverGroup: React.FC<{ children?: React.ReactNode }> = ({ children }) => {
+  const [pinnedId, setPinnedId] = useState<string | undefined>(undefined);
+  return <PopoverGroupContext.Provider value={{ pinnedId, setPinnedId }}>{children}</PopoverGroupContext.Provider>;
+};
 
 type TriggerProps = React.HTMLAttributes<HTMLElement> & { 'aria-expanded'?: boolean; 'aria-haspopup'?: boolean | 'menu' | 'dialog' };
 
@@ -30,7 +44,8 @@ export interface PopoverProps extends LayoutProps {
   disabled?: boolean;
   className?: string;
   style?: React.CSSProperties;
-  children: React.ReactNode;
+  // The panel content, or a function that gets a function that closes the panel
+  children: React.ReactNode | ((close: () => void) => React.ReactNode);
 }
 
 /** A trigger with a floating panel. Closes on a click outside or on Escape. */
@@ -59,15 +74,29 @@ const Popover: React.FC<PopoverProps> = ({
   const closeTimer = useRef<number | undefined>(undefined);
   const ref = useRef<HTMLDivElement>(null);
   const open = controlledOpen ?? ownOpen;
-  const visible = !disabled && (open || hovered);
+  const id = useId();
+  const group = useContext(PopoverGroupContext);
+  const otherPinned = group?.pinnedId !== undefined && group.pinnedId !== id;
+  const visible = !disabled && (open || (hovered && !otherPinned));
 
   const setOpen = (next: boolean) => {
     if (controlledOpen === undefined) setOwnOpen(next);
     onOpenChange?.(next);
   };
 
-  useDismiss(ref, visible, () => { setHovered(false); setOpen(false); }, { escape: closeOnEscape, outsideClick: closeOnOutsideClick });
+  const close = () => { setHovered(false); setOpen(false); };
+
+  useDismiss(ref, visible, close, { escape: closeOnEscape, outsideClick: closeOnOutsideClick });
   useEffect(() => () => window.clearTimeout(closeTimer.current), []);
+
+  const setPinnedId = group?.setPinnedId;
+  useEffect(() => {
+    if (!setPinnedId) return;
+    if (open) {
+      setPinnedId(id);
+      return () => setPinnedId(undefined);
+    }
+  }, [open, id, setPinnedId]);
 
   const hoverHandlers = openOn === 'hover' ? {
     onMouseEnter: () => { window.clearTimeout(closeTimer.current); setHovered(true); },
@@ -96,7 +125,9 @@ const Popover: React.FC<PopoverProps> = ({
       {visible && (
         <div className={cx('popover__panel', `popover__panel--${side}`, `popover__panel--align-${align}`, panelWidth === 'trigger' && 'popover__panel--match-trigger', floatingPanelClass(panelWidth))}>
           {title && <div className="popover__title t-overline">{title}</div>}
-          {children}
+          <PopoverGroupContext.Provider value={null}>
+            {typeof children === 'function' ? children(close) : children}
+          </PopoverGroupContext.Provider>
         </div>
       )}
     </div>

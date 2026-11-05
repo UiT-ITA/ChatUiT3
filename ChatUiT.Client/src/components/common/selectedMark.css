@@ -1,0 +1,12 @@
+/* An accent bar along the start edge of a chosen option or item */
+.selected-mark { position: relative; }
+
+.selected-mark::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 0;
+  width: var(--border-md);
+  background: var(--accent);
+}

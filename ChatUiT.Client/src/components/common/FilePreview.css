@@ -1,0 +1,46 @@
+/* File preview: the images and text of a file, one under the other */
+.file-preview-content {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  justify-content: flex-start;
+  gap: var(--space-lg);
+  height: 100%;
+  padding: var(--space-lg);
+  overflow: auto;
+}
+
+.file-preview-content--compact {
+  padding: var(--space-sm);
+  gap: var(--space-sm);
+}
+
+.file-preview-image {
+  max-width: 100%;
+  width: auto;
+  height: auto;
+  object-fit: contain;
+  border-radius: var(--radius-sm);
+  background: var(--panel);
+  border: var(--border-sm) solid var(--line);
+}
+
+.file-preview-text {
+  background: var(--code-bg);
+  color: var(--text);
+  padding: var(--space-lg);
+  border-radius: var(--radius-sm);
+  line-height: var(--lh-base);
+  white-space: pre-wrap;
+  margin: 0;
+  border: var(--border-sm) solid var(--line);
+  overflow: visible;
+  width: 100%;
+}
+
+/* Narrow screens: a tighter padding */
+@media (width <= 50rem) {
+  .file-preview-content {
+    padding: var(--space-sm);
+  }
+}

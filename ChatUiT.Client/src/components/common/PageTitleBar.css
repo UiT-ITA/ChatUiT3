@@ -1,0 +1,7 @@
+/* Accent underline bar under a page title */
+.page-title-bar {
+  width: var(--size-3xs);
+  height: var(--space-xs);
+  background: var(--accent-2);
+  margin: var(--space-md) 0 var(--space-lg);
+}

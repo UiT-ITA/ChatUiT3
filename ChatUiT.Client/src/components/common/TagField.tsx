@@ -76,7 +76,7 @@ const TagField: React.FC<TagFieldProps> = (props) => {
           variant="solid"
           size="small"
           onRemove={disabled ? undefined : () => removeTag(tag)}
-          removeLabel={`Remove ${tag} tag`}
+          removeLabel={t('common.removeTag', { tag })}
         >
           {tag}
         </Chip>

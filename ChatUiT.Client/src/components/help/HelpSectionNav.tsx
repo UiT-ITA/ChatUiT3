@@ -6,8 +6,7 @@ import { helpActiveHeadingSignal } from '../../services/uiService';
 import { HELP_SECTIONS, type HelpSectionId } from './helpSections';
 import { parseHeadings } from './helpHeadings';
 import { useHelpDoc } from './useHelpDoc';
-import NavItem from '../common/NavItem';
-import './HelpSectionNav.css';
+import NavOutline from '../common/NavOutline';
 
 interface HelpSectionNavProps {
   activeSection: HelpSectionId;
@@ -30,37 +29,17 @@ const HelpSectionNav = ({ activeSection }: HelpSectionNavProps) => {
   );
 
   return (
-    <>
-      {HELP_SECTIONS.map((id, index) => {
-        const isActive = id === activeSection;
-        return (
-          <div key={id} className={`help-nav-section ${isActive ? 'active' : ''}`}>
-            <NavItem
-              active={isActive}
-              leading={<span className="help-nav-number t-meta">{index + 1}</span>}
-              onClick={() => navigate(`/help/${id}`)}
-            >
-              {t(`help.sections.${id}`)}
-            </NavItem>
-            {isActive && headings.length > 0 && (
-              <ol className="help-nav-headings">
-                {headings.map((heading) => (
-                  <li key={heading.id}>
-                    <NavItem
-                      level={2}
-                      active={activeHeading === heading.id}
-                      onClick={() => navigate(`/help/${id}#${heading.id}`)}
-                    >
-                      {heading.text}
-                    </NavItem>
-                  </li>
-                ))}
-              </ol>
-            )}
-          </div>
-        );
-      })}
-    </>
+    <NavOutline
+      sections={HELP_SECTIONS.map(id => ({
+        id,
+        label: t(`help.sections.${id}`),
+        headings: id === activeSection ? headings.map(heading => ({ id: heading.id, label: heading.text })) : undefined,
+      }))}
+      activeSection={activeSection}
+      activeHeading={activeHeading}
+      onSelectSection={(id) => navigate(`/help/${id}`)}
+      onSelectHeading={(id, headingId) => navigate(`/help/${id}#${headingId}`)}
+    />
   );
 };
 

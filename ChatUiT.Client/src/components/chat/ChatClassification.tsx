@@ -1,21 +1,19 @@
 import { useTranslation } from 'react-i18next';
 import { useSignals } from '@preact/signals-react/runtime';
-import ClassificationBadge from '../common/ClassificationBadge';
+import ClassificationBadge from '../classification/ClassificationBadge';
 import IconButton from '../common/IconButton';
 import Popover, { PopoverBody } from '../common/Popover';
 import Toggle from '../common/Toggle';
 import { getCurrentAssistantId, getCurrentChatId, getRedEnabled, toggleRed } from '../../services/chatService';
 import { getAssistant } from '../../services/assistantService';
 import { chatClassification, DATA_CLASSIFICATIONS } from '../../types/modelModels';
-import './ChatClassification.css';
+import Box from '../common/Box';
+import Stack from '../common/Stack';
+import Text from '../common/Text';
+import './ClassificationLevels.css';
 
 /** The classification of the conversation. With a red assistant it opens the switch that allows red data. */
-interface ChatClassificationProps {
-  // What the popover lines up with: its trigger, or the toolbar
-  popoverAnchor?: 'trigger' | 'parent';
-}
-
-export default function ChatClassification({ popoverAnchor = 'trigger' }: ChatClassificationProps) {
+export default function ChatClassification() {
   useSignals();
   const { t } = useTranslation();
 
@@ -28,38 +26,35 @@ export default function ChatClassification({ popoverAnchor = 'trigger' }: ChatCl
 
   const classification = chatClassification(assistant.classification, redEnabled);
   if (assistant.classification !== 'Red') {
-    return <div className="chat-classification"><ClassificationBadge classification={classification} /></div>;
+    return <ClassificationBadge classification={classification} mx="xs" shrink={false} />;
   }
 
   return (
     <Popover
-      anchor={popoverAnchor}
       openOn="hover"
       placement="top-start"
       panelWidth="large"
+      className="composer-toolbar__popover"
       trigger={(
         <IconButton
           icon={<ClassificationBadge classification={classification} showTitle={false} />}
           label={t('classification.title', { level: t(`classification.${classification}`) })}
           size="small"
+          tooltip={false}
         />
       )}
       title={t('classification.heading')}
     >
       <PopoverBody>
-        <ul className="chat-classification-levels">
+        <Stack as="ul" gap="xs">
           {DATA_CLASSIFICATIONS.map(level => (
-            <li
-              key={level}
-              className={`chat-classification-level t-hint ${level === classification ? 'current' : ''}`}
-              aria-current={level === classification ? 'true' : undefined}
-            >
+            <li key={level} className="classification-levels__level t-hint" aria-current={level === classification ? 'true' : undefined}>
               <ClassificationBadge classification={level} showTitle={false} strong={level === classification} />
-              <span className="chat-classification-description">{t(`classification.descriptions.${level}`)}</span>
+              <span>{t(`classification.descriptions.${level}`)}</span>
             </li>
           ))}
-        </ul>
-        <div className="chat-red-toggle">
+        </Stack>
+        <Box pt="md" border borderSide="top">
           <Toggle
             checked={redEnabled}
             onChange={() => { void toggleRed(); }}
@@ -68,8 +63,8 @@ export default function ChatClassification({ popoverAnchor = 'trigger' }: ChatCl
             disabled={redLocked}
             aria-label={t('chat.redToggle.label')}
           />
-          <div className="chat-red-toggle-hint t-hint">{t(redEnabled ? 'chat.redToggle.enabled' : 'chat.redToggle.enable')}</div>
-        </div>
+          <Text as="div" variant="hint" tone="muted" mt="sm">{t(redEnabled ? 'chat.redToggle.enabled' : 'chat.redToggle.enable')}</Text>
+        </Box>
       </PopoverBody>
     </Popover>
   );

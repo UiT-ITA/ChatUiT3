@@ -1,0 +1,109 @@
+/* A conversation message: a right-aligned bubble for the user, plain full-width text for the assistant, a marked panel for the system */
+.message {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  width: 100%;
+}
+
+.message--user {
+  align-items: flex-end;
+  margin-top: var(--space-xl);
+}
+
+.message--user:first-child {
+  margin-top: 0;
+}
+
+.message__body {
+  color: var(--text);
+  overflow-wrap: anywhere;
+}
+
+.message--user .message__body {
+  max-width: min(var(--size-md), 85%);
+  padding: var(--space-md) var(--space-lg);
+  border-radius: var(--radius-md);
+  background: var(--sel);
+}
+
+.message--assistant .message__body,
+.message--system .message__body {
+  width: 100%;
+}
+
+.message--system .message__body {
+  padding: var(--space-md) var(--space-lg);
+  border-left: var(--border-lg) solid var(--warn);
+  border-radius: var(--radius-md);
+  background: var(--panel);
+}
+
+/* Toolbar under the message: shows on hover, always for the assistant */
+.message__toolbar {
+  display: flex;
+  align-items: center;
+  gap: var(--space-xs);
+  width: 100%;
+  margin-top: var(--space-md);
+  opacity: 0;
+  transition: opacity var(--dur-base) ease;
+}
+
+.message:hover .message__toolbar,
+.message:focus-within .message__toolbar {
+  opacity: 1;
+}
+
+.message--assistant .message__toolbar {
+  margin-top: var(--space-lg);
+  opacity: 1;
+}
+
+/* User message: the footer always shows on its own line under the bubble, and the actions show on hover to the left of it */
+.message--user .message__toolbar {
+  position: relative;
+  justify-content: flex-end;
+  width: auto;
+  margin-top: var(--space-xs);
+  opacity: 1;
+}
+
+.message__actions {
+  display: flex;
+  gap: var(--space-xs);
+}
+
+.message--user .message__actions {
+  position: absolute;
+  top: 50%;
+  right: calc(100% + var(--space-sm));
+  transform: translateY(-50%);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity var(--dur-base) ease;
+}
+
+.message--user:hover .message__actions,
+.message--user:focus-within .message__actions {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+/* Streaming caret after the content */
+@keyframes caret-blink {
+  0%, 49% { opacity: 1; }
+  50%, 100% { opacity: 0; }
+}
+
+.message--streaming .message__body::after {
+  content: '';
+  display: inline-block;
+  width: var(--space-sm);
+  height: var(--icon-sm);
+  margin-left: var(--space-xs);
+  background: var(--accent);
+  vertical-align: text-bottom;
+  animation: caret-blink var(--dur-loop) steps(1) infinite;
+}

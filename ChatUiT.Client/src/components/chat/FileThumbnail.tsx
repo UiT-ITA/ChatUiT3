@@ -1,84 +1,57 @@
 import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import type { ChatFileDto, CreateChatFileDto } from '../../types/chatModels';
-import { Icon } from '../common/Icon';
+import FileChip from '../common/FileChip';
 import IconButton from '../common/IconButton';
 import { getFileExtension } from '../../utils/fileUtils';
 import type { ChatFile } from '../../types/fileModels';
 import { fetchChatFile } from '../../services/chatService';
 import FilePreviewModal from './FilePreviewModal';
-import './FileThumbnail.css';
 
 type AnyChatFile = ChatFile | ChatFileDto | CreateChatFileDto;
 
 interface FileThumbnailProps {
   file: AnyChatFile;
-  /**
-   * The chat this file belongs to. Required to fetch persisted content — it must
-   * come from the owning chat, never from "whichever chat is open", since chats
-   * stay mounted while hidden. Omitted for composer files, which always carry
-   * their content and so never fetch.
-   */
+  /** The chat the file belongs to, for fetching a stored file's content. Omitted for files in the composer. */
   chatId?: string;
+  // Shows a remove button that calls this
   onRemove?: () => void;
-  showRemoveButton?: boolean;
 }
 
-function hasFullContent(file: AnyChatFile): boolean {
-  return file.chunks.every((chunk) =>
-    chunk.type === 'image' ? chunk.base64 != null : chunk.text != null
-  );
-}
+const hasFullContent = (file: AnyChatFile) => file.chunks.every((chunk) => chunk.type === 'image' ? chunk.base64 != null : chunk.text != null);
 
-const FileThumbnail = ({ file, chatId, onRemove, showRemoveButton = false }: FileThumbnailProps) => {
+const FileThumbnail = ({ file, chatId, onRemove }: FileThumbnailProps) => {
   const { t } = useTranslation();
   const [selectedFile, setSelectedFile] = useState<AnyChatFile | null>(null);
   const [loadedFile, setLoadedFile] = useState<ChatFileDto | null>(null);
 
-  // Persisted files arrive with metadata only; their content is fetched on demand.
+  // A stored file without its content fetches the content on demand
   const storedFileId = 'id' in file ? file.id : undefined;
   const effectiveFile = loadedFile ?? file;
   const needsFetch = !!storedFileId && !hasFullContent(effectiveFile);
 
-  const ensureContent = async (): Promise<AnyChatFile> => {
-    if (!needsFetch || !storedFileId) {
-      return effectiveFile;
-    }
-
-    if (!chatId) {
-      return effectiveFile;
-    }
-
-    try {
-      const fetched = await fetchChatFile(chatId, storedFileId);
-      setLoadedFile(fetched);
-      return fetched;
-    } catch (error) {
-      console.error(`Failed to load file ${storedFileId}:`, error);
-      return effectiveFile;
-    }
-  };
-
+  // Opens the preview, with the content of a stored file fetched first
   const handleFileClick = async () => {
-    setSelectedFile(await ensureContent());
+    let shown = effectiveFile;
+    if (needsFetch && storedFileId && chatId) {
+      try {
+        const fetched = await fetchChatFile(chatId, storedFileId);
+        setLoadedFile(fetched);
+        shown = fetched;
+      } catch (error) {
+        console.error(`Failed to load file ${storedFileId}:`, error);
+      }
+    }
+    setSelectedFile(shown);
   };
 
-  const handleRemove = (e: React.MouseEvent) => {
-    e.stopPropagation();
-    onRemove?.();
-  };
-
-  const filename = effectiveFile.sourceFilename ?? 'Unknown file';
+  const filename = effectiveFile.sourceFilename ?? t('files.unknownFile');
   const extension = getFileExtension(filename).toUpperCase() || 'FILE';
+  // The name without its extension, cut after 20 characters
+  const baseName = filename.includes('.') ? filename.substring(0, filename.lastIndexOf('.')) : filename;
+  const shortName = baseName.length <= 20 ? baseName : `${baseName.substring(0, 20)}...`;
 
-  const truncateFilename = (name: string, maxLength: number = 20) => {
-    const nameWithoutExt = name.lastIndexOf('.') !== -1 ? name.substring(0, name.lastIndexOf('.')) : name;
-    if (nameWithoutExt.length <= maxLength) return nameWithoutExt;
-    return `${nameWithoutExt.substring(0, maxLength)}...`;
-  };
-
-  // Only treat as image thumbnail if it's EXACTLY one chunk and it's an image.
-  // This prevents PDFs with embedded images from showing up as image thumbnails.
+  // An image thumbnail for a file of exactly one chunk that is an image
   const singleChunk = effectiveFile.chunks.length === 1 ? effectiveFile.chunks[0] : undefined;
   const isImage = singleChunk?.type === 'image';
   const imageBase64 = isImage ? singleChunk.base64 : undefined;
@@ -104,50 +77,28 @@ const FileThumbnail = ({ file, chatId, onRemove, showRemoveButton = false }: Fil
 
   return (
     <>
-      <div
-        className={`file-thumbnail clickable ${isImage && imageSource ? 'image-thumbnail' : 'document-thumbnail'}`}
+      <FileChip
+        image={isImage && imageSource ? { src: imageSource, alt: filename } : undefined}
+        name={shortName}
+        title={filename}
+        extension={extension}
         onClick={() => void handleFileClick()}
-      >
-        {showRemoveButton && (
-          <span className="file-thumbnail-remove">
-            <IconButton
-              icon="close"
-              label={t('files.removeFile')}
-              variant={isImage && imageSource ? 'subtle' : 'ghost'}
-              shape={isImage && imageSource ? 'round' : 'square'}
-              size="small"
-              onClick={handleRemove}
-            />
-          </span>
-        )}
-
-        {isImage && imageSource ? (
-          <img
-            src={imageSource}
-            alt={filename}
-            className="file-thumbnail-image"
+        removeAction={onRemove && (
+          <IconButton
+            icon="close"
+            label={t('files.removeFile')}
+            variant={isImage && imageSource ? 'subtle' : 'ghost'}
+            shape={isImage && imageSource ? 'round' : 'square'}
+            size="small"
+            onClick={(e) => {
+              e.stopPropagation();
+              onRemove();
+            }}
           />
-        ) : (
-          <div className="file-thumbnail-content">
-            <div className="file-thumbnail-icon-wrapper">
-              <Icon name="file" color="accent" />
-            </div>
-            <div className="file-thumbnail-info">
-              <div className="file-thumbnail-name t-caption-strong" title={filename}>
-                {truncateFilename(filename)}
-              </div>
-              <div className="file-thumbnail-extension t-meta">
-                {extension}
-              </div>
-            </div>
-          </div>
         )}
-      </div>
-
-      <FilePreviewModal
-        file={selectedFile}
-        onClose={() => setSelectedFile(null)}
       />
+
+      <FilePreviewModal file={selectedFile} onClose={() => setSelectedFile(null)} />
     </>
   );
 };

@@ -7,16 +7,20 @@ interface ListProps extends LayoutProps, Omit<React.HTMLAttributes<HTMLDivElemen
   divided?: boolean;
   // Draws a border around the list
   bordered?: boolean;
+  // 'tiles' shows each item as a framed tile, two per row on wide screens and one per row on narrow screens
+  layout?: 'rows' | 'tiles';
 }
 
 /** A vertical list of ListItem rows. */
-export const List: React.FC<ListProps> = ({ divided = true, bordered = false, className, ...props }) => {
+export const List: React.FC<ListProps> = ({ divided = true, bordered = false, layout = 'rows', className, ...props }) => {
   const [style, rest] = splitLayoutProps(props);
-  return <div className={cx('list', divided && 'list--divided', bordered && 'list--bordered', className)} style={style} {...rest} />;
+  return <div className={cx('list', divided && 'list--divided', bordered && 'list--bordered', layout === 'tiles' && 'list--tiles', className)} style={style} {...rest} />;
 };
 
 export interface ListItemProps extends LayoutProps, Omit<React.ComponentProps<'button'>, 'title' | 'width'> {
   title: React.ReactNode;
+  // Content on the title line after the title, such as a count
+  titleAside?: React.ReactNode;
   description?: React.ReactNode;
   // Content before the text, such as an icon
   leading?: React.ReactNode;
@@ -28,13 +32,13 @@ export interface ListItemProps extends LayoutProps, Omit<React.ComponentProps<'b
 }
 
 /** One clickable row in a List. */
-export const ListItem: React.FC<ListItemProps> = ({ title, description, leading, trailing, density = 'normal', actions, className, children, ...props }) => {
+export const ListItem: React.FC<ListItemProps> = ({ title, titleAside, description, leading, trailing, density = 'normal', actions, className, children, ...props }) => {
   const [style, rest] = splitLayoutProps(props);
   const row = (
     <button type="button" className={cx('list-item', `list-item--${density}`, !actions && className)} style={actions ? undefined : style} {...rest}>
       {leading && <span className="list-item__leading">{leading}</span>}
       <span className="list-item__text">
-        <span className="list-item__title t-table-strong">{title}</span>
+        <span className="list-item__title t-table-strong">{titleAside !== undefined ? <span className="list-item__title-group">{title}{titleAside}</span> : title}</span>
         {description && <span className="list-item__description t-caption">{description}</span>}
         {children}
       </span>

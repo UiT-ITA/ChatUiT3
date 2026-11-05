@@ -4,23 +4,13 @@ import { prettyMaybeJson } from '../../utils/jsonUtils';
 import type { ActivityEntryDto, ToolCallStatus } from '../../types/chatModels';
 import { isAwaitingStatus } from '../../types/chatModels';
 import ToolPreview from './interaction/ToolPreview';
-import "./ToolCallBlock.css";
 import Badge from '../common/Badge';
 import Card from '../common/Card';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '../common/Collapsible';
 import { ListItem } from '../common/List';
-
-type Props = {
-  entry: ActivityEntryDto;
-  /** Set once the call has finished, or counting up while it runs. */
-  durationMs: number | null;
-};
-
-function truncateEnd(text: string, maxLen = 140): string {
-  if (text.length <= maxLen) return text;
-  const safeLen = Math.max(0, maxLen - 3);
-  return text.slice(0, safeLen) + "...";
-}
+import Stack from '../common/Stack';
+import Text, { type TextTone } from '../common/Text';
+import TextBlock from '../common/TextBlock';
 
 const STATUS_KEYS: Record<ToolCallStatus, string> = {
   running: 'chat.status.running',
@@ -36,11 +26,10 @@ const STATUS_KEYS: Record<ToolCallStatus, string> = {
 };
 
 /**
- * One tool call in a message's activity: its name, status, and on opening what the user was
- * shown and answered, the arguments and the result. A call that waits is answered in the card
- * above the message box, not here.
+ * One tool call in a message's activity: its name and status, and when opened what the user was
+ * shown and answered, the arguments and the result.
  */
-export default function ToolCallBlock({ entry, durationMs }: Props) {
+export default function ToolCallBlock({ entry, durationMs }: { entry: ActivityEntryDto; durationMs: number | null }) {
   const { t } = useTranslation();
   const toolName = entry.toolName ?? '';
   const status: ToolCallStatus = entry.status ?? (entry.endedMs === null ? 'running' : entry.isError ? 'error' : 'completed');
@@ -50,10 +39,14 @@ export default function ToolCallBlock({ entry, durationMs }: Props) {
   const prettyArgs = prettyMaybeJson(entry.argumentsJson);
   const prettyResult = prettyMaybeJson(entry.result);
   const argsInline = entry.argumentsJson?.replace(/\s+/g, " ") ?? "";
-  const argsPreview = argsInline.length > 0 ? truncateEnd(argsInline, 140) : "";
+  const argsPreview = argsInline.length > 140 ? argsInline.slice(0, 137) + "..." : argsInline;
   const answers = entry.response?.kind === 'answer' ? entry.response.answers : undefined;
 
-  const statusTone = awaiting ? "awaiting" : status === "rejected" || status === "timeout" || status === "unanswered" ? "declined" : entry.isError ? "error" : isComplete ? "complete" : "running";
+  // Later checks take priority
+  let statusTone: TextTone = isComplete ? "success" : "warning";
+  if (entry.isError) statusTone = "danger";
+  if (status === "rejected" || status === "timeout" || status === "unanswered") statusTone = "muted";
+  if (awaiting) statusTone = "warning";
 
   return (
     <Collapsible my="md">
@@ -63,60 +56,62 @@ export default function ToolCallBlock({ entry, durationMs }: Props) {
             density="compact"
             title={(
               <>
-                <strong className="toolcall-name t-overline">{toolName}</strong>
+                <Text as="strong" variant="overline" tone="muted">{toolName}</Text>
                 {entry.execution === 'client' && <Badge ml="xs">{t('toolCall.execution.client')}</Badge>}
-                <span className="toolcall-args-inline t-meta"> ({argsPreview})</span>
+                <Text variant="meta" tone="secondary"> ({argsPreview})</Text>
               </>
             )}
             trailing={(
-              <span className={`toolcall-status toolcall-status--${statusTone} t-overline`}>
+              <Text variant="overline" tone={statusTone}>
                 {t(status === 'rejected' && entry.questions ? 'chat.status.skipped' : STATUS_KEYS[status])}
-                {durationMs !== null && !awaiting && <span className="toolcall-duration t-meta"> · {formatDuration(durationMs)}</span>}
-              </span>
+                {durationMs !== null && !awaiting && <Text variant="meta" tone="muted" plainCase> · {formatDuration(durationMs)}</Text>}
+              </Text>
             )}
           />
         </CollapsibleTrigger>
         <CollapsibleContent>
-          <div className="toolcall-body">
+          <Stack gap="sm" p="md" border borderSide="top">
             {entry.preview && (
-              <div className="toolcall-section">
-                <div className="toolcall-title t-overline">{entry.preview.title}</div>
+              <Stack gap="xs">
+                <Text as="div" variant="overline" tone="muted">{entry.preview.title}</Text>
                 <ToolPreview preview={entry.preview} />
-              </div>
+              </Stack>
             )}
             {entry.questions && entry.questions.length > 0 && (
-              <div className="toolcall-section">
-                <div className="toolcall-title t-overline">{t('toolCall.questions', { count: entry.questions.length })}</div>
-                {entry.questions.map((question, index) => {
-                  const answer = answers === undefined ? undefined : answers?.[index] ?? null;
-                  return (
-                    <div key={index} className="toolcall-question">
-                      <div className="t-table">{question.question}</div>
-                      {answer !== undefined && (
-                        <div className="toolcall-answer t-table">
-                          {answer === null
-                            ? t('toolCall.notAnswered')
-                            : [...answer.selected, ...(answer.text ? [answer.text] : [])].join(' · ')}
-                        </div>
-                      )}
-                    </div>
-                  );
-                })}
-              </div>
+              <Stack gap="xs">
+                <Text as="div" variant="overline" tone="muted">{t('toolCall.questions', { count: entry.questions.length })}</Text>
+                <Stack gap="sm">
+                  {entry.questions.map((question, index) => {
+                    const answer = answers === undefined ? undefined : answers?.[index] ?? null;
+                    return (
+                      <div key={index}>
+                        <Text as="div" variant="table">{question.question}</Text>
+                        {answer !== undefined && (
+                          <Text as="div" variant="table" tone="secondary" mt="xs" pl="sm" border borderWidth="md" borderSide="left">
+                            {answer === null
+                              ? t('toolCall.notAnswered')
+                              : [...answer.selected, ...(answer.text ? [answer.text] : [])].join(' · ')}
+                          </Text>
+                        )}
+                      </div>
+                    );
+                  })}
+                </Stack>
+              </Stack>
             )}
             {prettyArgs && (
-              <div className="toolcall-section">
-                <div className="toolcall-title t-overline">{t('toolCall.arguments')}</div>
-                <pre className="toolcall-pre t-code">{prettyArgs}</pre>
-              </div>
+              <Stack gap="xs">
+                <Text as="div" variant="overline" tone="muted">{t('toolCall.arguments')}</Text>
+                <TextBlock monospace>{prettyArgs}</TextBlock>
+              </Stack>
             )}
             {prettyResult && (
-              <div className="toolcall-section">
-                <div className="toolcall-title t-overline">{t('toolCall.result')}</div>
-                <pre className="toolcall-pre t-code">{prettyResult}</pre>
-              </div>
+              <Stack gap="xs">
+                <Text as="div" variant="overline" tone="muted">{t('toolCall.result')}</Text>
+                <TextBlock monospace>{prettyResult}</TextBlock>
+              </Stack>
             )}
-          </div>
+          </Stack>
         </CollapsibleContent>
       </Card>
     </Collapsible>

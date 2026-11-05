@@ -4,7 +4,7 @@ import { useInputBase, type InputBaseProps } from './inputBase';
 import './Select.css';
 
 /** The chevron at the right end of every dropdown box. */
-export const SelectChevron: React.FC = () => <Icon name="arrowDown" size="large" className="select__chevron" />;
+export const SelectChevron: React.FC = () => <Icon name="arrowDown" size="md" className="select__chevron" />;
 
 export interface SelectOption {
   value: string;

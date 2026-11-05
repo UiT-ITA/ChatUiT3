@@ -13,6 +13,9 @@ import Checkbox from '../common/Checkbox';
 import Field, { FieldDescription } from '../common/Field';
 import Stack from '../common/Stack';
 import { hasChanges } from '../../utils/formChanges';
+import PageTitleBar from '../common/PageTitleBar';
+import EmptyNote from '../common/EmptyNote';
+import Text from '../common/Text';
 
 interface InternalAgentEditorProps {
   agentId: string;
@@ -48,11 +51,11 @@ const InternalAgentEditor: React.FC<InternalAgentEditorProps> = ({ agentId }) =>
   }
 
   if (agents === undefined) {
-    return <div className="admin-empty t-ui-plain">{t('common.loading')}</div>;
+    return <EmptyNote>{t('common.loading')}</EmptyNote>;
   }
 
   if (!agent) {
-    return <div className="admin-empty t-ui-plain">{t('common.notFound')}</div>;
+    return <EmptyNote>{t('common.notFound')}</EmptyNote>;
   }
 
   const modelOptions = (models ?? []).filter(model => model.capabilities.supportsFunctionCalling);
@@ -79,7 +82,7 @@ const InternalAgentEditor: React.FC<InternalAgentEditorProps> = ({ agentId }) =>
   );
 
   return (
-    <div className="admin-form admin-form-wide">
+    <>
       <EditorHeader
         backPath="/admin/agents"
         backLabel={t('admin.tabs.agents')}
@@ -89,16 +92,16 @@ const InternalAgentEditor: React.FC<InternalAgentEditorProps> = ({ agentId }) =>
         onSave={handleSave}
         onCancel={() => navigate('/admin/agents')}
       />
-      <h1 className="t-page-title">{agent.name}</h1>
-      <div className="page-title-bar" />
+      <Text as="h1" variant="page-title">{agent.name}</Text>
+      <PageTitleBar />
 
       <Stack gap="xl">
         <Field label={t('admin.agents.fields.id')}>
-          <div className="t-code">{agent.id}</div>
+          <Text as="div" variant="code">{agent.id}</Text>
         </Field>
 
         <Field label={t('admin.agents.fields.description')}>
-          <div className="t-body">{agent.description}</div>
+          <Text as="div" variant="body">{agent.description}</Text>
         </Field>
 
         {agent.functions.length > 0 && (
@@ -153,7 +156,7 @@ const InternalAgentEditor: React.FC<InternalAgentEditorProps> = ({ agentId }) =>
           </FieldDescription>
         )}
       </Stack>
-    </div>
+    </>
   );
 };
 

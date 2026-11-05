@@ -6,83 +6,56 @@ import Field from '../common/Field';
 import TextInput from '../common/TextInput';
 import IconButton from '../common/IconButton';
 import Stack from '../common/Stack';
-import useMediaQuery from '../../hooks/useMediaQuery';
-import './ShareModal.css';
+import InputRow from '../common/InputRow';
+import Text from '../common/Text';
 
 interface ShareModalProps {
-  isOpen: boolean;
+  /** The assistant to share, or null when the dialog is closed. */
   assistant: FullAssistantDto | null;
   onClose: () => void;
-  onCopyLink: (assistantId: string) => void;
-  onCopyGuid: (assistantId: string) => void;
 }
 
-const ShareModal: React.FC<ShareModalProps> = ({
-  isOpen,
-  assistant,
-  onClose,
-  onCopyLink,
-  onCopyGuid
-}) => {
+const ShareModal: React.FC<ShareModalProps> = ({ assistant, onClose }) => {
   const { t } = useTranslation();
-  const isMobile = useMediaQuery('(max-width: 768px)');
-  
-  if (!isOpen || !assistant) return null;
+  if (!assistant) return null;
 
-  const shareUrl = `${window.location.origin}/assistants?add=${assistant.id}`;
+  const fields = [
+    { label: t('assistants.shareLink'), value: `${window.location.origin}/assistants?add=${assistant.id}`, copyLabel: t('assistants.actions.copyLink') },
+    { label: t('assistants.assistantId'), value: assistant.id, copyLabel: t('assistants.actions.copyId') },
+  ];
 
   return (
     <Dialog
-      isOpen={isOpen}
+      isOpen
       onClose={onClose}
       title={t('assistants.actions.shareAssistant')}
       size="medium"
     >
-      <div className="share-content">
-        <p className="share-description t-body">
+      <Stack gap="xl" mobileGap="lg">
+        <Text as="p" variant="body" tone="default" leading="base">
           {t('assistants.shareDescription', { name: assistant.name })}
-        </p>
-        
-        <Field label={`${t('assistants.shareLink')}:`}>
-          <Stack direction={isMobile ? 'column' : 'row'} gap={isMobile ? 'md' : 'sm'} align={isMobile ? 'stretch' : 'center'}>
-            <TextInput
-              monospace
-              value={shareUrl}
-              readOnly
-              grow
-              onFocus={(e) => e.currentTarget.select()}
-            />
-            <IconButton
-              icon="copy"
-              label={t('assistants.actions.copyLink')}
-              variant="primary"
-              size="large"
-              onClick={() => onCopyLink(assistant.id)}
-              width={isMobile ? 'full' : undefined}
-            />
-          </Stack>
-        </Field>
-
-        <Field label={`${t('assistants.assistantId')}:`}>
-          <Stack direction={isMobile ? 'column' : 'row'} gap={isMobile ? 'md' : 'sm'} align={isMobile ? 'stretch' : 'center'}>
-            <TextInput
-              monospace
-              value={assistant.id}
-              readOnly
-              grow
-              onFocus={(e) => e.currentTarget.select()}
-            />
-            <IconButton
-              icon="copy"
-              label={t('assistants.actions.copyId')}
-              variant="primary"
-              size="large"
-              onClick={() => onCopyGuid(assistant.id)}
-              width={isMobile ? 'full' : undefined}
-            />
-          </Stack>
-        </Field>
-      </div>
+        </Text>
+        {fields.map(({ label, value, copyLabel }) => (
+          <Field key={label} label={`${label}:`}>
+            <InputRow>
+              <TextInput
+                monospace
+                value={value}
+                readOnly
+                grow
+                onFocus={(e) => e.currentTarget.select()}
+              />
+              <IconButton
+                icon="copy"
+                label={copyLabel}
+                variant="primary"
+                size="large"
+                onClick={() => navigator.clipboard.writeText(value)}
+              />
+            </InputRow>
+          </Field>
+        ))}
+      </Stack>
     </Dialog>
   );
 };

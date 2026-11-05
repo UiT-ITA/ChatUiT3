@@ -1,0 +1,91 @@
+/* A rendered Mermaid diagram on the code fill, scrolling sideways when wider than the block */
+.mermaid-diagram {
+  padding: var(--space-lg);
+  background: var(--code-bg);
+  border-radius: var(--radius-sm);
+  overflow: auto hidden;
+  contain: layout paint;
+}
+
+/* A diagram wider than the block always shows its scrollbar */
+.mermaid-diagram--scrollbar::-webkit-scrollbar-thumb {
+  background-color: var(--line-strong);
+}
+
+.mermaid-diagram--scrollbar::-webkit-scrollbar-thumb:hover {
+  background-color: var(--text-3);
+}
+
+/* The diagram scales down to the width of the block and is never wider than its natural size; full size keeps the natural width */
+.mermaid-diagram > svg {
+  display: block;
+  width: min(100%, var(--diagram-width, 100%));
+  height: auto;
+  margin: 0 auto;
+}
+
+.mermaid-diagram--full-size > svg { width: var(--diagram-width, auto); }
+
+.mermaid-diagram marker[id$="sequencenumber"] circle { r: var(--space-sm); }
+.mermaid-diagram :is(.labelText, .labelText > tspan) { font-weight: var(--fw-bold); }
+
+/* Edges, messages, lifelines and frames keep their stroke width when the diagram is scaled */
+.mermaid-diagram :is(.messageLine0, .messageLine1, .flowchart-link, .actor-line, .loopLine, .actor, path.relation) {
+  vector-effect: non-scaling-stroke;
+}
+
+.mermaid-diagram--loading,
+.mermaid-diagram--empty {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: var(--size-3xs);
+  color: var(--text-3);
+}
+
+.mermaid-diagram--empty {
+  min-height: var(--space-3xl);
+  font-style: italic;
+}
+
+/* Error state: one compact row with the message and reason, then the source behind a toggle */
+.mermaid-diagram--error {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-xs);
+  padding: var(--space-sm) var(--space-md);
+  color: var(--text);
+}
+
+.mermaid-error-message {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--space-xs) var(--space-sm);
+}
+
+.mermaid-error-reason { color: var(--text-2); }
+
+.mermaid-error-source summary {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-xs);
+  width: fit-content;
+  color: var(--accent);
+  cursor: pointer;
+  list-style: none;
+}
+
+.mermaid-error-source summary::-webkit-details-marker { display: none; }
+.mermaid-error-chevron { transition: transform var(--dur-fast) ease; }
+.mermaid-error-source[open] .mermaid-error-chevron { transform: rotate(90deg); }
+
+.mermaid-error-source pre {
+  margin: var(--space-sm) 0 0;
+  padding: var(--space-md);
+  border: var(--border-sm) solid var(--line);
+  border-radius: var(--radius-sm);
+  background: var(--surface);
+  color: var(--code-text);
+  overflow-x: auto;
+}

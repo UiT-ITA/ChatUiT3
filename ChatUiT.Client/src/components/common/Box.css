@@ -1,0 +1,7 @@
+@media (width <= 50rem) {
+  .hide-on-mobile { display: none; }
+}
+
+@media (width > 50rem) {
+  .hide-on-desktop { display: none; }
+}

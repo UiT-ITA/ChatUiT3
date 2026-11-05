@@ -2,21 +2,36 @@
   display: inline-flex;
   align-items: center;
 }
+.tooltip-anchor--block {
+  display: block;
+  min-width: 0;
+}
 
 .tooltip {
   position: fixed;
-  z-index: 1002;
-  padding: 0.5rem 0.75rem;
-  border: 1px solid var(--line);
+  z-index: var(--z-dropdown);
+  padding: var(--space-sm) var(--space-md);
+  border: var(--border-sm) solid var(--line);
   border-radius: var(--radius-md);
-  background: var(--surface);
+  background: var(--surface-raised);
   box-shadow: var(--shadow-overlay);
   color: var(--text);
-  line-height: 1.4;
+  line-height: var(--lh-base);
   text-align: left;
   pointer-events: none;
-  animation: fade-in 140ms ease;
+  animation: fade-in var(--dur-fast) ease;
 }
 
-.tooltip--small { width: 11rem; }
-.tooltip--medium { width: 15rem; }
+.tooltip--auto { white-space: nowrap; }
+
+/* The small spacing step between the anchor and the tooltip */
+.tooltip--top { margin-bottom: var(--space-sm); }
+.tooltip--bottom { margin-top: var(--space-sm); }
+
+/* Right of the anchor, centred on it */
+.tooltip--right {
+  margin-left: var(--space-sm);
+  transform: translateY(-50%);
+}
+.tooltip--small { width: var(--size-2xs); }
+.tooltip--medium { width: var(--size-xs); }
