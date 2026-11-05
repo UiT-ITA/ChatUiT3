@@ -1,0 +1,14 @@
+/* A muted note in place of an empty or loading list */
+.empty-note {
+  color: var(--text-3);
+}
+
+.empty-note--row {
+  padding: var(--space-md);
+}
+
+.empty-note--framed {
+  border: var(--border-sm) dashed var(--line);
+  border-radius: var(--radius-md);
+  padding: var(--space-lg);
+}

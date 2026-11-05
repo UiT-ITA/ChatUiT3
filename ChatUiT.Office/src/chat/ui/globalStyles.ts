@@ -1,5 +1,5 @@
 import { makeStaticStyles } from "@fluentui/react-components";
-import { color, font } from "./tokens";
+import { color, font, space, fw, lh, border } from "./tokens";
 
 /**
  * The ChatUiT app's global base styles (App.css, typography.css and theme.css): the reset, base
@@ -8,10 +8,10 @@ import { color, font } from "./tokens";
  */
 export const useGlobalStyles = makeStaticStyles(`
   :root {
-    font-size: 16px;
+    font-size: 100%;
     font-family: ${font.sans};
-    font-weight: 400;
-    line-height: 1.5;
+    font-weight: ${fw.regular};
+    line-height: ${lh.base};
     color: ${color.text};
     background: ${color.bg};
     -webkit-font-smoothing: antialiased;
@@ -51,8 +51,8 @@ export const useGlobalStyles = makeStaticStyles(`
   }
 
   ::-webkit-scrollbar {
-    width: 0.625rem;
-    height: 0.625rem;
+    width: ${space.sm};
+    height: ${space.sm};
   }
 
   ::-webkit-scrollbar-track {
@@ -61,13 +61,13 @@ export const useGlobalStyles = makeStaticStyles(`
 
   ::-webkit-scrollbar-thumb {
     background: ${color.line};
-    border: 3px solid transparent;
+    border: ${border.md} solid transparent;
     background-clip: content-box;
   }
 
   ::-webkit-scrollbar-thumb:hover {
     background: ${color.text3};
-    border: 3px solid transparent;
+    border: ${border.md} solid transparent;
     background-clip: content-box;
   }
 `);

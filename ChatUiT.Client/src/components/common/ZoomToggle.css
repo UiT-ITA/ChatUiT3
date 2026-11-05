@@ -1,0 +1,8 @@
+/* Content that toggles between fitted and full size on click */
+.zoom-toggle {
+  cursor: zoom-in;
+}
+
+.zoom-toggle--zoomed {
+  cursor: zoom-out;
+}

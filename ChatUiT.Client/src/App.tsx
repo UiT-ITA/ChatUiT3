@@ -2,14 +2,14 @@ import React, { Suspense, lazy, useEffect, useRef } from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { BrowserAuthError } from '@azure/msal-browser';
 import { effect } from '@preact/signals-react';
+import './styles/global.css';
+import './styles/theme.css';
+import './styles/typography.css';
 import { useAuth } from './hooks/useAuth';
 import MainLayout from './components/layout/MainLayout';
 import LoadingIndicator from './components/common/LoadingIndicator';
 import InitErrorScreen from './components/common/InitErrorScreen';
-import './App.css';
-import './styles/theme.css';
-import './styles/typography.css';
-import ProtectedRoute from './components/common/ProtectedRoute';
+import ProtectedRoute from './components/layout/ProtectedRoute';
 import { getChats } from './services/chatService';
 import { whenIdle } from './utils/whenIdle';
 

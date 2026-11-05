@@ -1,7 +1,8 @@
 import { useTranslation } from 'react-i18next';
 import type { KnowledgeSourceDto } from '../../types/assistantModels';
 import Checkbox, { CheckboxGroup } from '../common/Checkbox';
-import './KnowledgeFileList.css';
+import PanelSection from '../common/PanelSection';
+import Text from '../common/Text';
 
 interface KnowledgeSourceListProps {
   /** The sources this user may use, from the server catalog. */
@@ -24,50 +25,41 @@ const KnowledgeSourceList = ({ sources, selectedIds, onToggle, disabled = false 
   const unknownIds = selectedIds.filter((id) => !sources.some((source) => source.id === id));
 
   return (
-    <section className="knowledge-file-list" aria-label={title}>
-      <div className="knowledge-file-list__header">
-        <div className="knowledge-file-list__heading">
-          <h3 className="knowledge-file-list__title t-body-strong">{title}</h3>
-          <p className="knowledge-file-list__description t-ui-plain">{t('assistants.knowledge.sources.description')}</p>
-        </div>
-      </div>
-
-      <div className="knowledge-file-list__items">
-        {sources.length === 0 && unknownIds.length === 0 && (
-          <div className="knowledge-file-list__empty t-ui-plain">{t('assistants.knowledge.sources.none')}</div>
-        )}
-        {[...groups].map(([group, groupSources]) => (
-          <CheckboxGroup key={group} mt="sm">
-            <span className="t-table-strong">{group}</span>
-            {groupSources.map((source) => (
-              <Checkbox
-                key={source.id}
-                checked={selectedIds.includes(source.id)}
-                onChange={(checked) => onToggle(source.id, checked)}
-                disabled={disabled}
-              >
-                <span>
-                  <span className="af-tool-name t-table-strong">{source.displayName}</span>
-                  <span className="af-tool-description"> — {source.description}</span>
-                </span>
-              </Checkbox>
-            ))}
-          </CheckboxGroup>
-        ))}
-        {unknownIds.length > 0 && (
-          <CheckboxGroup mt="sm">
-            {unknownIds.map((id) => (
-              <Checkbox key={id} checked onChange={() => onToggle(id, false)} disabled={disabled}>
-                <span className="af-tool-unavailable">
-                  <span className="af-tool-name t-table-strong">{id}</span>
-                  <span className="af-tool-description"> — {t('assistants.knowledge.sources.unavailable')}</span>
-                </span>
-              </Checkbox>
-            ))}
-          </CheckboxGroup>
-        )}
-      </div>
-    </section>
+    <PanelSection aria-label={title} title={title} description={t('assistants.knowledge.sources.description')}>
+      {sources.length === 0 && unknownIds.length === 0 && (
+        <Text as="div" variant="ui-plain" tone="muted" leading="base">{t('assistants.knowledge.sources.none')}</Text>
+      )}
+      {[...groups].map(([group, groupSources]) => (
+        <CheckboxGroup key={group} mt="sm">
+          <Text as="span" variant="table-strong">{group}</Text>
+          {groupSources.map((source) => (
+            <Checkbox
+              key={source.id}
+              checked={selectedIds.includes(source.id)}
+              onChange={(checked) => onToggle(source.id, checked)}
+              disabled={disabled}
+            >
+              <span>
+                <Text variant="table-strong">{source.displayName}</Text>
+                <Text tone="muted"> — {source.description}</Text>
+              </span>
+            </Checkbox>
+          ))}
+        </CheckboxGroup>
+      ))}
+      {unknownIds.length > 0 && (
+        <CheckboxGroup mt="sm">
+          {unknownIds.map((id) => (
+            <Checkbox key={id} checked onChange={() => onToggle(id, false)} disabled={disabled}>
+              <span>
+                <Text variant="table-strong" tone="muted" strike>{id}</Text>
+                <Text tone="muted"> — {t('assistants.knowledge.sources.unavailable')}</Text>
+              </span>
+            </Checkbox>
+          ))}
+        </CheckboxGroup>
+      )}
+    </PanelSection>
   );
 };
 

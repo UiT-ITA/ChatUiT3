@@ -1,0 +1,63 @@
+@property --scroll-fade-start {
+  syntax: '<length>';
+  inherits: false;
+  initial-value: 0;
+}
+@property --scroll-fade-end {
+  syntax: '<length>';
+  inherits: false;
+  initial-value: 0;
+}
+
+/* Horizontal chip or tip row: scrolls sideways without a scrollbar and snaps each item to the start edge */
+.h-scroller {
+  --scroll-fade-size: var(--space-3xl);
+  padding-inline-end: var(--space-2xl);
+  scroll-padding-inline-end: var(--space-2xl);
+  overflow-x: auto;
+  scrollbar-width: none;
+  scroll-snap-type: x mandatory;
+  overscroll-behavior-x: contain;
+}
+
+.h-scroller::-webkit-scrollbar { display: none; }
+.h-scroller > * { scroll-snap-align: start; }
+
+/* Scroll fade: an edge fades out while there is more content to scroll to in that direction; the outer quarter of the fade is fully transparent */
+@supports (animation-timeline: scroll()) {
+  .scroll-fade-x {
+    mask-image: linear-gradient(to right, transparent calc(var(--scroll-fade-start) * 0.25), var(--text) var(--scroll-fade-start), var(--text) calc(100% - var(--scroll-fade-end)), transparent calc(100% - var(--scroll-fade-end) * 0.25));
+    animation: scroll-fade-x linear both;
+    animation-timeline: scroll(self inline);
+  }
+
+  @keyframes scroll-fade-x {
+    0% {
+      --scroll-fade-start: 0;
+      --scroll-fade-end: var(--scroll-fade-size, var(--space-2xl));
+    }
+    5%, 95% {
+      --scroll-fade-start: var(--scroll-fade-size, var(--space-2xl));
+      --scroll-fade-end: var(--scroll-fade-size, var(--space-2xl));
+    }
+    100% {
+      --scroll-fade-start: var(--scroll-fade-size, var(--space-2xl));
+      --scroll-fade-end: 0;
+    }
+  }
+
+  .scroll-fade-y {
+    mask-image: linear-gradient(to bottom, var(--text) calc(100% - var(--scroll-fade-end)), transparent);
+    animation: scroll-fade-y linear both;
+    animation-timeline: scroll(self block);
+  }
+
+  @keyframes scroll-fade-y {
+    0%, 98% { --scroll-fade-end: var(--scroll-fade-size, var(--space-2xl)); }
+    100% { --scroll-fade-end: 0; }
+  }
+}
+
+/* Fade lengths */
+.scroll-fade--medium { --scroll-fade-size: calc(var(--space-2xl) + var(--space-sm)); }
+.scroll-fade--large { --scroll-fade-size: calc(var(--space-2xl) + var(--space-lg)); }

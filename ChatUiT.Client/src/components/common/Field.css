@@ -1,7 +1,7 @@
 .field {
   display: flex;
   flex-direction: column;
-  gap: 0.3125rem;
+  gap: var(--space-xs);
   min-width: 0;
 }
 
@@ -12,7 +12,7 @@
 
 .field__label-row {
   display: flex;
-  align-items: baseline;
+  align-items: center;
   justify-content: space-between;
   gap: var(--space-md);
 }

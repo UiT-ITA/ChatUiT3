@@ -16,11 +16,11 @@ const Alert: React.FC<AlertProps> = ({ tone = 'note', title, icon, className, ch
     <aside className={cx('alert', `alert--${tone}`, className)} style={style} {...rest}>
       {(title || icon) && (
         <div className="alert__title t-caption-strong">
-          {icon && <Icon name={icon} size="small" />}
+          {icon && <Icon name={icon} size="sm" />}
           {title}
         </div>
       )}
-      <div className="alert__body t-ui-plain">{children}</div>
+      <div className="alert__body t-body">{children}</div>
     </aside>
   );
 };

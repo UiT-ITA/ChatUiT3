@@ -1,0 +1,16 @@
+/* A framed block of preformatted text that scrolls when it is long */
+.text-block {
+  max-height: var(--size-2xs);
+  overflow-y: auto;
+  padding: var(--space-sm) var(--space-md);
+  color: var(--text);
+  background: var(--code-bg);
+  border: var(--border-sm) solid var(--line-soft);
+  border-radius: var(--radius-sm);
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  line-height: var(--lh-base);
+}
+
+.text-block--panel { background: var(--panel); }
+.text-block--mono { font-family: var(--font-mono); }

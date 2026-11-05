@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { useSignals } from '@preact/signals-react/runtime';
-import { updateAdminToolPolicy, resetAdminToolPolicy } from '../../services/adminService';
+import { updateAdminToolPolicy, resetAdminToolPolicy, searchAdminGroups, resolveAdminGroups } from '../../services/adminService';
 import { adminToolsSignal, loadAdminData } from '../../services/adminDataService';
 import { refreshTools } from '../../services/toolService';
 import { toolboxLabel, type UserRole, type AdminToolDto, type ToolAccessPolicyDto } from '../../types/admin';
@@ -11,11 +11,16 @@ import EditorHeader from '../layout/EditorHeader';
 import { ConfirmDialog } from '../common/Dialog';
 import { hasChanges } from '../../utils/formChanges';
 import AgentFunctionRows from './AgentFunctionRows';
-import ClassificationBadge from '../common/ClassificationBadge';
+import ClassificationBadge from '../classification/ClassificationBadge';
 import Checkbox, { CheckboxGroup } from '../common/Checkbox';
 import Field, { FieldDescription } from '../common/Field';
 import Stack from '../common/Stack';
 import Button from '../common/Button';
+import PageTitleBar from '../common/PageTitleBar';
+import Text from '../common/Text';
+import TextBlock from '../common/TextBlock';
+import EmptyNote from '../common/EmptyNote';
+import FormFooter from '../common/FormFooter';
 
 const ALL_ROLES: UserRole[] = ['User', 'Admin', 'Beta', 'Super', 'External'];
 
@@ -68,11 +73,11 @@ const ToolEditor: React.FC<ToolEditorProps> = ({ toolId }) => {
   }
 
   if (tools === undefined) {
-    return <div className="admin-empty t-ui-plain">{t('common.loading')}</div>;
+    return <EmptyNote>{t('common.loading')}</EmptyNote>;
   }
 
   if (!tool) {
-    return <div className="admin-empty t-ui-plain">{t('common.notFound')}</div>;
+    return <EmptyNote>{t('common.notFound')}</EmptyNote>;
   }
 
   const toggleRole = (role: UserRole, checked: boolean) => {
@@ -127,7 +132,7 @@ const ToolEditor: React.FC<ToolEditorProps> = ({ toolId }) => {
   const dirty = hasChanges({ enabled, allowedRoles, allowedGroupIds }, initial);
 
   return (
-    <div className="admin-form admin-form-wide">
+    <>
       <EditorHeader
         backPath="/admin/tools"
         backLabel={t('admin.tabs.tools')}
@@ -137,16 +142,16 @@ const ToolEditor: React.FC<ToolEditorProps> = ({ toolId }) => {
         onSave={handleSave}
         onCancel={() => navigate('/admin/tools')}
       />
-      <h1 className="t-page-title">{toolboxLabel(tool, tools)}</h1>
-      <div className="page-title-bar" />
+      <Text as="h1" variant="page-title">{toolboxLabel(tool, tools)}</Text>
+      <PageTitleBar />
 
       <Stack gap="xl">
         <Field label={t('admin.tools.fields.id')}>
-          <div className="t-code">{tool.id}</div>
+          <Text as="div" variant="code">{tool.id}</Text>
         </Field>
 
         <Field label={t('admin.tools.fields.description')}>
-          <div className="t-body">{tool.description}</div>
+          <Text as="div" variant="body">{tool.description}</Text>
         </Field>
 
         <Field label={t('admin.models.fields.classification')}>
@@ -154,12 +159,12 @@ const ToolEditor: React.FC<ToolEditorProps> = ({ toolId }) => {
         </Field>
 
         <Field label={t('admin.tools.fields.requiresConfirmation')}>
-          <div className="t-body">{tool.requiresConfirmation ? t('common.yes', { defaultValue: 'Yes' }) : t('common.no', { defaultValue: 'No' })}</div>
+          <Text as="div" variant="body">{tool.requiresConfirmation ? t('common.yes', { defaultValue: 'Yes' }) : t('common.no', { defaultValue: 'No' })}</Text>
         </Field>
 
         {tool.requiredScopes.length > 0 && (
           <Field label={t('admin.tools.fields.requiredScopes')}>
-            <div className="t-code">{tool.requiredScopes.join(', ')}</div>
+            <Text as="div" variant="code">{tool.requiredScopes.join(', ')}</Text>
           </Field>
         )}
 
@@ -171,9 +176,7 @@ const ToolEditor: React.FC<ToolEditorProps> = ({ toolId }) => {
 
         {tool.parametersSchema && (
           <Field label={t('admin.tools.fields.schema')}>
-            <pre className="toolcall-pre t-code" style={{ maxHeight: '16rem', overflow: 'auto' }}>
-              {JSON.stringify(tool.parametersSchema, null, 2)}
-            </pre>
+            <TextBlock monospace>{JSON.stringify(tool.parametersSchema, null, 2)}</TextBlock>
           </Field>
         )}
 
@@ -183,7 +186,7 @@ const ToolEditor: React.FC<ToolEditorProps> = ({ toolId }) => {
             ? t('admin.tools.fields.overridden', { date: tool.updatedAt ? new Date(tool.updatedAt).toLocaleString() : '' })
             : t('admin.tools.fields.usingDefault')}
         >
-          <div className="t-body">{describePolicy(tool.defaultPolicy)}</div>
+          <Text as="div" variant="body">{describePolicy(tool.defaultPolicy)}</Text>
         </Field>
 
         <Checkbox checked={enabled} onChange={setEnabled} description={t('admin.tools.fields.enabledHelp')}>
@@ -205,7 +208,7 @@ const ToolEditor: React.FC<ToolEditorProps> = ({ toolId }) => {
         </Field>
 
         <Field label={t('admin.tools.fields.allowedGroups')} description={t('admin.tools.fields.allowedGroupsHelp')}>
-          <GroupPicker value={allowedGroupIds} onChange={setAllowedGroupIds} disabled={saving} />
+          <GroupPicker value={allowedGroupIds} onChange={setAllowedGroupIds} search={searchAdminGroups} resolve={resolveAdminGroups} disabled={saving} />
         </Field>
 
         {nobody && (
@@ -214,11 +217,11 @@ const ToolEditor: React.FC<ToolEditorProps> = ({ toolId }) => {
       </Stack>
 
       {tool.isOverridden && (
-        <div className="admin-form-footer">
+        <FormFooter>
           <Button variant="danger" ml="auto" onClick={() => setConfirmReset(true)} disabled={saving}>
             {t('admin.tools.actions.reset')}
           </Button>
-        </div>
+        </FormFooter>
       )}
 
       <ConfirmDialog
@@ -230,7 +233,7 @@ const ToolEditor: React.FC<ToolEditorProps> = ({ toolId }) => {
         onConfirm={handleReset}
         onCancel={() => setConfirmReset(false)}
       />
-    </div>
+    </>
   );
 };
 

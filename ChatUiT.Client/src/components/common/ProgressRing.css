@@ -1,0 +1,15 @@
+/* A small circle that fills clockwise with a fraction: a track, then the fill */
+.progress-ring {
+  width: var(--icon-md);
+  height: var(--icon-md);
+}
+.progress-ring circle {
+  fill: none;
+  stroke: var(--line);
+}
+.progress-ring circle + circle {
+  stroke: var(--text-2);
+  stroke-linecap: round;
+}
+.progress-ring--warn circle + circle { stroke: var(--warn); }
+.progress-ring--danger circle + circle { stroke: var(--danger); }

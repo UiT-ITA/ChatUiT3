@@ -1,142 +1,63 @@
-.settings-page {
-  flex: 1;
-  overflow-y: auto;
-}
-
-.settings-page-content {
-  max-width: 47.5rem;
-  padding: 1.75rem 2rem 5rem;
-  width: 100%;
-  margin: 0 auto;
-}
-
-.settings-overline {
-  margin: 1.75rem 0 0.625rem;
-}
-
-.settings-overline:first-of-type {
-  margin-top: 0.5rem;
-}
-
-/* Theme / mode preview cards */
-.settings-card-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(9.375rem, 1fr));
-  gap: 0.75rem;
-  max-width: 34rem;
-}
-
-.settings-theme-preview {
+/* A miniature of the app in one theme and mode: a rail, two text bars and a button */
+.theme-preview {
+  /* The miniature's geometry as fractions of its width: the rail, where the content starts, and the top and bottom ends of the slanted edge of the system preview */
+  --theme-preview-rail-width: 26%;
+  --theme-preview-content-start: 34%;
+  --theme-preview-slant-top: 55%;
+  --theme-preview-slant-bottom: 45%;
   display: block;
-  height: 3.5rem;
-  border: 1px solid var(--line);
+  height: var(--space-3xl);
+  border: var(--border-sm) solid var(--line-strong);
   border-radius: var(--radius-sm);
   overflow: hidden;
   position: relative;
-  --preview-bg: #ffffff;
-  --preview-rail: #f2f5f6;
-  --preview-line: #ccd6db;
-  --preview-accent: #59BEC9;
-  background: var(--preview-bg);
 }
 
-.settings-theme-preview[data-preview-theme="grey"] {
-  --preview-rail: #f6f7f8;
-  --preview-line: #d7dcde;
-  --preview-accent: #6a767c;
+/* Each scene carries its own data-theme and data-mode, so its tokens are that theme's */
+.theme-preview__scene {
+  position: absolute;
+  inset: 0;
+  background: var(--bg);
 }
 
-.settings-theme-preview[data-preview-mode="dark"] {
-  --preview-bg: #00202e;
-  --preview-rail: #001926;
-  --preview-line: #0e3d51;
+/* System: the dark scene covers the right half, along a slanted edge */
+.theme-preview__scene--dark-half {
+  clip-path: polygon(var(--theme-preview-slant-top) 0, 100% 0, 100% 100%, var(--theme-preview-slant-bottom) 100%);
 }
 
-.settings-theme-preview[data-preview-theme="grey"][data-preview-mode="dark"] {
-  --preview-bg: #16191b;
-  --preview-rail: #101315;
-  --preview-line: #343c41;
-  --preview-accent: #9aa4a9;
-}
-
-.settings-theme-preview[data-preview-mode="system"] {
-  background: linear-gradient(105deg, var(--preview-bg) 50%, #00202e 50%);
-}
-
-.settings-theme-preview[data-preview-theme="grey"][data-preview-mode="system"] {
-  background: linear-gradient(105deg, var(--preview-bg) 50%, #16191b 50%);
-}
-
-.settings-theme-preview-rail {
+.theme-preview__rail {
   position: absolute;
   left: 0;
   top: 0;
   bottom: 0;
-  width: 26%;
-  background: var(--preview-rail);
+  width: var(--theme-preview-rail-width);
+  background: var(--panel);
 }
 
-.settings-theme-preview-line {
+.theme-preview__bar {
   position: absolute;
-  left: 34%;
-  height: 0.4375rem;
-  background: var(--preview-line);
+  left: var(--theme-preview-content-start);
+  height: var(--space-sm);
+  background: var(--line);
 }
 
-.settings-theme-preview-line-1 {
-  top: 0.75rem;
-  right: 0.875rem;
+.theme-preview__bar--1 {
+  top: var(--space-md);
+  right: var(--space-lg);
+  background: var(--accent-2);
 }
 
-.settings-theme-preview-line-2 {
-  top: 1.5625rem;
-  right: 2.125rem;
+.theme-preview__bar--2 {
+  top: var(--space-xl);
+  right: var(--space-2xl);
 }
 
-.settings-theme-preview-accent {
+.theme-preview__button {
   position: absolute;
-  left: 34%;
-  top: 2.375rem;
-  right: 3.25rem;
-  height: 0.4375rem;
-  background: var(--preview-accent);
-}
-
-.settings-flag {
-  width: 1.125rem;
-  height: auto;
-  display: block;
-}
-
-/* Setting rows (data control) */
-.settings-row {
-  display: flex;
-  align-items: center;
-  gap: 1.25rem;
-  padding: 0.8125rem 0;
-  border-bottom: 1px solid var(--line-soft);
-  max-width: 34rem;
-}
-
-.settings-row-text {
-  flex: 1;
-}
-
-.settings-row-label {
-}
-
-/* Action buttons */
-.settings-actions {
-  margin-top: 1.875rem;
-  padding-top: 1.25rem;
-  border-top: 1px solid var(--line);
-  display: flex;
-  align-items: center;
-  gap: 0.625rem;
-}
-
-@media (max-width: 50rem) {
-  .settings-page-content {
-    padding: 1.25rem 1rem 3rem;
-  }
+  left: var(--theme-preview-content-start);
+  top: var(--space-2xl);
+  width: var(--control-sm);
+  height: var(--space-md);
+  border-radius: var(--radius-sm);
+  background: var(--btn-bg);
 }

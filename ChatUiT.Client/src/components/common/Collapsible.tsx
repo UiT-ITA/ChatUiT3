@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useId, useState } from 'react';
-import { cx, splitLayoutProps, type LayoutProps } from './layout';
+import { splitLayoutProps, type LayoutProps } from './layout';
 
 interface CollapsibleState {
   open: boolean;
@@ -40,7 +40,7 @@ export const Collapsible: React.FC<CollapsibleProps> = ({ open: controlledOpen, 
 
   return (
     <CollapsibleContext.Provider value={{ open, setOpen, contentId, disabled }}>
-      <div className={cx('collapsible', className)} style={layout}>{children}</div>
+      <div className={className} style={layout}>{children}</div>
     </CollapsibleContext.Provider>
   );
 };

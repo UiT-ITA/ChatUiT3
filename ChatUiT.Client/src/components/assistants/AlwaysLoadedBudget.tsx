@@ -1,7 +1,8 @@
 import { useTranslation } from 'react-i18next';
 import { formatTokens } from '../../utils/tokenCounting';
 import Button from '../common/Button';
-import './AlwaysLoadedBudget.css';
+import ProgressBar from '../common/ProgressBar';
+import Text from '../common/Text';
 import Alert from '../common/Alert';
 import Stack from '../common/Stack';
 
@@ -34,27 +35,25 @@ const AlwaysLoadedBudget = ({ used, unavailable, limit, isEstimate, blocked, rej
 
   if (used === undefined) {
     return (
-      <div className="always-loaded-budget t-meta">
+      <Text as="div" variant="meta" tone="muted">
         {t(unavailable ? 'assistants.knowledge.budget.unavailable' : 'assistants.knowledge.budget.counting')}
-      </div>
+      </Text>
     );
   }
 
   const over = used > limit;
-  const state = over ? 'danger' : used >= limit * WARN_FRACTION ? 'warn' : 'ok';
+  const state = over ? 'danger' : used >= limit * WARN_FRACTION ? 'warn' : 'normal';
 
   return (
-    <div className="always-loaded-budget" data-state={state}>
-      <div className="always-loaded-budget__meter" role="meter" aria-valuemin={0} aria-valuemax={limit} aria-valuenow={used}>
-        <div className="always-loaded-budget__fill" style={{ width: `${Math.min(100, limit > 0 ? (used / limit) * 100 : 100)}%` }} />
-      </div>
-      <div className="always-loaded-budget__used t-ui">
+    <Stack gap="sm">
+      <ProgressBar value={used} max={limit} state={state} />
+      <Text as="div" variant="ui" tone={state === 'danger' ? 'danger' : state === 'warn' ? 'warning' : 'secondary'}>
         {approx}{t('assistants.knowledge.budget.used', { used: number(used), limit: number(limit) })}
-      </div>
-      <p className="always-loaded-budget__explanation t-meta">
+      </Text>
+      <Text as="p" variant="meta" tone="muted" leading="base">
         {t('assistants.knowledge.budget.explanation', { limit: number(limit) })}
         {isEstimate && <> {t('assistants.knowledge.budget.estimate')}</>}
-      </p>
+      </Text>
 
       {over && (
         <Alert tone="danger" role="alert">
@@ -69,15 +68,15 @@ const AlwaysLoadedBudget = ({ used, unavailable, limit, isEstimate, blocked, rej
         <Alert tone="warning" role="alert">
           <Stack gap="sm">
             {rejected.map((file) => (
-              <div key={file.id} className="always-loaded-budget__rejected">
-                <div className="t-ui">{t('assistants.knowledge.budget.rejectedTitle', { name: file.name })}</div>
-                <div className="t-ui-plain">
+              <Stack key={file.id} gap="xs">
+                <Text as="div" variant="ui">{t('assistants.knowledge.budget.rejectedTitle', { name: file.name })}</Text>
+                <Text as="div" variant="ui-plain">
                   {t('assistants.knowledge.budget.rejected', {
                     tokens: approx + number(file.tokens),
                     remaining: number(Math.max(0, file.remaining))
                   })}
-                </div>
-              </div>
+                </Text>
+              </Stack>
             ))}
             <Button variant="subtle" size="small" alignSelf="end" onClick={onDismissRejected}>
               {t('common.close')}
@@ -85,7 +84,7 @@ const AlwaysLoadedBudget = ({ used, unavailable, limit, isEstimate, blocked, rej
           </Stack>
         </Alert>
       )}
-    </div>
+    </Stack>
   );
 };
 

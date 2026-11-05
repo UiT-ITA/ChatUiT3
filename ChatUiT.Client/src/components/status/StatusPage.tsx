@@ -1,7 +1,12 @@
 import React, { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { getDevStatus, type DevStatusDto } from '../../services/devStatusService';
-import './StatusPage.css';
+import PageTitleBar from '../common/PageTitleBar';
+import Page from '../common/Page';
+import Box from '../common/Box';
+import Text from '../common/Text';
+import DescriptionList from '../common/DescriptionList';
+import Table from '../common/Table';
 
 /** Development only: dumps what the API sees of the signed-in user, so access questions can be settled from facts. */
 const StatusPage: React.FC = () => {
@@ -18,62 +23,47 @@ const StatusPage: React.FC = () => {
   }, []);
 
   if (error) {
-    return <div className="status-page"><div className="status-page-content"><div className="status-error t-body">{error}</div></div></div>;
+    return <Page width="wide"><Text as="div" variant="body" tone="danger">{error}</Text></Page>;
   }
 
   if (!status) {
-    return <div className="status-page"><div className="status-page-content"><div className="t-ui-plain">{t('common.loading')}</div></div></div>;
+    return <Page width="wide"><Text as="div" variant="ui-plain">{t('common.loading')}</Text></Page>;
   }
 
   const groupClaims = status.claims.filter(claim => claim.type === 'groups' || claim.type.endsWith('/claims/groups'));
 
   return (
-    <div className="status-page">
-      <div className="status-page-content">
-      <h1 className="t-page-title">{t('status.title')}</h1>
-      <div className="page-title-bar" />
+    <Page width="wide">
+      <Text as="h1" variant="page-title">{t('status.title')}</Text>
+      <PageTitleBar />
 
-      <section className="status-section">
-        <h2 className="t-overline">{t('status.resolved')}</h2>
-        <dl className="status-facts">
-          <dt className="t-label">{t('status.environment')}</dt>
-          <dd className="t-code">{status.environment}</dd>
-          <dt className="t-label">{t('status.userId')}</dt>
-          <dd className="t-code">{status.userId}</dd>
-          <dt className="t-label">{t('status.roles')}</dt>
-          <dd className="t-code">{status.roles.join(', ') || '—'}</dd>
-          <dt className="t-label">{t('status.groupIds')}</dt>
-          <dd className="t-code">{status.groupIds.length > 0 ? status.groupIds.join('\n') : '—'}</dd>
-        </dl>
-        {status.groupsOverage && (
-          <div className="status-warn t-caption">{t('status.groupsOverage')}</div>
+      <Box as="section" mt="xl">
+        <Text as="h2" variant="overline" tone="muted" mb="md">{t('status.resolved')}</Text>
+        <DescriptionList
+          termVariant="label"
+          detailsVariant="code"
+          items={[
+            { term: t('status.environment'), details: status.environment },
+            { term: t('status.userId'), details: status.userId },
+            { term: t('status.roles'), details: status.roles.join(', ') || '—' },
+            { term: t('status.groupIds'), details: status.groupIds.length > 0 ? status.groupIds.join('\n') : '—' },
+          ]}
+        />
+        {(status.groupsOverage || groupClaims.length === 0) && (
+          <Text as="div" variant="caption" tone="warning" mt="md">{t(status.groupsOverage ? 'status.groupsOverage' : 'status.noGroupsClaim')}</Text>
         )}
-        {!status.groupsOverage && groupClaims.length === 0 && (
-          <div className="status-warn t-caption">{t('status.noGroupsClaim')}</div>
-        )}
-      </section>
+      </Box>
 
-      <section className="status-section">
-        <h2 className="t-overline">{t('status.claims', { count: status.claims.length })}</h2>
-        <table className="status-claims">
-          <thead>
-            <tr>
-              <th className="t-label">{t('status.claimType')}</th>
-              <th className="t-label">{t('status.claimValue')}</th>
-            </tr>
-          </thead>
-          <tbody>
-            {status.claims.map((claim, index) => (
-              <tr key={`${claim.type}-${index}`}>
-                <td className="t-code">{claim.type}</td>
-                <td className="t-code">{claim.value}</td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </section>
-      </div>
-    </div>
+      <Box as="section" mt="xl">
+        <Text as="h2" variant="overline" tone="muted" mb="md">{t('status.claims', { count: status.claims.length })}</Text>
+        <Table
+          headVariant="label"
+          cellVariant="code"
+          columns={[t('status.claimType'), t('status.claimValue')]}
+          rows={status.claims.map((claim, index) => ({ key: `${claim.type}-${index}`, cells: [claim.type, claim.value] }))}
+        />
+      </Box>
+    </Page>
   );
 };
 

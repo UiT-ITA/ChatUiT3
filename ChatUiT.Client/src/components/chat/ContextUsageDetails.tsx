@@ -1,86 +1,91 @@
 import { useTranslation } from 'react-i18next';
 import type { ContextUsage } from '../../services/contextUsageService';
 import { formatTokens, formatTokensCompact } from '../../utils/tokenCounting';
-import './ContextUsageDetails.css';
-
-interface ContextUsageDetailsProps {
-  usage: ContextUsage;
-}
+import Stack from '../common/Stack';
+import Text from '../common/Text';
+import StackedBar from '../common/StackedBar';
+import { Legend, LegendItem } from '../common/Legend';
+import type { DataTone } from '../common/dataTone';
 
 /** How full the context window is, and what fills it. */
-export default function ContextUsageDetails({ usage }: ContextUsageDetailsProps) {
+export default function ContextUsageDetails({ usage }: { usage: ContextUsage }) {
   const { t, i18n } = useTranslation();
 
-  const percentOf = (value: number) => `${Math.min(100, (value / Math.max(1, usage.contextSize)) * 100)}%`;
+  const fractionOf = (value: number) => value / Math.max(1, usage.contextSize);
   const number = (value: number) => formatTokens(value, i18n.language);
   const shareOf = (value: number) => Math.round((value / Math.max(1, usage.total)) * 100);
 
   // What fills the window, in the order the request is assembled.
-  const segments = [
-    { key: 'prompt', label: 'chat.panel.contextSystemPrompt', value: usage.systemPrompt },
-    { key: 'knowledge', label: 'chat.panel.contextKnowledge', value: usage.knowledge },
-    { key: 'files', label: 'chat.panel.contextFiles', value: usage.files },
-    { key: 'messages', label: 'chat.panel.contextMessages', value: usage.messages },
-    { key: 'draft', label: 'chat.panel.contextDraft', value: usage.draft },
+  const segments: { key: string; label: string; value: number; tone: DataTone }[] = [
+    { key: 'prompt', label: 'chat.panel.contextSystemPrompt', value: usage.systemPrompt, tone: 'viz-1' },
+    { key: 'knowledge', label: 'chat.panel.contextKnowledge', value: usage.knowledge, tone: 'viz-2' },
+    { key: 'files', label: 'chat.panel.contextFiles', value: usage.files, tone: 'viz-3' },
+    { key: 'messages', label: 'chat.panel.contextMessages', value: usage.messages, tone: 'viz-4' },
+    { key: 'draft', label: 'chat.panel.contextDraft', value: usage.draft, tone: 'viz-5' },
   ];
 
-  return (
-    <div className="context-usage" data-state={usage.level}>
-      <div className="context-meter" role="meter" aria-valuemin={0} aria-valuemax={usage.contextSize} aria-valuenow={usage.total}>
-        <div className="context-meter-fill" style={{ width: percentOf(usage.total) }} />
-        <div className="context-meter-reserved" style={{ width: percentOf(Math.min(usage.maxOutputTokens, Math.max(0, usage.contextSize - usage.total))) }} />
-      </div>
-      <ul className="context-legend context-legend--usage">
-        <li className="context-legend-row context-legend-row--wide t-hint">
-          <span className="context-legend-swatch" data-segment="used" />
-          <span className="context-legend-label">{t('chat.panel.contextUsedLabel')}</span>
-          <span className="context-legend-value context-usage-total">
-            {usage.isEstimate && '≈ '}
-            {t('chat.panel.contextUsed', {
-              used: number(usage.total),
-              limit: formatTokensCompact(usage.contextSize, i18n.language),
-            })}
-          </span>
-        </li>
-        <li className="context-legend-row context-legend-row--wide t-hint">
-          <span className="context-legend-swatch" data-segment="reserved" />
-          <span className="context-legend-label">{t('chat.panel.contextReserved')}</span>
-          <span className="context-legend-value">{number(usage.maxOutputTokens)}</span>
-        </li>
-      </ul>
+  const usedTone = usage.level === 'normal' ? 'accent' : usage.level;
 
-      <div className="context-subheader t-hint">{t('chat.panel.contextComposition')}</div>
+  return (
+    <Stack gap="sm">
+      <StackedBar
+        role="meter"
+        aria-valuemin={0}
+        aria-valuemax={usage.contextSize}
+        aria-valuenow={usage.total}
+        segments={[
+          { key: 'used', value: fractionOf(usage.total), tone: usedTone },
+          { key: 'reserved', value: fractionOf(Math.min(usage.maxOutputTokens, Math.max(0, usage.contextSize - usage.total))), tone: 'reserved' },
+        ]}
+      />
+      <Legend>
+        <LegendItem
+          tone={usedTone}
+          label={t('chat.panel.contextUsedLabel')}
+          state={usage.level}
+          value={(
+            <>
+              {usage.isEstimate && '≈ '}
+              {t('chat.panel.contextUsed', {
+                used: number(usage.total),
+                limit: formatTokensCompact(usage.contextSize, i18n.language),
+              })}
+            </>
+          )}
+        />
+        <LegendItem tone="reserved" label={t('chat.panel.contextReserved')} value={number(usage.maxOutputTokens)} />
+      </Legend>
+
+      <Text as="div" variant="hint" tone="muted" mt="sm">{t('chat.panel.contextComposition')}</Text>
       {usage.total > 0 && (
-        <div className="context-composition" role="img" aria-label={t('chat.panel.contextComposition')}>
-          {segments.filter((segment) => segment.value > 0).map((segment) => (
-            <div
-              key={segment.key}
-              className="context-composition-segment"
-              data-segment={segment.key}
-              style={{ flexGrow: segment.value }}
-            />
-          ))}
-        </div>
+        <StackedBar
+          scale="relative"
+          mt="xs"
+          role="img"
+          aria-label={t('chat.panel.contextComposition')}
+          segments={segments.filter((segment) => segment.value > 0).map((segment) => ({ key: segment.key, value: segment.value, tone: segment.tone }))}
+        />
       )}
-      <ul className="context-legend">
+      <Legend>
         {segments.map((segment) => (
-          <li key={segment.key} className="context-legend-row t-hint">
-            <span className="context-legend-swatch" data-segment={segment.key} />
-            <span className="context-legend-label">{t(segment.label)}</span>
-            <span className="context-legend-value">{number(segment.value)}</span>
-            <span className="context-legend-share">{t('chat.panel.contextPercent', { value: shareOf(segment.value) })}</span>
-          </li>
+          <LegendItem
+            key={segment.key}
+            tone={segment.tone}
+            label={t(segment.label)}
+            value={number(segment.value)}
+            share={t('chat.panel.contextPercent', { value: shareOf(segment.value) })}
+          />
         ))}
-      </ul>
+      </Legend>
       {usage.unknownMessages > 0 && (
-        <div className="context-usage-note t-hint">{t('chat.panel.contextUnknown', { count: usage.unknownMessages })}</div>
+        <Text as="div" variant="hint" tone="muted">{t('chat.panel.contextUnknown', { count: usage.unknownMessages })}</Text>
       )}
       {usage.isEstimate && (
-        <div className="context-usage-note t-hint">{t('chat.panel.contextEstimate')}</div>
+        <Text as="div" variant="hint" tone="muted">{t('chat.panel.contextEstimate')}</Text>
       )}
       {usage.overLimit && (
-        <div className="context-usage-over t-caption">{t('chat.panel.contextOver')}</div>
+        <Text as="div" variant="caption" tone="danger">{t('chat.panel.contextOver')}</Text>
       )}
-    </div>
+    </Stack>
   );
 }

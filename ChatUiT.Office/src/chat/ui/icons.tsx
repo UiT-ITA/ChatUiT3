@@ -1,12 +1,14 @@
 /** The pane's icons, as inline SVG. Filled icons are react-icons md and ri, as in the ChatUiT app. */
 
+import { icon } from "./tokens";
+
 const filled = {
   close: "M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z",
   stop: "M6 6h12v12H6z",
   more: "M5 10.3a1.7 1.7 0 1 0 0 3.4 1.7 1.7 0 0 0 0-3.4zm7 0a1.7 1.7 0 1 0 0 3.4 1.7 1.7 0 0 0 0-3.4zm7 0a1.7 1.7 0 1 0 0 3.4 1.7 1.7 0 0 0 0-3.4z",
 } as const;
 
-/** Outline icons, drawn with a 1.8px stroke. */
+/** Outline icons, drawn with a stroke of 1.8 view box units. */
 const outlined = {
   history: "M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0zM12 7v5l3 2",
   chatNew: "M20 12a8 8 0 0 1-11.6 7.1L4 20l1-4.2A8 8 0 1 1 20 12zM12 9v6M9 12h6",
@@ -26,9 +28,9 @@ const outlined = {
 
 export type IconName = keyof typeof filled | keyof typeof outlined;
 
-/** `size` is in rem. */
-export function Icon({ name, size = 1 }: { name: IconName; size?: number }) {
-  const dimensions = { width: `${size}rem`, height: `${size}rem`, viewBox: "0 0 24 24", "aria-hidden": true } as const;
+/** `size` is a CSS length from `icon`. */
+export function Icon({ name, size = icon.sm }: { name: IconName; size?: string }) {
+  const dimensions = { width: size, height: size, viewBox: "0 0 24 24", "aria-hidden": true } as const;
   if (name in filled) {
     return (
       <svg {...dimensions} fill="currentColor">

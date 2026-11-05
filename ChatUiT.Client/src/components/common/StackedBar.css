@@ -1,0 +1,16 @@
+/* A thin rounded bar made of coloured segments; relative segments always fill it, each its share of the total */
+.stacked-bar {
+  display: flex;
+  height: var(--space-sm);
+  border-radius: var(--radius-pill);
+  background: var(--panel-2);
+  overflow: hidden;
+}
+
+.stacked-bar--absolute > * { transition: width var(--dur-base) ease; }
+.stacked-bar--relative { gap: var(--border-sm); }
+.stacked-bar--relative > * {
+  flex: 0 1 0;
+  min-width: 0;
+  transition: flex-grow var(--dur-base) ease;
+}

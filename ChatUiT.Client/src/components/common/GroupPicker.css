@@ -1,7 +1,7 @@
 .group-picker {
   display: flex;
   flex-direction: column;
-  gap: 0.5rem;
+  gap: var(--space-sm);
 }
 
 .group-picker-chip-unknown {
@@ -16,4 +16,3 @@
 .group-picker-error {
   color: var(--danger);
 }
-

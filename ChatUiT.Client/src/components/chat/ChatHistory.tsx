@@ -1,88 +1,80 @@
-import './ChatHistory.css'
 import { getChat, getSelectableAssistants } from '../../services/chatService'
 import { useSignals } from '@preact/signals-react/runtime'
 import { useLayoutEffect, useRef, useEffect, useCallback, memo } from 'react'
 import { useTranslation } from 'react-i18next'
 import ChatMessage from './ChatMessage'
 import LoadingIndicator from '../common/LoadingIndicator'
-
-interface ChatHistoryProps {
-  chatId: string
-}
+import Stack from '../common/Stack'
+import { cx } from '../common/layout'
+import { scrollFadeClass } from '../common/scrollFade'
+import './MessageFeed.css'
 
 const NO_MESSAGES: never[] = []
 
-function ChatHistory({ chatId }: ChatHistoryProps) {
+/** The scrolling column of a chat's messages, which stays at the bottom while the view is at the bottom. */
+function ChatHistory({ chatId }: { chatId: string }) {
   useSignals()
   const { t } = useTranslation()
 
   const chat = getChat(chatId)
   const messages = chat.value?.messages ?? NO_MESSAGES
-  const assistants = getSelectableAssistants().value || []
-  // Only a fallback: messages carry their own assistant. Used for any message whose
-  // assistant snapshot is empty.
-  const fallbackAssistantName = assistants.find((a) => a.id === chat.value?.assistantId)?.name
+  // The chat's assistant name, for messages without an assistant name of their own
+  const fallbackAssistantName = (getSelectableAssistants().value || []).find((a) => a.id === chat.value?.assistantId)?.name
 
-  const chatHistoryRef = useRef<HTMLDivElement>(null)
-  const bottomSentinelRef = useRef<HTMLDivElement>(null)
+  const scrollerRef = useRef<HTMLDivElement>(null)
+  const sentinelRef = useRef<HTMLDivElement>(null)
   const pinnedRef = useRef(true)
 
   const scrollToBottom = useCallback(() => {
-    if (chatHistoryRef.current) {
-      chatHistoryRef.current.scrollTop = chatHistoryRef.current.scrollHeight
-    }
+    if (scrollerRef.current) scrollerRef.current.scrollTop = scrollerRef.current.scrollHeight
   }, [])
 
   const scrollToBottomIfPinned = useCallback(() => {
     if (!pinnedRef.current) return
-    const scroller = chatHistoryRef.current
-    if (!scroller) return
-
     requestAnimationFrame(() => {
-      if (!pinnedRef.current) return
-      scroller.scrollTop = scroller.scrollHeight
+      if (pinnedRef.current) scrollToBottom()
     })
-  }, [])
+  }, [scrollToBottom])
 
-  // IntersectionObserver to track if user is at bottom
+  // The view is at the bottom while the sentinel after the last message is in view
   useEffect(() => {
-    const scroller = chatHistoryRef.current
-    const sentinel = bottomSentinelRef.current
+    const scroller = scrollerRef.current
+    const sentinel = sentinelRef.current
     if (!scroller || !sentinel) return
-
-    const io = new IntersectionObserver(
-      (entries) => {
-        const entry = entries[0]
-        pinnedRef.current = !!entry?.isIntersecting
-      },
-      {
-        root: scroller,
-        threshold: 0.01,
-      }
-    )
-
+    const io = new IntersectionObserver((entries) => {
+      pinnedRef.current = !!entries[0]?.isIntersecting
+    }, { root: scroller, threshold: 0.01 })
     io.observe(sentinel)
     return () => io.disconnect()
   }, [messages])
-
 
   useLayoutEffect(() => {
     scrollToBottom()
   }, [messages.length, scrollToBottom])
 
+  // Keeps the view at the bottom while the messages change size and the view is at the bottom
+  const contentRef = useCallback((content: HTMLDivElement | null) => {
+    if (!content) return
+    const observer = new ResizeObserver(() => {
+      if (pinnedRef.current) scrollToBottom()
+    })
+    observer.observe(content)
+    return () => observer.disconnect()
+  }, [scrollToBottom])
+
   if (chat.value === undefined) {
     return (
-      <div className="chat-history">
-        <div className="chat-history-loading">
+      <div className="message-feed">
+        <Stack align="center" justify="center" height="full" minHeight="2xs">
           <LoadingIndicator text={t('chat.loadingChat')} />
-        </div>
+        </Stack>
       </div>
     )
   }
 
   return (
-    <div className="chat-history" ref={chatHistoryRef}>
-      <div className="chat-history-messages">
+    <div className={cx('message-feed', scrollFadeClass('y', 'medium'))} ref={scrollerRef}>
+      <div className="message-feed__messages" ref={contentRef}>
         {messages.map((message) => (
           <ChatMessage
             key={message.id}
@@ -92,8 +84,7 @@ function ChatHistory({ chatId }: ChatHistoryProps) {
             onStreamingChunk={scrollToBottomIfPinned}
           />
         ))}
-        {/* Bottom sentinel for IntersectionObserver */}
-        <div ref={bottomSentinelRef} style={{ height: 1 }} />
+        <div ref={sentinelRef} className="message-feed__sentinel" />
       </div>
     </div>
   )

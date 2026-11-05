@@ -30,6 +30,9 @@ import Grid from '../common/Grid';
 import { hasChanges } from '../../utils/formChanges';
 import { AllowedRolesField, EndpointSelect, KnownModelSelect, ModelEditorFooter, ModelIdField } from './ModelEditorParts';
 import { ALL_ROLES, catalogEntryForModelId, modelIdOptions, useEndpointDeployments, useModelCatalog } from './modelEditorShared';
+import PageTitleBar from '../common/PageTitleBar';
+import EmptyNote from '../common/EmptyNote';
+import Text from '../common/Text';
 
 const BYTES_PER_MEGABYTE = 1024 * 1024;
 
@@ -156,11 +159,11 @@ const ImageModelEditor: React.FC<ImageModelEditorProps> = ({ modelId: editId }) 
   }
 
   if (editId && models === undefined) {
-    return <div className="admin-empty t-ui-plain">{t('common.loading')}</div>;
+    return <EmptyNote>{t('common.loading')}</EmptyNote>;
   }
 
   if (editId && models !== undefined && !model) {
-    return <div className="admin-empty t-ui-plain">{t('common.notFound')}</div>;
+    return <EmptyNote>{t('common.notFound')}</EmptyNote>;
   }
 
   const updateCaps = <K extends keyof ImageModelCapabilities>(key: K, value: ImageModelCapabilities[K]) => {
@@ -233,7 +236,7 @@ const ImageModelEditor: React.FC<ImageModelEditorProps> = ({ modelId: editId }) 
   );
 
   return (
-    <div className="admin-form admin-form-wide">
+    <>
       <EditorHeader
         backPath="/admin/models"
         backLabel={t('admin.tabs.models')}
@@ -243,10 +246,10 @@ const ImageModelEditor: React.FC<ImageModelEditorProps> = ({ modelId: editId }) 
         onSave={handleSave}
         onCancel={() => navigate('/admin/models')}
       />
-      <h1 className="t-page-title">
+      <Text as="h1" variant="page-title">
         {model ? t('admin.imageModels.editTitle') : t('admin.imageModels.addTitle')}
-      </h1>
-      <div className="page-title-bar" />
+      </Text>
+      <PageTitleBar />
 
       <Stack gap="xl">
         <EndpointSelect value={endpointId} endpoints={endpoints} onChange={setEndpointId} />
@@ -266,7 +269,7 @@ const ImageModelEditor: React.FC<ImageModelEditorProps> = ({ modelId: editId }) 
 
         {showDetails && (
           <>
-            <Grid minColumnWidth="12rem" gap="lg">
+            <Grid gap="lg">
               <TextInput
                 label={t('admin.models.fields.modelName')}
                 value={modelName}
@@ -345,7 +348,7 @@ const ImageModelEditor: React.FC<ImageModelEditorProps> = ({ modelId: editId }) 
             </CheckboxGroup>
 
             <Field label={t('admin.imageModels.fields.sizeRules')} description={t('admin.imageModels.fields.sizeRulesHint')}>
-              <Grid minColumnWidth="10rem" gap="lg">
+              <Grid minColumnWidth="2xs" gap="lg">
                 <OptionalNumberInput label={t('admin.imageModels.fields.sizeMultiple')} value={capabilities.sizeMultiple} onChange={(value) => updateCaps('sizeMultiple', value)} />
                 <OptionalNumberInput label={t('admin.imageModels.fields.minSide')} value={capabilities.minSide} onChange={(value) => updateCaps('minSide', value)} />
                 <OptionalNumberInput label={t('admin.imageModels.fields.maxSide')} value={capabilities.maxSide} onChange={(value) => updateCaps('maxSide', value)} />
@@ -355,7 +358,7 @@ const ImageModelEditor: React.FC<ImageModelEditorProps> = ({ modelId: editId }) 
               </Grid>
             </Field>
 
-            <Grid minColumnWidth="12rem" gap="lg">
+            <Grid gap="lg">
               <TextInput
                 label={t('admin.imageModels.fields.maxImagesPerRequest')}
                 type="number"
@@ -453,7 +456,7 @@ const ImageModelEditor: React.FC<ImageModelEditorProps> = ({ modelId: editId }) 
 
               {editing && (
                 <>
-                  <Grid minColumnWidth="12rem" gap="lg">
+                  <Grid gap="lg">
                     <TextInput
                       label={t('admin.imageModels.fields.maxInputImages')}
                       type="number"
@@ -505,7 +508,7 @@ const ImageModelEditor: React.FC<ImageModelEditorProps> = ({ modelId: editId }) 
       </Stack>
 
       {model && <ModelEditorFooter modelId={model.id} dirty={dirty} />}
-    </div>
+    </>
   );
 };
 

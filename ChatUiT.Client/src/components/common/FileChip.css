@@ -1,0 +1,106 @@
+/* File chip: a framed name and type for a document, a square thumbnail for an image */
+.file-chip {
+  position: relative;
+  display: flex;
+  border: var(--border-sm) solid var(--line);
+  border-radius: var(--radius-sm);
+}
+
+.file-chip--document {
+  max-width: var(--size-xs);
+  height: calc(var(--space-2xl) + var(--space-lg));
+  background: var(--surface);
+}
+
+.file-chip--image {
+  width: var(--space-3xl);
+  height: var(--space-3xl);
+}
+
+/* The name and type, or the image, filling the chip */
+.file-chip__body {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  min-width: 0;
+  padding: 0;
+  border: none;
+  border-radius: inherit;
+  background: transparent;
+  color: inherit;
+  text-align: left;
+}
+
+.file-chip--document .file-chip__body {
+  padding: 0 var(--space-sm);
+}
+
+.file-chip__body--clickable {
+  cursor: pointer;
+  transition: background var(--dur-fast) ease;
+}
+
+.file-chip--document .file-chip__body--clickable:hover {
+  background: var(--panel);
+}
+
+.file-chip__body--clickable:focus-visible {
+  outline: var(--border-md) solid var(--accent);
+  outline-offset: var(--border-md);
+}
+
+.file-chip__content {
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+  width: 100%;
+  min-width: 0;
+}
+
+/* Text clear of the remove button */
+.file-chip__info {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  min-width: 0;
+  padding-right: var(--space-2xl);
+}
+
+.file-chip__name {
+  color: var(--text);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  line-height: var(--lh-tight);
+}
+
+.file-chip__extension {
+  color: var(--text-3);
+  line-height: var(--lh-tight);
+  margin-top: var(--space-xs);
+}
+
+.file-chip__image {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  border-radius: var(--radius-sm);
+}
+
+.file-chip__remove {
+  position: absolute;
+  z-index: var(--z-sticky);
+  display: flex;
+}
+
+.file-chip--image .file-chip__remove {
+  top: var(--space-xs);
+  right: var(--space-xs);
+}
+
+.file-chip--document .file-chip__remove {
+  top: 50%;
+  transform: translateY(-50%);
+  right: var(--space-sm);
+}

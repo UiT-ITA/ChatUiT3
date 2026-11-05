@@ -24,7 +24,7 @@ const SearchField: React.FC<SearchFieldProps> = ({ value, onChange, clearable = 
       onChange={(next) => onChange(next)}
       disabled={disabled}
       size={size}
-      leading={<Icon name="search" size="small" />}
+      leading={<Icon name="search" size="sm" />}
       trailing={showClear ? (
         <IconButton
           icon="close"

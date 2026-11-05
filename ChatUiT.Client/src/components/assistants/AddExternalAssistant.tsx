@@ -3,7 +3,9 @@ import { useTranslation } from 'react-i18next';
 import { addSharedAssistant } from '../../services/assistantService';
 import TextInput from '../common/TextInput';
 import Button from '../common/Button';
-import './AddExternalAssistant.css';
+import Placeholder from '../common/Placeholder';
+import InputRow from '../common/InputRow';
+import Text from '../common/Text';
 
 const AddExternalAssistant: React.FC = () => {
   const { t } = useTranslation();
@@ -25,12 +27,12 @@ const AddExternalAssistant: React.FC = () => {
   };
 
   return (
-    <div className="add-external-assistant">
-      <h3 className="add-external-assistant-title t-overline">{t('assistants.addExternal.title')}</h3>
-      <p className="add-external-assistant-description t-caption">
+    <Placeholder interactive py="lg" px="lg" mb="xl">
+      <Text as="h3" variant="overline" tone="muted" mb="sm">{t('assistants.addExternal.title')}</Text>
+      <Text as="p" variant="caption" tone="muted" mb="md">
         {t('assistants.addSharedAssistantDescription')}
-      </p>
-      <div className="add-external-assistant-form">
+      </Text>
+      <InputRow maxWidth="sm">
         <TextInput
           value={externalId}
           onChange={setExternalId}
@@ -46,8 +48,8 @@ const AddExternalAssistant: React.FC = () => {
         >
           {loading ? t('assistants.addExternal.adding') : t('assistants.addExternal.add')}
         </Button>
-      </div>
-    </div>
+      </InputRow>
+    </Placeholder>
   );
 };
 

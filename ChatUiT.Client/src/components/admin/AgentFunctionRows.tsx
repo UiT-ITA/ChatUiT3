@@ -1,7 +1,10 @@
 import React from 'react';
 import { useTranslation } from 'react-i18next';
 import type { AdminToolFunctionDto } from '../../types/admin';
-import ClassificationBadge from '../common/ClassificationBadge';
+import ClassificationBadge from '../classification/ClassificationBadge';
+import { List } from '../common/List';
+import Stack from '../common/Stack';
+import Text from '../common/Text';
 
 interface AgentFunctionRowsProps {
   functions: AdminToolFunctionDto[];
@@ -13,25 +16,25 @@ interface AgentFunctionRowsProps {
 const AgentFunctionRows: React.FC<AgentFunctionRowsProps> = ({ functions, showClassification }) => {
   const { t } = useTranslation();
   return (
-    <>
+    <List bordered>
       {functions.map(fn => (
-        <div key={fn.id} className="admin-list-row" style={{ cursor: 'default' }}>
-          <div className="admin-row-main">
-            <div className="admin-row-title t-code">{fn.id}</div>
-            <div className="admin-row-subtitle t-caption">{fn.description}</div>
+        <Stack key={fn.id} direction="row" align="center" gap="lg" p="md">
+          <Stack gap="xs" expand>
+            <Text variant="code">{fn.id}</Text>
+            <Text variant="caption" tone="secondary">{fn.description}</Text>
             {(fn.requiresConfirmation || fn.requiredScopes.length > 0) && (
-              <div className="t-caption">
+              <Text variant="caption" tone="muted">
                 {[
                   fn.requiresConfirmation ? t('admin.tools.fields.requiresConfirmation') : null,
                   fn.requiredScopes.length > 0 ? fn.requiredScopes.join(', ') : null,
                 ].filter(Boolean).join(' · ')}
-              </div>
+              </Text>
             )}
-          </div>
+          </Stack>
           {showClassification && <ClassificationBadge classification={fn.classification} />}
-        </div>
+        </Stack>
       ))}
-    </>
+    </List>
   );
 };
 

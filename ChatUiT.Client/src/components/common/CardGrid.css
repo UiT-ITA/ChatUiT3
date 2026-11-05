@@ -1,0 +1,73 @@
+/* Cards in columns of at least the minimum width, at most three to a row */
+.card-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(max(var(--size-xs), calc((100% - 2 * var(--space-sm)) / 3)), 1fr));
+  gap: var(--space-sm);
+}
+
+/* A fixed number of equal columns */
+.card-grid--fixed-columns {
+  grid-template-columns: repeat(var(--card-grid-columns), minmax(0, 1fr));
+}
+
+/* The rows of the cards line up across a row of the grid */
+.card-grid--subgrid > .card {
+  display: grid;
+  grid-template-rows: subgrid;
+  grid-row: span var(--card-grid-rows);
+}
+
+@media (width <= 50rem) {
+  /* Narrow screens: the cards stack in one column */
+  .card-grid--stack-mobile {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  /* Narrow screens: one row that scrolls sideways without a scrollbar; each card snaps to the centre, the cards on both sides showing at the edges */
+  .card-grid--carousel-mobile {
+    --scroll-fade-size: var(--space-3xl);
+    grid-template-columns: none;
+    grid-auto-flow: column;
+    grid-auto-columns: 100%;
+    padding-inline: var(--space-xl);
+    overflow-x: auto;
+    scrollbar-width: none;
+    scroll-snap-type: x mandatory;
+    overscroll-behavior-x: contain;
+  }
+
+  .card-grid--carousel-mobile::-webkit-scrollbar {
+    display: none;
+  }
+
+  .card-grid--carousel-mobile > * {
+    scroll-snap-align: center;
+  }
+}
+
+/* Dots under a carousel: one per item, the current item filled */
+.carousel-dots {
+  display: flex;
+  justify-content: center;
+  gap: var(--space-sm);
+}
+
+.carousel-dots__dot {
+  width: var(--space-sm);
+  height: var(--space-sm);
+  border-radius: 50%;
+  background: var(--line-strong);
+  transition: background var(--dur-fast) ease, width var(--dur-fast) ease;
+}
+
+.carousel-dots__dot--active {
+  width: var(--space-lg);
+  border-radius: var(--radius-pill);
+  background: var(--accent);
+}
+
+@media (width > 50rem) {
+  .carousel-dots--mobile-only {
+    display: none;
+  }
+}

@@ -9,18 +9,20 @@ interface BadgeProps extends LayoutProps, Omit<React.HTMLAttributes<HTMLSpanElem
   tone?: 'neutral' | 'accent' | 'warning' | 'danger';
   size?: 'small' | 'medium';
   icon?: IconName;
+  // A count next to a title: centred tabular numbers
+  count?: boolean;
 }
 
 /** A small status label, such as "Not available yet". The children are its text. */
-const Badge: React.FC<BadgeProps> = ({ variant = 'outline', tone = 'neutral', size = 'small', icon, className, children, ...props }) => {
+const Badge: React.FC<BadgeProps> = ({ variant = 'outline', tone = 'neutral', size = 'small', icon, count = false, className, children, ...props }) => {
   const [style, rest] = splitLayoutProps(props);
   return (
     <span
-      className={cx('badge', `badge--${variant}`, `badge--${tone}`, `badge--${size}`, size === 'small' ? 't-meta' : 't-caption-strong', className)}
+      className={cx('badge', `badge--${variant}`, `badge--${tone}`, `badge--${size}`, size === 'small' ? 't-status' : 't-caption-strong', count && 'badge--count', className)}
       style={style}
       {...rest}
     >
-      {icon && <Icon name={icon} size="small" />}
+      {icon && <Icon name={icon} size="sm" />}
       {children}
     </span>
   );

@@ -18,18 +18,22 @@ interface CardProps extends LayoutProps, Omit<React.HTMLAttributes<HTMLElement>,
   tone?: 'default' | 'warning' | 'danger';
   // A light-blue brand edge on one side
   accent?: 'none' | 'start' | 'top';
+  // Dark modes: the strong line colour as the frame, also on hover, until the card is selected
+  strongFrame?: boolean;
+  // Positions the card so a badge can sit in one of its corners
+  anchor?: boolean;
   disabled?: boolean;
 }
 
 /** A framed surface for grouped content, or a clickable choice. */
-const Card: React.FC<CardProps> = ({ as: Element = 'div', padding = 'md', gap = 'sm', elevated = false, interactive, selected = false, accent = 'none', tone = 'default', disabled, className, ...props }) => {
+const Card: React.FC<CardProps> = ({ as: Element = 'div', padding = 'md', gap = 'sm', elevated = false, interactive, selected = false, accent = 'none', tone = 'default', strongFrame = false, anchor = false, disabled, className, ...props }) => {
   const [layout, rest] = splitLayoutProps(props);
   const clickable = interactive ?? Element === 'button';
   const buttonProps = Element === 'button' ? { type: 'button' as const, disabled, 'aria-pressed': selected || undefined } : {};
 
   return (
     <Element
-      className={cx('card', elevated && 'card--elevated', clickable && 'card--interactive', selected && 'card--selected', accent !== 'none' && `card--accent-${accent}`, tone !== 'default' && `card--tone-${tone}`, className)}
+      className={cx('card', elevated && 'card--elevated', clickable && 'card--interactive', selected && 'card--selected', accent !== 'none' && `card--accent-${accent}`, tone !== 'default' && `card--tone-${tone}`, strongFrame && 'card--strong-frame', anchor && 'card--anchor', className)}
       style={{ padding: space(padding), gap: space(gap), ...layout }}
       {...buttonProps}
       {...rest}

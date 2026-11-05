@@ -2,7 +2,6 @@ import React, { useEffect } from 'react';
 import { useParams, useNavigate, useSearchParams, Navigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { useSignals } from '@preact/signals-react/runtime';
-import './AdminPage.css';
 import { adminEndpointsSignal, adminModelsSignal, adminAssistantsSignal, adminToolsSignal, adminInternalAgentsSignal, loadAdminData } from '../../services/adminDataService';
 import EndpointEditor from './EndpointEditor';
 import LanguageModelEditor from './LanguageModelEditor';
@@ -13,11 +12,16 @@ import ToolEditor from './ToolEditor';
 import InternalAgentEditor from './InternalAgentEditor';
 import { toolboxLabel, ADMIN_DOMAINS, ADMIN_DOMAIN_ICONS, ADMIN_SETTINGS_PAGES, type AdminDomain, type AdminSettingsPage, type ModelDto } from '../../types/admin';
 import { MODEL_TYPES, type ModelType } from '../../types/modelModels';
-import ClassificationBadge from '../common/ClassificationBadge';
+import ClassificationBadge from '../classification/ClassificationBadge';
 import { Icon } from '../common/Icon';
 import Button from '../common/Button';
 import { List, ListItem } from '../common/List';
+import Badge from '../common/Badge';
 import Stack from '../common/Stack';
+import PageTitleBar from '../common/PageTitleBar';
+import EmptyNote from '../common/EmptyNote';
+import Page, { PageIntro } from '../common/Page';
+import Text from '../common/Text';
 
 const AdminPage: React.FC = () => {
   useSignals();
@@ -42,38 +46,48 @@ const AdminPage: React.FC = () => {
   // Title, accent bar and intro shared by the admin overview and every domain overview
   const renderHeading = (title: string, intro: string) => (
     <>
-      <h1 className="t-page-title">{title}</h1>
-      <div className="page-title-bar" />
-      <p className="admin-intro t-body-lg">{intro}</p>
+      <Text as="h1" variant="page-title">{title}</Text>
+      <PageTitleBar />
+      <PageIntro>{intro}</PageIntro>
     </>
   );
 
-  const renderLoading = () => <div className="admin-empty t-ui-plain">{t('common.loading')}</div>;
+  const renderLoading = () => <EmptyNote>{t('common.loading')}</EmptyNote>;
 
-  const renderEndpoints = () => (
-    <>
-      {renderHeading(t('admin.tabs.endpoints'), t('admin.domains.endpoints'))}
-      {endpoints === undefined ? renderLoading() : (
-        <Stack gap="sm">
-          <List bordered>
-            {endpoints.length === 0 && (
-              <div className="admin-list-empty t-ui-plain">{t('admin.endpoints.list.empty')}</div>
-            )}
-            {endpoints.map((endpoint) => (
-              <ListItem
-                key={endpoint.id}
-                onClick={() => navigate(`/admin/endpoints/${endpoint.id}`)}
-                title={endpoint.url}
-                trailing={t(`admin.endpointType.${endpoint.endpointType}`)}
-              />
-            ))}
-          </List>
-          <Button variant="dashed" startIcon="add" fullWidth onClick={() => navigate('/admin/endpoints/new')}>
-            {t('admin.endpoints.add.title')}
-          </Button>
-        </Stack>
-      )}
-    </>
+  // A domain overview: the heading, then the rows once loaded, with an empty row and an add button where the domain has them
+  const renderDomain = (title: string, intro: string, rows: React.ReactNode[] | undefined, empty?: string, add?: { label: string; path: string }) => {
+    const list = rows !== undefined && (
+      <List bordered>
+        {rows.length === 0 && empty && <EmptyNote variant="row">{empty}</EmptyNote>}
+        {rows}
+      </List>
+    );
+    return (
+      <>
+        {renderHeading(title, intro)}
+        {rows === undefined ? renderLoading() : add ? (
+          <Stack gap="sm">
+            {list}
+            <Button variant="dashed" startIcon="add" fullWidth onClick={() => navigate(add.path)}>{add.label}</Button>
+          </Stack>
+        ) : list}
+      </>
+    );
+  };
+
+  const renderEndpoints = () => renderDomain(
+    t('admin.tabs.endpoints'),
+    t('admin.domains.endpoints'),
+    endpoints?.map((endpoint) => (
+      <ListItem
+        key={endpoint.id}
+        onClick={() => navigate(`/admin/endpoints/${endpoint.id}`)}
+        title={endpoint.url}
+        trailing={t(`admin.endpointType.${endpoint.endpointType}`)}
+      />
+    )),
+    t('admin.endpoints.list.empty'),
+    { label: t('admin.endpoints.add.title'), path: '/admin/endpoints/new' },
   );
 
   // What a model row shows after its name: the classification and id for a language model, the API and id for an image model
@@ -85,11 +99,11 @@ const AdminPage: React.FC = () => {
   const renderModelSection = (type: ModelType, all: ModelDto[]) => {
     const ofType = all.filter(model => model.type === type);
     return (
-      <Stack key={type} gap="sm" className="admin-section">
-        <h2 className="t-overline">{t(`admin.modelTypes.${type}.title`)}</h2>
+      <Stack key={type} gap="sm" mb="xl">
+        <Text as="h2" variant="overline">{t(`admin.modelTypes.${type}.title`)}</Text>
         <List bordered>
           {ofType.length === 0 && (
-            <div className="admin-list-empty t-ui-plain">{t(`admin.modelTypes.${type}.empty`)}</div>
+            <EmptyNote variant="row">{t(`admin.modelTypes.${type}.empty`)}</EmptyNote>
           )}
           {ofType.map((model) => (
             <ListItem
@@ -127,76 +141,53 @@ const AdminPage: React.FC = () => {
     }
     if (models === undefined) return renderLoading();
     const model = models.find(m => m.id === modelId);
-    if (!model) return <div className="admin-empty t-ui-plain">{t('common.notFound')}</div>;
+    if (!model) return <EmptyNote>{t('common.notFound')}</EmptyNote>;
     return model.type === 'Image' ? <ImageModelEditor modelId={modelId} /> : <LanguageModelEditor modelId={modelId} />;
   };
 
-  const renderAssistants = () => (
-    <>
-      {renderHeading(t('admin.tabs.assistants'), t('admin.domains.assistants'))}
-      {assistants === undefined ? renderLoading() : (
-        <Stack gap="sm">
-          <List bordered>
-            {assistants.length === 0 && (
-              <div className="admin-list-empty t-ui-plain">{t('admin.assistants.list.empty')}</div>
-            )}
-            {assistants.map((assistant) => (
-              <ListItem
-                key={assistant.id}
-                onClick={() => navigate(`/admin/assistants/${assistant.id}`)}
-                title={assistant.name}
-                description={assistant.description}
-              />
-            ))}
-          </List>
-          <Button variant="dashed" startIcon="add" fullWidth onClick={() => navigate('/admin/assistants/new')}>
-            {t('admin.assistants.add.title')}
-          </Button>
-        </Stack>
-      )}
-    </>
+  const renderAssistants = () => renderDomain(
+    t('admin.tabs.assistants'),
+    t('admin.domains.assistants'),
+    assistants?.map((assistant) => (
+      <ListItem
+        key={assistant.id}
+        onClick={() => navigate(`/admin/assistants/${assistant.id}`)}
+        title={assistant.name}
+        description={assistant.description}
+      />
+    )),
+    t('admin.assistants.list.empty'),
+    { label: t('admin.assistants.add.title'), path: '/admin/assistants/new' },
   );
 
-  const renderTools = () => (
-    <>
-      {renderHeading(t('admin.tabs.tools'), t('admin.domains.tools'))}
-      {tools === undefined ? renderLoading() : (
-        <List bordered>
-          {tools.length === 0 && (
-            <div className="admin-list-empty t-ui-plain">{t('admin.tools.list.empty')}</div>
-          )}
-          {tools.map((tool) => (
-            <ListItem
-              key={tool.id}
-              onClick={() => navigate(`/admin/tools/${tool.id}`)}
-              title={toolboxLabel(tool, tools)}
-              description={tool.description}
-              trailing={<ClassificationBadge classification={tool.classification} />}
-            />
-          ))}
-        </List>
-      )}
-    </>
+  const renderTools = () => renderDomain(
+    t('admin.tabs.tools'),
+    t('admin.domains.tools'),
+    tools?.map((tool) => (
+      <ListItem
+        key={tool.id}
+        onClick={() => navigate(`/admin/tools/${tool.id}`)}
+        title={toolboxLabel(tool, tools)}
+        description={tool.description}
+        trailing={<ClassificationBadge classification={tool.classification} />}
+      />
+    )),
+    t('admin.tools.list.empty'),
   );
 
   // Every internal agent definition and the model it runs on.
-  const renderInternalAgents = () => (
-    <>
-      {renderHeading(t('admin.agents.title'), t('admin.agents.intro'))}
-      {internalAgents === undefined ? renderLoading() : (
-        <List bordered>
-          {internalAgents.map((agent) => (
-            <ListItem
-              key={agent.id}
-              onClick={() => navigate(`/admin/agents/${agent.id}`)}
-              title={agent.name}
-              description={agent.description}
-              trailing={agent.modelId ? modelNameById(agent.modelId) : t('admin.agents.meta.notSet')}
-            />
-          ))}
-        </List>
-      )}
-    </>
+  const renderInternalAgents = () => renderDomain(
+    t('admin.agents.title'),
+    t('admin.agents.intro'),
+    internalAgents?.map((agent) => (
+      <ListItem
+        key={agent.id}
+        onClick={() => navigate(`/admin/agents/${agent.id}`)}
+        title={agent.name}
+        description={agent.description}
+        trailing={agent.modelId ? modelNameById(agent.modelId) : t('admin.agents.meta.notSet')}
+      />
+    )),
   );
 
   const domainCounts: Record<AdminDomain, number | undefined> = {
@@ -212,15 +203,16 @@ const AdminPage: React.FC = () => {
   const renderOverview = () => (
     <>
       {renderHeading(t('contextColumn.admin'), t('admin.intro'))}
-      <List bordered>
+      <List layout="tiles">
         {ADMIN_DOMAINS.map((domain) => (
           <ListItem
             key={domain}
             onClick={() => navigate(domain === 'settings' ? `/admin/settings/${ADMIN_SETTINGS_PAGES[0]}` : `/admin/${domain}`)}
             title={t(`admin.tabs.${domain}`)}
+            titleAside={domainCounts[domain] !== undefined ? <Badge tone="accent" count>{domainCounts[domain]}</Badge> : null}
             description={t(`admin.domains.${domain}`)}
-            leading={<Icon name={ADMIN_DOMAIN_ICONS[domain]} size="large" color="muted" />}
-            trailing={domainCounts[domain] !== undefined && domainCounts[domain]}
+            leading={<Icon name={ADMIN_DOMAIN_ICONS[domain]} size="md" color="secondary" />}
+            trailing={<Icon name="chevronRight" size="sm" color="muted" />}
           />
         ))}
       </List>
@@ -234,20 +226,12 @@ const AdminPage: React.FC = () => {
       }
       return <SettingsEditor />;
     }
-    if (tab === 'endpoints' && id) {
-      return <EndpointEditor endpointId={id === 'new' ? undefined : id} />;
-    }
-    if (tab === 'models' && id) {
-      return renderModelEditor(id);
-    }
-    if (tab === 'assistants' && id) {
-      return <AdminAssistantEditor assistantId={id === 'new' ? undefined : id} />;
-    }
-    if (tab === 'tools' && id) {
-      return <ToolEditor toolId={id} />;
-    }
-    if (tab === 'agents' && id) {
-      return <InternalAgentEditor key={id} agentId={id} />;
+    if (id) {
+      if (tab === 'endpoints') return <EndpointEditor endpointId={id === 'new' ? undefined : id} />;
+      if (tab === 'models') return renderModelEditor(id);
+      if (tab === 'assistants') return <AdminAssistantEditor assistantId={id === 'new' ? undefined : id} />;
+      if (tab === 'tools') return <ToolEditor toolId={id} />;
+      if (tab === 'agents') return <InternalAgentEditor key={id} agentId={id} />;
     }
     if (tab === 'endpoints') return renderEndpoints();
     if (tab === 'models') return renderModels();
@@ -258,11 +242,9 @@ const AdminPage: React.FC = () => {
   };
 
   return (
-    <div className="admin-page">
-      <div className="admin-page-content">
-        {renderContent()}
-      </div>
-    </div>
+    <Page>
+      {renderContent()}
+    </Page>
   );
 };
 

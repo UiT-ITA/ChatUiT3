@@ -1,23 +1,18 @@
+/* A spinning ring with a line of text under it, centred in the view */
 .loading-container {
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 0.75rem;
+  gap: var(--space-md);
   height: 100vh;
-  max-height: 90vh;
+  max-height: calc(100vh - 2 * var(--space-2xl));
   background: var(--bg);
   color: var(--text-3);
 }
 
-.loading-container.loading-small {
-  gap: 0.5rem;
-}
-
-.loading-container.loading-large {
-  gap: 1rem;
-}
-
+.loading-small { gap: var(--space-sm); }
+.loading-large { gap: var(--space-lg); }
 .loading-spinner {
   display: flex;
   align-items: center;
@@ -25,45 +20,28 @@
 }
 
 .spinner-ring {
-  border: 3px solid var(--line);
-  border-left: 3px solid var(--accent);
+  border: var(--border-lg) solid var(--line);
+  border-left-color: var(--accent);
   border-radius: 50%;
-  animation: spin 1s linear infinite;
+  animation: spin var(--dur-loop) linear infinite;
 }
 
 .loading-small .spinner-ring {
-  width: 1.25rem;
-  height: 1.25rem;
-  border-width: 2px;
+  width: var(--icon-md);
+  height: var(--icon-md);
+  border-width: var(--border-md);
 }
 
 .loading-medium .spinner-ring {
-  width: 2rem;
-  height: 2rem;
-  border-width: 3px;
+  width: var(--space-2xl);
+  height: var(--space-2xl);
 }
 
 .loading-large .spinner-ring {
-  width: 3rem;
-  height: 3rem;
-  border-width: 4px;
-}
-
-.loading-text {
-  color: var(--text-3);
-}
-
-.loading-small .loading-text {
-}
-
-.loading-large .loading-text {
+  width: calc(var(--space-2xl) + var(--space-lg));
+  height: calc(var(--space-2xl) + var(--space-lg));
 }
 
 @keyframes spin {
-  0% {
-    transform: rotate(0deg);
-  }
-  100% {
-    transform: rotate(360deg);
-  }
+  to { transform: rotate(360deg); }
 }

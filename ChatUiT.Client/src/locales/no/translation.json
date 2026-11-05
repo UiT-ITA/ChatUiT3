@@ -1,15 +1,5 @@
 {
-  "app": {
-    "welcome": "Velkommen, {{name}}",
-    "welcomeDefault": "Velkommen, Bruker",
-    "signedInMessage": "Du er logget inn. Velg et alternativ i sidepanelet for å fortsette.",
-    "unauthenticatedWelcome": "Velkommen",
-    "signInPrompt": "Bruk Logg inn-knappen i toppmenyen for å få tilgang til alle funksjoner."
-  },
   "auth": {
-    "login": "Logg inn",
-    "logout": "Logg ut",
-    "profile": "Profil",
     "accessDenied": "Tilgang nektet",
     "noPermission": "Du har ikke tillatelse til å få tilgang til denne siden."
   },
@@ -22,14 +12,12 @@
     "chats": "Samtaler",
     "toggleMode": "Bytt mellom lyst og mørkt",
     "help": "Hjelp",
-    "chatSettings": "Chat-innstillinger",
     "settings": "Innstillinger",
     "admin": "Administrator",
     "assistants": "Assistenter",
     "profile": "Profil",
     "logout": "Logg ut",
     "login": "Logg inn",
-    "noChats": "Ingen samtaler funnet",
     "moreOptions": "Flere alternativer",
     "favorite": "Favoritt",
     "unfavorite": "Fjern favoritt",
@@ -43,25 +31,35 @@
     "generate": "Generer"
   },
   "chat": {
+    "mermaid": {
+      "renderError": "Kunne ikke tegne diagrammet",
+      "rendering": "Tegner diagrammet...",
+      "empty": "Ingen diagram å vise",
+      "showSource": "Vis kildekoden",
+      "fullSize": "Vis i full størrelse",
+      "fitWidth": "Tilpass til bredden",
+      "enlarge": "Forstørr",
+      "fit": "Tilpass",
+      "clickToEnlarge": "Klikk for å forstørre",
+      "clickToFit": "Klikk for å tilpasse",
+      "label": "Mermaid-diagram"
+    },
     "sendMessage": "Send melding",
     "cancelGeneration": "Stopp genereringen",
     "creating": "Oppretter…",
     "chatNotFound": "Samtale ikke funnet. Du kan starte en ny samtale nedenfor.",
     "messagePlaceholder": "Spør ChatUiT om noe…",
     "loadingChat": "Laster samtale...",
-    "switchingChat": "Bytter samtale...",
     "loadingChats": "Laster samtaler...",
     "noChatsFound": "Ingen samtaler funnet.",
     "noChatsMatchSearch": "Ingen samtaler passer søket.",
-    "scrollToBottom": "Rull til bunnen",
     "newChat": "Ny samtale",
     "togglePanel": "Vis samtaleoversikt",
     "assistantLabel": "Assistent",
     "attachFile": "Legg ved fil",
-    "enterHint": "Enter sender · Shift + Enter gir ny linje",
     "disclaimer": "ChatUiT kan gjøre feil. Sjekk viktige svar mot kilden.",
     "charCount": "{{count}} tegn",
-    "contextHint": "{{used}} / {{limit}}",
+    "contextHint": "Kontekst brukt: {{used}} / {{limit}}",
     "groups": {
       "favorites": "Favoritter",
       "today": "I dag",
@@ -101,11 +99,12 @@
       "copy": "Kopier",
       "retry": "Prøv igjen",
       "edit": "Rediger",
-      "branch": "Opprett gren",
-      "copyCode": "Kopier kode"
+      "branch": "Forgren samtale",
+      "copyCode": "Kopier kode",
+      "copySource": "Kopier kilde",
+      "wrapLines": "Bryt linjer"
     },
     "status": {
-      "generating": "Genererer",
       "done": "Ferdig",
       "running": "Kjører…",
       "failed": "Feilet",
@@ -117,11 +116,6 @@
       "skipped": "Hoppet over",
       "unanswered": "Ikke besvart",
       "timeout": "Tidsavbrudd"
-    },
-    "roles": {
-      "user": "Bruker",
-      "assistant": "Assistent",
-      "system": "System"
     },
     "activity": {
       "thoughtFor": "Tenkte i {{duration}}",
@@ -149,21 +143,21 @@
     }
   },
   "assistantCard": {
-    "model": "Modell",
-    "classification": "Klassifisering",
-    "capabilities": "Egenskaper"
+    "model": "Modell"
   },
   "welcome": {
     "header": "Velkommen til ChatUiT",
     "greeting": "Hei, {{name}}.",
     "subheader": "Spør om noe, lim inn en tekst, eller last opp en fil.",
     "recentAssistants": "Nylig brukte assistenter",
+    "useAssistant": "Bruk denne assistenten",
+    "assistantSelected": "Valgt",
     "selectAssistant": "Velg AI-assistent",
     "tips": {
-      "title": "Tips:",
+      "title": "Tips",
       "selectAssistant": {
         "title": "Velg riktig assistent",
-        "description": "Velg en assistent som passer dine behov."
+        "description": "Finn en som passer behovet ditt."
       },
       "uploadFiles": {
         "title": "Last opp filer",
@@ -178,31 +172,30 @@
   "assistants": {
     "title": "Assistenter",
     "intro": "En assistent er en samtale du har satt opp på forhånd: navn, modell, instruks og filer den skal kunne. Velg en fra listen, eller opprett en ny.",
-    "selectHint": "Velg en assistent i listen for å se eller redigere den.",
     "overview": "Oversikt",
     "newAssistant": "Ny assistent",
-    "fileCount": "{{count}} filer",
+    "fileCount_one": "{{count}} fil",
+    "fileCount_other": "{{count}} filer",
+    "noDescription": "Ingen beskrivelse",
     "saveAssistant": "Lagre assistent",
     "useInNewChat": "Bruk i ny samtale",
     "notFound": "Fant ikke denne assistenten.",
     "create": "Opprett assistent",
-    "createAssistant": "Opprett assistent",
-    "editAssistant": "Rediger assistent",
     "deleteConfirmation": "Er du sikker på at du vil slette denne assistenten?",
     "removeShared": {
       "title": "Fjern delt assistent",
       "confirm": "Fjerne denne delte assistenten fra listen din? Selve assistenten slettes ikke.",
       "button": "Fjern"
     },
+    "sectionLinks": "Hopp til seksjon",
+    "jumpTo": "Hopp til",
     "myAssistants": "Mine assistenter",
     "systemAssistants": "Systemassistenter",
     "sharedAssistants": "Delte assistenter",
     "emptyStates": {
       "noPersonalAssistants": "Ingen personlige assistenter ennå",
-      "createFirstAssistant": "Opprett din første assistent for å komme i gang",
       "noSystemAssistants": "Ingen systemassistenter tilgjengelig",
-      "noSharedAssistants": "Ingen delte assistenter tilgjengelig",
-      "addSharedAssistants": "Legg til delte assistenter ved å bruke ID-en deres"
+      "noSharedAssistants": "Ingen delte assistenter tilgjengelig"
     },
     "form": {
       "name": "Navn",
@@ -215,6 +208,7 @@
       "systemPrompt": "Instruks",
       "systemPromptPlaceholder": "Beskriv hvordan assistenten skal oppføre seg (valgfritt)",
       "characters": "tegn",
+      "snippetsLabel": "Valg",
       "tools": "Verktøykasser assistenten kan laste inn",
       "noTools": "Ingen verktøykasser tilgjengelig",
       "modelNoTools": "Denne modellen støtter ikke verktøy",
@@ -225,7 +219,6 @@
         "answerPreferences": "Ta med dine svarpreferanser"
       },
       "temperature": "Temperatur",
-      "reasoning": "Resonnering",
       "reasoningEffort": "Resonneringsinnsats",
       "reasoningLevels": {
         "none": "Ingen",
@@ -261,7 +254,6 @@
       "hideFromSelector": "Skjul fra valglisten",
       "showInSelector": "Vis i valglisten",
       "shareAssistant": "Del assistent",
-      "editAssistant": "Rediger assistent",
       "deleteAssistant": "Slett assistent",
       "copyLink": "Kopier lenke",
       "copyId": "Kopier ID",
@@ -333,7 +325,6 @@
     "shareDescription": "Del \"{{name}}\" med andre:",
     "shareLink": "Delingslenke",
     "assistantId": "Assistent-ID",
-    "systemBadge": "System",
     "defaultInactiveNote": "Du har valgt denne assistenten som standard, men modellen den bruker nå kan ikke være standard, så nye samtaler starter et annet sted. Bytt tilbake til en modell som kan være standard for å bruke den igjen.",
     "picker": {
       "searchPlaceholder": "Søk i assistenter...",
@@ -347,10 +338,10 @@
         "owned": "Mine assistenter",
         "shared": "Delt med meg"
       }
-    }
+    },
+    "defaultBadge": "Standard"
   },
   "settings": {
-    "title": "Innstillinger",
     "categories": {
       "appearance": "Utseende",
       "personalization": "Personlig tilpasning",
@@ -361,11 +352,13 @@
     },
     "theme": {
       "title": "Tema",
+      "description": "Fargepaletten i appen: blåtonet eller nøytral grå.",
       "blue": "Blå",
       "grey": "Grå"
     },
     "mode": {
       "title": "Fargemodus",
+      "description": "Lyst eller mørkt utseende, eller det samme som enheten din.",
       "light": "Lyst",
       "dark": "Mørkt",
       "system": "Følg systemet"
@@ -376,20 +369,6 @@
       "medium": "Middels",
       "large": "Stor",
       "extraLarge": "Ekstra stor"
-    },
-    "preview": {
-      "sample": "Eksempel",
-      "sampleText": "Eksempeltekst"
-    },
-    "chatWidth": {
-      "title": "Chat-bredde",
-      "small": "Liten (800px)",
-      "medium": "Middels (1000px)",
-      "large": "Stor (1200px)",
-      "full": "Full bredde"
-    },
-    "markdown": {
-      "title": "Markdown-visning"
     },
     "personalization": {
       "name": {
@@ -424,7 +403,6 @@
         "txt": "Ren tekst"
       },
       "exportData": {
-        "title": "Eksporter samtalehistorikk",
         "button": "Eksporter data"
       },
       "deleteAll": {
@@ -438,11 +416,7 @@
     "unknownFile": "Ukjent fil",
     "removeFile": "Fjern fil",
     "typeNotSupported": "Filtype ikke støttet",
-    "appUpdated": "En ny versjon av ChatUiT er tilgjengelig. Last inn siden på nytt og prøv igjen.",
-    "types": {
-      "image": "Bilde",
-      "text": "Tekst"
-    }
+    "appUpdated": "En ny versjon av ChatUiT er tilgjengelig. Last inn siden på nytt og prøv igjen."
   },
   "contextColumn": {
     "chats": "Samtaler",
@@ -456,31 +430,20 @@
     "generate": "Generer"
   },
   "common": {
+    "allChangesSaved": "Alle endringer er lagret",
+    "saved": "Lagret",
     "close": "Lukk",
     "clear": "Tøm",
     "notFound": "Ikke funnet.",
-    "add": "Legg til",
     "cancel": "Avbryt",
-    "name": "Navn",
     "loading": "Laster...",
     "save": "Lagre",
     "create": "Opprett",
-    "update": "Oppdater",
     "delete": "Slett",
-    "edit": "Rediger",
-    "copy": "Kopier",
-    "share": "Del",
-    "done": "Ferdig",
-    "none": "Ingen",
     "yes": "Ja",
     "no": "Nei",
-    "addTag": "Legg til tagg...",
-    "noTags": "Ingen tagger"
-  },
-  "capabilities": {
-    "vision": "Visjon tilgjengelig",
-    "internet": "Internett-tilgang",
-    "reasoning": "Avansert resonnering"
+    "removeTag": "Fjern taggen {{tag}}",
+    "addTag": "Legg til tagg..."
   },
   "toolCall": {
     "arguments": "Argumenter",
@@ -542,7 +505,6 @@
       "settings": "Modellene og assistenten ChatUiT bruker som standard."
     },
     "endpoints": {
-      "title": "Endepunkter",
       "add": {
         "title": "Legg til endepunkt"
       },
@@ -550,7 +512,6 @@
         "empty": "Ingen endepunkter konfigurert."
       },
       "actions": {
-        "edit": "Rediger",
         "delete": "Slett"
       },
       "dialog": {
@@ -560,7 +521,6 @@
         "delete": {
           "title": "Slett endepunkt",
           "confirm": "Er du sikker på at du vil slette dette endepunktet?",
-          "blocked": "Dette endepunktet brukes av én eller flere modeller og kan ikke slettes.",
           "modelsIntro_one": "Denne modellen bruker endepunktet:",
           "modelsIntro_other": "Disse {{count}} modellene bruker endepunktet:",
           "noModels": "Ingen modeller bruker dette endepunktet.",
@@ -628,7 +588,6 @@
       }
     },
     "models": {
-      "title": "Modeller",
       "add": {
         "title": "Legg til modell"
       },
@@ -641,7 +600,6 @@
         "saveFirst": "Lagre endringene før du tester."
       },
       "actions": {
-        "edit": "Rediger",
         "delete": "Slett"
       },
       "dialog": {
@@ -699,7 +657,6 @@
       }
     },
     "assistants": {
-      "title": "Systemassistenter",
       "add": {
         "title": "Legg til assistent"
       },
@@ -707,9 +664,6 @@
         "empty": "Ingen systemassistenter er konfigurert."
       },
       "dialog": {
-        "edit": {
-          "title": "Rediger assistent"
-        },
         "delete": {
           "confirm": "Er du sikker på at du vil slette denne assistenten?"
         }
@@ -732,15 +686,11 @@
       }
     },
     "tools": {
-      "title": "Verktøykasser",
       "list": {
         "empty": "Ingen verktøykasser registrert."
       },
       "meta": {
         "disabled": "Avslått"
-      },
-      "edit": {
-        "title": "Tilgang til verktøykasse"
       },
       "fields": {
         "id": "Verktøykasse-id",
@@ -922,6 +872,7 @@
     "Yellow": "Gul",
     "Red": "Rød",
     "title": "Dataklassifisering: {{level}}",
+    "titleWithDescription": "Dataklassifisering: {{level}} ({{description}})",
     "heading": "Dataklassifisering",
     "descriptions": {
       "Green": "Åpne data",
@@ -930,7 +881,10 @@
     }
   },
   "generate": {
-    "title": "Generer",
+    "heading": {
+      "Image": "Lag bilde",
+      "Voice": "Lag tale"
+    },
     "intro": "Lag bilder fra en beskrivelse, eller endre bilder du laster opp.",
     "type": "Type",
     "types": {
@@ -953,6 +907,7 @@
     "newGeneration": "Ny generering",
     "recent": "Dine genereringer",
     "empty": "Ingen genereringer ennå.",
+    "emptyHint": "Skriv en ledetekst i skjemaet for å lage ditt første bilde.",
     "notFound": "Denne genereringen er ikke lenger tilgjengelig.",
     "tokens": "{{input}} inn, {{output}} ut tokens",
     "status": {
@@ -963,6 +918,7 @@
     },
     "image": {
       "generate": "Generer",
+      "promptRequired": "Skriv en ledetekst for å generere",
       "edit": "Rediger bilder",
       "size": "Størrelse",
       "sizeAuto": "La modellen velge",
@@ -1023,7 +979,9 @@
         "countNeedsNoPreviews": "Sett forhåndsvisninger til 0 for å lage mer enn ett bilde.",
         "previewsNeedOneImage": "Forhåndsvisninger fungerer bare med ett bilde.",
         "transparentNeedsFormat": "Gjennomsiktig bakgrunn krever PNG eller WebP."
-      }
+      },
+      "addFiles": "Legg til filer",
+      "attachFile": "Legg ved fil"
     }
   }
 }

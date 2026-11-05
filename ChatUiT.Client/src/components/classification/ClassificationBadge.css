@@ -1,0 +1,51 @@
+/* A neutral pill: a small coloured dot and the level's name */
+.classification-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-xs);
+  flex: 0 0 auto;
+  height: var(--icon-md);
+  padding: 0 var(--space-sm);
+  border: var(--border-sm) solid var(--line-frame);
+  border-radius: var(--radius-pill);
+  color: var(--text-2);
+  white-space: nowrap;
+}
+
+.classification-badge--strong {
+  color: var(--text);
+}
+
+/* Only the dot */
+.classification-badge--dot-only {
+  position: relative;
+  height: auto;
+  padding: var(--space-xs);
+  border-color: transparent;
+}
+
+.classification-badge__label--hidden {
+  position: absolute;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+.classification-dot {
+  width: var(--space-sm);
+  height: var(--space-sm);
+  border-radius: 50%;
+  flex: 0 0 auto;
+}
+
+.classification-green {
+  background: var(--success);
+}
+
+.classification-yellow {
+  background: var(--warn);
+}
+
+.classification-red {
+  background: var(--danger);
+}

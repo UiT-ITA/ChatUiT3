@@ -36,7 +36,7 @@ export interface ContextUsage {
     level: ContextLevel;
 }
 
-export type ContextLevel = 'ok' | 'warn' | 'danger';
+export type ContextLevel = 'normal' | 'warn' | 'danger';
 
 const WARN_FRACTION = 0.5;
 const DANGER_FRACTION = 0.8;
@@ -57,7 +57,7 @@ const UNAVAILABLE: ContextUsage = {
     messages: 0,
     unknownMessages: 0,
     overLimit: false,
-    level: 'ok',
+    level: 'normal',
 };
 
 const draftSignal = signal<{ text: string; files: ChatFile[] }>({ text: '', files: [] });
@@ -120,7 +120,7 @@ export function getContextUsage(chatId: string | undefined): Signal<ContextUsage
         const maxOutputTokens = model.capabilities.maxOutputTokens;
         const total = fixed + history + draft;
         const fraction = contextSize > 0 ? total / contextSize : 0;
-        const level: ContextLevel = fraction >= DANGER_FRACTION ? 'danger' : fraction >= WARN_FRACTION ? 'warn' : 'ok';
+        const level: ContextLevel = fraction >= DANGER_FRACTION ? 'danger' : fraction >= WARN_FRACTION ? 'warn' : 'normal';
 
         return {
             available: true,

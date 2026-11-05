@@ -23,7 +23,7 @@ import { AssistantMeta, type TurnActivity } from "./AssistantMeta";
 import { Message } from "./Message";
 import { hasActivity, Reasoning } from "./Reasoning";
 import { ToolActivity, type ToolActivityStatus } from "./ToolActivity";
-import { color, radius, typography } from "./tokens";
+import { color, space, radius, border, size, typography } from "./tokens";
 
 export interface MessageListProps {
   state: ConversationState;
@@ -42,8 +42,8 @@ const useStyles = makeStyles({
     overflowY: "auto",
     display: "flex",
     flexDirection: "column",
-    gap: "1.125rem",
-    padding: "0.5rem 0.875rem 1rem",
+    gap: space.lg,
+    padding: `${space.sm} ${space.lg} ${space.lg}`,
     // The list scrolls, so its items must keep their height. Without this, an item with
     // overflow: hidden (a tool call) shrinks to its borders once the list overflows.
     "& > *": { flexShrink: 0 },
@@ -54,16 +54,16 @@ const useStyles = makeStyles({
     flexDirection: "column",
     alignItems: "center",
     justifyContent: "center",
-    gap: "1.125rem",
-    padding: "0 0.75rem 1.5rem",
+    gap: space.lg,
+    padding: `0 ${space.md} ${space.xl}`,
   },
-  emptyLogo: { display: "block", width: "8rem", height: "8rem" },
-  emptyMessage: { ...typography.title, fontWeight: 600, margin: 0, textAlign: "center", color: color.text },
-  starters: { display: "flex", flexWrap: "wrap", justifyContent: "center", gap: "0.5rem", maxWidth: "20rem" },
+  emptyLogo: { display: "block", width: size["2xs"], height: size["2xs"] },
+  emptyMessage: { ...typography.title, margin: 0, textAlign: "center", color: color.text },
+  starters: { display: "flex", flexWrap: "wrap", justifyContent: "center", gap: space.sm, maxWidth: size.sm },
   starter: {
     ...typography.uiPlain,
-    padding: "0.375rem 0.75rem",
-    border: `1px solid ${color.line}`,
+    padding: `${space.sm} ${space.md}`,
+    border: `${border.sm} solid ${color.line}`,
     borderRadius: radius.pill,
     backgroundColor: "transparent",
     color: color.text2,

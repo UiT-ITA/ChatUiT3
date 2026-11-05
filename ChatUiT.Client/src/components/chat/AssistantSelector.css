@@ -1,0 +1,73 @@
+.ap-rail {
+  display: flex;
+  flex-direction: column;
+  flex: 0 0 auto;
+  padding: var(--space-xs) 0;
+  background: var(--panel-2);
+  border: var(--border-sm) solid var(--line-soft);
+  overflow: hidden;
+}
+
+.ap-list {
+  flex: 1;
+  min-width: 0;
+  height: min(var(--size-md), 65vh);
+  overflow-y: auto;
+  overflow-x: hidden;
+}
+
+/* The list's scrollbar shows also while the pointer is outside the list */
+.ap-list::-webkit-scrollbar-thumb {
+  background-color: var(--line-strong);
+}
+
+.ap-list::-webkit-scrollbar-thumb:hover {
+  background-color: var(--text-3);
+}
+
+.ap-empty {
+  color: var(--text-3);
+  padding: var(--space-xl) var(--space-lg);
+  text-align: center;
+}
+
+.ap-row {
+  align-items: flex-start;
+}
+
+.ap-row-leading,
+.ap-row-line {
+  display: flex;
+  align-items: center;
+  height: var(--control-sm);
+}
+
+.ap-row-line {
+  gap: var(--space-sm);
+  width: 100%;
+  min-width: 0;
+}
+
+.ap-row-end {
+  justify-content: center;
+  min-width: var(--control-sm);
+  margin-left: auto;
+}
+
+.ap-row-sep {
+  height: var(--space-md);
+  border-left: var(--border-sm) solid var(--line);
+  flex: 0 0 auto;
+}
+
+@media (width <= 50rem) {
+  .ap-list {
+    height: 50vh;
+  }
+}
+
+/* The open arrow after the assistant name in the composer button */
+.assistant-selector__label > svg {
+  margin-left: var(--space-xs);
+  vertical-align: middle;
+}

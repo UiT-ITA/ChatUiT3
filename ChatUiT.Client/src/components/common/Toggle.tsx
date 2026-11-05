@@ -36,7 +36,7 @@ const Toggle: React.FC<ToggleProps> = ({ checked, onChange, label, labelPosition
 
   return (
     <label className={cx('toggle-label', `toggle-label--${labelPosition}`, 't-ui', className)} style={style}>
-      <span className="toggle-label__text">{label}</span>
+      <span>{label}</span>
       {toggle}
     </label>
   );

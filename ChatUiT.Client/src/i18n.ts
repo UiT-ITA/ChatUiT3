@@ -21,6 +21,10 @@ export const initializeI18n = async (language: string): Promise<void> => {
     return;
   }
 
+  i18n.on('languageChanged', (lng) => {
+    document.documentElement.lang = lng;
+  });
+
   await i18n
     .use(initReactI18next)
     .init({

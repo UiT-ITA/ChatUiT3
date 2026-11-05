@@ -1,0 +1,119 @@
+/* Code block in rendered markdown: a header bar with the label and actions, then the code */
+.code-block-wrapper {
+  background: var(--code-bg);
+  border: var(--border-sm) solid var(--line-strong);
+  border-radius: var(--radius-md);
+  margin: var(--space-md) 0;
+  overflow: clip;
+  position: relative;
+}
+
+/* Opaque header; stays at the top of the scroll area while the block is in view */
+.code-block-header {
+  position: sticky;
+  top: 0;
+  z-index: var(--z-sticky);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background: var(--panel);
+  padding: var(--space-sm) var(--space-xs) var(--space-sm) var(--space-lg);
+  border-bottom: var(--border-sm) solid var(--line-strong);
+}
+
+/* Covers the space above the stuck header; the block's own clip hides it while the header is at the top of the block */
+.code-block-header::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 100%;
+  height: var(--space-sm);
+  background: inherit;
+}
+
+/* Dark modes: a header one step lighter than the code, and a plain frame */
+[data-mode="dark"] .code-block-header {
+  background: var(--surface-raised);
+}
+
+[data-mode="dark"] .code-block-wrapper {
+  border-color: var(--line);
+}
+
+.language-name {
+  display: inline-block;
+  color: var(--text-2);
+}
+
+.code-block-actions {
+  display: flex;
+  align-items: center;
+  gap: var(--space-xs);
+}
+
+/* Narrow screens: tighter action buttons; the actions wrap under the label when the row is full */
+@media (width <= 50rem) {
+  .code-block-header {
+    flex-wrap: wrap;
+    gap: 0 var(--space-sm);
+    padding-left: var(--space-md);
+    padding-right: var(--space-xs);
+  }
+
+  .code-block-actions {
+    gap: 0;
+    margin-left: auto;
+  }
+}
+
+.code-block-wrapper pre {
+  margin: 0;
+  padding: var(--space-md);
+  border-bottom: var(--border-lg) solid var(--code-bg);
+  overflow-x: auto;
+  color: var(--code-text);
+  scrollbar-width: thin;
+  scrollbar-color: var(--line) transparent;
+}
+
+.code-block-wrapper pre code {
+  text-align: left;
+  white-space: pre;
+  word-spacing: normal;
+  word-break: normal;
+  overflow-wrap: normal;
+  tab-size: 4;
+  hyphens: none;
+}
+
+.code-block-wrapper--wrap pre,
+.code-block-wrapper--wrap pre code {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+/* Wrapped lines continue under the line's own indentation plus a 2xl space */
+.code-block-wrapper--wrap .code-line {
+  display: block;
+  padding-left: calc(var(--indent, 0ch) + var(--space-2xl));
+  text-indent: calc(-1 * (var(--indent, 0ch) + var(--space-2xl)));
+}
+
+.code-block-wrapper pre::-webkit-scrollbar {
+  height: var(--space-xs);
+}
+
+.code-block-wrapper pre::-webkit-scrollbar-thumb {
+  border-width: var(--border-sm);
+}
+
+/* Prism token colours */
+.code-block-wrapper .token:is(.comment, .prolog, .doctype, .cdata) { color: var(--code-comment); }
+.code-block-wrapper .token:is(.punctuation, .operator) { color: var(--code-punctuation); }
+.code-block-wrapper .token:is(.keyword, .atrule, .important, .selector) { color: var(--code-keyword); }
+.code-block-wrapper .token:is(.string, .char, .template-string, .attr-value, .regex, .inserted) { color: var(--code-string); }
+.code-block-wrapper .token:is(.number, .boolean, .constant, .symbol, .unit) { color: var(--code-number); }
+.code-block-wrapper .token:is(.function, .function-name, .builtin, .method) { color: var(--code-function); }
+.code-block-wrapper .token:is(.class-name, .maybe-class-name, .namespace, .type, .decorator, .annotation) { color: var(--code-type); }
+.code-block-wrapper .token:is(.property, .tag, .attr-name, .variable, .parameter, .deleted) { color: var(--code-property); }

@@ -4,42 +4,19 @@ import { signal } from '@preact/signals-react'
 const cachedChatIds = signal<string[]>([])
 const MAX_CACHE = 5
 
+/** The ids with the given chat moved to the end, keeping the last MAX_CACHE. */
+const touch = (ids: string[], chatId: string | undefined) =>
+  chatId ? [...ids.filter(id => id !== chatId), chatId].slice(-MAX_CACHE) : ids
+
+/** The chats kept mounted: the most recently opened ones, the current chat last. */
 export function useChatCache(currentChatId: string | undefined): string[] {
   useEffect(() => {
-    if (!currentChatId) return
-
-    const current = cachedChatIds.peek()
-    const filtered = current.filter(id => id !== currentChatId)
-    const updated = [...filtered, currentChatId]
-    
-    if (updated.length > MAX_CACHE) {
-      updated.shift()
-    }
-    
-    cachedChatIds.value = updated
+    if (currentChatId) cachedChatIds.value = touch(cachedChatIds.peek(), currentChatId)
   }, [currentChatId])
 
-  const current = cachedChatIds.peek()
-  if (!currentChatId) return current
-  
-  const currentSet = new Set(current)
-  if (currentSet.has(currentChatId)) {
-    // LRU: Move to end
-    const filtered = current.filter(id => id !== currentChatId)
-    return [...filtered, currentChatId]
-  }
-  
-  const updated = [...current, currentChatId]
-  if (updated.length > MAX_CACHE) {
-    updated.shift()
-  }
-  return updated
+  return touch(cachedChatIds.peek(), currentChatId)
 }
 
 export function removeCachedChat(chatId: string) {
   cachedChatIds.value = cachedChatIds.peek().filter(id => id !== chatId)
-}
-
-export function clearChatCache() {
-  cachedChatIds.value = []
 }

@@ -1,0 +1,82 @@
+/* Tips side by side, each column as wide as its text */
+.tip-list {
+  display: grid;
+  grid-template-columns: repeat(var(--tip-list-columns), auto);
+  justify-content: space-between;
+  gap: var(--space-md);
+}
+
+/* A fixed icon column; the icon is centred on the title line and the description starts under the title */
+.tip {
+  display: grid;
+  grid-template-columns: var(--icon-md) minmax(0, 1fr);
+  align-items: center;
+  column-gap: var(--space-sm);
+  row-gap: var(--space-xs);
+  min-width: 0;
+}
+
+.tip__icon {
+  grid-column: 1;
+  grid-row: 1;
+  width: var(--icon-md);
+  height: var(--icon-md);
+}
+
+.tip__title {
+  grid-column: 2;
+  grid-row: 1;
+  color: var(--text);
+}
+
+.tip__text {
+  grid-column: 2;
+  grid-row: 2;
+  color: var(--text-3);
+}
+
+/* Narrow screens: the tips side by side in equal columns across the full width */
+@media (width <= 50rem) {
+  .tip-list {
+    grid-template-columns: repeat(var(--tip-list-columns), minmax(0, 1fr));
+    justify-content: stretch;
+  }
+}
+
+/* Narrow screens above phone width: a larger icon above the title and the text, all centred */
+@media (36rem < width <= 50rem) {
+  .tip {
+    grid-template-columns: minmax(0, 1fr);
+    align-items: start;
+    justify-items: center;
+    text-align: center;
+  }
+
+  .tip__icon,
+  .tip__title,
+  .tip__text {
+    grid-column: 1;
+  }
+
+  .tip__icon {
+    width: var(--icon-lg);
+    height: var(--icon-lg);
+  }
+
+  .tip__title {
+    grid-row: 2;
+  }
+
+  .tip__text {
+    grid-row: 3;
+  }
+}
+
+/* Phone screens: one tip per row, in a column as wide as the widest tip, centred, with the icons lined up */
+@media (width <= 36rem) {
+  .tip-list {
+    grid-template-columns: minmax(0, max-content);
+    justify-content: center;
+    justify-items: start;
+  }
+}

@@ -7,7 +7,7 @@
 .icon--accent { color: var(--accent); }
 .icon--danger { color: var(--danger); }
 .icon--warning { color: var(--warn); }
-.icon--success { color: var(--status-success); }
+.icon--success { color: var(--success); }
 
 .icon--rotate-90 { transform: rotate(90deg); }
 .icon--rotate-180 { transform: rotate(180deg); }
@@ -16,7 +16,7 @@
 .icon--mirror { transform: scaleX(-1); }
 
 .icon--spin {
-  animation: icon-spin 1.4s linear infinite;
+  animation: icon-spin var(--dur-loop) linear infinite;
 }
 
 @keyframes icon-spin {

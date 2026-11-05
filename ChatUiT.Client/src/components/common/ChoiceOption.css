@@ -1,0 +1,66 @@
+/* A framed choice with a radio or check mark, a label and an optional description */
+.choice-option {
+  display: flex;
+  align-items: center;
+  gap: var(--space-md);
+  min-height: var(--control-lg);
+  padding: var(--space-sm) var(--space-md);
+  text-align: left;
+  color: var(--text);
+  background: var(--surface);
+  border: var(--border-sm) solid var(--line);
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+}
+
+.choice-option:hover:not(:disabled) {
+  border-color: var(--accent);
+}
+
+.choice-option:focus-visible {
+  outline: var(--border-md) solid var(--accent);
+  outline-offset: var(--border-sm);
+}
+
+.choice-option--picked {
+  background: var(--info-soft);
+  border-color: var(--accent);
+}
+
+.choice-option__mark {
+  display: flex;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  width: var(--icon-sm);
+  height: var(--icon-sm);
+  box-sizing: border-box;
+  border: var(--border-sm) solid var(--text-3);
+  color: var(--btn-fg);
+}
+
+.choice-option__mark--radio {
+  border-radius: 50%;
+}
+
+.choice-option__mark--check {
+  border-radius: var(--radius-sm);
+}
+
+.choice-option--picked .choice-option__mark--radio {
+  border: var(--border-lg) solid var(--btn-bg);
+}
+
+.choice-option--picked .choice-option__mark--check {
+  border-color: var(--btn-bg);
+  background: var(--btn-bg);
+}
+
+.choice-option__text {
+  display: flex;
+  flex-direction: column;
+}
+
+.choice-option__description {
+  color: var(--text-2);
+}

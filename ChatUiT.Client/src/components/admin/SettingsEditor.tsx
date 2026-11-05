@@ -10,6 +10,11 @@ import EditorHeader from '../layout/EditorHeader';
 import Select from '../common/Select';
 import Stack from '../common/Stack';
 import { hasChanges } from '../../utils/formChanges';
+import PageTitleBar from '../common/PageTitleBar';
+import EmptyNote from '../common/EmptyNote';
+import { PageIntro } from '../common/Page';
+import Box from '../common/Box';
+import Text from '../common/Text';
 
 const SettingsEditor: React.FC = () => {
   useSignals();
@@ -37,7 +42,7 @@ const SettingsEditor: React.FC = () => {
   }
 
   if (settings === undefined || models === undefined || assistants === undefined) {
-    return <div className="admin-empty t-ui-plain">{t('common.loading')}</div>;
+    return <EmptyNote>{t('common.loading')}</EmptyNote>;
   }
 
   const handleSave = async () => {
@@ -69,7 +74,7 @@ const SettingsEditor: React.FC = () => {
   );
 
   return (
-    <div className="admin-form">
+    <Box maxWidth="md">
       <EditorHeader
         backPath="/admin"
         backLabel={t('contextColumn.admin')}
@@ -79,12 +84,12 @@ const SettingsEditor: React.FC = () => {
         onSave={handleSave}
         onCancel={() => navigate('/admin')}
       />
-      <h1 className="t-page-title">{t('admin.settings.title')}</h1>
-      <div className="page-title-bar" />
-      <p className="admin-intro t-body-lg">{t('admin.settings.intro')}</p>
+      <Text as="h1" variant="page-title">{t('admin.settings.title')}</Text>
+      <PageTitleBar />
+      <PageIntro>{t('admin.settings.intro')}</PageIntro>
 
       {models.length === 0 && (
-        <div className="admin-empty t-ui-plain">{t('admin.models.list.empty')}</div>
+        <EmptyNote>{t('admin.models.list.empty')}</EmptyNote>
       )}
 
       <Stack gap="xl">
@@ -106,7 +111,7 @@ const SettingsEditor: React.FC = () => {
           ))}
         </Select>
       </Stack>
-    </div>
+    </Box>
   );
 };
 

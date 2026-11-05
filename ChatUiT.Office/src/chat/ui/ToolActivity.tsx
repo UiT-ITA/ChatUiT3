@@ -2,7 +2,7 @@ import { makeStyles, mergeClasses, Spinner } from "@fluentui/react-components";
 import type { ItemActivity } from "../conversation/conversation";
 import { Icon } from "./icons";
 import { ActivityEntries } from "./Reasoning";
-import { color, typography } from "./tokens";
+import { color, space, border, icon, typography } from "./tokens";
 
 export type ToolActivityStatus = "running" | "waiting" | "done" | "declined" | "failed";
 
@@ -29,7 +29,7 @@ const useStyles = makeStyles({
     position: "relative",
     display: "flex",
     alignItems: "center",
-    gap: "0.5rem",
+    gap: space.sm,
     minWidth: 0,
   },
   running: { color: color.text2 },
@@ -37,20 +37,17 @@ const useStyles = makeStyles({
   done: { color: color.text3 },
   declined: { color: color.text3 },
   failed: { color: color.danger },
-  icon: { display: "flex", flexShrink: 0, width: "0.875rem", justifyContent: "center" },
+  icon: { display: "flex", flexShrink: 0, width: icon.sm, justifyContent: "center" },
   doneIcon: { color: color.success },
   waitingIcon: { color: color.warn },
   name: { overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" },
   detail: { ...typography.caption, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" },
-  hidden: {
-    position: "absolute",
-    width: "1px",
-    height: "1px",
-    overflow: "hidden",
-    clip: "rect(0 0 0 0)",
-    whiteSpace: "nowrap",
+  hidden: { position: "absolute", overflow: "hidden", clipPath: "inset(50%)", whiteSpace: "nowrap" },
+  body: {
+    margin: `${space.xs} 0 0 ${space.sm}`,
+    padding: `0 0 0 ${space.lg}`,
+    borderLeft: `${border.md} solid ${color.line}`,
   },
-  body: { margin: "0.25rem 0 0 0.375rem", padding: "0 0 0 0.875rem", borderLeft: `2px solid ${color.line}` },
 });
 
 /**
@@ -72,7 +69,7 @@ export function ToolActivity({ name, status, detail, activity }: ToolActivityPro
           {status === "running" ? (
             <Spinner size="extra-tiny" />
           ) : (
-            <Icon name={status === "done" ? "check" : status === "waiting" ? "history" : "failed"} size={0.875} />
+            <Icon name={status === "done" ? "check" : status === "waiting" ? "history" : "failed"} />
           )}
         </span>
         <span className={styles.name}>{name}</span>

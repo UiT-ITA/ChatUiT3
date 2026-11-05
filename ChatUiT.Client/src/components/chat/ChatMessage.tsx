@@ -1,7 +1,5 @@
-import './ChatMessage.css';
-import './ChatMessageMarkdown.css';
 import { useSignals } from '@preact/signals-react/runtime';
-import { Suspense, lazy, useMemo, useState, useRef, useEffect, memo, type ComponentProps } from 'react';
+import { Suspense, lazy, useMemo, useState, useEffect, memo, type ComponentProps } from 'react';
 import { useTranslation } from 'react-i18next';
 import { getActivitySignal, getStreamSignal } from '../../services/chatService';
 import type { ChatMessageDto } from '../../types/chatModels';
@@ -11,11 +9,19 @@ import remarkMath from 'remark-math';
 import rehypeKatex from 'rehype-katex';
 import 'katex/dist/katex.min.css';
 import Button from '../common/Button';
+import CodeBlock from '../common/CodeBlock';
 import IconButton from '../common/IconButton';
+import { cx } from '../common/layout';
+import RichText, { RichTextLink } from '../common/RichText';
+import Stack from '../common/Stack';
+import Text from '../common/Text';
+import ZoomToggle from '../common/ZoomToggle';
+import type { IconName } from '../common/Icon';
 import FileThumbnail from './FileThumbnail';
 import MessageActivity from './MessageActivity';
-import { useSettings } from '../../hooks/useSettings';
-import { getCodeblockTheme } from '../../utils/themeUtils';
+import useMediaQuery from '../../hooks/useMediaQuery';
+import { MOBILE } from '../common/breakpoints';
+import './Message.css';
 
 interface ChatMessageProps {
   /** The chat this message belongs to — attachments resolve their content against it. */
@@ -26,15 +32,95 @@ interface ChatMessageProps {
   onStreamingChunk?: () => void;
 }
 
-// Heavy renderers load on first use, so they stay out of the startup bundle.
-const MermaidDiagram = lazy(() => import('./MermaidDiagram'));
-const LazyCodeHighlighter = lazy(() => import('./CodeHighlighter'));
+// The diagram and code renderers load on first use
+const MermaidDiagram = lazy(() => import('../common/MermaidDiagram'));
+const LazyCodeHighlighter = lazy(() => import('../common/CodeHighlighter'));
 
-function CodeHighlighter(props: { code: string; language: string; themeName: string }) {
+function CodeHighlighter(props: { code: string; language: string; wrap?: boolean }) {
   return (
     <Suspense fallback={<pre><code>{props.code}</code></pre>}>
       <LazyCodeHighlighter {...props} />
     </Suspense>
+  );
+}
+
+/** A button in a code block's header, with its label as the tooltip. Narrow screens show only the icon. */
+function CodeAction({ label, ...props }: { label: string } & ComponentProps<typeof Button>) {
+  return (
+    <Button variant="ghost" size="small" compactOnMobile title={label} {...props}>
+      {label}
+    </Button>
+  );
+}
+
+/** Mermaid code block: header with the fit/full size toggle and copy action, then the diagram. Clicking the diagram toggles its size. */
+function MermaidBlock({ code, isStreaming, onCopy }: { code: string; isStreaming: boolean; onCopy: (code: string) => void }) {
+  const { t } = useTranslation();
+  const [fullSize, setFullSize] = useState(false);
+  const toggleSize = () => setFullSize(value => !value);
+  const sizeLabel = fullSize ? t('chat.mermaid.fit') : t('chat.mermaid.enlarge');
+  const sizeTitle = fullSize ? t('chat.mermaid.fitWidth') : t('chat.mermaid.fullSize');
+  const clickHint = fullSize ? t('chat.mermaid.clickToFit') : t('chat.mermaid.clickToEnlarge');
+
+  return (
+    <CodeBlock
+      label={t('chat.mermaid.label')}
+      actions={(
+        <>
+          {!isStreaming && (
+            <CodeAction
+              label={sizeLabel}
+              title={sizeTitle}
+              startIcon={fullSize ? 'zoomOut' : 'zoomIn'}
+              aria-pressed={fullSize}
+              onClick={toggleSize}
+            />
+          )}
+          <CodeAction label={t('chat.actions.copySource')} startIcon="copy" onClick={() => onCopy(code)} />
+        </>
+      )}
+    >
+      {isStreaming ? (
+        <CodeHighlighter code={code} language="text" />
+      ) : (
+        <ZoomToggle zoomed={fullSize} onToggle={toggleSize} label={sizeTitle} hint={clickHint}>
+          <Suspense fallback={<CodeHighlighter code={code} language="text" />}>
+            <MermaidDiagram chart={code} fullSize={fullSize} showScrollbar />
+          </Suspense>
+        </ZoomToggle>
+      )}
+    </CodeBlock>
+  );
+}
+
+/** Code block: header with the language, a line wrap toggle and the copy action, then the highlighted code. */
+function CodeSnippet({ code, language, onCopy }: { code: string; language: string; onCopy: (code: string) => void }) {
+  const { t } = useTranslation();
+  // Narrow screens wrap long lines until the user turns wrapping off
+  const narrow = useMediaQuery(MOBILE);
+  const [wrapChoice, setWrapChoice] = useState<boolean | null>(null);
+  const wrap = wrapChoice ?? narrow;
+
+  return (
+    <CodeBlock
+      label={language}
+      wrap={wrap}
+      actions={(
+        <>
+          <CodeAction
+            label={t('chat.actions.wrapLines')}
+            startIcon="wrap"
+            frame="line"
+            active={wrap}
+            aria-pressed={wrap}
+            onClick={() => setWrapChoice(!wrap)}
+          />
+          <CodeAction label={t('chat.actions.copyCode')} startIcon="copy" onClick={() => onCopy(code)} />
+        </>
+      )}
+    >
+      <CodeHighlighter code={code} language={language} wrap={wrap} />
+    </CodeBlock>
   );
 }
 
@@ -44,16 +130,13 @@ type AnchorProps = ComponentProps<'a'> & ExtraProps;
 function ChatMessage({ chatId, message, fallbackAssistantName, onStreamingChunk }: ChatMessageProps) {
   useSignals();
   const { t } = useTranslation();
-  const { settings } = useSettings();
   const [isCopied, setIsCopied] = useState(false);
-
-  const codeblockTheme = getCodeblockTheme(settings.mode);
 
   const streamSignal = useMemo(() => {
     return message.status === "Generating" && !message.optimistic ? getStreamSignal(message.id, chatId) : null;
   }, [message.id, message.status, message.optimistic, chatId]);
 
-  // A message that continues after waiting streams only what comes after its stored text.
+  // The stored text followed by the streamed text
   const displayContent = message.status === "Generating"
     ? (message.content ?? "") + (streamSignal?.value || "")
     : message.content;
@@ -72,8 +155,7 @@ function ChatMessage({ chatId, message, fallbackAssistantName, onStreamingChunk 
     try {
       setIsCopied(true);
       
-      // The converter is loaded on demand. Passing a promise keeps the
-      // clipboard write inside the click's user activation.
+      // Loads the converter on demand and passes the HTML to the clipboard as a promise
       const htmlBlob = import('../../utils/markdownUtils').then(({ markdownToHtml }) =>
         new Blob([markdownToHtml(displayContent)], { type: 'text/html' }));
       const clipboardItem = new ClipboardItem({
@@ -89,188 +171,70 @@ function ChatMessage({ chatId, message, fallbackAssistantName, onStreamingChunk 
     }
   };
 
-  const handleRetry = () => {
-    try {
-      // Placeholder for retry functionality
-    } catch (err) {
-      console.error('Failed to retry message:', err);
-    }
-  };
+  // Retry, edit and branch do nothing yet
+  const notImplemented = () => {};
 
-  const handleEdit = () => {
-    try {
-      // Placeholder for edit functionality
-    } catch (err) {
-      console.error('Failed to edit message:', err);
-    }
-  };
-
-  const handleBranch = () => {
-    try {
-      // Placeholder for branch functionality
-    } catch (err) {
-      console.error('Failed to branch message:', err);
-    }
-  };
+  // A message action: a small icon button with its name in a tooltip lined up with the message's edge
+  const action = (icon: IconName, name: string, onClick: () => void) => (
+    <IconButton key={name} icon={icon} label={t(`chat.actions.${name}`)} tooltipAlign={isUser ? 'end' : 'start'} size="small" iconSize="md" onClick={onClick} />
+  );
 
   const handleCopyCode = (code: string) => {
     navigator.clipboard.writeText(code)
       .catch(err => console.error('Failed to copy code:', err));
   };
 
-  const onStreamingChunkRef = useRef(onStreamingChunk);
   useEffect(() => {
-    onStreamingChunkRef.current = onStreamingChunk;
-  }, [onStreamingChunk]);
-
-  useEffect(() => {
-    if (isStreaming) {
-      onStreamingChunkRef.current?.();
-    }
-  }, [streamSignal?.value, isStreaming]);
-
-  // console.log('Rendering ChatMessage:', message.id, 'isStreaming:', isStreaming);
+    if (isStreaming) onStreamingChunk?.();
+  }, [streamSignal?.value, isStreaming, onStreamingChunk]);
 
   const markdownComponents = {
     code({ node, className, children, style, ...props }: CodeProps) {
-      const match = /language-(\w+)/.exec(className || '');
+      const language = /language-(\w+)/.exec(className || '')?.[1];
       const codeText = String(children).replace(/\n$/, '');
-
-      if (match) {
-        const language = match[1];
-        
-        if (language === 'mermaid') {
-          return (
-            <div className="code-block-wrapper">
-              <div className="code-block-header">
-                <span className="language-name t-overline">Mermaid Diagram</span>
-                <Button
-                  variant="ghost"
-                  size="small"
-                  startIcon="copy"
-                  onClick={() => handleCopyCode(codeText)}
-                  title={t('chat.actions.copyCode')}
-                >
-                  {t('chat.actions.copyCode')}
-                </Button>
-              </div>
-              {isStreaming ? (
-                <CodeHighlighter code={codeText} language="text" themeName={codeblockTheme} />
-              ) : (
-                <Suspense fallback={<CodeHighlighter code={codeText} language="text" themeName={codeblockTheme} />}>
-                  <MermaidDiagram chart={codeText} className="mermaid-in-chat" />
-                </Suspense>
-              )}
-            </div>
-          );
-        }
-        
-        // Handle regular code blocks
-        return (
-          <div className="code-block-wrapper">
-            <div className="code-block-header">
-              <span className="language-name t-overline">{language}</span>
-              <Button
-                variant="ghost"
-                size="small"
-                startIcon="copy"
-                onClick={() => handleCopyCode(codeText)}
-                title={t('chat.actions.copyCode')}
-              >
-                {t('chat.actions.copyCode')}
-              </Button>
-            </div>
-            <CodeHighlighter code={codeText} language={language} themeName={codeblockTheme} />
-          </div>
-        );
-      }
-      
-      return (
-        <code className={className} style={style} {...props}>
-          {children}
-        </code>
-      );
+      if (language === 'mermaid') return <MermaidBlock code={codeText} isStreaming={isStreaming} onCopy={handleCopyCode} />;
+      if (language) return <CodeSnippet code={codeText} language={language} onCopy={handleCopyCode} />;
+      return <code className={className} style={style} {...props}>{children}</code>;
     },
-    a({ node, href, children, ...props }: AnchorProps) {
-      return (
-        <a
-          href={href}
-          target="_blank"
-          rel="noopener noreferrer"
-          {...props}
-        >
-          {children}
-        </a>
-      );
+    a({ node, children, ...props }: AnchorProps) {
+      return <RichTextLink target="_blank" rel="noopener noreferrer" {...props}>{children}</RichTextLink>;
     },
   };
 
+  const time = new Date(message.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+  const copyAction = action(isCopied ? 'check' : 'copy', 'copy', handleCopyMessage);
+
+  // The user's message is a bubble at the right, the assistant's is plain text, a system message is a marked panel
   return (
-    <div className={`chat-message ${isUser ? 'user-message' : isAssistant ? 'assistant-message' : 'system-message'} ${isStreaming ? 'streaming' : ''}`}>
+    <div className={cx('message', `message--${isUser ? 'user' : isAssistant ? 'assistant' : 'system'}`, isStreaming && 'message--streaming')}>
       {isAssistant && (
         <MessageActivity activity={message.activity ?? null} live={liveActivity}>
-          <span className="message-meta-name t-overline">{message.assistantName || fallbackAssistantName || t('chat.assistantLabel')}</span>
-          <span className="message-time t-meta">
-            {new Date(message.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-          </span>
-          {message.optimistic && <span className="t-caption">{t('chat.creating')}</span>}
+          <Text variant="caption-strong" tone="default">{message.assistantName || fallbackAssistantName || t('chat.assistantLabel')}</Text>
+          <Text variant="meta" tone="muted">{time}</Text>
+          {message.optimistic && <Text variant="caption">{t('chat.creating')}</Text>}
         </MessageActivity>
       )}
-
       {message.files && message.files.length > 0 && (
-        <div className="message-files">
-          <div className="message-file-previews">
-            {message.files.map((file) => (
-              <FileThumbnail
-                key={file.id}
-                chatId={chatId}
-                file={file}
-                showRemoveButton={false}
-              />
-            ))}
-          </div>
-        </div>
+        <Stack direction="row" wrap gap="sm" mb="sm">
+          {message.files.map((file) => <FileThumbnail key={file.id} chatId={chatId} file={file} />)}
+        </Stack>
       )}
-
-      <div className="message-content">
-        <ReactMarkdown
-          remarkPlugins={[remarkGfm, remarkMath]}
-          rehypePlugins={[rehypeKatex]}
-          components={markdownComponents}
-        >
+      <RichText className="message__body">
+        <ReactMarkdown remarkPlugins={[remarkGfm, remarkMath]} rehypePlugins={[rehypeKatex]} components={markdownComponents}>
           {displayContent}
         </ReactMarkdown>
+      </RichText>
+      <div className="message__toolbar">
+        <div className="message__actions">
+          {isUser
+            ? [action('refresh', 'retry', notImplemented), action('edit', 'edit', notImplemented), copyAction]
+            : [copyAction, ...(isSystem ? [] : [action('branch', 'branch', notImplemented), action('refresh', 'retry', notImplemented)])]}
+        </div>
+        {isUser && <Text variant="meta" tone="muted">{time}</Text>}
       </div>
-
-      <div className="message-toolbar">
-        {isUser ? (
-          <>
-            <span className="message-time t-meta">
-              {new Date(message.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-            </span>
-            <div className="message-actions">
-              <IconButton icon="refresh" label={t('chat.actions.retry')} size="small" onClick={handleRetry} />
-              <IconButton icon="edit" label={t('chat.actions.edit')} size="small" onClick={handleEdit} />
-              <IconButton icon={isCopied ? "check" : "copy"} label={t('chat.actions.copy')} size="small" onClick={handleCopyMessage} />
-            </div>
-          </>
-        ) : (
-          <>
-            <div className="message-actions">
-              <IconButton icon={isCopied ? "check" : "copy"} label={t('chat.actions.copy')} size="small" onClick={handleCopyMessage} />
-              {!isSystem && (
-                <>
-                  <IconButton icon="branch" label={t('chat.actions.branch')} size="small" onClick={handleBranch} />
-                  <IconButton icon="refresh" label={t('chat.actions.retry')} size="small" onClick={handleRetry} />
-                </>
-              )}
-            </div>
-          </>
-        )}
-      </div>
-    </div >
+    </div>
   );
 }
 
-// Memoize to prevent rerenders when message object reference hasn't changed
+// Re-renders only when a prop changes
 export default memo(ChatMessage);

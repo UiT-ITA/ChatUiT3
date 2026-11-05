@@ -1,21 +1,15 @@
-.select {
-  position: relative;
-}
-
-.select--inline {
-  min-width: 10rem;
-}
-
+.select { position: relative; }
+.select--inline { min-width: var(--size-2xs); }
 .select__input {
   appearance: none;
-  padding-right: 2rem;
+  padding-right: var(--space-2xl);
   cursor: pointer;
 }
 
 .select__chevron {
   position: absolute;
   top: 50%;
-  right: 0.75rem;
+  right: var(--space-md);
   transform: translateY(-50%);
   color: var(--text);
   pointer-events: none;
@@ -25,14 +19,12 @@
 .select-button {
   font-family: var(--font-sans);
   position: relative;
-  padding-right: 2.5rem;
+  padding-right: calc(var(--space-2xl) + var(--space-sm));
   cursor: pointer;
   text-align: left;
 }
 
-.select-button:disabled {
-  cursor: not-allowed;
-}
+.select-button:disabled { cursor: not-allowed; }
 
 .select-button__value {
   display: flex;
@@ -42,6 +34,4 @@
   min-width: 0;
 }
 
-.select-button__placeholder {
-  color: var(--text-3);
-}
+.select-button__placeholder { color: var(--text-3); }

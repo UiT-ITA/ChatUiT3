@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useSignals } from '@preact/signals-react/runtime';
 import { Outlet, useLocation } from 'react-router-dom';
 import IconRail from './IconRail';
 import ContextColumn from './ContextColumn';
@@ -6,28 +7,26 @@ import MainHeader from './MainHeader';
 import ChatSurface from '../chat/ChatSurface';
 import useMediaQuery from '../../hooks/useMediaQuery';
 import ToastContainer from '../common/ToastContainer';
-import './MainLayout.css';
+import { notifications, removeNotification } from '../../services/notificationService';
+import { AppShell, AppShellMain, AppShellSidebar } from './AppShell';
+import { MOBILE, SIDEBAR_COLLAPSED } from '../common/breakpoints';
+import { parseRoute } from '../../utils/routes';
 
 /**
  * App shell: icon rail | context column | main (header + content).
- * On mobile the rail becomes a top bar and the column and main area act as a
- * list/detail pair — the section root shows the list, deeper routes show the
- * detail with a back button in the header.
+ * On mobile the rail is a top bar, and the context column and the main column show one at a
+ * time: the section root shows the list, deeper routes show the detail with a back button in
+ * the header. "/" shows a new chat, and "/chat" the chat list.
  *
- * One tree for every viewport: mobile only changes which columns are *visible*,
- * via classes on the root. Branching on width would give the two viewports
- * different tree shapes, so crossing the breakpoint would unmount the main column
- * and take every opened chat with it.
- *
- * For the same reason the chat surface is mounted here rather than behind a route:
- * routing swaps route elements out, and opened chats must survive that.
+ * Every viewport renders the same tree. Mobile only changes which columns are visible.
  */
 const MainLayout: React.FC = () => {
-  const isMobile = useMediaQuery('(max-width: 800px)');
-  const autoCollapsed = useMediaQuery('(max-width: 1023px)');
+  useSignals();
+  const isMobile = useMediaQuery(MOBILE);
+  const autoCollapsed = useMediaQuery(SIDEBAR_COLLAPSED);
   const [collapsed, setCollapsed] = useState(false);
   const [peek, setPeek] = useState(false);
-  const location = useLocation();
+  const route = parseRoute(useLocation().pathname);
 
   // Collapsed: the context column is hidden and shows over the main column while the pointer is on the rail or the column
   const sidebarCollapsed = !isMobile && (autoCollapsed || collapsed);
@@ -36,32 +35,23 @@ const MainLayout: React.FC = () => {
     setPeek(false);
   };
 
-  const pathParts = location.pathname.split('/').filter(Boolean);
-  // Section roots ("/", "/chat", "/assistants", "/settings", "/admin") show the list;
-  // anything deeper is a detail view
-  const isDetail = pathParts.length >= 2;
-  // Chat routes render nothing through the outlet — ChatSurface below is the chat UI.
-  const isChatRoute = pathParts.length === 0 || pathParts[0] === 'chat';
-
   return (
-    <div
-      className={`layout ${isMobile ? 'mobile-layout' : ''} ${isDetail ? 'show-detail' : 'show-list'}`}
-    >
-      <div className="sidebar-shell" onMouseEnter={() => setPeek(true)} onMouseLeave={() => setPeek(false)}>
+    <AppShell mobile={isMobile} view={route.view}>
+      <AppShellSidebar onMouseEnter={() => setPeek(true)} onMouseLeave={() => setPeek(false)}>
         <IconRail isMobile={isMobile} />
         <ContextColumn isMobile={isMobile} collapsed={sidebarCollapsed} peek={sidebarCollapsed && peek} />
-      </div>
-      <ToastContainer />
-      <main className="main-column">
+      </AppShellSidebar>
+      <ToastContainer notifications={notifications.value} onClose={removeNotification} />
+      <AppShellMain>
         <MainHeader
           isMobile={isMobile}
           sidebarCollapsed={collapsed}
           onToggleSidebar={isMobile || autoCollapsed ? undefined : toggleSidebar}
         />
-        <ChatSurface hidden={!isChatRoute} />
+        <ChatSurface hidden={route.section !== 'chats'} />
         <Outlet />
-      </main>
-    </div>
+      </AppShellMain>
+    </AppShell>
   );
 };
 

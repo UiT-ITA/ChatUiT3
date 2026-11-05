@@ -1,0 +1,99 @@
+/* Message composer: a card with a text area and toolbars, docked under the content, with a disclaimer underneath */
+.composer-dock {
+  position: relative;
+  flex: 0 0 auto;
+  width: 100%;
+  background: var(--bg);
+  padding: var(--space-md) 0 var(--space-sm);
+}
+
+/* Fade above the composer, in browsers without scroll-driven animations */
+@supports not (animation-timeline: scroll()) {
+  .composer-dock::before {
+    content: '';
+    position: absolute;
+    left: 0;
+    right: 0;
+    bottom: 100%;
+    height: calc(var(--space-2xl) + var(--space-sm));
+    background: linear-gradient(to bottom, transparent, var(--bg));
+    pointer-events: none;
+  }
+}
+
+.composer {
+  max-width: var(--size-lg);
+  width: 100%;
+  margin: 0 auto;
+  padding: 0 var(--space-2xl);
+}
+
+.composer-card {
+  border: var(--border-sm) solid var(--line);
+  border-radius: var(--radius-md);
+  background: var(--surface);
+  box-shadow: var(--shadow-card);
+}
+
+.composer-card[data-drop-active] {
+  border-color: var(--brand);
+}
+
+.composer-toolbar {
+  position: relative;
+  container: composer-toolbar / inline-size;
+  display: flex;
+  align-items: center;
+  gap: var(--space-xs);
+  padding: var(--space-xs) var(--space-sm) var(--space-sm) var(--space-sm);
+}
+
+.composer-disclaimer {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-xs);
+  margin-top: var(--space-sm);
+  text-align: center;
+  color: var(--text-3);
+}
+
+/* The dismiss button shows while the pointer is on the note or the button has focus, and always on touch screens */
+.composer-disclaimer__dismiss {
+  opacity: 0;
+  transition: opacity var(--dur-fast) ease;
+}
+
+.composer-disclaimer:hover .composer-disclaimer__dismiss,
+.composer-disclaimer__dismiss:focus-visible {
+  opacity: 1;
+}
+
+@media (hover: none) {
+  .composer-disclaimer__dismiss {
+    opacity: 1;
+  }
+}
+
+@media (width <= 50rem) {
+  .composer {
+    padding: 0 var(--space-lg);
+  }
+}
+
+/* A narrow toolbar shows the assistant button as its icon, and its panels open from the toolbar edge; the assistant picker spans the toolbar */
+@container composer-toolbar (width < 32rem) {
+  .composer-toolbar .assistant-selector__label {
+    display: none;
+  }
+
+  .composer-toolbar .popover {
+    position: static;
+  }
+
+  .assistant-selector .popover__panel {
+    left: 0;
+    right: 0;
+    width: auto;
+  }
+}

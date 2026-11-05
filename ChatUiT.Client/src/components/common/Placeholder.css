@@ -1,0 +1,15 @@
+/* A dashed frame around an empty state, or around an invitation to add something */
+.placeholder {
+  border: var(--border-sm) dashed var(--line);
+  border-radius: var(--radius-md);
+  color: var(--text);
+}
+
+.placeholder--muted { color: var(--text-3); }
+.placeholder--interactive { transition: border-color var(--dur-fast) ease; }
+.placeholder--interactive:hover { border-color: var(--accent); }
+.placeholder--centered {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}

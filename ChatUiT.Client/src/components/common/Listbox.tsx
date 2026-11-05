@@ -1,14 +1,15 @@
 import React from 'react';
 import { Icon } from './Icon';
 import { floatingPanelClass } from './floatingPanel';
-import { cx, splitLayoutProps, type LayoutProps } from './layout';
+import { cx, length, splitLayoutProps, type LayoutProps, type Length } from './layout';
+import { SELECTED_MARK_CLASS } from './selectedMark';
 import './Listbox.css';
 
 interface ListboxProps extends LayoutProps, Omit<React.HTMLAttributes<HTMLDivElement>, 'color'> {
   // Draws the list as a floating panel under its input
   floating?: boolean;
-  // Scrolls the list past this height, as a CSS length
-  maxHeight?: string;
+  // Scrolls the list past this height
+  maxHeight?: Length;
 }
 
 /** The option list of a combobox or custom dropdown. */
@@ -18,7 +19,7 @@ export const Listbox: React.FC<ListboxProps> = ({ floating = false, maxHeight, c
     <div
       role="listbox"
       className={cx('listbox', floating && 'listbox--floating', floating && floatingPanelClass('auto'), className)}
-      style={{ maxHeight, ...layout }}
+      style={{ maxHeight: maxHeight && length(maxHeight), ...layout }}
       {...rest}
     />
   );
@@ -44,7 +45,7 @@ export const ListboxOption: React.FC<ListboxOptionProps> = ({ selected = false, 
     tabIndex={disabled ? -1 : tabIndex}
     aria-selected={selected}
     aria-disabled={disabled || undefined}
-    className={cx('listbox__option', selected && 'listbox__option--selected', highlighted && 'listbox__option--highlighted', disabled && 'listbox__option--disabled', className)}
+    className={cx('listbox__option', selected && 'listbox__option--selected', selected && SELECTED_MARK_CLASS, highlighted && 'listbox__option--highlighted', disabled && 'listbox__option--disabled', className)}
     onClick={(e) => { if (!disabled) onClick?.(e); }}
     onKeyDown={(e) => {
       onKeyDown?.(e);
@@ -59,7 +60,7 @@ export const ListboxOption: React.FC<ListboxOptionProps> = ({ selected = false, 
     <span className="listbox__option-text">
       <span className="listbox__option-label t-body">
         {children}
-        {showCheck && selected && <Icon name="check" size="small" color="accent" />}
+        {showCheck && selected && <Icon name="check" size="sm" color="accent" />}
       </span>
       {description && <span className="listbox__option-description t-caption">{description}</span>}
     </span>

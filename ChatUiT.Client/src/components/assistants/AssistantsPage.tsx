@@ -2,12 +2,16 @@ import React, { useEffect, useState } from 'react';
 import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
 import { useSignals } from '@preact/signals-react/runtime';
 import { useTranslation } from 'react-i18next';
-import './AssistantsPage.css';
-import { getAssistants, deleteAssistant, toggleVisibility, addSharedAssistant, invalidateAssistants, removeSharedAssistant, setDefaultAssistant, clearDefaultAssistant } from '../../services/assistantService';
+import { getAssistants, deleteAssistant, toggleFavorite, toggleVisibility, addSharedAssistant, invalidateAssistants, removeSharedAssistant, setDefaultAssistant, clearDefaultAssistant } from '../../services/assistantService';
 import { getModels } from '../../services/modelService';
 import { setUserSelectedAssistantId } from '../../services/chatService';
-import type { AssistantDto, FullAssistantDto, AssistantSummaryDto } from '../../types/assistantModels';
-import AssistantCard from './AssistantCard';
+import { ASSISTANT_SECTIONS, type AssistantDto, type FullAssistantDto, type AssistantSummaryDto } from '../../types/assistantModels';
+import { capabilityKeys, distinctCapabilities } from './assistantCapabilities';
+import AssistantCard, { DefaultBadge } from './AssistantCard';
+import CapabilityTag from './CapabilityTag';
+import { CardGrid } from '../common/CardGrid';
+import Scroller from '../common/Scroller';
+import PillButton from '../common/PillButton';
 import AssistantForm from './AssistantForm';
 import AddExternalAssistant from './AddExternalAssistant';
 import ShareModal from './ShareModal';
@@ -19,6 +23,13 @@ import { Icon } from '../common/Icon';
 import { ConfirmDialog } from '../common/Dialog';
 import SegmentedControl from '../common/SegmentedControl';
 import { useSettings } from '../../hooks/useSettings';
+import PageTitleBar from '../common/PageTitleBar';
+import Page, { PageIntro } from '../common/Page';
+import Stack from '../common/Stack';
+import Box from '../common/Box';
+import Text from '../common/Text';
+import ActionBar from '../common/ActionBar';
+import EmptyNote from '../common/EmptyNote';
 
 type AssistantVariant = AssistantDto['type'];
 
@@ -41,135 +52,82 @@ const AssistantsPage: React.FC = () => {
 
   const isNew = assistantId === 'new';
 
-  // Handle shared assistant URL parameter
+  // Adds the shared assistant in the `add` URL parameter
   useEffect(() => {
     const addAssistantId = searchParams.get('add');
-    if (addAssistantId) {
-      const handleAddFromUrl = async () => {
-        try {
-          await addSharedAssistant(addAssistantId);
-          await invalidateAssistants();
-          const newSearchParams = new URLSearchParams(searchParams);
-          newSearchParams.delete('add');
-          setSearchParams(newSearchParams, { replace: true });
-        } catch (error) {
-          console.error('Failed to add shared assistant from URL:', error);
-        }
-      };
-
-      handleAddFromUrl();
-    }
+    if (!addAssistantId) return;
+    addSharedAssistant(addAssistantId)
+      .then(() => invalidateAssistants())
+      .then(() => {
+        const newSearchParams = new URLSearchParams(searchParams);
+        newSearchParams.delete('add');
+        setSearchParams(newSearchParams, { replace: true });
+      })
+      .catch(error => console.error('Failed to add shared assistant from URL:', error));
   }, [searchParams, setSearchParams]);
 
-  const handleToggleVisibility = async (id: string) => {
-    try {
-      await toggleVisibility(id);
-    } catch (error) {
-      console.error('Failed to toggle visibility:', error);
-    }
-  };
+  const handleToggleVisibility = (id: string) =>
+    toggleVisibility(id).catch(error => console.error('Failed to toggle visibility:', error));
 
   // No refetch: the service updates the list optimistically and reverts on failure.
-  const handleToggleDefault = async (id: string, isDefault: boolean) => {
+  const handleToggleDefault = (id: string, isDefault: boolean) =>
+    (isDefault ? clearDefaultAssistant() : setDefaultAssistant(id)).catch(error => console.error('Failed to change default assistant:', error));
+
+  const handleRemove = async ({ id, shared }: { id: string; shared: boolean }) => {
+    setPendingRemoval(null);
     try {
-      if (isDefault) {
-        await clearDefaultAssistant();
+      if (shared) {
+        await removeSharedAssistant(id);
+        await invalidateAssistants();
       } else {
-        await setDefaultAssistant(id);
+        await deleteAssistant(id);
       }
-    } catch (error) {
-      console.error('Failed to change default assistant:', error);
-    }
-  };
-
-  const handleDeleteAssistant = async (id: string) => {
-    setPendingRemoval(null);
-    try {
-      await deleteAssistant(id);
       navigate('/assistants');
     } catch (error) {
-      console.error('Failed to delete assistant:', error);
+      console.error(shared ? 'Failed to remove shared assistant:' : 'Failed to delete assistant:', error);
     }
-  };
-
-  const handleRemoveSharedAssistant = async (id: string) => {
-    setPendingRemoval(null);
-    try {
-      await removeSharedAssistant(id);
-      await invalidateAssistants();
-      navigate('/assistants');
-    } catch (error) {
-      console.error('Failed to remove shared assistant:', error);
-    }
-  };
-
-  const handleUseInChat = (id: string) => {
-    setUserSelectedAssistantId(id);
-    navigate('/chat/new');
-  };
-
-  const handleCopyLink = (id: string) => {
-    const shareUrl = `${window.location.origin}/assistants?add=${id}`;
-    navigator.clipboard.writeText(shareUrl);
-  };
-
-  const handleCopyGuid = (id: string) => {
-    navigator.clipboard.writeText(id);
   };
 
   if (assistantList.value === undefined) {
-    return <div className="assistants-page"><div className="assistants-page-content">{t('common.loading')}</div></div>;
+    return <Page>{t('common.loading')}</Page>;
   }
 
-  const { owned, system, shared, defaultAssistantId } = assistantList.value;
-
-  const findAssistant = (): { assistant: FullAssistantDto | AssistantSummaryDto; variant: AssistantVariant } | undefined => {
-    const ownedMatch = owned.find(a => a.id === assistantId);
-    if (ownedMatch) return { assistant: ownedMatch, variant: 'owned' };
-    const systemMatch = system.find(a => a.id === assistantId);
-    if (systemMatch) return { assistant: systemMatch, variant: 'system' };
-    const sharedMatch = shared.find(a => a.id === assistantId);
-    if (sharedMatch) return { assistant: sharedMatch, variant: 'shared' };
-    return undefined;
-  };
+  const list = assistantList.value;
+  const { defaultAssistantId } = list;
 
   // ---- New assistant ----
   if (isNew) {
     return (
-      <div className="assistants-page">
-        <div className="assistants-page-content">
-          <h1 className="t-page-title">{t('assistants.newAssistant')}</h1>
-          <div className="page-title-bar" />
-          <p className="assistants-intro t-body-lg">{t('assistants.intro')}</p>
-          <AssistantForm
-            editingAssistant={null}
-            onSaved={() => navigate('/assistants')}
-            saveLabel={t('assistants.saveAssistant')}
-            backPath="/assistants"
-            backLabel={t('contextColumn.assistants')}
-          />
-        </div>
-      </div>
+      <Page>
+        <Text as="h1" variant="page-title">{t('assistants.newAssistant')}</Text>
+        <PageTitleBar />
+        <PageIntro>{t('assistants.intro')}</PageIntro>
+        <AssistantForm
+          editingAssistant={null}
+          onSaved={() => navigate('/assistants')}
+          saveLabel={t('assistants.saveAssistant')}
+          backPath="/assistants"
+          backLabel={t('contextColumn.assistants')}
+        />
+      </Page>
     );
   }
 
   // ---- Assistant detail ----
   if (assistantId !== undefined) {
-    const found = findAssistant();
+    const variant = ASSISTANT_SECTIONS.map(({ type }) => type).find(type => list[type].some(a => a.id === assistantId));
+    const assistant = variant && list[variant].find(a => a.id === assistantId);
 
-    if (!found) {
+    if (!variant || !assistant) {
       return (
-        <div className="assistants-page">
-          <div className="assistants-page-content">
-            <h1 className="t-page-title">{t('assistants.title')}</h1>
-            <div className="page-title-bar" />
-            <p className="assistants-intro t-body-lg">{t('assistants.notFound')}</p>
-          </div>
-        </div>
+        <Page>
+          <Text as="h1" variant="page-title">{t('assistants.title')}</Text>
+          <PageTitleBar />
+          <PageIntro>{t('assistants.notFound')}</PageIntro>
+        </Page>
       );
     }
 
-    const { assistant, variant } = found;
     const model = models.find(m => m.id === assistant.modelId);
     const isDefault = defaultAssistantId === assistant.id;
     // A pin stays stored when its model stops being default-eligible, so say so rather than
@@ -177,11 +135,50 @@ const AssistantsPage: React.FC = () => {
     const isDefaultInactive = isDefault && !assistant.canBeDefault;
 
     const headerActions = (
-      <div className="assistant-detail-actions">
+      <ActionBar
+        divided
+        fillOnMobile
+        mt="sm"
+        mb="xl"
+        end={variant === 'shared' ? (
+          <Button
+            variant="danger"
+            size="medium"
+            startIcon="trash"
+            onClick={() => setPendingRemoval({ id: assistant.id, shared: true })}
+            title={t('common.delete')}
+          >
+            {t('common.delete')}
+          </Button>
+        ) : undefined}
+      >
+        <Button
+          variant="primary"
+          size="medium"
+          startIcon="chatNew"
+          onClick={() => {
+            setUserSelectedAssistantId(assistant.id);
+            navigate('/chat/new');
+          }}
+          title={t('assistants.useInNewChat')}
+        >
+          {t('assistants.useInNewChat')}
+        </Button>
         <Button
           variant="subtle"
-          size="small"
-          startIcon={isDefault && assistant.canBeDefault ? 'pin' : 'pinOutline'}
+          size="medium"
+          startIcon={assistant.isVisible ? 'hidden' : 'visible'}
+          onClick={() => handleToggleVisibility(assistant.id)}
+          title={assistant.isVisible ? t('assistants.actions.hideFromSelector') : t('assistants.actions.showInSelector')}
+        >
+          {assistant.isVisible ? t('assistants.actions.hideFromSelector') : t('assistants.actions.showInSelector')}
+        </Button>
+        <Button
+          variant="subtle"
+          size="medium"
+          startIcon={isDefault ? 'checkCircle' : 'check'}
+          active={isDefault}
+          aria-pressed={isDefault}
           onClick={() => handleToggleDefault(assistant.id, isDefault)}
           disabled={!isDefault && !assistant.canBeDefault}
           title={
@@ -194,140 +191,112 @@ const AssistantsPage: React.FC = () => {
         >
           {isDefault ? t('assistants.actions.clearDefault') : t('assistants.actions.setAsDefault')}
         </Button>
-        <Button
-          variant="subtle"
-          size="small"
-          startIcon={assistant.isVisible ? 'visible' : 'hidden'}
-          onClick={() => handleToggleVisibility(assistant.id)}
-          title={assistant.isVisible ? t('assistants.actions.hideFromSelector') : t('assistants.actions.showInSelector')}
-        >
-          {assistant.isVisible ? t('assistants.actions.hideFromSelector') : t('assistants.actions.showInSelector')}
-        </Button>
-        <Button
-          variant="subtle"
-          size="small"
-          onClick={() => handleUseInChat(assistant.id)}
-        >
-          {t('assistants.useInNewChat')}
-        </Button>
         {variant === 'owned' && (
-          <>
-            <Button
-              variant="subtle"
-              size="small"
-              onClick={() => setShareModalAssistant(assistant as FullAssistantDto)}
-            >
-              {t('assistants.actions.shareAssistant')}
-            </Button>
-            <Button
-              variant="danger"
-              size="small"
-              onClick={() => setPendingRemoval({ id: assistant.id, shared: false })}
-            >
-              {t('assistants.actions.deleteAssistant')}
-            </Button>
-          </>
-        )}
-        {variant === 'shared' && (
           <Button
-            variant="danger"
-            size="small"
-            onClick={() => setPendingRemoval({ id: assistant.id, shared: true })}
+            variant="subtle"
+            size="medium"
+            startIcon="people"
+            onClick={() => setShareModalAssistant(assistant as FullAssistantDto)}
+            title={t('assistants.actions.shareAssistant')}
           >
-            {t('common.delete')}
+            {t('assistants.actions.shareAssistant')}
           </Button>
         )}
-      </div>
+      </ActionBar>
     );
 
     return (
-      <div className="assistants-page">
-        <div className="assistants-page-content">
-          <h1 className="t-page-title">{assistant.name}</h1>
-          <div className="page-title-bar" />
-          {headerActions}
+      <Page>
+        <Text as="h1" variant="page-title">{assistant.name}</Text>
+        <PageTitleBar />
+        {headerActions}
 
-          {isDefaultInactive && (
-            <FieldDescription>{t('assistants.defaultInactiveNote')}</FieldDescription>
-          )}
+        {isDefaultInactive && (
+          <FieldDescription>{t('assistants.defaultInactiveNote')}</FieldDescription>
+        )}
 
-          {variant === 'owned' ? (
-            <AssistantForm
-              key={assistant.id}
-              editingAssistant={assistant as FullAssistantDto}
-              saveLabel={t('assistants.saveAssistant')}
-              backPath="/assistants"
-              backLabel={t('contextColumn.assistants')}
-            />
-          ) : (
-            <div className="assistant-readonly">
-              {assistant.description && (
-                <p className="assistants-intro t-body-lg">{assistant.description}</p>
-              )}
+        {variant === 'owned' ? (
+          <AssistantForm
+            key={assistant.id}
+            editingAssistant={assistant as FullAssistantDto}
+            saveLabel={t('assistants.saveAssistant')}
+            backPath="/assistants"
+            backLabel={t('contextColumn.assistants')}
+          />
+        ) : (
+          <>
+            {assistant.description && (
+              <PageIntro>{assistant.description}</PageIntro>
+            )}
 
-              {assistant.tags.length > 0 && (
-                <div className="assistant-readonly-row">
-                  <div className="t-overline">{t('assistants.form.tags')}</div>
-                  <TagField tags={assistant.tags} readonly={true} />
-                </div>
-              )}
+            {assistant.tags.length > 0 && (
+              <Box mb="xl">
+                <Text as="div" variant="overline" block mb="sm">{t('assistants.form.tags')}</Text>
+                <TagField tags={assistant.tags} readonly={true} />
+              </Box>
+            )}
 
-              <div className="assistant-readonly-row">
-                <div className="t-overline">{t('assistants.form.model')}</div>
-                <div className="assistant-readonly-model t-body">
-                  <span className="assistant-readonly-model-name t-body-strong">{model?.modelName || '—'}</span>
-                  {model?.capabilities.vision && <Icon name="image" color="accent" label={t('assistants.capabilities.vision')} />}
-                  {model?.capabilities.tools && <Icon name="globe" color="accent" label={t('assistants.capabilities.tools')} />}
-                  {(model?.capabilities.supportedEfforts.length ?? 0) > 0 && <Icon name="brain" color="accent" label={t('assistants.capabilities.reasoning')} />}
-                </div>
-                {model?.description && <div className="assistant-readonly-note t-caption">{model.description}</div>}
-              </div>
+            <Box mb="xl">
+              <Text as="div" variant="overline" block mb="sm">{t('assistants.form.model')}</Text>
+              <Stack direction="row" align="center" gap="sm">
+                <Text variant="body-strong" tone="default">{model?.modelName || '—'}</Text>
+                {capabilityKeys(assistant, models).map(key => (
+                  <CapabilityTag key={key} capability={key} iconOnly />
+                ))}
+              </Stack>
+              {model?.description && <Text as="div" variant="caption" tone="muted" mt="xs">{model.description}</Text>}
+            </Box>
 
-              {(assistant as AssistantSummaryDto).createdBy && (
-                <div className="assistant-readonly-row">
-                  <div className="t-overline">{t('assistants.createdBy')}</div>
-                  <div className="assistant-readonly-note t-caption">{(assistant as AssistantSummaryDto).createdBy}</div>
-                </div>
-              )}
-            </div>
-          )}
-        </div>
+            {(assistant as AssistantSummaryDto).createdBy && (
+              <Box mb="xl">
+                <Text as="div" variant="overline" block mb="sm">{t('assistants.createdBy')}</Text>
+                <Text as="div" variant="caption" tone="muted" mt="xs">{(assistant as AssistantSummaryDto).createdBy}</Text>
+              </Box>
+            )}
+          </>
+        )}
 
-        <ShareModal
-          isOpen={shareModalAssistant !== null}
-          assistant={shareModalAssistant}
-          onClose={() => setShareModalAssistant(null)}
-          onCopyLink={handleCopyLink}
-          onCopyGuid={handleCopyGuid}
-        />
+        {variant === 'owned' && (
+          <Stack direction="row" justify="start" mt="2xl" pt="xl" border borderSide="top">
+            <Button
+              variant="danger"
+              size="small"
+              startIcon="trash"
+              onClick={() => setPendingRemoval({ id: assistant.id, shared: false })}
+              title={t('assistants.actions.deleteAssistant')}
+            >
+              {t('assistants.actions.deleteAssistant')}
+            </Button>
+          </Stack>
+        )}
+
+        <ShareModal assistant={shareModalAssistant} onClose={() => setShareModalAssistant(null)} />
 
         <ConfirmDialog
           isOpen={pendingRemoval !== null}
           title={pendingRemoval?.shared ? t('assistants.removeShared.title') : t('assistants.actions.deleteAssistant')}
           message={pendingRemoval?.shared ? t('assistants.removeShared.confirm') : t('assistants.deleteConfirmation')}
           confirmLabel={pendingRemoval?.shared ? t('assistants.removeShared.button') : t('common.delete')}
-          onConfirm={() => {
-            if (!pendingRemoval) return;
-            if (pendingRemoval.shared) handleRemoveSharedAssistant(pendingRemoval.id);
-            else handleDeleteAssistant(pendingRemoval.id);
-          }}
+          onConfirm={() => { if (pendingRemoval) void handleRemove(pendingRemoval); }}
           onCancel={() => setPendingRemoval(null)}
         />
-      </div>
+      </Page>
     );
   }
 
   // ---- Overview (no assistant selected) ----
+  const capabilitiesOf = distinctCapabilities(list, models);
+
   const renderOverviewGroup = (
     title: string,
     assistants: (FullAssistantDto | AssistantSummaryDto)[],
     type: AssistantVariant,
     emptyKey: string
   ) => (
-    <div className="assistants-overview-group">
-      <div className="t-overline">{title}</div>
+    <Box key={type} mb="2xl">
+      <Text as="div" id={`assistants-overview-${type}`} variant="overline" block mb="md" scrollMarginTop="lg">{title}</Text>
       {assistants.length > 0 && settings.assistantView === 'cards' && (
-        <div className="assistant-card-grid">
+        <CardGrid cardRows={3}>
           {assistants.map((assistant) => (
             <AssistantCard
               key={assistant.id}
@@ -335,10 +304,15 @@ const AssistantsPage: React.FC = () => {
               selected={false}
               isDefault={defaultAssistantId === assistant.id}
               hidden={!assistant.isVisible}
+              showType={false}
+              modelName={models.find(m => m.id === assistant.modelId)?.modelName}
+              fileCount={type === 'owned' ? ((assistant as FullAssistantDto).files ?? []).length : 0}
+              capabilities={capabilitiesOf(assistant)}
               onSelect={a => navigate(`/assistants/${a.id}`)}
+              onToggleFavorite={a => void toggleFavorite(a.id)}
             />
           ))}
-        </div>
+        </CardGrid>
       )}
       {assistants.length > 0 && settings.assistantView === 'list' && (
         <List bordered>
@@ -353,13 +327,7 @@ const AssistantsPage: React.FC = () => {
                 trailing={(
                   <>
                     {model?.modelName}
-                    {defaultAssistantId === assistant.id && (
-                      <Icon
-                        name={assistant.canBeDefault ? 'pin' : 'pinOutline'}
-                        color="muted"
-                        label={assistant.canBeDefault ? t('assistants.actions.isDefault') : t('assistants.defaultInactiveNote')}
-                      />
-                    )}
+                    {defaultAssistantId === assistant.id && <DefaultBadge canBeDefault={assistant.canBeDefault} />}
                     {!assistant.isVisible && <Icon name="hidden" color="muted" label={t('assistants.actions.showInSelector')} />}
                   </>
                 )}
@@ -369,44 +337,53 @@ const AssistantsPage: React.FC = () => {
         </List>
       )}
       {assistants.length === 0 && (
-        <div className="assistants-overview-empty t-ui-plain">{t(emptyKey)}</div>
+        <EmptyNote>{t(emptyKey)}</EmptyNote>
       )}
-    </div>
+    </Box>
   );
 
   return (
-    <div className="assistants-page">
-      <div className="assistants-page-content">
-        <div className="assistants-header">
-          <div>
-            <h1 className="t-page-title">{t('assistants.title')}</h1>
-            <div className="page-title-bar" />
-          </div>
-          <div className="assistants-header-actions">
-            <SegmentedControl
-              label={t('assistants.view.label')}
-              size="small"
-              value={settings.assistantView}
-              onChange={view => void updateSetting('assistantView', view)}
-              options={[
-                { value: 'cards', label: t('assistants.view.cards'), leading: <Icon name="grid" size="small" /> },
-                { value: 'list', label: t('assistants.view.list'), leading: <Icon name="menu" size="small" /> },
-              ]}
-            />
-            <Button variant="primary" onClick={() => navigate('/assistants/new')}>
-              {t('assistants.create')}
-            </Button>
-          </div>
+    <Page width="wide">
+      <Stack direction="row" justify="between" align="start" gap="lg" mb="lg">
+        <div>
+          <Text as="h1" variant="page-title">{t('assistants.title')}</Text>
+          <PageTitleBar mb="none" />
         </div>
-        <p className="assistants-intro t-body-lg">{t('assistants.intro')}</p>
+        <Stack direction="row" wrap align="center" justify="end" gap="md">
+          <SegmentedControl
+            label={t('assistants.view.label')}
+            size="small"
+            value={settings.assistantView}
+            onChange={view => void updateSetting('assistantView', view)}
+            options={[
+              { value: 'cards', label: t('assistants.view.cards'), leading: <Icon name="grid" size="sm" /> },
+              { value: 'list', label: t('assistants.view.list'), leading: <Icon name="menu" size="sm" /> },
+            ]}
+          />
+          <Button variant="primary" onClick={() => navigate('/assistants/new')}>
+            {t('assistants.create')}
+          </Button>
+        </Stack>
+      </Stack>
+      <PageIntro mb="lg">{t('assistants.intro')}</PageIntro>
+      <Scroller as="nav" axis="x" snap gap="sm" align="center" grow={false} shrink={false} mb="2xl" aria-label={t('assistants.sectionLinks')}>
+        <Text variant="caption" tone="muted" grow={false} shrink={false} aria-hidden="true">{t('assistants.jumpTo')}</Text>
+        {ASSISTANT_SECTIONS.map(({ type, titleKey }) => (
+          <PillButton
+            key={type}
+            count={list[type].length}
+            endIcon="arrowDown"
+            onClick={() => document.getElementById(`assistants-overview-${type}`)?.scrollIntoView({ behavior: 'smooth', block: 'start' })}
+          >
+            {t(titleKey)}
+          </PillButton>
+        ))}
+      </Scroller>
 
-        {renderOverviewGroup(t('assistants.myAssistants'), owned, 'owned', 'assistants.emptyStates.noPersonalAssistants')}
-        {renderOverviewGroup(t('assistants.systemAssistants'), system, 'system', 'assistants.emptyStates.noSystemAssistants')}
-        {renderOverviewGroup(t('assistants.sharedAssistants'), shared, 'shared', 'assistants.emptyStates.noSharedAssistants')}
+      {ASSISTANT_SECTIONS.map(({ type, titleKey, emptyKey }) => renderOverviewGroup(t(titleKey), list[type], type, emptyKey))}
 
-        <AddExternalAssistant />
-      </div>
-    </div>
+      <AddExternalAssistant />
+    </Page>
   );
 };
 

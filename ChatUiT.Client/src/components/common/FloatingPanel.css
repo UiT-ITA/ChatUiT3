@@ -1,15 +1,14 @@
 /* The surface shared by every popover and menu that floats over the page */
 .floating-panel {
-  max-width: calc(100vw - 2rem);
-  background: var(--surface);
-  border: 1px solid var(--line);
-  border-top: 3px solid var(--accent-2);
+  max-width: calc(100vw - 2 * var(--space-lg));
+  background: var(--surface-raised);
+  border: var(--border-sm) solid var(--line-strong);
   border-radius: var(--radius-md);
   box-shadow: var(--shadow-overlay);
-  animation: fade-in 140ms ease;
+  animation: fade-in var(--dur-fast) ease;
 }
 
-.floating-panel--small { width: 11rem; }
-.floating-panel--medium { width: 15.5rem; }
-.floating-panel--large { width: 17rem; }
-.floating-panel--xl { width: 30rem; }
+.floating-panel--small { width: var(--size-2xs); }
+.floating-panel--medium { width: var(--size-xs); }
+.floating-panel--large { width: var(--size-sm); }
+.floating-panel--xl { width: var(--size-md); }

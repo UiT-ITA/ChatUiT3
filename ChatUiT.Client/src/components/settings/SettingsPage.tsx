@@ -11,10 +11,38 @@ import TextArea from '../common/TextArea';
 import Toggle from '../common/Toggle';
 import Button from '../common/Button';
 import Stack from '../common/Stack';
-import Card from '../common/Card';
 import SegmentedControl from '../common/SegmentedControl';
 import { ConfirmDialog } from '../common/Dialog';
+import { resolveMode } from '../../utils/themeUtils';
+import PageTitleBar from '../common/PageTitleBar';
+import Page from '../common/Page';
+import Text from '../common/Text';
+import Grid from '../common/Grid';
+import ChoiceCard from '../common/ChoiceCard';
+import SectionLabel from '../common/SectionLabel';
+import SettingRow from '../common/SettingRow';
+import Flag from '../common/Flag';
+import { cx } from '../common/layout';
 import './SettingsPage.css';
+
+/** A miniature of the app in a theme and mode; 'system' shows the light scene with the dark scene over its right half. */
+const ThemePreview: React.FC<{ theme: 'blue' | 'grey'; mode: 'light' | 'dark' | 'system' }> = ({ theme, mode }) => (
+  <span className="theme-preview">
+    {(mode === 'system' ? ['light', 'dark'] : [mode]).map((sceneMode) => (
+      <span
+        key={sceneMode}
+        className={cx('theme-preview__scene', mode === 'system' && sceneMode === 'dark' && 'theme-preview__scene--dark-half')}
+        data-theme={theme}
+        data-mode={sceneMode}
+      >
+        <span className="theme-preview__rail" />
+        <span className="theme-preview__bar theme-preview__bar--1" />
+        <span className="theme-preview__bar theme-preview__bar--2" />
+        <span className="theme-preview__button" />
+      </span>
+    ))}
+  </span>
+);
 
 interface ProfileFieldProps {
   field: keyof UserProfile;
@@ -39,27 +67,8 @@ const ProfileField: React.FC<ProfileFieldProps> = ({ field, profile, label, plac
     }
   };
 
-  return multiline ? (
-    <TextArea
-      label={label}
-      maxWidth="34rem"
-      value={draft}
-      onChange={(value) => setDraft(value)}
-      onBlur={save}
-      placeholder={placeholder}
-      rows={4}
-    />
-  ) : (
-    <TextInput
-      label={label}
-      maxWidth="34rem"
-      type="text"
-      value={draft}
-      onChange={(value) => setDraft(value)}
-      onBlur={save}
-      placeholder={placeholder}
-    />
-  );
+  const props = { label, placeholder, maxWidth: 'md' as const, value: draft, onChange: setDraft, onBlur: save };
+  return multiline ? <TextArea {...props} rows={4} /> : <TextInput {...props} />;
 };
 
 const SettingsPage: React.FC = () => {
@@ -74,174 +83,128 @@ const SettingsPage: React.FC = () => {
     tab === 'personalization' || tab === 'dataControl' ? tab : 'appearance';
 
   return (
-    <div className="settings-page">
-      <div className="settings-page-content">
-        <h1 className="t-page-title">{t(`settings.categories.${activeTab}`)}</h1>
-        <div className="page-title-bar" />
+    <Page fill="grow" flow="block">
+      <Text as="h1" variant="page-title">{t(`settings.categories.${activeTab}`)}</Text>
+      <PageTitleBar />
 
-        {activeTab === 'appearance' && (
-          <>
-            <div className="settings-overline t-overline">{t('settings.theme.title')}</div>
-            <div className="settings-card-grid">
-              <Card
-                as="button"
-                padding="sm"
-                selected={settings.theme === 'blue'}
-                onClick={() => updateSetting('theme', 'blue')}
+      {activeTab === 'appearance' && (
+        <>
+          <SectionLabel hint={t('settings.theme.description')}>{t('settings.theme.title')}</SectionLabel>
+          <Grid columns={2} gap="md">
+            {(['blue', 'grey'] as const).map((theme) => (
+              <ChoiceCard
+                key={theme}
+                label={t(`settings.theme.${theme}`)}
+                selected={settings.theme === theme}
+                onSelect={() => updateSetting('theme', theme)}
               >
-                <span className="settings-theme-preview" data-preview-theme="blue">
-                  <span className="settings-theme-preview-rail" />
-                  <span className="settings-theme-preview-line settings-theme-preview-line-1" />
-                  <span className="settings-theme-preview-line settings-theme-preview-line-2" />
-                  <span className="settings-theme-preview-accent" />
-                </span>
-                <span className="t-ui">{t('settings.theme.blue')}</span>
-              </Card>
-              <Card
-                as="button"
-                padding="sm"
-                selected={settings.theme === 'grey'}
-                onClick={() => updateSetting('theme', 'grey')}
-              >
-                <span className="settings-theme-preview" data-preview-theme="grey">
-                  <span className="settings-theme-preview-rail" />
-                  <span className="settings-theme-preview-line settings-theme-preview-line-1" />
-                  <span className="settings-theme-preview-line settings-theme-preview-line-2" />
-                  <span className="settings-theme-preview-accent" />
-                </span>
-                <span className="t-ui">{t('settings.theme.grey')}</span>
-              </Card>
-            </div>
+                <ThemePreview theme={theme} mode={resolveMode(settings.mode)} />
+              </ChoiceCard>
+            ))}
+          </Grid>
 
-            <div className="settings-overline t-overline">{t('settings.mode.title')}</div>
-            <div className="settings-card-grid">
-              {(['light', 'dark', 'system'] as const).map((mode) => (
-                <Card
-                  key={mode}
-                  as="button"
-                  padding="sm"
-                  selected={settings.mode === mode}
-                  onClick={() => updateSetting('mode', mode)}
-                >
-                  <span className="settings-theme-preview" data-preview-mode={mode} data-preview-theme={settings.theme}>
-                    <span className="settings-theme-preview-rail" />
-                    <span className="settings-theme-preview-line settings-theme-preview-line-1" />
-                    <span className="settings-theme-preview-line settings-theme-preview-line-2" />
-                    <span className="settings-theme-preview-accent" />
-                  </span>
-                  <span className="t-ui">{t(`settings.mode.${mode}`)}</span>
-                </Card>
+          <SectionLabel hint={t('settings.mode.description')}>{t('settings.mode.title')}</SectionLabel>
+          <Grid columns={3} narrowColumns={2} gap="md">
+            {(['light', 'dark', 'system'] as const).map((mode) => (
+              <ChoiceCard
+                key={mode}
+                label={t(`settings.mode.${mode}`)}
+                selected={settings.mode === mode}
+                onSelect={() => updateSetting('mode', mode)}
+              >
+                <ThemePreview theme={settings.theme} mode={mode} />
+              </ChoiceCard>
+            ))}
+          </Grid>
+
+          <SectionLabel>{t('settings.textScale.title')}</SectionLabel>
+          <SegmentedControl
+            label={t('settings.textScale.title')}
+            stretch
+            value={settings.size}
+            onChange={(size) => updateSetting('size', size)}
+            options={(['small', 'medium', 'large', 'xl'] as const).map((size) => ({
+              value: size,
+              label: t(`settings.textScale.${size === 'xl' ? 'extraLarge' : size}`),
+            }))}
+          />
+
+          <SectionLabel>{t('settings.language.title')}</SectionLabel>
+          <SegmentedControl
+            label={t('settings.language.title')}
+            stretch
+            maxWidth="sm"
+            value={settings.language}
+            onChange={(language) => updateSetting('language', language)}
+            options={[
+              { value: 'en-US', label: 'English', leading: <Flag src="/gb.svg" /> },
+              { value: 'no-NB', label: 'Norsk', leading: <Flag src="/no.svg" /> },
+            ]}
+          />
+        </>
+      )}
+
+      {activeTab === 'personalization' && profile && (
+        <Stack gap="xl">
+          {([['displayName', 'name'], ['jobRole', 'jobRole'], ['answerPreferences', 'customInstructions']] as const).map(([field, key]) => (
+            <ProfileField
+              key={field}
+              field={field}
+              profile={profile}
+              label={t(`settings.personalization.${key}.title`)}
+              placeholder={t(`settings.personalization.${key}.placeholder`)}
+              multiline={field === 'answerPreferences'}
+            />
+          ))}
+        </Stack>
+      )}
+
+      {activeTab === 'dataControl' && (
+        <>
+          <SettingRow label={t('settings.dataControl.retentionPeriod.title')}>
+            <Select
+              value={settings.chatRetentionPeriod}
+              onChange={(value) => updateSetting('chatRetentionPeriod', value as typeof settings.chatRetentionPeriod)}
+              inline
+              minWidth="2xs"
+            >
+              {['1week', '1month', '3months', '1year', 'forever'].map((period) => (
+                <option key={period} value={period}>{t(`settings.dataControl.retentionPeriod.${period}`)}</option>
               ))}
-            </div>
+            </Select>
+          </SettingRow>
 
-            <div className="settings-overline t-overline">{t('settings.textScale.title')}</div>
-            <SegmentedControl
-              label={t('settings.textScale.title')}
-              value={settings.size}
-              onChange={(size) => updateSetting('size', size)}
-              options={(['small', 'medium', 'large', 'xl'] as const).map((size) => ({
-                value: size,
-                label: t(`settings.textScale.${size === 'xl' ? 'extraLarge' : size}`),
-              }))}
+          <SettingRow label={t('settings.dataControl.autoDelete.title')}>
+            <Toggle
+              checked={settings.autoDeleteOldChats}
+              onChange={(checked) => updateSetting('autoDeleteOldChats', checked)}
+              aria-label={t('settings.dataControl.autoDelete.title')}
             />
+          </SettingRow>
 
-            <div className="settings-overline t-overline">{t('settings.language.title')}</div>
-            <SegmentedControl
-              label={t('settings.language.title')}
-              value={settings.language}
-              onChange={(language) => updateSetting('language', language)}
-              options={[
-                { value: 'en-US', label: 'English', leading: <img src="/gb.svg" alt="" className="settings-flag" /> },
-                { value: 'no-NB', label: 'Norsk', leading: <img src="/no.svg" alt="" className="settings-flag" /> },
-              ]}
-            />
-          </>
-        )}
+          <SettingRow label={t('settings.dataControl.exportFormat.title')}>
+            <Select
+              value={settings.exportFormat}
+              onChange={(value) => updateSetting('exportFormat', value as typeof settings.exportFormat)}
+              inline
+              minWidth="2xs"
+            >
+              {['json', 'markdown', 'txt'].map((format) => (
+                <option key={format} value={format}>{t(`settings.dataControl.exportFormat.${format}`)}</option>
+              ))}
+            </Select>
+          </SettingRow>
 
-        {activeTab === 'personalization' && profile && (
-          <Stack gap="xl">
-            <ProfileField
-              field="displayName"
-              profile={profile}
-              label={t('settings.personalization.name.title')}
-              placeholder={t('settings.personalization.name.placeholder')}
-            />
-
-            <ProfileField
-              field="jobRole"
-              profile={profile}
-              label={t('settings.personalization.jobRole.title')}
-              placeholder={t('settings.personalization.jobRole.placeholder')}
-            />
-
-            <ProfileField
-              field="answerPreferences"
-              profile={profile}
-              label={t('settings.personalization.customInstructions.title')}
-              placeholder={t('settings.personalization.customInstructions.placeholder')}
-              multiline
-            />
+          <Stack direction="row" align="center" gap="md" mt="2xl" pt="xl" border borderSide="top">
+            <Button variant="secondary" onClick={() => exportData(settings.exportFormat)}>
+              {t('settings.dataControl.exportData.button')}
+            </Button>
+            <Button variant="danger" onClick={() => setConfirmDeleteAll(true)}>
+              {t('settings.dataControl.deleteAll.button')}
+            </Button>
           </Stack>
-        )}
-
-        {activeTab === 'dataControl' && (
-          <>
-            <div className="settings-row">
-              <div className="settings-row-text">
-                <div className="settings-row-label t-table-strong">{t('settings.dataControl.retentionPeriod.title')}</div>
-              </div>
-              <Select
-                value={settings.chatRetentionPeriod}
-                onChange={(value) => updateSetting('chatRetentionPeriod', value as typeof settings.chatRetentionPeriod)}
-                inline
-                minWidth="10rem"
-              >
-                <option value="1week">{t('settings.dataControl.retentionPeriod.1week')}</option>
-                <option value="1month">{t('settings.dataControl.retentionPeriod.1month')}</option>
-                <option value="3months">{t('settings.dataControl.retentionPeriod.3months')}</option>
-                <option value="1year">{t('settings.dataControl.retentionPeriod.1year')}</option>
-                <option value="forever">{t('settings.dataControl.retentionPeriod.forever')}</option>
-              </Select>
-            </div>
-
-            <div className="settings-row">
-              <div className="settings-row-text">
-                <div className="settings-row-label t-table-strong">{t('settings.dataControl.autoDelete.title')}</div>
-              </div>
-              <Toggle
-                checked={settings.autoDeleteOldChats}
-                onChange={(checked) => updateSetting('autoDeleteOldChats', checked)}
-                aria-label={t('settings.dataControl.autoDelete.title')}
-              />
-            </div>
-
-            <div className="settings-row">
-              <div className="settings-row-text">
-                <div className="settings-row-label t-table-strong">{t('settings.dataControl.exportFormat.title')}</div>
-              </div>
-              <Select
-                value={settings.exportFormat}
-                onChange={(value) => updateSetting('exportFormat', value as typeof settings.exportFormat)}
-                inline
-                minWidth="10rem"
-              >
-                <option value="json">{t('settings.dataControl.exportFormat.json')}</option>
-                <option value="markdown">{t('settings.dataControl.exportFormat.markdown')}</option>
-                <option value="txt">{t('settings.dataControl.exportFormat.txt')}</option>
-              </Select>
-            </div>
-
-            <div className="settings-actions">
-              <Button variant="secondary" onClick={() => exportData(settings.exportFormat)}>
-                {t('settings.dataControl.exportData.button')}
-              </Button>
-              <Button variant="danger" onClick={() => setConfirmDeleteAll(true)}>
-                {t('settings.dataControl.deleteAll.button')}
-              </Button>
-            </div>
-          </>
-        )}
-      </div>
+        </>
+      )}
 
       <ConfirmDialog
         isOpen={confirmDeleteAll}
@@ -251,7 +214,7 @@ const SettingsPage: React.FC = () => {
         onConfirm={deleteAllData}
         onCancel={() => setConfirmDeleteAll(false)}
       />
-    </div>
+    </Page>
   );
 };
 

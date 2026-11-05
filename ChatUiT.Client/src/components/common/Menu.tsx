@@ -4,6 +4,7 @@ import useDismiss from '../../hooks/useDismiss';
 import { Icon, type IconName } from './Icon';
 import { floatingPanelClass, type PanelWidth } from './floatingPanel';
 import { cx, splitLayoutProps, type LayoutProps } from './layout';
+import { SELECTED_MARK_CLASS } from './selectedMark';
 import './Menu.css';
 
 interface MenuProps extends LayoutProps, Omit<React.HTMLAttributes<HTMLDivElement>, 'color'> {
@@ -32,15 +33,14 @@ export const Menu: React.FC<MenuProps> = ({ floating = false, anchorPoint, onClo
   useLayoutEffect(() => {
     if (anchorX === undefined || anchorY === undefined || !ref.current) return;
     const { width, height } = ref.current.getBoundingClientRect();
-    const margin = 8;
     setPoint({
-      x: Math.max(margin, Math.min(anchorX, window.innerWidth - width - margin)),
-      y: Math.max(margin, Math.min(anchorY, window.innerHeight - height - margin)),
+      x: Math.max(0, Math.min(anchorX, window.innerWidth - width)),
+      y: Math.max(0, Math.min(anchorY, window.innerHeight - height)),
     });
   }, [anchorX, anchorY]);
 
   const style: React.CSSProperties | undefined = point
-    ? { position: 'fixed', left: point.x, top: point.y, zIndex: 1000, ...layout }
+    ? { position: 'fixed', left: point.x, top: point.y, zIndex: 'var(--z-overlay)', ...layout }
     : layout;
 
   const menu = (
@@ -68,14 +68,14 @@ export const MenuItem: React.FC<MenuItemProps> = ({ icon, danger = false, select
     type="button"
     role={selected === undefined ? 'menuitem' : 'menuitemcheckbox'}
     aria-checked={selected}
-    className={cx('menu__item', 't-ui-plain', danger && 'menu__item--danger', selected && 'menu__item--selected', className)}
+    className={cx('menu__item', 't-ui-plain', danger && 'menu__item--danger', selected && 'menu__item--selected', rest['aria-current'] === 'page' && SELECTED_MARK_CLASS, className)}
     onClick={(e) => { onClick?.(e); onSelect?.(e); }}
     {...rest}
   >
-    {icon && <Icon name={icon} size="medium" className="menu__item-icon" />}
+    {icon && <Icon name={icon} size="sm" className="menu__item-icon" />}
     <span className="menu__item-label">{children}</span>
     {shortcut && <kbd className="menu__item-shortcut t-meta">{shortcut}</kbd>}
-    {selected && <Icon name="check" size="small" className="menu__item-check" />}
+    {selected && <Icon name="check" size="sm" className="menu__item-check" />}
   </button>
 );
 

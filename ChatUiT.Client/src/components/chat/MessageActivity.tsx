@@ -1,4 +1,3 @@
-import './MessageActivity.css';
 import { useEffect, useState, type ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
 import ReactMarkdown from 'react-markdown';
@@ -8,8 +7,12 @@ import ToolCallBlock from './ToolCallBlock';
 import type { LiveActivity } from '../../services/chatService';
 import { isAwaitingStatus, type ActivityEntryDto, type MessageActivityDto } from '../../types/chatModels';
 import { formatDuration } from '../../utils/durationUtils';
+import Box from '../common/Box';
 import Button from '../common/Button';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '../common/Collapsible';
+import RichText from '../common/RichText';
+import Stack from '../common/Stack';
+import Text from '../common/Text';
 
 type Props = {
   /** The stored summary of a finished message. */
@@ -32,7 +35,7 @@ export default function MessageActivity({ activity, live, children }: Props) {
 
   const entries = isLive ? live.entries : (live?.final ?? activity)?.entries ?? [];
   const summary = isLive ? null : (live?.final ?? activity);
-  // The calls the message waits on; they are answered in the card above the message box.
+  // The call the message waits on
   const waitingOn = isLive ? undefined : entries.find(entry => entry.type === "Tool" && isAwaitingStatus(entry.status));
   const liveElapsedMs = useLiveElapsed(isLive ? live : null);
   const hasActivity = isLive || summary !== null;
@@ -42,62 +45,55 @@ export default function MessageActivity({ activity, live, children }: Props) {
 
   return (
     <Collapsible open={open} onOpenChange={setOpen} width="full" minWidth="0">
-      <div className={`activity ${isLive ? "live" : ""} ${waitingOn ? "needs-input" : ""}`}>
-        <div className="message-meta">
-          {children}
-          {hasActivity && (
-            <CollapsibleTrigger>
-              <Button
-                variant="ghost"
-                size="xs"
-                tone={waitingOn ? 'warning' : 'default'}
-                startIcon={<Icon name={waitingOn ? "info" : isLive ? "refresh" : "branch"} size="small" spin={isLive} />}
-              >
-                {isLive
-                  ? liveHeadline(live, liveElapsedMs, t)
-                  : waitingOn
-                    ? t('chat.activity.awaitingUser', { name: waitingOn.toolName ?? "" })
-                    : doneHeadline(summary!, thinkingCount, toolCount, t)}
-              </Button>
-            </CollapsibleTrigger>
-          )}
-        </div>
+      <Stack direction="row" align="center" gap="md" mb={hasActivity && open ? 'xs' : 'sm'}>
+        {children}
         {hasActivity && (
-          <CollapsibleContent>
-            <div className="activity-body">
-              {summary && (
-                <div className="activity-facts t-meta">
-                  <span>{t('chat.activity.model')}: {summary.model}</span>
-                  {summary.effort !== "None" && (
-                    <span>{t('chat.activity.effort')}: {t(`assistants.form.reasoningLevels.${summary.effort.toLowerCase()}`)}</span>
-                  )}
-                  {summary.toolRounds > 0 && <span>{t('chat.activity.rounds', { count: summary.toolRounds })}</span>}
-                </div>
-              )}
-              {entries.length === 0 && !isLive && (
-                <div className="activity-empty t-caption">{t('chat.activity.nothingRecorded')}</div>
-              )}
-              {entries.map((entry, index) => (
-                <ActivityRow
-                  key={entry.toolCallId ?? index}
-                  entry={entry}
-                  nowMs={isLive ? liveElapsedMs : null}
-                />
-              ))}
-            </div>
-          </CollapsibleContent>
+          <CollapsibleTrigger>
+            <Button
+              variant="ghost"
+              size="xs"
+              tone={waitingOn ? 'warning' : 'default'}
+              startIcon={<Icon name={waitingOn ? "info" : isLive ? "refresh" : "branch"} size="sm" spin={isLive} />}
+            >
+              {isLive
+                ? liveHeadline(live, liveElapsedMs, t)
+                : waitingOn
+                  ? t('chat.activity.awaitingUser', { name: waitingOn.toolName ?? "" })
+                  : doneHeadline(summary!, thinkingCount, toolCount, t)}
+            </Button>
+          </CollapsibleTrigger>
         )}
-      </div>
+      </Stack>
+      {hasActivity && (
+        <CollapsibleContent>
+          <Box mb="sm" ml="sm" py="xs" pl="md" border borderWidth="md" borderSide="left">
+            {summary && (
+              <Stack direction="row" wrap rowGap="xs" columnGap="lg" mb="sm">
+                <Text variant="meta" tone="muted">{t('chat.activity.model')}: {summary.model}</Text>
+                {summary.effort !== "None" && (
+                  <Text variant="meta" tone="muted">{t('chat.activity.effort')}: {t(`assistants.form.reasoningLevels.${summary.effort.toLowerCase()}`)}</Text>
+                )}
+                {summary.toolRounds > 0 && <Text variant="meta" tone="muted">{t('chat.activity.rounds', { count: summary.toolRounds })}</Text>}
+              </Stack>
+            )}
+            {entries.length === 0 && !isLive && (
+              <Text as="div" variant="caption" tone="muted">{t('chat.activity.nothingRecorded')}</Text>
+            )}
+            {entries.map((entry, index) => (
+              <ActivityRow
+                key={entry.toolCallId ?? index}
+                entry={entry}
+                nowMs={isLive ? liveElapsedMs : null}
+              />
+            ))}
+          </Box>
+        </CollapsibleContent>
+      )}
     </Collapsible>
   );
 }
 
-type RowProps = {
-  entry: ActivityEntryDto;
-  nowMs: number | null;
-};
-
-function ActivityRow({ entry, nowMs }: RowProps) {
+function ActivityRow({ entry, nowMs }: { entry: ActivityEntryDto; nowMs: number | null }) {
   const { t } = useTranslation();
   const durationMs = entry.endedMs !== null
     ? entry.endedMs - entry.startedMs
@@ -110,15 +106,15 @@ function ActivityRow({ entry, nowMs }: RowProps) {
   }
 
   return (
-    <div className="activity-thinking">
-      <div className="activity-thinking-label t-overline">
+    <Box my="sm">
+      <Text as="div" variant="overline" tone="muted" mb="xs">
         {t('chat.activity.thinking')}
-        {durationMs !== null && <span className="t-meta"> · {formatDuration(durationMs)}</span>}
-      </div>
-      <div className="activity-thinking-text">
+        {durationMs !== null && <Text variant="meta" plainCase> · {formatDuration(durationMs)}</Text>}
+      </Text>
+      <RichText variant="notes">
         <ReactMarkdown remarkPlugins={[remarkGfm]}>{entry.text ?? ""}</ReactMarkdown>
-      </div>
-    </div>
+      </RichText>
+    </Box>
   );
 }
 
@@ -142,53 +138,38 @@ function liveHeadline(live: LiveActivity, elapsedMs: number, t: Translate): stri
     case "starting":
     case "done":
       return `${t('chat.activity.starting')} ${formatDuration(elapsedMs)}`;
-    default: {
-      const _exhaustive: never = live.phase;
-      return _exhaustive;
-    }
   }
 }
 
 const MAX_HEADING_LENGTH = 80;
 
 /**
- * The heading of the thinking that is streaming in. Reasoning summaries arrive as paragraphs,
- * often opening with a bold or hashed title line. The latest title wins; without one, the
- * first line of the latest paragraph is used. Null while nothing readable has arrived.
+ * The heading of the thinking that is streaming in: the latest paragraph that opens with a bold
+ * or hashed title line, or else the first line of the latest paragraph. Null while the text has
+ * no readable line.
  */
 function thinkingHeading(text: string): string | null {
   const paragraphs = text.split(/\n\s*\n/).map(paragraph => paragraph.trim()).filter(Boolean);
-  if (paragraphs.length === 0) {
-    return null;
-  }
+  if (paragraphs.length === 0) return null;
   const isTitle = (line: string) => /^(#{1,6}\s+\S|\*\*[^*]+\*\*$)/.test(line);
   const titled = [...paragraphs].reverse().find(paragraph => isTitle(paragraph.split("\n")[0].trim()));
   const source = titled ?? paragraphs[paragraphs.length - 1];
   const line = source.split("\n")[0].trim().replace(/^#{1,6}\s+/, "").replace(/\*\*/g, "").trim();
-  if (line.length === 0) {
-    return null;
-  }
+  if (line.length === 0) return null;
   return line.length > MAX_HEADING_LENGTH ? `${line.slice(0, MAX_HEADING_LENGTH - 1).trimEnd()}…` : line;
 }
 
 function doneHeadline(summary: MessageActivityDto, thinkingCount: number, toolCount: number, t: Translate): string {
   const parts: string[] = [];
-  if (thinkingCount > 0 && summary.thinkingMs > 0) {
-    parts.push(t('chat.activity.thoughtFor', { duration: formatDuration(summary.thinkingMs) }));
-  }
-  if (toolCount > 0) {
-    parts.push(t('chat.activity.toolCalls', { count: toolCount }));
-  }
-  if (parts.length === 0) {
-    return t('chat.activity.generatedIn', { duration: formatDuration(summary.totalMs) });
-  }
-  parts.push(formatDuration(summary.totalMs));
-  return parts.join(' · ');
+  if (thinkingCount > 0 && summary.thinkingMs > 0) parts.push(t('chat.activity.thoughtFor', { duration: formatDuration(summary.thinkingMs) }));
+  if (toolCount > 0) parts.push(t('chat.activity.toolCalls', { count: toolCount }));
+  if (parts.length === 0) return t('chat.activity.generatedIn', { duration: formatDuration(summary.totalMs) });
+  return [...parts, formatDuration(summary.totalMs)].join(' · ');
 }
 
 /**
- * Server time is only known at each chunk. Between chunks the counter keeps moving from the
- * last known point using the local clock, so a long tool call still visibly counts up.
+ * The elapsed time of a live message: the server time of the last chunk plus the local time
+ * since that chunk arrived, updated every half second.
  */
 function useLiveElapsed(live: LiveActivity | null): number {
   const [now, setNow] = useState<number | null>(null);

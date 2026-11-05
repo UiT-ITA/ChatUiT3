@@ -18,6 +18,9 @@ import Button from '../common/Button';
 import IconButton from '../common/IconButton';
 import Stack from '../common/Stack';
 import Grid from '../common/Grid';
+import Text from '../common/Text';
+import StickyActionBar from '../common/StickyActionBar';
+import FileDrop from '../common/FileDrop';
 import { allowsTransparency, customSizeProblems, fileProblem, sideRange, type RuleProblem } from './imageFormRules';
 
 const AUTO_SIZE = 'auto';
@@ -51,12 +54,12 @@ const FilePicker: React.FC<{
       <Stack gap="xs">
         {files.map((file, index) => (
           <Stack key={`${file.name}-${index}`} direction="row" gap="sm" align="center">
-            <span className="t-body generate-file-name">{file.name}</span>
+            <Text variant="body" breakWord>{file.name}</Text>
             <IconButton icon="close" size="small" label={t('generate.remove')} onClick={() => onChange(files.filter((_, i) => i !== index))} />
           </Stack>
         ))}
-        <input
-          type="file"
+        <FileDrop
+          label={multiple ? t('generate.image.addFiles') : t('generate.image.attachFile')}
           accept={accept}
           multiple={multiple}
           onChange={(event) => {
@@ -210,28 +213,30 @@ const ImageGenerationForm: React.FC<ImageGenerationFormProps> = ({ models }) => 
         ))}
       </Select>
 
-      <Stack gap="sm">
-        <TextArea
-          label={t('generate.prompt')}
-          description={caps.maxPromptCharacters !== null ? t('generate.promptCount', { count: prompt.length, max: caps.maxPromptCharacters }) : undefined}
-          error={promptTooLong ? t('generate.promptTooLong', { max: caps.maxPromptCharacters }) : undefined}
-          placeholder={t('generate.promptPlaceholder')}
-          value={prompt}
-          onChange={editPrompt}
-          rows={4}
-          disabled={refining}
-        />
-        <Stack direction="row" gap="xs" wrap>
-          <Button variant="ghost" size="small" startIcon="edit" onClick={handleRefine} disabled={!prompt.trim() || submitting} loading={refining}>
-            {t('generate.refinePrompt')}
-          </Button>
-          {unrefinedPrompt !== null && (
-            <Button variant="ghost" size="small" startIcon="back" onClick={undoRefine}>
-              {t('generate.undoRefine')}
+      <TextArea
+        label={t('generate.prompt')}
+        labelAside={(
+          <Stack direction="row" gap="xs" wrap justify="end" align="center">
+            {caps.maxPromptCharacters !== null && (
+              <Text variant="caption" tone="muted" mr="xs">{t('generate.promptCount', { count: prompt.length, max: caps.maxPromptCharacters })}</Text>
+            )}
+            <Button variant="ghost" size="small" startIcon="edit" onClick={handleRefine} disabled={!prompt.trim() || submitting} loading={refining}>
+              {t('generate.refinePrompt')}
             </Button>
-          )}
-        </Stack>
-      </Stack>
+            {unrefinedPrompt !== null && (
+              <Button variant="ghost" size="small" startIcon="back" onClick={undoRefine}>
+                {t('generate.undoRefine')}
+              </Button>
+            )}
+          </Stack>
+        )}
+        error={promptTooLong ? t('generate.promptTooLong', { max: caps.maxPromptCharacters }) : undefined}
+        placeholder={t('generate.promptPlaceholder')}
+        value={prompt}
+        onChange={editPrompt}
+        rows={4}
+        disabled={refining}
+      />
 
       {editing && (
         <FilePicker
@@ -270,12 +275,12 @@ const ImageGenerationForm: React.FC<ImageGenerationFormProps> = ({ models }) => 
       )}
 
       {isEdit && !showSettings && (
-        <p className="t-caption">{t('generate.image.editTakesPromptOnly')}</p>
+        <Text as="p" variant="caption">{t('generate.image.editTakesPromptOnly')}</Text>
       )}
 
       {showSettings && (
         <>
-          <Grid minColumnWidth="12rem" gap="lg">
+          <Grid gap="lg">
             <Select label={t('generate.image.size')} value={size} onChange={setSize}>
               {caps.supportsAutoSize && <option value={AUTO_SIZE}>{t('generate.image.sizeAuto')}</option>}
               {caps.sizePresets.map(preset => (
@@ -411,11 +416,12 @@ const ImageGenerationForm: React.FC<ImageGenerationFormProps> = ({ models }) => 
         </>
       )}
 
-      <div>
+      <StickyActionBar>
+        {!prompt.trim() && !submitting && <Text variant="caption" tone="secondary" minWidth="0">{t('generate.image.promptRequired')}</Text>}
         <Button variant="primary" startIcon="image" onClick={handleSubmit} disabled={!canSubmit} loading={submitting}>
           {isEdit ? t('generate.image.edit') : t('generate.image.generate')}
         </Button>
-      </div>
+      </StickyActionBar>
     </Stack>
   );
 };

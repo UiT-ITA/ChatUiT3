@@ -1,0 +1,51 @@
+/* A titled section: a heading with an optional action, then its items in a framed panel */
+.panel-section {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-sm);
+}
+
+.panel-section__header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--space-md);
+}
+
+.panel-section__heading {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-xs);
+}
+.panel-section__title {
+  margin: 0;
+  color: var(--text);
+}
+.panel-section__description {
+  margin: 0;
+  color: var(--text-3);
+  line-height: var(--lh-base);
+}
+
+.panel-section__items {
+  min-height: var(--size-3xs);
+  padding: var(--space-sm);
+  border: var(--border-sm) solid var(--line);
+  border-radius: var(--radius-md);
+  background: var(--panel);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-sm);
+}
+
+@media (width <= 50rem) {
+  .panel-section__header {
+    flex-direction: column;
+    align-items: stretch;
+  }
+}
+
+.panel-section--dimmed .panel-section__heading,
+.panel-section--dimmed .panel-section__items {
+  opacity: var(--opacity-muted);
+}

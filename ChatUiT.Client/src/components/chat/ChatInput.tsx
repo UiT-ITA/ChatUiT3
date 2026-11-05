@@ -1,16 +1,18 @@
-import './ChatInput.css';
 import { useState, useRef, useEffect } from 'react';
 import { useSignals } from '@preact/signals-react/runtime';
 import { useTranslation } from 'react-i18next';
 import { sendMessage, sendNewChatMessage, deleteChat, getCurrentChatId, getCurrentAssistantId, getChat, cancelGeneration, forgetChat } from '../../services/chatService';
 import { removeCachedChat } from '../../hooks/useChatCache';
 import { FileProcessingService } from '../../services/fileProcessingService';
-import AssistantSelector from '../common/AssistantSelector';
-import useNarrowerThan from '../../hooks/useNarrowerThan';
+import AssistantSelector from './AssistantSelector';
+import { parseRoute } from '../../utils/routes';
 import ChatClassification from './ChatClassification';
-import Popover, { PopoverBody } from '../common/Popover';
+import Popover, { PopoverBody, PopoverGroup } from '../common/Popover';
 import IconButton from '../common/IconButton';
-import ContextRing from './ContextRing';
+import ProgressRing from '../common/ProgressRing';
+import Box from '../common/Box';
+import Stack from '../common/Stack';
+import Text from '../common/Text';
 import ContextUsageDetails from './ContextUsageDetails';
 import FileThumbnail from './FileThumbnail';
 import type { ChatFile } from '../../types/fileModels';
@@ -22,13 +24,10 @@ import { formatTokens, formatTokensCompact } from '../../utils/tokenCounting';
 import TextArea from '../common/TextArea';
 import InteractionCard from './interaction/InteractionCard';
 import { useInteractionDock } from '../../hooks/useInteractionDock';
+import './Composer.css';
 
 const DRAFT_COUNT_DEBOUNCE_MS = 150;
-
-function isNewChatPath(pathname: string): boolean {
-  const parts = pathname.split('/').filter(Boolean);
-  return parts.length === 0 || (parts[0] === 'chat' && (parts.length === 1 || parts[1] === 'new'));
-}
+const DISCLAIMER_KEY = 'chatuit-disclaimer-dismissed';
 
 export default function ChatInput() {
   useSignals();
@@ -40,71 +39,73 @@ export default function ChatInput() {
   const [charCount, setCharCount] = useState(0);
   const [isCancelling, setIsCancelling] = useState(false);
   const [isDragOver, setIsDragOver] = useState(false);
+  // The disclaimer stays dismissed in this browser. Shown when the storage cannot be read.
+  const [disclaimerDismissed, setDisclaimerDismissed] = useState(() => {
+    try {
+      return localStorage.getItem(DISCLAIMER_KEY) === 'true';
+    } catch {
+      return false;
+    }
+  });
   const fileInputRef = useRef<HTMLInputElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
-  const composerRef = useRef<HTMLFormElement>(null);
-  // Below 30rem the toolbar shows only icons and its popovers span the toolbar
-  const narrow = useNarrowerThan(composerRef, 30);
   const draftDebounceRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
 
-  // What was last sent per chat, so a cancel can put it straight back in the composer.
-  // A ref, not state: the composer never unmounts, and this must not trigger renders.
+  // What was last sent per chat, put back in the composer when its generation is cancelled
   const lastSentRef = useRef(new Map<string, { text: string; files: ChatFile[] }>());
 
-  const currentChatId = getCurrentChatId();
   const currentAssistantId = getCurrentAssistantId();
-  const chatId = currentChatId.value;
+  const chatId = getCurrentChatId().value;
 
-  // Same source of truth ChatMessage uses: the assistant message the server marked Generating.
-  const chatSignal = chatId !== undefined ? getChat(chatId) : undefined;
-  const chat = chatSignal?.value;
-  const generatingMessage = chat?.messages.find(
-    m => m.role === 'Assistant' && m.status === 'Generating'
-  );
+  // The assistant message the server marked Generating
+  const chat = chatId !== undefined ? getChat(chatId).value : undefined;
+  const generatingMessage = chat?.messages.find(m => m.role === 'Assistant' && m.status === 'Generating');
   const isGenerating = generatingMessage !== undefined;
   const dock = useInteractionDock(chatId);
 
   const usage = getContextUsage(chatId).value;
+  const contextFraction = usage.contextSize > 0 ? usage.total / usage.contextSize : 0;
 
-  // Attachments change rarely and cost the most, so they recount at once; typing is debounced.
+
+  // Recounts the draft at once when the attachments change. Typing is counted after a debounce.
   useEffect(() => {
     clearTimeout(draftDebounceRef.current);
     setDraft(textareaRef.current?.value ?? '', selectedFiles);
   }, [selectedFiles]);
 
-  const scheduleDraftCount = (text: string) => {
-    clearTimeout(draftDebounceRef.current);
-    draftDebounceRef.current = setTimeout(() => setDraft(text, selectedFiles), DRAFT_COUNT_DEBOUNCE_MS);
-  };
-
-  // Keyed on the path, not the chat id: the composer never unmounts, and coming
-  // back from /admin or /settings to a new chat leaves the chat id undefined both
-  // before and after — so a chat-id dep would never fire.
+  // Focuses the message box on every path change
   useEffect(() => {
     textareaRef.current?.focus();
   }, [location.pathname]);
 
+  const dismissDisclaimer = () => {
+    setDisclaimerDismissed(true);
+    try {
+      localStorage.setItem(DISCLAIMER_KEY, 'true');
+    } catch {
+      // Stays dismissed until the page reloads
+    }
+  };
+
+  const fillComposer = (text: string, files: ChatFile[]) => {
+    if (textareaRef.current) textareaRef.current.value = text;
+    setCharCount(text.length);
+    setSelectedFiles(files);
+    clearTimeout(draftDebounceRef.current);
+    setDraft(text, files);
+    textareaRef.current?.focus();
+  };
+
   const handleSendMessage = async (e: React.FormEvent) => {
     e.preventDefault();
-
-    // While a response is generating the composer shows Cancel, but Enter still submits.
-    if (isGenerating) {
-      return;
-    }
-
-    if (chatId !== undefined && chat === undefined) {
-      return;
-    }
+    // Sends nothing while a response is generating or the chat is loading
+    if (isGenerating || (chatId !== undefined && chat === undefined)) return;
 
     const message = textareaRef.current?.value?.trim() || '';
-
-    if (!message && selectedFiles.length === 0) {
-      console.warn('No message or files to send');
-      return;
-    }
+    if (!message && selectedFiles.length === 0) return;
 
     const sentFiles = selectedFiles;
-    handleCleanup();
+    fillComposer('', []);
 
     let newChatId: string | undefined;
     try {
@@ -115,9 +116,9 @@ export default function ChatInput() {
         await sendNewChatMessage(message, sentFiles, currentAssistantId.value!, (createdChatId) => {
           newChatId = createdChatId;
           lastSentRef.current.set(createdChatId, { text: message, files: sentFiles });
-          if (isNewChatPath(window.location.pathname)) {
-            navigate('/chat/' + createdChatId);
-          }
+          // Opens the new chat while a new chat path is still shown: /, /chat and /chat/new
+          const route = parseRoute(window.location.pathname);
+          if (route.section === 'chats' && route.chatId === undefined) navigate('/chat/' + createdChatId);
         });
       }
     } catch (error) {
@@ -129,63 +130,29 @@ export default function ChatInput() {
           deleteChat(newChatId).catch(() => {});
         }
       }
-      restoreComposer(message, sentFiles);
+      fillComposer(message, sentFiles);
     }
-  };
-
-  const restoreComposer = (text: string, files: ChatFile[]) => {
-    if (textareaRef.current) {
-      textareaRef.current.value = text;
-    }
-    setCharCount(text.length);
-    setSelectedFiles(files);
-    setDraft(text, files);
-    textareaRef.current?.focus();
   };
 
   const handleCancel = async () => {
-    if (chatId === undefined || !generatingMessage || isCancelling) {
-      return;
-    }
-
+    if (chatId === undefined || !generatingMessage || isCancelling) return;
     setIsCancelling(true);
-
     try {
       const { cancelled, undone } = await cancelGeneration(chatId, generatingMessage.id);
+      // Leaves the composer as it is when the generation finished first, or when the message keeps what it had
+      if (!cancelled || !undone) return;
 
-      // Already finished before the click landed, or a message that continued after waiting and
-      // keeps what it had — the chat stands, leave the composer alone.
-      if (!cancelled || !undone) {
-        return;
-      }
-
-      // The server deleted both messages, so put the send back exactly as it was.
-      // Without a snapshot (a page reload since sending) the text is still recoverable
-      // from the chat itself; the attachments are not.
+      // Both messages are deleted: puts back the sent text and attachments, or without a snapshot the text of the last user message
       const snapshot = lastSentRef.current.get(chatId);
-      const cancelledUserMessage = [...(chat?.messages ?? [])]
-        .reverse()
-        .find(m => m.role === 'User');
-      const text = snapshot?.text ?? cancelledUserMessage?.content ?? '';
-
-      if (textareaRef.current) {
-        textareaRef.current.value = text;
-      }
-      setCharCount(text.length);
-      setSelectedFiles(snapshot?.files ?? []);
-      setDraft(text, snapshot?.files ?? []);
+      const cancelledUserMessage = [...(chat?.messages ?? [])].reverse().find(m => m.role === 'User');
+      fillComposer(snapshot?.text ?? cancelledUserMessage?.content ?? '', snapshot?.files ?? []);
       lastSentRef.current.delete(chatId);
 
-      // The server drops a chat left with no messages, so leave it behind here too.
-      const survivingMessages = (chat?.messages ?? []).filter(
-        m => m.id !== generatingMessage.id && m.id !== cancelledUserMessage?.id
-      );
-      if (survivingMessages.length === 0) {
+      // Leaves and forgets a chat that has no messages left
+      if ((chat?.messages ?? []).every(m => m.id === generatingMessage.id || m.id === cancelledUserMessage?.id)) {
         navigate('/');
         forgetChat(chatId);
       }
-
-      textareaRef.current?.focus();
     } catch (error) {
       console.error('Failed to cancel generation:', error);
     } finally {
@@ -193,146 +160,65 @@ export default function ChatInput() {
     }
   };
 
-  const handleCleanup = () => {
-    if (textareaRef.current) {
-      textareaRef.current.value = '';
-    }
-    setSelectedFiles([]);
-    setCharCount(0);
-    clearTimeout(draftDebounceRef.current);
-    setDraft('', []);
-
-    if (textareaRef.current) {
-      textareaRef.current.focus();
-    }
-  }
-
-  const handleKeyDown = (e: React.KeyboardEvent) => {
-    if (e.key === 'Enter' && !e.shiftKey) {
-      e.preventDefault();
-      handleSendMessage(e);
-    }
-  };
-
-  const handleFileUpload = () => {
-    fileInputRef.current?.click();
-  };
-
   const addFiles = async (files: File[]) => {
-    const fileArray = files.filter(file => isValidFileType(file));
+    const valid = files.filter(file => isValidFileType(file));
+    files.filter(file => !isValidFileType(file)).forEach(file => addNotification({
+      level: 'Warning',
+      message: `${file.name}: ${t('files.typeNotSupported')}`
+    }));
+    if (valid.length === 0) return;
 
-    files
-      .filter(file => !isValidFileType(file))
-      .forEach(file => addNotification({
-        level: 'Warning',
-        message: `${file.name}: ${t('files.typeNotSupported')}`
-      }));
-
-    if (fileArray.length === 0) {
-      return;
-    }
-
-    const conversionResults = await Promise.allSettled(
-      fileArray.map(file => FileProcessingService.processFile(file))
-    );
-
-    const convertedFiles = conversionResults.flatMap((result) => {
-      return result.status === 'fulfilled' ? [result.value] : [];
-    });
-
-    conversionResults.forEach((result, index) => {
-      if (result.status !== 'rejected') {
-        return;
-      }
-
-      const file = fileArray[index];
-      if (!file) {
-        return;
-      }
-
+    const results = await Promise.allSettled(valid.map(file => FileProcessingService.processFile(file)));
+    results.forEach((result, index) => {
+      if (result.status !== 'rejected') return;
       const reason = result.reason instanceof Error ? result.reason.message : 'File processing failed';
-      console.error(`Failed to process file ${file.name}:`, result.reason);
-      addNotification({
-        level: 'Error',
-        message: `${file.name}: ${reason}`
-      });
+      console.error(`Failed to process file ${valid[index].name}:`, result.reason);
+      addNotification({ level: 'Error', message: `${valid[index].name}: ${reason}` });
     });
-
-    setSelectedFiles(prev => [...prev, ...convertedFiles].slice(0, 10));
+    setSelectedFiles(prev => [...prev, ...results.flatMap(result => result.status === 'fulfilled' ? [result.value] : [])].slice(0, 10));
   };
-
-  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    await addFiles(Array.from(e.target.files ?? []));
-    e.target.value = '';
-  };
-
-  const handlePaste = (e: React.ClipboardEvent) => {
-    const files = Array.from(e.clipboardData.files);
-    if (files.length === 0) {
-      return;
-    }
-    e.preventDefault();
-    void addFiles(files);
-  };
-
-  const hasDraggedFiles = (e: React.DragEvent) => e.dataTransfer.types.includes('Files');
 
   const handleDragOver = (e: React.DragEvent) => {
-    if (!hasDraggedFiles(e)) {
-      return;
-    }
+    if (!e.dataTransfer.types.includes('Files')) return;
     e.preventDefault();
     e.dataTransfer.dropEffect = 'copy';
     setIsDragOver(true);
   };
 
-  const handleDragLeave = (e: React.DragEvent) => {
-    if (e.currentTarget.contains(e.relatedTarget as Node | null)) {
-      return;
-    }
-    setIsDragOver(false);
-  };
-
   const handleDrop = (e: React.DragEvent) => {
     setIsDragOver(false);
-    if (!hasDraggedFiles(e)) {
-      return;
-    }
+    if (!e.dataTransfer.types.includes('Files')) return;
     e.preventDefault();
     void addFiles(Array.from(e.dataTransfer.files));
     textareaRef.current?.focus();
   };
 
-  const removeFile = (index: number) => {
-    setSelectedFiles(prev => prev.filter((_, i) => i !== index));
-  };
-
   return (
-    <div className="chat-input">
+    <div className="composer-dock">
       <div className="composer">
         <form
-          ref={composerRef}
           className="composer-card"
+          data-drop-active={isDragOver || undefined}
           onSubmit={handleSendMessage}
           onDragEnter={handleDragOver}
           onDragOver={handleDragOver}
-          onDragLeave={handleDragLeave}
+          onDragLeave={e => {
+            if (!e.currentTarget.contains(e.relatedTarget as Node | null)) setIsDragOver(false);
+          }}
           onDrop={handleDrop}
-          data-drop-active={isDragOver || undefined}
         >
           <InteractionCard dock={dock} />
 
           {selectedFiles.length > 0 && (
-            <div className="composer-file-previews">
+            <Stack direction="row" wrap gap="sm" pt="md" px="md">
               {selectedFiles.map((file, index) => (
                 <FileThumbnail
                   key={`${file.id}-${index}`}
                   file={file}
-                  onRemove={() => removeFile(index)}
-                  showRemoveButton={true}
+                  onRemove={() => setSelectedFiles(prev => prev.filter((_, i) => i !== index))}
                 />
               ))}
-            </div>
+            </Stack>
           )}
 
           <TextArea
@@ -340,87 +226,99 @@ export default function ChatInput() {
             variant="unstyled"
             size="large"
             autoResize
-            minRows={2}
+            minRows={1}
             maxRows={6}
             placeholder={t('chat.messagePlaceholder')}
-            onKeyDown={handleKeyDown}
-            onPaste={handlePaste}
+            onKeyDown={e => {
+              if (e.key === 'Enter' && !e.shiftKey) {
+                e.preventDefault();
+                handleSendMessage(e);
+              }
+            }}
+            onPaste={e => {
+              const files = Array.from(e.clipboardData.files);
+              if (files.length === 0) return;
+              e.preventDefault();
+              void addFiles(files);
+            }}
             onChange={(value) => {
               setCharCount(value.length);
-              scheduleDraftCount(value);
+              clearTimeout(draftDebounceRef.current);
+              draftDebounceRef.current = setTimeout(() => setDraft(value, selectedFiles), DRAFT_COUNT_DEBOUNCE_MS);
             }}
           />
 
+          {/* The toolbar's popovers open one at a time */}
           <div className="composer-toolbar">
-            <IconButton
-              icon="attach"
-              label={t('chat.attachFile')}
-              variant="subtle"
-              size="small"
-              onClick={handleFileUpload}
-            />
-            <AssistantSelector compact={narrow} />
-            <ChatClassification popoverAnchor={narrow ? 'parent' : 'trigger'} />
-            <div className="composer-spacer" />
-            {usage.available ? (
-              <Popover
-                openOn="hover"
-                placement="top-end"
-                anchor={narrow ? 'parent' : 'trigger'}
-                panelWidth="large"
-                trigger={(
-                  <IconButton
-                    icon={<ContextRing fraction={usage.contextSize > 0 ? usage.total / usage.contextSize : 0} level={usage.level} />}
-                    label={t('chat.contextHint', {
-                      used: formatTokens(usage.total, i18n.language),
-                      limit: formatTokensCompact(usage.contextSize, i18n.language),
-                    })}
-                    size="small"
-                  />
-                )}
-                title={t('chat.panel.context')}
-              >
-                <PopoverBody>
-                  <ContextUsageDetails usage={usage} />
-                </PopoverBody>
-              </Popover>
-            ) : charCount > 0 && (
-              <div className="composer-char-count t-meta">{t('chat.charCount', { count: charCount })}</div>
-            )}
-            {isGenerating ? (
-              <IconButton
-                icon="stop"
-                label={t('chat.cancelGeneration')}
-                variant="primary"
-                size="small"
-                onClick={handleCancel}
-                disabled={isCancelling || generatingMessage?.optimistic}
-              />
-            ) : (
-              <IconButton
-                type="submit"
-                icon="send"
-                label={t('chat.sendMessage')}
-                variant="primary"
-                size="small"
-              />
-            )}
+            <PopoverGroup>
+              <IconButton icon="attach" label={t('chat.attachFile')} variant="subtle" size="small" onClick={() => fileInputRef.current?.click()} />
+              <AssistantSelector />
+              <ChatClassification />
+              <Box grow />
+              {usage.available ? (
+                <Popover
+                  openOn="hover"
+                  placement="top-end"
+                  panelWidth="large"
+                  trigger={(
+                    <IconButton
+                      icon={<ProgressRing fraction={contextFraction} state={usage.level} />}
+                      label={t('chat.contextHint', {
+                        used: formatTokens(usage.total, i18n.language),
+                        limit: formatTokensCompact(usage.contextSize, i18n.language),
+                      })}
+                      size="small"
+                      tooltip={false}
+                    />
+                  )}
+                  title={t('chat.panel.context')}
+                >
+                  <PopoverBody>
+                    <ContextUsageDetails usage={usage} />
+                  </PopoverBody>
+                </Popover>
+              ) : charCount > 0 && (
+                <Text as="div" variant="hint" tone="muted" wrap="nowrap" mr="sm">{t('chat.charCount', { count: charCount })}</Text>
+              )}
+              {isGenerating ? (
+                <IconButton
+                  icon="stop"
+                  label={t('chat.cancelGeneration')}
+                  variant="primary"
+                  size="small"
+                  onClick={handleCancel}
+                  disabled={isCancelling || generatingMessage?.optimistic}
+                />
+              ) : (
+                <IconButton
+                  type="submit"
+                  icon="send"
+                  label={t('chat.sendMessage')}
+                  variant={charCount === 0 && selectedFiles.length === 0 ? 'outline' : 'primary'}
+                  size="small"
+                />
+              )}
+            </PopoverGroup>
           </div>
 
           <input
             type="file"
             ref={fileInputRef}
-            onChange={handleFileChange}
-            style={{ display: 'none' }}
+            onChange={async e => {
+              await addFiles(Array.from(e.target.files ?? []));
+              e.target.value = '';
+            }}
+            hidden
             multiple
             accept={SUPPORTED_IMPORT_ACCEPT}
           />
         </form>
-
-        <div className="composer-hints t-hint">
-          <span className="composer-hint-keys">{t('chat.enterHint')}</span>
-          <span>{t('chat.disclaimer')}</span>
-        </div>
+        {!disclaimerDismissed && (
+          <div className="composer-disclaimer t-hint">
+            <span>{t('chat.disclaimer')}</span>
+            <IconButton className="composer-disclaimer__dismiss" icon="close" label={t('common.close')} size="xs" onClick={dismissDisclaimer} />
+          </div>
+        )}
       </div>
     </div>
   );

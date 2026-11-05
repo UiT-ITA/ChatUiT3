@@ -1,54 +1,55 @@
-import { useState } from 'react';
+import { useLayoutEffect, useRef, useState } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import type { IconName } from '../common/Icon';
 import IconButton from '../common/IconButton';
+import { Rail, RailAvatar, RailButton, RailGap, RailMenuButton, RailMenuHeader, RailSeal, RailSpacer } from './AppShell';
 import Popover from '../common/Popover';
 import { Menu, MenuItem, MenuDivider } from '../common/Menu';
 import { useAuth } from '../../hooks/useAuth';
 import { useSettings } from '../../hooks/useSettings';
 import { resolveMode } from '../../utils/themeUtils';
-import useMediaQuery from '../../hooks/useMediaQuery';
-import './IconRail.css';
+import { NEW_CHAT_PATH, parseRoute, sectionPath } from '../../utils/routes';
 
-interface IconRailProps {
-  isMobile?: boolean;
-}
-
+// The first letters of the first and the last word, split on spaces and commas as in "Lastname, Firstname"
 function getInitials(name: string | undefined | null): string {
-  if (!name) return '?';
-  const parts = name.split(/[\s,]+/).filter(Boolean);
-  if (parts.length === 0) return '?';
-  // MSAL names may come as "Lastname, Firstname"
-  const first = parts[0][0] || '';
-  const last = parts.length > 1 ? parts[parts.length - 1][0] || '' : '';
-  return (first + last).toUpperCase();
+  const parts = (name ?? '').split(/[\s,]+/).filter(Boolean);
+  return parts.length === 0 ? '?' : (parts[0][0] + (parts.length > 1 ? parts[parts.length - 1][0] : '')).toUpperCase();
 }
 
-const IconRail = ({ isMobile }: IconRailProps) => {
+const IconRail = ({ isMobile }: { isMobile?: boolean }) => {
   const { t } = useTranslation();
   const navigate = useNavigate();
-  const location = useLocation();
+  const { section, newChat } = parseRoute(useLocation().pathname);
   const { isAdmin, isAuthenticated, account, login, logout } = useAuth();
   const { settings, updateSetting } = useSettings();
   const [userMenuOpen, setUserMenuOpen] = useState(false);
-  // A top bar too narrow for every icon keeps only the main sections and moves the rest into the menu
-  const compact = useMediaQuery('(max-width: 27.5rem)') && !!isMobile;
+  const railRef = useRef<HTMLElement>(null);
+  const [compact, setCompact] = useState(false);
 
-  const section = location.pathname.startsWith('/assistants') ? 'assistants'
-    : location.pathname.startsWith('/generate') ? 'generate'
-    : location.pathname.startsWith('/admin') ? 'admin'
-    : location.pathname.startsWith('/settings') ? 'settings'
-    : location.pathname.startsWith('/help') ? 'help'
-    : location.pathname.startsWith('/status') ? 'status'
-    : 'chats';
+  // A top bar too narrow for every icon keeps only the main sections and moves the rest into the menu.
+  // When the icons it shows change, the bar returns to full form and measures its full width again.
+  const contentKey = `${isMobile}|${isAdmin}`;
+  const [measuredKey, setMeasuredKey] = useState(contentKey);
+  if (measuredKey !== contentKey) {
+    setMeasuredKey(contentKey);
+    setCompact(false);
+  }
 
-  const toggleMode = () => {
-    const darkNow = resolveMode(settings.mode) === 'dark';
-    updateSetting('mode', darkNow ? 'light' : 'dark');
-  };
+  useLayoutEffect(() => {
+    const element = railRef.current;
+    if (!element || !isMobile) return;
+    const fullWidth = element.scrollWidth;
+    const observer = new ResizeObserver(() => setCompact(element.clientWidth < fullWidth));
+    observer.observe(element);
+    return () => observer.disconnect();
+  }, [isMobile, measuredKey]);
+
+  // Active in the chats section, except on a new chat on mobile, where the new chat button is active
+  const chatsActive = section === 'chats' && !(isMobile && newChat);
 
   const darkNow = resolveMode(settings.mode) === 'dark';
+  const toggleMode = () => updateSetting('mode', darkNow ? 'light' : 'dark');
 
   const go = (path: string) => {
     navigate(path);
@@ -58,37 +59,37 @@ const IconRail = ({ isMobile }: IconRailProps) => {
   // Rail buttons after the main sections; a compact top bar lists them in the menu instead
   const secondaryItems: { key: string; icon: IconName; title: string; menuLabel: string; active: boolean; onClick: () => void }[] = [
     ...(import.meta.env.DEV
-      ? [{ key: 'status', icon: 'info' as IconName, title: t('sidebar.status'), menuLabel: t('sidebar.status'), active: section === 'status', onClick: () => go('/status') }]
+      ? [{ key: 'status', icon: 'pulse' as IconName, title: t('sidebar.status'), menuLabel: t('sidebar.status'), active: section === 'status', onClick: () => go(sectionPath('status')) }]
       : []),
-    { key: 'help', icon: 'help', title: t('sidebar.help'), menuLabel: t('sidebar.help'), active: section === 'help', onClick: () => go('/help') },
+    { key: 'help', icon: 'help', title: t('sidebar.help'), menuLabel: t('sidebar.help'), active: section === 'help', onClick: () => go(sectionPath('help')) },
     { key: 'mode', icon: darkNow ? 'sun' : 'moon', title: t('sidebar.toggleMode'), menuLabel: t(darkNow ? 'sidebar.lightMode' : 'sidebar.darkMode'), active: false, onClick: toggleMode },
-    { key: 'settings', icon: 'settings', title: t('sidebar.settings'), menuLabel: t('sidebar.settings'), active: section === 'settings', onClick: () => go('/settings') },
+    { key: 'settings', icon: 'settings', title: t('sidebar.settings'), menuLabel: t('sidebar.settings'), active: section === 'settings', onClick: () => go(sectionPath('settings')) },
   ];
 
   return (
-    <nav className={`icon-rail ${isMobile ? 'icon-rail-mobile' : ''}`}>
-      {!isMobile && (
-        <img
-          className="rail-seal"
-          src={darkNow ? '/chatuit-logo.svg' : '/chatuit-logo-darkblue.svg'}
-          alt="UiT"
-          title="ChatUiT"
-        />
+    <Rail ref={railRef} mobile={!!isMobile}>
+      <RailSeal
+        src={darkNow ? '/chatuit-logo.svg' : '/chatuit-logo-darkblue.svg'}
+        alt="UiT"
+        title="ChatUiT"
+      />
+
+      {!isMobile && <RailGap />}
+
+      {isMobile && (
+        <RailButton icon="chatNew" label={t('navigation.newChat')} active={newChat} onClick={() => go(NEW_CHAT_PATH)} />
       )}
-
-      {!isMobile && <div className="rail-gap" />}
-
-      <IconButton iconSize="xl" icon="chatNew" label={t('sidebar.chats')} active={section === 'chats'} onClick={() => go('/')} />
-      <IconButton iconSize="xl" icon="assistants" label={t('sidebar.assistants')} active={section === 'assistants'} onClick={() => go('/assistants')} />
-      <IconButton iconSize="xl" icon="image" label={t('sidebar.generate')} active={section === 'generate'} onClick={() => go('/generate')} />
+      <RailButton icon={isMobile ? 'chat' : 'chatNew'} label={t('sidebar.chats')} active={chatsActive} onClick={() => go(isMobile ? sectionPath('chats') : '/')} />
+      <RailButton icon="assistants" label={t('sidebar.assistants')} active={section === 'assistants'} onClick={() => go(sectionPath('assistants'))} />
+      <RailButton icon="image" label={t('sidebar.generate')} active={section === 'generate'} onClick={() => go(sectionPath('generate'))} />
       {isAdmin && (
-        <IconButton iconSize="xl" icon="admin" label={t('sidebar.admin')} active={section === 'admin'} onClick={() => go('/admin')} />
+        <RailButton icon="admin" label={t('sidebar.admin')} active={section === 'admin'} onClick={() => go(sectionPath('admin'))} />
       )}
 
-      <div className="rail-spacer" />
+      <RailSpacer />
 
       {!compact && secondaryItems.map(item => (
-        <IconButton iconSize="xl" key={item.key} icon={item.icon} label={item.title} active={item.active} onClick={item.onClick} />
+        <RailButton key={item.key} icon={item.icon} label={item.title} active={item.active} onClick={item.onClick} />
       ))}
 
       <Popover
@@ -97,29 +98,27 @@ const IconRail = ({ isMobile }: IconRailProps) => {
         placement={isMobile ? 'bottom-end' : 'right-end'}
         panelWidth="medium"
         trigger={compact ? (
-          <IconButton iconSize="xl" icon="menu" label={t('navigation.menu')} active={userMenuOpen} />
+          <RailMenuButton iconSize="lg" icon="menu" label={t('navigation.menu')} tooltipPlacement="bottom" active={userMenuOpen || secondaryItems.some(item => item.active)} />
         ) : (
           <IconButton
-            icon={<span className="rail-avatar t-label">{getInitials(account?.name)}</span>}
+            icon={<RailAvatar>{getInitials(account?.name)}</RailAvatar>}
             label={account?.name || t('sidebar.profile')}
+            tooltipPlacement={isMobile ? 'bottom' : 'right'}
           />
         )}
       >
-        <div className="rail-user-menu-header">
-          <div className="rail-user-menu-name t-body-strong">{account?.name || t('sidebar.profile')}</div>
-          {account?.username && <div className="rail-user-menu-email t-caption">{account.username}</div>}
-        </div>
+        <RailMenuHeader name={account?.name || t('sidebar.profile')} email={account?.username || undefined} />
         <Menu>
           {compact ? (
             secondaryItems.map(item => (
-              <MenuItem key={item.key} icon={item.icon} onClick={item.onClick}>
+              <MenuItem key={item.key} icon={item.icon} onClick={item.onClick} aria-current={item.active ? 'page' : undefined}>
                 {item.menuLabel}
               </MenuItem>
             ))
           ) : (
             <>
-              <MenuItem onClick={() => go('/settings')}>{t('sidebar.settings')}</MenuItem>
-              <MenuItem onClick={() => go('/help')}>{t('sidebar.help')}</MenuItem>
+              <MenuItem onClick={() => go(sectionPath('settings'))}>{t('sidebar.settings')}</MenuItem>
+              <MenuItem onClick={() => go(sectionPath('help'))}>{t('sidebar.help')}</MenuItem>
             </>
           )}
           <MenuDivider />
@@ -130,7 +129,7 @@ const IconRail = ({ isMobile }: IconRailProps) => {
           )}
         </Menu>
       </Popover>
-    </nav>
+    </Rail>
   );
 };
 

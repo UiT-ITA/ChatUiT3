@@ -1,0 +1,49 @@
+/* A scrolling conversation: a centred column of messages with a fade under the header and a sentinel at the bottom */
+.message-feed {
+  flex: 1;
+  overflow-y: auto;
+  overflow-x: hidden;
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  position: relative;
+}
+
+/* Fade at the top edge: content scrolling under the header fades out */
+.message-feed::before {
+  content: '';
+  position: sticky;
+  top: 0;
+  z-index: var(--z-sticky);
+  flex: 0 0 auto;
+  height: var(--space-md);
+  margin-bottom: calc(-1 * var(--space-md));
+  background: linear-gradient(to bottom, var(--bg), transparent);
+  pointer-events: none;
+}
+
+.message-feed__messages {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-lg);
+  max-width: var(--size-lg);
+  width: 100%;
+  margin: 0 auto;
+  padding: calc(var(--space-2xl) + var(--space-sm)) var(--space-2xl) 0;
+}
+
+/* The bottom sentinel: an empty element the small spacing step under the last message */
+.message-feed__sentinel {
+  margin-top: calc(-1 * var(--space-sm));
+}
+
+@media (width <= 50rem) {
+  .message-feed__messages {
+    padding: var(--space-2xl) var(--space-lg) 0;
+  }
+
+  /* Narrow screens: the sentinel sits the large spacing step under the last message */
+  .message-feed__sentinel {
+    margin-top: 0;
+  }
+}
