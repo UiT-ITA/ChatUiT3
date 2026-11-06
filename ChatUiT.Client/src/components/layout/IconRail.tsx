@@ -25,7 +25,7 @@ const IconRail = ({ isMobile }: { isMobile?: boolean }) => {
   const { t } = useTranslation();
   const navigate = useNavigate();
   const { section, newChat } = parseRoute(useLocation().pathname);
-  const { isAdmin, isAuthenticated, account, login, logout } = useAuth();
+  const { isAdmin, isAuthenticated, account, login, logout, canSignOut } = useAuth();
   const { settings, updateSetting } = useSettings();
   const [userMenuOpen, setUserMenuOpen] = useState(false);
   const railRef = useRef<HTMLElement>(null);
@@ -136,11 +136,18 @@ const IconRail = ({ isMobile }: { isMobile?: boolean }) => {
               <MenuItem onClick={() => go(sectionPath('help'))}>{t('sidebar.help')}</MenuItem>
             </>
           )}
-          <MenuDivider />
           {isAuthenticated ? (
-            <MenuItem danger onClick={logout}>{t('sidebar.logout')}</MenuItem>
+            canSignOut && (
+              <>
+                <MenuDivider />
+                <MenuItem danger onClick={logout}>{t('sidebar.logout')}</MenuItem>
+              </>
+            )
           ) : (
-            <MenuItem onClick={login}>{t('sidebar.login')}</MenuItem>
+            <>
+              <MenuDivider />
+              <MenuItem onClick={login}>{t('sidebar.login')}</MenuItem>
+            </>
           )}
         </Menu>
       </Popover>

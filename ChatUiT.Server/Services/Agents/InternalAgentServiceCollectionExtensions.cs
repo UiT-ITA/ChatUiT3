@@ -1,5 +1,6 @@
 using ChatUiT.Server.Services.Agents.M365;
 using ChatUiT.Server.Services.Agents.Office;
+using ChatUiT.Server.Services.Agents.Teams;
 using ChatUiT.Server.Services.Tools;
 using Microsoft.Extensions.DependencyInjection;
 
@@ -16,6 +17,7 @@ public static class InternalAgentServiceCollectionExtensions
 
         services.AddM365Toolboxes();
         services.AddInternalAgent<OfficeAgent>();
+        services.AddInternalAgent<TeamsAgent>();
 
         return services;
     }

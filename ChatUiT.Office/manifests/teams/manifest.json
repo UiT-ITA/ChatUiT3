@@ -1,0 +1,42 @@
+{
+  "$schema": "https://developer.microsoft.com/en-us/json-schemas/teams/v1.19/MicrosoftTeams.schema.json",
+  "manifestVersion": "1.19",
+  "version": "1.0.0",
+  "id": "710c5ca9-1683-4672-a752-0c5e99516620",
+  "developer": {
+    "name": "UiT",
+    "websiteUrl": "https://www.uit.no",
+    "privacyUrl": "https://www.uit.no",
+    "termsOfUseUrl": "https://www.uit.no"
+  },
+  "name": {
+    "short": "ChatUiT Dev",
+    "full": "ChatUiT Dev"
+  },
+  "description": {
+    "short": "Chat assistant using UiT AI infrastructure.",
+    "full": "The ChatUiT app as a personal app in Teams, and ChatUiT in the side panel of Teams meetings."
+  },
+  "icons": {
+    "color": "color.png",
+    "outline": "outline.png"
+  },
+  "accentColor": "#007396",
+  "staticTabs": [
+    {
+      "entityId": "chatuit",
+      "name": "ChatUiT",
+      "contentUrl": "https://localhost:54979/?host=teams",
+      "scopes": ["personal"]
+    }
+  ],
+  "configurableTabs": [
+    {
+      "configurationUrl": "https://localhost:3000/config.html",
+      "canUpdateConfiguration": false,
+      "scopes": ["groupChat"],
+      "context": ["meetingSidePanel"]
+    }
+  ],
+  "validDomains": ["localhost:54979", "localhost:3000"]
+}

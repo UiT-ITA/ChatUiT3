@@ -11,7 +11,9 @@ namespace ChatUiT.Server.Services.Agents.M365.Functions;
 
 public sealed record GetMeetingAttendanceArgs(
     [property: Description(MeetingSupport.JoinUrlDescription)]
-    string JoinUrl);
+    string? JoinUrl,
+    [property: Description(MeetingSupport.ChatIdDescription)]
+    string? ChatId);
 
 public sealed class GetMeetingAttendanceFunction : Tool<GetMeetingAttendanceArgs>
 {
@@ -24,11 +26,11 @@ public sealed class GetMeetingAttendanceFunction : Tool<GetMeetingAttendanceArgs
     public override string DisplayName => "Get meeting attendance";
     public override DataClassification Classification => DataClassification.Red;
     public override string Description => "List who joined a Teams meeting (the most recent occurrence), with join and leave times and minutes attended. Usually only available for meetings the user organized.";
-    public override IReadOnlyList<string> RequiredScopes => Scopes;
+    public override IReadOnlyList<string> RequiredScopes => [.. Scopes, .. MeetingSupport.ChatScopes];
 
     protected override async Task<ToolResult> ExecuteAsync(GetMeetingAttendanceArgs args, ToolInvocation invocation, CancellationToken ct)
     {
-        var meetingId = Uri.EscapeDataString(await MeetingSupport.FindMeetingIdAsync(_graph, invocation.Context, args.JoinUrl, Scopes, ct));
+        var meetingId = Uri.EscapeDataString(await MeetingSupport.FindMeetingIdAsync(_graph, invocation.Context, args.JoinUrl, args.ChatId, Scopes, ct));
         var reports = await _graph.GetAsync(invocation.Context, $"me/onlineMeetings/{meetingId}/attendanceReports", Scopes, ct);
 
         var latest = reports.Items().OrderByDescending(r => r.Str("meetingStartDateTime")).Select(r => r.Str("id")).FirstOrDefault();

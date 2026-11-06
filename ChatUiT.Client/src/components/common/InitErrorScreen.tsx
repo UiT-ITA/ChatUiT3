@@ -7,7 +7,8 @@ import './InitErrorScreen.css';
 interface InitErrorScreenProps {
   message?: string;
   onRetry: () => void;
-  onSignOut: () => void;
+  /** Omitted where the app cannot sign out (Teams). */
+  onSignOut?: () => void;
 }
 
 const InitErrorScreen: React.FC<InitErrorScreenProps> = ({ message, onRetry, onSignOut }) => {
@@ -20,9 +21,11 @@ const InitErrorScreen: React.FC<InitErrorScreenProps> = ({ message, onRetry, onS
         <Button variant="primary" onClick={onRetry}>
           {t('initError.retry')}
         </Button>
-        <Button variant="subtle" onClick={onSignOut}>
-          {t('initError.signOut')}
-        </Button>
+        {onSignOut && (
+          <Button variant="subtle" onClick={onSignOut}>
+            {t('initError.signOut')}
+          </Button>
+        )}
       </Stack>
     </div>
   );

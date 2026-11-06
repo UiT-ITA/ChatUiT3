@@ -37,7 +37,7 @@ const Page: React.FC<{ children: React.ReactNode }> = ({ children }) => (
 
 
 const App: React.FC = () => {
-  const { isAuthenticated, isInitializing, isAppReady, isAdmin, initError, login, logout, retryInit } = useAuth();
+  const { isAuthenticated, isInitializing, isAppReady, isAdmin, initError, login, logout, canSignOut, retryInit } = useAuth();
   const loginInitiatedRef = useRef(false);
 
   useEffect(() => {
@@ -72,7 +72,7 @@ const App: React.FC = () => {
   }, [isAppReady, isAdmin]);
 
   if (initError) {
-    return <InitErrorScreen message={initError} onRetry={retryInit} onSignOut={logout} />;
+    return <InitErrorScreen message={initError} onRetry={retryInit} onSignOut={canSignOut ? logout : undefined} />;
   }
 
   if (!isAppReady) {

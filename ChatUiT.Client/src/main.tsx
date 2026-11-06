@@ -2,13 +2,49 @@
 // fetched, so a signed-out user is redirected to login without downloading
 // and parsing the whole app first.
 import { EventType, type AuthenticationResult } from '@azure/msal-browser'
-import { msalInstance } from './msalInstance'
+import { getMsal, switchToNestedAppAuth } from './msalInstance'
 import authService from './services/authService.ts'
 import { trackError } from './services/telemetryService.ts'
+import { clearTeamsLaunch, initializeTeams, isTeamsLaunch } from './teams'
 
 const loadApp = () => import('./bootstrap.tsx')
 
+// In Teams: sign in through Teams' nested app authentication instead of a redirect, which Teams
+// blocks inside its frame.
+async function startInTeams(loginHint: string | undefined): Promise<void> {
+  await switchToNestedAppAuth()
+  authService.enableTeamsSignIn(loginHint)
+
+  const app = loadApp()
+  try {
+    await authService.login()
+  } catch (error) {
+    console.error('Teams sign-in failed:', error)
+  }
+  const { renderApp } = await app
+  renderApp()
+}
+
 async function start(): Promise<void> {
+  if (isTeamsLaunch()) {
+    let loginHint: string | undefined
+    try {
+      loginHint = await initializeTeams()
+    } catch (error) {
+      // Not in Teams: sign in as on the web.
+      console.warn('Teams is not available:', error)
+      clearTeamsLaunch()
+      return startOnWeb()
+    }
+    await startInTeams(loginHint)
+    return
+  }
+
+  await startOnWeb()
+}
+
+async function startOnWeb(): Promise<void> {
+  const msalInstance = getMsal()
   await msalInstance.initialize()
 
   msalInstance.addEventCallback((event) => {

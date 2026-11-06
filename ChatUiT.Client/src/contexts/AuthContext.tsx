@@ -72,10 +72,25 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isAuthenticated, account?.homeAccountId, initAttempt]);
 
+  // In Teams a failed sign-in shows the error screen, whose retry signs in again.
+  const login = async () => {
+    try {
+      await authService.login();
+    } catch (error) {
+      if (authService.isTeams()) {
+        setInitError(error instanceof Error ? error.message : String(error));
+      }
+      throw error;
+    }
+  };
+
   const retryInit = () => {
     setInitError(null);
     setIsInitializing(true);
     setInitAttempt(attempt => attempt + 1);
+    if (!isAuthenticated && authService.isTeams()) {
+      login().catch(() => undefined);
+    }
   };
 
   const isAppReady = isAuthenticated && !isInitializing;
@@ -89,8 +104,9 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     account,
     roles,
     isAdmin,
-    login: () => authService.login(),
+    login,
     logout: () => authService.logout(),
+    canSignOut: authService.canSignOut(),
     retryInit,
     getAccessToken: () => authService.getAccessToken(),
   };
