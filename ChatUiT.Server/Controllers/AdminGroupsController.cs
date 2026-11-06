@@ -12,41 +12,23 @@ namespace ChatUiT.Server.Controllers;
 public class AdminGroupsController : ControllerBase
 {
     private readonly IGroupDirectoryService _groups;
-    private readonly ILogger<AdminGroupsController> _logger;
 
-    public AdminGroupsController(IGroupDirectoryService groups, ILogger<AdminGroupsController> logger)
+    public AdminGroupsController(IGroupDirectoryService groups)
     {
         _groups = groups;
-        _logger = logger;
     }
 
     /// <summary>Search by display name prefix or by object id.</summary>
     [HttpGet]
     public async Task<ActionResult<List<DirectoryGroupDto>>> Search([FromQuery] string query, CancellationToken ct)
     {
-        try
-        {
-            return Ok((await _groups.SearchAsync(query, ct)).ToList());
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Group search failed");
-            return StatusCode(502, ex.Message);
-        }
+        return Ok((await _groups.SearchAsync(query, ct)).ToList());
     }
 
     /// <summary>Names for a set of stored ids.</summary>
     [HttpPost("resolve")]
     public async Task<ActionResult<List<DirectoryGroupDto>>> Resolve([FromBody] List<string> ids, CancellationToken ct)
     {
-        try
-        {
-            return Ok((await _groups.ResolveAsync(ids ?? [], ct)).ToList());
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Group resolve failed");
-            return StatusCode(502, ex.Message);
-        }
+        return Ok((await _groups.ResolveAsync(ids ?? [], ct)).ToList());
     }
 }

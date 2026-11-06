@@ -3,6 +3,7 @@ import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import remarkMath from 'remark-math';
 import rehypeKatex from 'rehype-katex';
+import { trackError } from '../services/telemetryService';
 
 
 export const markdownToHtml = (markdown: string): string => {
@@ -35,6 +36,7 @@ export const markdownToHtml = (markdown: string): string => {
     return html;
   } catch (error) {
     console.error('Error processing markdown:', error);
+    trackError('render_markdown', { message: 'Markdown could not be converted to HTML', error });
     return markdown;
   }
 };

@@ -32,7 +32,7 @@ public sealed partial class ToolRegistry : IToolRegistry
     private readonly Dictionary<string, ITool> _byAnyId;
     private readonly ToolOptions _options;
 
-    public ToolRegistry(IEnumerable<ITool> tools, IOptions<ToolOptions> options, ILogger<ToolRegistry> logger)
+    public ToolRegistry(IEnumerable<ITool> tools, IOptions<ToolOptions> options)
     {
         _options = options.Value;
         _byId = new Dictionary<string, ITool>(StringComparer.Ordinal);
@@ -62,7 +62,6 @@ public sealed partial class ToolRegistry : IToolRegistry
         }
 
         ServerTools = _byId.Values.OrderBy(t => t.DisplayName, StringComparer.OrdinalIgnoreCase).ToList();
-        logger.LogInformation("Registered {Count} server tools: {Ids}", ServerTools.Count, string.Join(", ", ServerTools.Select(t => t.Id)));
     }
 
     public IReadOnlyList<ITool> ServerTools { get; }

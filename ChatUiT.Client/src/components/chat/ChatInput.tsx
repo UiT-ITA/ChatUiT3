@@ -16,7 +16,7 @@ import Text from '../common/Text';
 import ContextUsageDetails from './ContextUsageDetails';
 import FileThumbnail from './FileThumbnail';
 import type { ChatFile } from '../../types/fileModels';
-import { SUPPORTED_IMPORT_ACCEPT, isValidFileType } from '../../utils/fileUtils';
+import { SUPPORTED_IMPORT_ACCEPT, getFileExtension, isValidFileType } from '../../utils/fileUtils';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { addNotification } from '../../services/notificationService';
 import { getContextUsage, setDraft } from '../../services/contextUsageService';
@@ -25,6 +25,7 @@ import TextArea from '../common/TextArea';
 import InteractionCard from './interaction/InteractionCard';
 import { useInteractionDock } from '../../hooks/useInteractionDock';
 import './Composer.css';
+import { trackError } from '../../services/telemetryService';
 
 const DRAFT_COUNT_DEBOUNCE_MS = 150;
 const DISCLAIMER_KEY = 'chatuit-disclaimer-dismissed';
@@ -173,6 +174,16 @@ export default function ChatInput() {
       if (result.status !== 'rejected') return;
       const reason = result.reason instanceof Error ? result.reason.message : 'File processing failed';
       console.error(`Failed to process file ${valid[index].name}:`, result.reason);
+      trackError('file_import', {
+        message: 'A file attached to a message could not be imported',
+        error: result.reason,
+        extra: {
+          'file.name': valid[index].name,
+          'file.type': getFileExtension(valid[index].name),
+          'file.bytes': valid[index].size,
+          processor: FileProcessingService.processorFor(valid[index]),
+        },
+      });
       addNotification({ level: 'Error', message: `${valid[index].name}: ${reason}` });
     });
     setSelectedFiles(prev => [...prev, ...results.flatMap(result => result.status === 'fulfilled' ? [result.value] : [])].slice(0, 10));

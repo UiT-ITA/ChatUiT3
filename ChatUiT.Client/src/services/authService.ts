@@ -1,6 +1,7 @@
 import { AccountInfo, AuthenticationResult, InteractionRequiredAuthError, BrowserAuthError, BrowserAuthErrorCodes } from "@azure/msal-browser";
 import { getMsal } from "../msalInstance";
 import { loginRequest, apiRequest, silentRedirectUri } from "../authConfig";
+import { trackError } from "./telemetryService";
 
 // BrowserAuthError codes that mean silent renewal cannot succeed and
 // interactive authentication is required instead.
@@ -102,6 +103,7 @@ class RedirectSignIn implements SignIn {
         return null;
       }
       console.error("Error getting access token:", error);
+      trackError("auth", { message: "An access token could not be acquired", error });
       throw error;
     }
   }

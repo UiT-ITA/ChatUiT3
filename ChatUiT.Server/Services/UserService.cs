@@ -27,11 +27,11 @@ public class UserIdentity
 
 public class UserService
 {
-    private readonly ILogger<UserService> _logger;
+    private readonly Telemetry.AppTelemetry _telemetry;
 
-    public UserService(ILogger<UserService> logger)
+    public UserService(Telemetry.AppTelemetry telemetry)
     {
-        _logger = logger;
+        _telemetry = telemetry;
     }
 
     public string GetCurrentUserId(ClaimsPrincipal user)
@@ -43,7 +43,7 @@ public class UserService
     {
         if (user == null || !user.Identity!.IsAuthenticated)
         {
-            _logger.LogWarning("Attempted to get identity for unauthenticated user");
+            _telemetry.UnauthenticatedIdentity();
             return new UserIdentity { IsAuthenticated = false };
         }
 
@@ -137,7 +137,7 @@ public class UserService
             || user.FindAll("_claim_names").Any(c => c.Value.Contains("groups", StringComparison.OrdinalIgnoreCase));
         if (overage)
         {
-            _logger.LogWarning("Groups claim overage for {User}; group-gated tools are unavailable to this user", user.Identity.Name);
+            _telemetry.GroupsOverage();
             return new List<string>();
         }
 
@@ -147,12 +147,6 @@ public class UserService
             .Where(v => !string.IsNullOrWhiteSpace(v))
             .Distinct(StringComparer.OrdinalIgnoreCase)
             .ToList();
-
-        if (groupIds.Count == 0)
-        {
-            // A token without a groups claim means the app registration does not emit one; group-gated access cannot work until it does.
-            _logger.LogDebug("Token for {User} carries no groups claim", user.Identity.Name);
-        }
 
         return groupIds;
     }
@@ -167,25 +161,5 @@ public class UserService
         return user.IsInRole(role) || 
                user.Claims.Any(c => c.Type == ClaimTypes.Role && c.Value.Equals(role, StringComparison.OrdinalIgnoreCase));
     }
-    
-    public void LogAllClaims(ClaimsPrincipal user, string context = "")
-    {
-        if (user == null) 
-        {
-            _logger.LogWarning("Attempted to log claims for null user principal");
-            return;
-        }
 
-        var claimsLog = new StringBuilder($"User claims{(!string.IsNullOrEmpty(context) ? $" ({context})" : "")}:");
-        foreach (var claim in user.Claims)
-        {
-            claimsLog.AppendLine($" - {claim.Type}: {claim.Value}");
-        }
-         _logger.LogDebug(claimsLog.ToString());
-
-        _logger.LogDebug("Authentication: {Type}, IsAuthenticated: {IsAuth}, Name: {Name}",
-            user.Identity?.AuthenticationType,
-            user.Identity?.IsAuthenticated,
-            user.Identity?.Name);
-    }
 }

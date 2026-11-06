@@ -6,6 +6,7 @@ using Microsoft.AspNetCore.Mvc;
 using ChatUiT.Server.Models;
 using ChatUiT.Server.Services;
 using ChatUiT.Server.Services.AiProviders.Protocols;
+using ChatUiT.Server.Telemetry;
 
 namespace ChatUiT.Server.Controllers;
 
@@ -17,15 +18,32 @@ public class AdminEndpointsController : ControllerBase
 {
     private readonly IModelService _modelService;
     private readonly IHttpClientFactory _httpClientFactory;
-    private readonly ILogger<AdminEndpointsController> _logger;
+    private readonly AppTelemetry _telemetry;
     private readonly TokenCredential _credential;
 
-    public AdminEndpointsController(IModelService modelService, IHttpClientFactory httpClientFactory, ILogger<AdminEndpointsController> logger, TokenCredential credential)
+    public AdminEndpointsController(IModelService modelService, IHttpClientFactory httpClientFactory, AppTelemetry telemetry, TokenCredential credential)
     {
         _modelService = modelService;
         _httpClientFactory = httpClientFactory;
-        _logger = logger;
+        _telemetry = telemetry;
         _credential = credential;
+    }
+
+    private static readonly IReadOnlySet<string> ValuelessPaths = new HashSet<string> { "apiKey" };
+
+    /// <summary>The endpoint as it is compared in telemetry. The API key appears only as a fingerprint.</summary>
+    private static object TelemetryView(ModelEndpoint endpoint) => new
+    {
+        url = endpoint.Url,
+        endpointType = endpoint.EndpointType.ToString(),
+        authMethod = endpoint.AuthMethod.ToString(),
+        apiKey = TelemetryDiff.Fingerprint(endpoint.ApiKey)
+    };
+
+    private void RecordChange(string action, string id, ModelEndpoint? before, ModelEndpoint? after)
+    {
+        var diff = TelemetryDiff.Compute(before == null ? null : TelemetryView(before), after == null ? null : TelemetryView(after), ValuelessPaths);
+        _telemetry.AdminChanged("endpoint", id, action, diff.Changed, diff.Changes);
     }
 
     private static EndpointDto ToDto(ModelEndpoint endpoint) => new()
@@ -56,36 +74,22 @@ public class AdminEndpointsController : ControllerBase
     [HttpGet]
     public async Task<ActionResult<List<EndpointDto>>> GetEndpoints()
     {
-        try
-        {
-            var endpoints = await _modelService.GetAllEndpointsAsync();
-            var endpointDtos = endpoints.Select(ToDto).ToList();
+        var endpoints = await _modelService.GetAllEndpointsAsync();
+        var endpointDtos = endpoints.Select(ToDto).ToList();
 
-            return Ok(endpointDtos);
-        }
-        catch (Exception ex)
-        {
-            return StatusCode(500, $"Internal server error: {ex.Message}");
-        }
+        return Ok(endpointDtos);
     }
 
     [HttpGet("{id}")]
     public async Task<ActionResult<EndpointDto>> GetEndpoint(string id)
     {
-        try
+        var endpoint = await _modelService.GetEndpointByIdAsync(id);
+        if (endpoint == null)
         {
-            var endpoint = await _modelService.GetEndpointByIdAsync(id);
-            if (endpoint == null)
-            {
-                return NotFound($"Endpoint with id {id} not found");
-            }
+            return NotFound($"Endpoint with id {id} not found");
+        }
 
-            return Ok(ToDto(endpoint));
-        }
-        catch (Exception ex)
-        {
-            return StatusCode(500, $"Internal server error: {ex.Message}");
-        }
+        return Ok(ToDto(endpoint));
     }
 
     /// <summary>
@@ -125,7 +129,6 @@ public class AdminEndpointsController : ControllerBase
             using var response = await _httpClientFactory.CreateClient().SendAsync(request, timeout.Token);
             if (!response.IsSuccessStatusCode)
             {
-                _logger.LogWarning("Listing deployments for endpoint {EndpointId} returned {StatusCode}", id, (int)response.StatusCode);
                 return Ok(new List<EndpointDeploymentDto>());
             }
 
@@ -150,7 +153,7 @@ public class AdminEndpointsController : ControllerBase
         }
         catch (Exception ex) when (ex is HttpRequestException or JsonException or Azure.Identity.AuthenticationFailedException or InvalidOperationException or OperationCanceledException && !ct.IsCancellationRequested)
         {
-            _logger.LogWarning(ex, "Listing deployments for endpoint {EndpointId} failed", id);
+            _telemetry.AdminDeploymentsUnavailable(id, ex);
             return Ok(new List<EndpointDeploymentDto>());
         }
     }
@@ -158,118 +161,103 @@ public class AdminEndpointsController : ControllerBase
     [HttpPost]
     public async Task<ActionResult<EndpointDto>> CreateEndpoint(CreateEndpointDto createDto)
     {
-        try
+        if (!Enum.TryParse<EndpointType>(createDto.EndpointType, out var endpointType))
         {
-            if (!Enum.TryParse<EndpointType>(createDto.EndpointType, out var endpointType))
-            {
-                return BadRequest($"Invalid endpoint type: {createDto.EndpointType}");
-            }
-
-            var authError = TryParseAuthMethod(createDto.AuthMethod, endpointType, EndpointAuthMethod.ApiKey, out var authMethod);
-            if (authError != null)
-            {
-                return BadRequest(authError);
-            }
-
-            if (authMethod == EndpointAuthMethod.ApiKey && string.IsNullOrWhiteSpace(createDto.ApiKey))
-            {
-                return BadRequest("An API key is required.");
-            }
-
-            var endpoint = new ModelEndpoint
-            {
-                Url = createDto.Url,
-                ApiKey = authMethod == EndpointAuthMethod.ApiKey ? createDto.ApiKey : string.Empty,
-                EndpointType = endpointType,
-                AuthMethod = authMethod
-            };
-
-            var createdId = await _modelService.CreateEndpointAsync(endpoint);
-            endpoint.Id = createdId;
-
-            return CreatedAtAction(nameof(GetEndpoint), new { id = createdId }, ToDto(endpoint));
+            return BadRequest($"Invalid endpoint type: {createDto.EndpointType}");
         }
-        catch (Exception ex)
+
+        var authError = TryParseAuthMethod(createDto.AuthMethod, endpointType, EndpointAuthMethod.ApiKey, out var authMethod);
+        if (authError != null)
         {
-            return StatusCode(500, $"Internal server error: {ex.Message}");
+            return BadRequest(authError);
         }
+
+        if (authMethod == EndpointAuthMethod.ApiKey && string.IsNullOrWhiteSpace(createDto.ApiKey))
+        {
+            return BadRequest("An API key is required.");
+        }
+
+        var endpoint = new ModelEndpoint
+        {
+            Url = createDto.Url,
+            ApiKey = authMethod == EndpointAuthMethod.ApiKey ? createDto.ApiKey : string.Empty,
+            EndpointType = endpointType,
+            AuthMethod = authMethod
+        };
+
+        var createdId = await _modelService.CreateEndpointAsync(endpoint);
+        endpoint.Id = createdId;
+        RecordChange("created", createdId, null, endpoint);
+
+        return CreatedAtAction(nameof(GetEndpoint), new { id = createdId }, ToDto(endpoint));
     }
 
     [HttpPut("{id}")]
     public async Task<ActionResult<EndpointDto>> UpdateEndpoint(string id, UpdateEndpointDto updateDto)
     {
-        try
+        if (id != updateDto.Id)
         {
-            if (id != updateDto.Id)
-            {
-                return BadRequest("Route id does not match request body id");
-            }
-
-            if (!Enum.TryParse<EndpointType>(updateDto.EndpointType, out var endpointType))
-            {
-                return BadRequest($"Invalid endpoint type: {updateDto.EndpointType}");
-            }
-
-            var existing = await _modelService.GetEndpointByIdAsync(updateDto.Id);
-            if (existing == null)
-            {
-                return NotFound($"Endpoint with id {id} not found");
-            }
-
-            var authError = TryParseAuthMethod(updateDto.AuthMethod, endpointType, existing.AuthMethod, out var authMethod);
-            if (authError != null)
-            {
-                return BadRequest(authError);
-            }
-
-            // An empty api key means "leave the existing key alone". Managed identity stores no key.
-            var apiKey = authMethod == EndpointAuthMethod.ManagedIdentity
-                ? string.Empty
-                : string.IsNullOrWhiteSpace(updateDto.ApiKey) ? existing.ApiKey : updateDto.ApiKey;
-            if (authMethod == EndpointAuthMethod.ApiKey && string.IsNullOrWhiteSpace(apiKey))
-            {
-                return BadRequest("An API key is required.");
-            }
-
-            var endpoint = new ModelEndpoint
-            {
-                Id = updateDto.Id,
-                Url = updateDto.Url,
-                ApiKey = apiKey,
-                EndpointType = endpointType,
-                AuthMethod = authMethod
-            };
-
-            var updated = await _modelService.UpdateEndpointAsync(endpoint);
-            if (!updated)
-            {
-                return NotFound($"Endpoint with id {id} not found");
-            }
-
-            return Ok(ToDto(endpoint));
+            return BadRequest("Route id does not match request body id");
         }
-        catch (Exception ex)
+
+        if (!Enum.TryParse<EndpointType>(updateDto.EndpointType, out var endpointType))
         {
-            return StatusCode(500, $"Internal server error: {ex.Message}");
+            return BadRequest($"Invalid endpoint type: {updateDto.EndpointType}");
         }
+
+        var existing = await _modelService.GetEndpointByIdAsync(updateDto.Id);
+        if (existing == null)
+        {
+            return NotFound($"Endpoint with id {id} not found");
+        }
+
+        var authError = TryParseAuthMethod(updateDto.AuthMethod, endpointType, existing.AuthMethod, out var authMethod);
+        if (authError != null)
+        {
+            return BadRequest(authError);
+        }
+
+        // An empty api key means "leave the existing key alone". Managed identity stores no key.
+        var apiKey = authMethod == EndpointAuthMethod.ManagedIdentity
+            ? string.Empty
+            : string.IsNullOrWhiteSpace(updateDto.ApiKey) ? existing.ApiKey : updateDto.ApiKey;
+        if (authMethod == EndpointAuthMethod.ApiKey && string.IsNullOrWhiteSpace(apiKey))
+        {
+            return BadRequest("An API key is required.");
+        }
+
+        var endpoint = new ModelEndpoint
+        {
+            Id = updateDto.Id,
+            Url = updateDto.Url,
+            ApiKey = apiKey,
+            EndpointType = endpointType,
+            AuthMethod = authMethod
+        };
+
+        var updated = await _modelService.UpdateEndpointAsync(endpoint);
+        if (!updated)
+        {
+            return NotFound($"Endpoint with id {id} not found");
+        }
+
+        RecordChange("updated", id, existing, endpoint);
+
+        return Ok(ToDto(endpoint));
     }
 
     [HttpDelete("{id}")]
     public async Task<IActionResult> DeleteEndpoint(string id)
     {
-        try
+        var existing = await _modelService.GetEndpointByIdAsync(id);
+        var deleted = await _modelService.DeleteEndpointAsync(id);
+        if (!deleted)
         {
-            var deleted = await _modelService.DeleteEndpointAsync(id);
-            if (!deleted)
-            {
-                return NotFound($"Endpoint with id {id} not found");
-            }
+            return NotFound($"Endpoint with id {id} not found");
+        }
 
-            return NoContent();
-        }
-        catch (Exception ex)
-        {
-            return StatusCode(500, $"Internal server error: {ex.Message}");
-        }
+        RecordChange("deleted", id, existing, null);
+
+        return NoContent();
     }
 }

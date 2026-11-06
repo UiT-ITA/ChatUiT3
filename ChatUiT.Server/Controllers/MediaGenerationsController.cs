@@ -31,7 +31,6 @@ public class MediaGenerationsController : ControllerBase
     private readonly IModelService _modelService;
     private readonly IAiProviderRegistry _providers;
     private readonly UserService _userService;
-    private readonly ILogger<MediaGenerationsController> _logger;
 
     public MediaGenerationsController(
         MediaGenerationService generations,
@@ -39,8 +38,7 @@ public class MediaGenerationsController : ControllerBase
         IMediaGenerationStore store,
         IModelService modelService,
         IAiProviderRegistry providers,
-        UserService userService,
-        ILogger<MediaGenerationsController> logger)
+        UserService userService)
     {
         _generations = generations;
         _promptRefiner = promptRefiner;
@@ -48,7 +46,6 @@ public class MediaGenerationsController : ControllerBase
         _modelService = modelService;
         _providers = providers;
         _userService = userService;
-        _logger = logger;
     }
 
     /// <summary>The image models the caller's roles allow.</summary>
@@ -212,7 +209,6 @@ public class MediaGenerationsController : ControllerBase
             _userService.GetCurrentUserId(User),
             new ImageRequest { Model = model, Endpoint = endpoint, Parameters = parameters });
 
-        _logger.LogInformation("Started image generation {GenerationId} on model {ModelId}", generation.Id, model.Id);
         return Accepted(MediaGenerationDto.From(generation));
     }
 

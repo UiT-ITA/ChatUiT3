@@ -31,7 +31,7 @@ public static class KnowledgeSourceMessages
     public static async Task<List<ChatMessage>> BuildAsync(
         IReadOnlyList<IKnowledgeSource> sources,
         KnowledgeSourceContext context,
-        ILogger logger,
+        Telemetry.AppTelemetry telemetry,
         CancellationToken cancellationToken)
     {
         if (sources.Count == 0)
@@ -42,7 +42,7 @@ public static class KnowledgeSourceMessages
         using var deadline = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
         deadline.CancelAfter(Timeout);
 
-        var texts = await Task.WhenAll(sources.Select(source => LoadAsync(source, context, logger, deadline.Token)));
+        var texts = await Task.WhenAll(sources.Select(source => LoadAsync(source, context, telemetry, deadline.Token)));
 
         var asOf = $"{context.LocalNow:yyyy-MM-dd HH:mm} ({context.TimeZone.Id})";
         return sources
@@ -58,18 +58,18 @@ public static class KnowledgeSourceMessages
         Status = AiChatStatus.Success
     };
 
-    private static async Task<string?> LoadAsync(IKnowledgeSource source, KnowledgeSourceContext context, ILogger logger, CancellationToken cancellationToken)
+    private static async Task<string?> LoadAsync(IKnowledgeSource source, KnowledgeSourceContext context, Telemetry.AppTelemetry telemetry, CancellationToken cancellationToken)
     {
         var stopwatch = Stopwatch.StartNew();
         try
         {
             var text = await source.LoadAsync(context, cancellationToken);
-            logger.LogInformation("Knowledge source {SourceId} loaded in {ElapsedMs} ms ({Length} chars)", source.Id, stopwatch.ElapsedMilliseconds, text?.Length ?? 0);
+            telemetry.KnowledgeSourceLoaded(source.Id, stopwatch.ElapsedMilliseconds, text?.Length ?? 0, Telemetry.Outcomes.Succeeded);
             return string.IsNullOrWhiteSpace(text) ? null : text.Trim();
         }
         catch (Exception ex)
         {
-            logger.LogWarning(ex, "Knowledge source {SourceId} failed after {ElapsedMs} ms", source.Id, stopwatch.ElapsedMilliseconds);
+            telemetry.KnowledgeSourceLoaded(source.Id, stopwatch.ElapsedMilliseconds, 0, Telemetry.Outcomes.Failed, ex);
             return $"{source.DisplayName}: not available.";
         }
     }

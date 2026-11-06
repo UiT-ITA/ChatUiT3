@@ -13,82 +13,63 @@ public class AdminSettingsController : ControllerBase
     private readonly ISettingsService _settingsService;
     private readonly IModelService _modelService;
     private readonly IAssistantService _assistantService;
-    private readonly ILogger<AdminSettingsController> _logger;
 
     public AdminSettingsController(
         ISettingsService settingsService,
         IModelService modelService,
-        IAssistantService assistantService,
-        ILogger<AdminSettingsController> logger)
+        IAssistantService assistantService)
     {
         _settingsService = settingsService;
         _modelService = modelService;
         _assistantService = assistantService;
-        _logger = logger;
     }
 
     [HttpGet]
     public async Task<ActionResult<AppSettingsDto>> GetSettings()
     {
-        try
+        // Effective, so the page shows the model actually in use rather than a blank selection
+        var settings = await _settingsService.GetEffectiveAppSettingsAsync();
+        return Ok(new AppSettingsDto
         {
-            // Effective, so the page shows the model actually in use rather than a blank selection
-            var settings = await _settingsService.GetEffectiveAppSettingsAsync();
-            return Ok(new AppSettingsDto
-            {
-                DefaultModelId = settings.DefaultModelId,
-                ChatNamingModelId = settings.ChatNamingModelId,
-                DefaultAssistantId = settings.DefaultAssistantId
-            });
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Error getting app settings");
-            return StatusCode(500, $"Internal server error: {ex.Message}");
-        }
+            DefaultModelId = settings.DefaultModelId,
+            ChatNamingModelId = settings.ChatNamingModelId,
+            DefaultAssistantId = settings.DefaultAssistantId
+        });
     }
 
     [HttpPut]
     public async Task<ActionResult<AppSettingsDto>> UpdateSettings(UpdateAppSettingsDto updateDto)
     {
-        try
+        if (!await IsKnownModelAsync(updateDto.DefaultModelId))
         {
-            if (!await IsKnownModelAsync(updateDto.DefaultModelId))
-            {
-                return BadRequest($"Unknown model id {updateDto.DefaultModelId}");
-            }
-
-            if (!await IsKnownModelAsync(updateDto.ChatNamingModelId))
-            {
-                return BadRequest($"Unknown model id {updateDto.ChatNamingModelId}");
-            }
-
-            if (!await IsSystemAssistantAsync(updateDto.DefaultAssistantId))
-            {
-                return BadRequest($"Unknown system assistant id {updateDto.DefaultAssistantId}");
-            }
-
-            var settings = new AppSettings
-            {
-                DefaultModelId = updateDto.DefaultModelId,
-                ChatNamingModelId = updateDto.ChatNamingModelId,
-                DefaultAssistantId = updateDto.DefaultAssistantId
-            };
-
-            await _settingsService.UpdateAppSettingsAsync(settings);
-
-            return Ok(new AppSettingsDto
-            {
-                DefaultModelId = settings.DefaultModelId,
-                ChatNamingModelId = settings.ChatNamingModelId,
-                DefaultAssistantId = settings.DefaultAssistantId
-            });
+            return BadRequest($"Unknown model id {updateDto.DefaultModelId}");
         }
-        catch (Exception ex)
+
+        if (!await IsKnownModelAsync(updateDto.ChatNamingModelId))
         {
-            _logger.LogError(ex, "Error updating app settings");
-            return StatusCode(500, $"Internal server error: {ex.Message}");
+            return BadRequest($"Unknown model id {updateDto.ChatNamingModelId}");
         }
+
+        if (!await IsSystemAssistantAsync(updateDto.DefaultAssistantId))
+        {
+            return BadRequest($"Unknown system assistant id {updateDto.DefaultAssistantId}");
+        }
+
+        var settings = new AppSettings
+        {
+            DefaultModelId = updateDto.DefaultModelId,
+            ChatNamingModelId = updateDto.ChatNamingModelId,
+            DefaultAssistantId = updateDto.DefaultAssistantId
+        };
+
+        await _settingsService.UpdateAppSettingsAsync(settings);
+
+        return Ok(new AppSettingsDto
+        {
+            DefaultModelId = settings.DefaultModelId,
+            ChatNamingModelId = settings.ChatNamingModelId,
+            DefaultAssistantId = settings.DefaultAssistantId
+        });
     }
 
     // An empty id means "not selected" and is always valid

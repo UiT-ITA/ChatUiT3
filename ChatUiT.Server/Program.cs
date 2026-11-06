@@ -15,11 +15,15 @@ using ChatUiT.Server.Services.Encryption;
 using ChatUiT.Server.Services.Knowledge;
 using ChatUiT.Server.Services.MediaGenerations;
 using ChatUiT.Server.Services.Tools;
+using ChatUiT.Server.Telemetry;
+using Microsoft.AspNetCore.SignalR;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.Identity.Web;
 using Microsoft.IdentityModel.Logging;
 
 var builder = WebApplication.CreateBuilder(args);
+
+builder.AddAppTelemetry();
 
 if (builder.Environment.IsDevelopment())
 {
@@ -103,7 +107,7 @@ builder.Services.Configure<JwtBearerOptions>(JwtBearerDefaults.AuthenticationSch
 builder.Services.AddControllers();
 builder.Services.AddOpenApi();
 
-builder.Services.AddSignalR();
+builder.Services.AddSignalR(options => options.AddFilter<TelemetryHubFilter>());
 
 // Register services
 // The app's Entra identity: the managed identity in Azure, the developer's az login locally.
@@ -153,40 +157,9 @@ var app = builder.Build();
 // Built now so an invalid agent id or a duplicate id stops startup.
 app.Services.GetRequiredService<IInternalAgentRegistry>();
 app.Services.GetRequiredService<IKnowledgeSourceRegistry>();
-// Builds the database service, which starts the Cosmos DB check.
-app.Services.GetRequiredService<IDatabaseService>();
+var telemetry = app.Services.GetRequiredService<AppTelemetry>();
 
-// The AzureOpenAI configuration is only used to seed an endpoint into the database on first
-// run. Everything at request time reads endpoints from the database instead.
-var seedEndpointUrl = app.Configuration["AzureOpenAI:Endpoint"];
-var seedEndpointKey = app.Configuration["AzureOpenAI:ApiKey"];
-
-if (!string.IsNullOrWhiteSpace(seedEndpointUrl) && !string.IsNullOrWhiteSpace(seedEndpointKey))
-{
-    var seedLogger = app.Services.GetRequiredService<ILogger<Program>>();
-    try
-    {
-        var modelService = app.Services.GetRequiredService<IModelService>();
-        var existingEndpoints = await modelService.GetAllEndpointsAsync();
-        var alreadySeeded = existingEndpoints.Any(e =>
-            string.Equals(e.Url.TrimEnd('/'), seedEndpointUrl.TrimEnd('/'), StringComparison.OrdinalIgnoreCase));
-
-        if (!alreadySeeded)
-        {
-            await modelService.CreateEndpointAsync(new ModelEndpoint
-            {
-                Url = seedEndpointUrl,
-                ApiKey = seedEndpointKey,
-                EndpointType = EndpointType.AzureOpenAI
-            });
-            seedLogger.LogInformation("Seeded Azure OpenAI endpoint {Url} from configuration.", seedEndpointUrl);
-        }
-    }
-    catch (Exception ex)
-    {
-        seedLogger.LogError(ex, "Failed to seed the Azure OpenAI endpoint from configuration.");
-    }
-}
+app.UseExceptionHandler();
 
 // Sends visitors of the azurewebsites.net host to ki-beta.uit.no. The Office add-ins (/office),
 // the API (/api) and the hub (/apphub) stay reachable on the old host.
@@ -224,6 +197,7 @@ if (app.Environment.IsDevelopment())
 //app.UseRouting();
 app.UseHttpsRedirection();
 app.UseAuthentication();
+app.UseMiddleware<TelemetryContextMiddleware>();
 app.UseAuthorization();
 
 app.MapControllers();
@@ -238,4 +212,60 @@ app.MapFallbackToFile("/index.html", new StaticFileOptions
     }
 });
 
-app.Run();
+// Starts the host before the startup work below.
+await app.StartAsync();
+
+// Builds the database service, which starts the Cosmos DB check.
+app.Services.GetRequiredService<IDatabaseService>();
+
+// The AzureOpenAI configuration is only used to seed an endpoint into the database on first
+// run. Everything at request time reads endpoints from the database instead.
+var seedEndpointUrl = app.Configuration["AzureOpenAI:Endpoint"];
+var seedEndpointKey = app.Configuration["AzureOpenAI:ApiKey"];
+
+if (!string.IsNullOrWhiteSpace(seedEndpointUrl) && !string.IsNullOrWhiteSpace(seedEndpointKey))
+{
+    try
+    {
+        var modelService = app.Services.GetRequiredService<IModelService>();
+        var existingEndpoints = await modelService.GetAllEndpointsAsync();
+        var alreadySeeded = existingEndpoints.Any(e =>
+            string.Equals(e.Url.TrimEnd('/'), seedEndpointUrl.TrimEnd('/'), StringComparison.OrdinalIgnoreCase));
+
+        if (!alreadySeeded)
+        {
+            await modelService.CreateEndpointAsync(new ModelEndpoint
+            {
+                Url = seedEndpointUrl,
+                ApiKey = seedEndpointKey,
+                EndpointType = EndpointType.AzureOpenAI
+            });
+            telemetry.EndpointSeeded(seedEndpointUrl);
+        }
+    }
+    catch (Exception ex)
+    {
+        telemetry.EndpointSeedFailed(ex);
+    }
+}
+
+AppSettings? startupSettings = null;
+try
+{
+    startupSettings = await app.Services.GetRequiredService<ISettingsService>().GetAppSettingsAsync();
+}
+catch (Exception)
+{
+    // Settings stay null when the database cannot be read.
+}
+
+telemetry.SystemStarted(new SystemStartedInfo(
+    app.Services.GetRequiredService<IToolRegistry>().ServerTools.Select(t => t.Id).ToList(),
+    app.Services.GetRequiredService<IToolboxRegistry>().All.Select(t => t.Id).ToList(),
+    app.Services.GetRequiredService<IInternalAgentRegistry>().Agents.Select(a => a.Id).ToList(),
+    app.Services.GetRequiredService<IKnowledgeSourceRegistry>().Sources.Select(s => s.Id).ToList(),
+    startupSettings?.DefaultModelId,
+    startupSettings?.ChatNamingModelId,
+    startupSettings?.DefaultAssistantId));
+
+await app.WaitForShutdownAsync();

@@ -6,6 +6,7 @@ import {
     isImageImportFile,
     isTextImportFile
 } from '../utils/fileUtils';
+import { track } from './telemetryService';
 
 // Rethrows a failed processor chunk load as an app-updated message.
 async function loadProcessor<T>(load: () => Promise<T>): Promise<T> {
@@ -17,9 +18,41 @@ async function loadProcessor<T>(load: () => Promise<T>): Promise<T> {
 }
 
 export class FileProcessingService {
+    /** The name of the processor that imports the file: image, text, pdf, docx, pptx, xlsx or unsupported. */
+    static processorFor(file: File): string {
+        const kind = getSupportedImportKind(file);
+        if (kind === 'image' || kind === 'text') {
+            return kind;
+        }
+        const extension = getFileExtension(file.name);
+        return kind === 'complex' && ['pdf', 'docx', 'pptx', 'xlsx'].includes(extension) ? extension : 'unsupported';
+    }
+
+    /** Imports the file and records client.file_imported. */
+    static async processFile(file: File): Promise<ChatFile> {
+        const started = performance.now();
+        const record = (outcome: 'succeeded' | 'failed') => track('client.file_imported', {
+            'file.name': file.name,
+            'file.type': getFileExtension(file.name),
+            'file.bytes': file.size,
+            processor: FileProcessingService.processorFor(file),
+            duration_ms: Math.round(performance.now() - started),
+            outcome,
+        });
+
+        try {
+            const result = await FileProcessingService.importFile(file);
+            record('succeeded');
+            return result;
+        } catch (error) {
+            record('failed');
+            throw error;
+        }
+    }
+
     // Processors are imported on first use: pdfjs, exceljs and jszip are
     // large and only needed once the user attaches a file.
-    static async processFile(file: File): Promise<ChatFile> {
+    private static async importFile(file: File): Promise<ChatFile> {
         const kind = getSupportedImportKind(file);
 
         if (kind === 'image') {

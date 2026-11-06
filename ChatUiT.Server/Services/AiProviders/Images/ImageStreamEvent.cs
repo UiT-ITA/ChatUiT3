@@ -17,15 +17,20 @@ public abstract record ImageStreamEvent
 
 /// <summary>
 /// The image API refused or failed the request: a content filter, a rejected parameter, a
-/// rate limit. The message carries the service's reason and is safe to show.
+/// rate limit. The message carries the service's reason and is safe to show. The message is
+/// never logged: <see cref="Category"/> and <see cref="Code"/> are.
 /// </summary>
-public sealed class ImageGenerationFailedException : Exception
+public sealed class ImageGenerationFailedException : Exception, Telemetry.IContentCarryingException
 {
-    public ImageGenerationFailedException(string message, string? serviceResponse = null) : base(message)
+    public ImageGenerationFailedException(string message, string category, string? code = null) : base(message)
     {
-        ServiceResponse = serviceResponse;
+        Category = category;
+        Code = code;
     }
 
-    /// <summary>The service's error body or stream event, unchanged. Null when the failure did not come from the service.</summary>
-    public string? ServiceResponse { get; }
+    /// <summary>The error category, one of <see cref="Telemetry.ErrorCategories"/>.</summary>
+    public string Category { get; }
+
+    /// <summary>The service's error code, or the HTTP status when it sent no code.</summary>
+    public string? Code { get; }
 }

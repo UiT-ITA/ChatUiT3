@@ -48,7 +48,7 @@ public sealed partial class ToolboxRegistry : IToolboxRegistry
     private readonly Dictionary<string, List<IToolbox>> _byToolId = new(StringComparer.Ordinal);
     private readonly Dictionary<string, ITool> _toolsById = new(StringComparer.Ordinal);
 
-    public ToolboxRegistry(IEnumerable<IToolbox> toolboxes, ILogger<ToolboxRegistry> logger)
+    public ToolboxRegistry(IEnumerable<IToolbox> toolboxes)
     {
         Toolboxes = toolboxes.OrderBy(t => t.DisplayName, StringComparer.OrdinalIgnoreCase).ToList();
 
@@ -59,7 +59,6 @@ public sealed partial class ToolboxRegistry : IToolboxRegistry
         }
 
         All = all;
-        logger.LogInformation("Registered {Count} toolboxes: {Ids}", All.Count, string.Join(", ", All.Select(t => t.Id)));
     }
 
     private void Register(IToolbox toolbox, IToolbox? parent, List<IToolbox> all)

@@ -6,6 +6,7 @@ using ChatUiT.Server.Services.AiProviders;
 using ChatUiT.Server.Services.AiProviders.Images;
 using ChatUiT.Server.Services.ApiCatalog;
 using ChatUiT.Server.Services.TokenCounting;
+using ChatUiT.Server.Telemetry;
 
 namespace ChatUiT.Server.Controllers;
 
@@ -21,151 +22,118 @@ public class AdminModelsController : ControllerBase
     private readonly IModelService _modelService;
     private readonly IApiCatalogService _catalog;
     private readonly IAiProviderRegistry _providers;
+    private readonly AppTelemetry _telemetry;
 
-    public AdminModelsController(IModelService modelService, IApiCatalogService catalog, IAiProviderRegistry providers)
+    public AdminModelsController(IModelService modelService, IApiCatalogService catalog, IAiProviderRegistry providers, AppTelemetry telemetry)
     {
         _modelService = modelService;
         _catalog = catalog;
         _providers = providers;
+        _telemetry = telemetry;
+    }
+
+    private void RecordChange(string action, Model? before, Model? after)
+    {
+        var diff = TelemetryDiff.Compute(before == null ? null : ModelDtoMapper.ToDto(before), after == null ? null : ModelDtoMapper.ToDto(after));
+        _telemetry.AdminChanged("model", (after ?? before)!.Id, action, diff.Changed, diff.Changes);
     }
 
     [HttpGet]
     public async Task<ActionResult<List<ModelDto>>> GetModels()
     {
-        try
-        {
-            var models = await _modelService.GetModelsAsync<Model>();
-            return Ok(models.Select(ModelDtoMapper.ToDto).ToList());
-        }
-        catch (Exception ex)
-        {
-            return StatusCode(500, $"Internal server error: {ex.Message}");
-        }
+        var models = await _modelService.GetModelsAsync<Model>();
+        return Ok(models.Select(ModelDtoMapper.ToDto).ToList());
     }
 
     [HttpGet("{id}")]
     public async Task<ActionResult<ModelDto>> GetModel(string id)
     {
-        try
+        var model = await _modelService.GetModelAsync<Model>(id);
+        if (model == null)
         {
-            var model = await _modelService.GetModelAsync<Model>(id);
-            if (model == null)
-            {
-                return NotFound($"Model with id {id} not found");
-            }
+            return NotFound($"Model with id {id} not found");
+        }
 
-            return Ok(ModelDtoMapper.ToDto(model));
-        }
-        catch (Exception ex)
-        {
-            return StatusCode(500, $"Internal server error: {ex.Message}");
-        }
+        return Ok(ModelDtoMapper.ToDto(model));
     }
 
     [HttpPost("language")]
     public async Task<ActionResult<ModelDto>> CreateLanguageModel(SaveLanguageModelDto dto)
     {
-        try
+        if (ValidateLanguageModel(dto) is { } problem)
         {
-            if (ValidateLanguageModel(dto) is { } problem)
-            {
-                return BadRequest(problem);
-            }
-
-            var model = ToLanguageModel(dto, Guid.NewGuid().ToString());
-            if (model.ExposedInApi && await _catalog.ModelExposureProblemAsync(model) is { } exposureProblem)
-            {
-                return BadRequest(exposureProblem);
-            }
-
-            await _modelService.CreateModelAsync(model);
-            return CreatedAtAction(nameof(GetModel), new { id = model.Id }, ModelDtoMapper.ToDto(model));
+            return BadRequest(problem);
         }
-        catch (Exception ex)
+
+        var model = ToLanguageModel(dto, Guid.NewGuid().ToString());
+        if (model.ExposedInApi && await _catalog.ModelExposureProblemAsync(model) is { } exposureProblem)
         {
-            return StatusCode(500, $"Internal server error: {ex.Message}");
+            return BadRequest(exposureProblem);
         }
+
+        await _modelService.CreateModelAsync(model);
+        RecordChange("created", null, model);
+        return CreatedAtAction(nameof(GetModel), new { id = model.Id }, ModelDtoMapper.ToDto(model));
     }
 
     [HttpPut("language/{id}")]
     public async Task<ActionResult<ModelDto>> UpdateLanguageModel(string id, SaveLanguageModelDto dto)
     {
-        try
+        if (ValidateLanguageModel(dto) is { } problem)
         {
-            if (ValidateLanguageModel(dto) is { } problem)
-            {
-                return BadRequest(problem);
-            }
-
-            var model = ToLanguageModel(dto, id);
-            if (model.ExposedInApi && await _catalog.ModelExposureProblemAsync(model) is { } exposureProblem)
-            {
-                return BadRequest(exposureProblem);
-            }
-
-            return await SaveAsync(model);
+            return BadRequest(problem);
         }
-        catch (Exception ex)
+
+        var model = ToLanguageModel(dto, id);
+        if (model.ExposedInApi && await _catalog.ModelExposureProblemAsync(model) is { } exposureProblem)
         {
-            return StatusCode(500, $"Internal server error: {ex.Message}");
+            return BadRequest(exposureProblem);
         }
+
+        return await SaveAsync(model);
     }
 
     [HttpPost("image")]
     public async Task<ActionResult<ModelDto>> CreateImageModel(SaveImageModelDto dto)
     {
-        try
+        if (ValidateImageModel(dto) is { } problem)
         {
-            if (ValidateImageModel(dto) is { } problem)
-            {
-                return BadRequest(problem);
-            }
+            return BadRequest(problem);
+        }
 
-            var model = ToImageModel(dto, Guid.NewGuid().ToString());
-            await _modelService.CreateModelAsync(model);
-            return CreatedAtAction(nameof(GetModel), new { id = model.Id }, ModelDtoMapper.ToDto(model));
-        }
-        catch (Exception ex)
-        {
-            return StatusCode(500, $"Internal server error: {ex.Message}");
-        }
+        var model = ToImageModel(dto, Guid.NewGuid().ToString());
+        await _modelService.CreateModelAsync(model);
+        RecordChange("created", null, model);
+        return CreatedAtAction(nameof(GetModel), new { id = model.Id }, ModelDtoMapper.ToDto(model));
     }
 
     [HttpPut("image/{id}")]
     public async Task<ActionResult<ModelDto>> UpdateImageModel(string id, SaveImageModelDto dto)
     {
-        try
+        if (ValidateImageModel(dto) is { } problem)
         {
-            if (ValidateImageModel(dto) is { } problem)
-            {
-                return BadRequest(problem);
-            }
+            return BadRequest(problem);
+        }
 
-            return await SaveAsync(ToImageModel(dto, id));
-        }
-        catch (Exception ex)
-        {
-            return StatusCode(500, $"Internal server error: {ex.Message}");
-        }
+        return await SaveAsync(ToImageModel(dto, id));
     }
 
     [HttpDelete("{id}")]
     public async Task<IActionResult> DeleteModel(string id)
     {
-        try
+        var existing = await _modelService.GetModelAsync<Model>(id);
+        var deleted = await _modelService.DeleteModelAsync(id);
+        if (!deleted)
         {
-            var deleted = await _modelService.DeleteModelAsync(id);
-            if (!deleted)
-            {
-                return NotFound($"Model with id {id} not found");
-            }
+            return NotFound($"Model with id {id} not found");
+        }
 
-            return NoContent();
-        }
-        catch (Exception ex)
+        if (existing != null)
         {
-            return StatusCode(500, $"Internal server error: {ex.Message}");
+            RecordChange("deleted", existing, null);
         }
+
+        return NoContent();
     }
 
     // Runs one small request on the saved model through its endpoint and reports whether a result came back.
@@ -189,19 +157,23 @@ public class AdminModelsController : ControllerBase
             return Ok(new ModelTestResultDto { Success = false, Error = $"No AI provider is registered for endpoint type {endpoint.EndpointType}." });
         }
 
+        ModelTestResultDto result;
         try
         {
-            return Ok(model switch
+            result = model switch
             {
                 LanguageModel language => await TestLanguageModelAsync(language, endpoint, cancellationToken),
                 ImageModel image => await TestImageModelAsync(image, endpoint, cancellationToken),
                 _ => new ModelTestResultDto { Success = false, Error = $"{model.Type} models cannot be tested yet." }
-            });
+            };
         }
         catch (Exception ex)
         {
-            return Ok(new ModelTestResultDto { Success = false, Error = ex.Message });
+            result = new ModelTestResultDto { Success = false, Error = ex.Message };
         }
+
+        _telemetry.AdminModelTested(model.ModelId, result.Success ? Outcomes.Succeeded : Outcomes.Failed);
+        return Ok(result);
     }
 
     private const string LanguageTestPrompt = "This is a connection test. Reply with the single word OK.";
@@ -278,6 +250,7 @@ public class AdminModelsController : ControllerBase
             return NotFound($"Model with id {model.Id} not found");
         }
 
+        RecordChange("updated", existing, model);
         return Ok(ModelDtoMapper.ToDto(model));
     }
 

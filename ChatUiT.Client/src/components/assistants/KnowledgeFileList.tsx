@@ -2,7 +2,7 @@ import { useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { FileProcessingService } from '../../services/fileProcessingService';
 import type { ChatFile } from '../../types/fileModels';
-import { SUPPORTED_IMPORT_ACCEPT, isValidFileType } from '../../utils/fileUtils';
+import { SUPPORTED_IMPORT_ACCEPT, getFileExtension, isValidFileType } from '../../utils/fileUtils';
 import FilePreviewModal from '../chat/FilePreviewModal';
 import { addNotification } from '../../services/notificationService';
 import Button from '../common/Button';
@@ -10,6 +10,7 @@ import KnowledgeFileItem, { type KnowledgeFileItemData } from './KnowledgeFileIt
 import PanelSection from '../common/PanelSection';
 import Text from '../common/Text';
 import Badge from '../common/Badge';
+import { trackError } from '../../services/telemetryService';
 
 export type { KnowledgeFileCategory, KnowledgeFileItemData } from './KnowledgeFileItem';
 
@@ -67,6 +68,16 @@ const KnowledgeFileList = ({
         const file = validFiles[index];
         const reason = result.reason instanceof Error ? result.reason.message : 'File processing failed';
         console.error(`Failed to process knowledge file ${file.name}:`, result.reason);
+        trackError('file_import', {
+          message: 'A knowledge file could not be imported',
+          error: result.reason,
+          extra: {
+            'file.name': file.name,
+            'file.type': getFileExtension(file.name),
+            'file.bytes': file.size,
+            processor: FileProcessingService.processorFor(file),
+          },
+        });
         addNotification({ level: 'Error', message: `${file.name}: ${reason}` });
       });
 

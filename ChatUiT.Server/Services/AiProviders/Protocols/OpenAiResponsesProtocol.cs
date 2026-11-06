@@ -20,6 +20,7 @@ using OpenAI.Responses;
 namespace ChatUiT.Server.Services.AiProviders.Protocols;
 
 using ChatUiT.Server.Models;
+using ChatUiT.Server.Telemetry;
 using ChatUiT.Server.Services.TokenCounting;
 using ChatUiT.Server.Services.Tools;
 
@@ -32,18 +33,18 @@ public sealed class OpenAiResponsesProtocol : IApiProtocol
     /// <summary>Hard cap on a chat name, enforced by the naming response schema.</summary>
     private const int NamingMaxNameLength = 30;
 
-    private readonly ILogger<OpenAiResponsesProtocol> _logger;
+    private readonly AppTelemetry _telemetry;
 
-    public OpenAiResponsesProtocol(ILogger<OpenAiResponsesProtocol> logger)
+    public OpenAiResponsesProtocol(AppTelemetry telemetry)
     {
-        _logger = logger;
+        _telemetry = telemetry;
     }
 
     public ApiProtocol Protocol => ApiProtocol.OpenAiResponses;
 
     public IAiConversation StartConversation(AiRequest request, ProtocolTarget target)
     {
-        return new Conversation(request, target, BuildInputItems(request), _logger);
+        return new Conversation(request, target, BuildInputItems(request), _telemetry);
     }
 
     public async Task<string> GenerateChatNameAsync(AiRequest request, ProtocolTarget target, CancellationToken cancellationToken = default)
@@ -327,7 +328,7 @@ public sealed class OpenAiResponsesProtocol : IApiProtocol
             }
             catch (Exception ex) when (ex is FormatException or JsonException or InvalidOperationException)
             {
-                _logger.LogWarning(ex, "Dropping a reasoning item that could not be read back");
+                _telemetry.GenerationReasoningDropped("openai_responses", ex);
             }
         }
     }
@@ -366,14 +367,14 @@ public sealed class OpenAiResponsesProtocol : IApiProtocol
         private readonly AiRequest _request;
         private readonly ProtocolTarget _target;
         private readonly List<ResponseItem> _items;
-        private readonly ILogger _logger;
+        private readonly AppTelemetry _telemetry;
 
-        public Conversation(AiRequest request, ProtocolTarget target, List<ResponseItem> items, ILogger logger)
+        public Conversation(AiRequest request, ProtocolTarget target, List<ResponseItem> items, AppTelemetry telemetry)
         {
             _request = request;
             _target = target;
             _items = items;
-            _logger = logger;
+            _telemetry = telemetry;
         }
 
         public async IAsyncEnumerable<AiStreamEvent> StreamTurnAsync(
@@ -390,6 +391,8 @@ public sealed class OpenAiResponsesProtocol : IApiProtocol
 
             var toolCalls = new List<FunctionCallResponseItem>();
             var reasoning = new List<ReasoningResponseItem>();
+            long inputTokens = 0, outputTokens = 0, cachedTokens = 0;
+            string? stopReason = null;
 
             await foreach (var update in stream.WithCancellation(cancellationToken))
             {
@@ -417,25 +420,35 @@ public sealed class OpenAiResponsesProtocol : IApiProtocol
                     // Without this a turn cut short (output limit, content filter) ends silently,
                     // with whatever it had produced, or with nothing at all.
                     var reason = incomplete.Response?.IncompleteStatusDetails?.Reason?.ToString() ?? "unknown";
-                    _logger.LogWarning("OpenAI Responses turn on {Model} ended incomplete: reason {Reason}", _request.Model.ModelId, reason);
-                    throw new AiTurnFailedException($"The model stopped before finishing its answer (incomplete: {reason}).");
+                    throw new AiTurnFailedException(
+                        $"The model stopped before finishing its answer (incomplete: {reason}).",
+                        reason == "content_filter" ? ErrorCategories.ProviderRefused : ErrorCategories.Internal,
+                        reason);
                 }
                 else if (update is StreamingResponseFailedUpdate failed)
                 {
                     var code = failed.Response?.Error?.Code.ToString() ?? "unknown";
-                    _logger.LogWarning("OpenAI Responses turn on {Model} failed: code {Code}", _request.Model.ModelId, code);
-                    throw new AiTurnFailedException($"The model service reported a failure ({code}): {failed.Response?.Error?.Message ?? "no message"}");
+                    throw new AiTurnFailedException(
+                        $"The model service reported a failure ({code}): {failed.Response?.Error?.Message ?? "no message"}",
+                        CategoryOf(code),
+                        code);
                 }
                 else if (update is StreamingResponseErrorUpdate error)
                 {
-                    _logger.LogWarning("OpenAI Responses turn on {Model} got a stream error: code {Code}", _request.Model.ModelId, error.Code ?? "unknown");
-                    throw new AiTurnFailedException($"The model service sent an error ({error.Code ?? "unknown"}): {error.Message ?? "no message"}");
+                    throw new AiTurnFailedException(
+                        $"The model service sent an error ({error.Code ?? "unknown"}): {error.Message ?? "no message"}",
+                        CategoryOf(error.Code),
+                        error.Code ?? "unknown");
                 }
-                else if (update is StreamingResponseCompletedUpdate completed && completed.Response?.Usage is { } usage)
+                else if (update is StreamingResponseCompletedUpdate completed)
                 {
-                    _logger.LogInformation(
-                        "OpenAI Responses turn on {Model}: {InputTokens} input tokens, {CacheReadTokens} read from cache",
-                        _request.Model.ModelId, usage.InputTokenCount, usage.InputTokenDetails?.CachedTokenCount ?? 0);
+                    stopReason = completed.Response?.Status?.ToString();
+                    if (completed.Response?.Usage is { } usage)
+                    {
+                        inputTokens = usage.InputTokenCount;
+                        outputTokens = usage.OutputTokenCount;
+                        cachedTokens = usage.InputTokenDetails?.CachedTokenCount ?? 0;
+                    }
                 }
                 else if (update is StreamingResponseOutputItemDoneUpdate done)
                 {
@@ -452,6 +465,8 @@ public sealed class OpenAiResponsesProtocol : IApiProtocol
                 }
             }
 
+            yield return new AiStreamEvent.TurnEnded(inputTokens, outputTokens, cachedTokens, 0, stopReason);
+
             if (reasoning.Count > 0)
             {
                 using var payload = JsonDocument.Parse("[" + string.Join(",", reasoning.Select(item => ModelReaderWriter.Write(item, ModelReaderWriterOptions.Json).ToString())) + "]");
@@ -466,6 +481,15 @@ public sealed class OpenAiResponsesProtocol : IApiProtocol
                     toolCall.FunctionArguments.ToString());
             }
         }
+
+        /// <summary>The error category of an OpenAI error code.</summary>
+        private static string CategoryOf(string? code) => code switch
+        {
+            null => ErrorCategories.ProviderUnavailable,
+            _ when code.Contains("rate_limit", StringComparison.Ordinal) => ErrorCategories.ProviderRateLimited,
+            _ when code.Contains("invalid", StringComparison.Ordinal) => ErrorCategories.ProviderBadRequest,
+            _ => ErrorCategories.ProviderUnavailable
+        };
 
         public void AppendToolResults(IReadOnlyList<AiToolResult> results)
         {

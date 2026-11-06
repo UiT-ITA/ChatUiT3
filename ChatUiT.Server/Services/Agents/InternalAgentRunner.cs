@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Linq;
 using System.Runtime.CompilerServices;
 using System.Text;
@@ -8,6 +9,7 @@ using System.Threading.Tasks;
 using ChatUiT.Server.Models;
 using ChatUiT.Server.Services.AiProviders;
 using ChatUiT.Server.Services.Tools;
+using ChatUiT.Server.Telemetry;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 
@@ -44,20 +46,20 @@ public sealed class InternalAgentRunner
     // tools, which depend on this runner. Taking it in the constructor would be a cycle.
     private readonly IServiceProvider _services;
     private IToolExecutor? _executor;
-    private readonly ILogger<InternalAgentRunner> _logger;
+    private readonly AppTelemetry _telemetry;
 
     public InternalAgentRunner(
         IModelService modelService,
         IAiProviderRegistry providers,
         InternalAgentSettingsService settings,
         IServiceProvider services,
-        ILogger<InternalAgentRunner> logger)
+        AppTelemetry telemetry)
     {
         _modelService = modelService;
         _providers = providers;
         _settings = settings;
         _services = services;
-        _logger = logger;
+        _telemetry = telemetry;
     }
 
     /// <summary>
@@ -75,7 +77,7 @@ public sealed class InternalAgentRunner
                 return (found.model, found.endpoint, setting.ReasoningEffort);
             }
 
-            _logger.LogWarning("The model set for agent {AgentId} ({ModelId}) is unknown or cannot call functions", agent.Id, setting.ModelId);
+            _telemetry.AgentModelUnusable(agent.Id, setting.ModelId);
         }
 
         if (context?.Model is { } model && context.Endpoint is { } endpoint && model.Capabilities.SupportsFunctionCalling)
@@ -148,108 +150,130 @@ public sealed class InternalAgentRunner
             Parameters = setup.Parameters,
             Tools = setup.Functions
         });
-        _logger.LogInformation("Agent {AgentId} starting on {Model}", agent.Id, setup.Model.ModelId);
+        _telemetry.AgentRunStarted(agent.Id, setup.Model.ModelId);
 
         var lastText = new StringBuilder();
+        var stopwatch = Stopwatch.StartNew();
+        var functionCalls = 0;
+        var answerLength = 0;
+        var budgetExhausted = false;
+        string? outcome = null;
 
         var round = 0;
-        for (; ; round++)
+        try
         {
-            // Once the budget is spent the model gets one more turn with function calls
-            // switched off, so it has to answer.
-            var allowToolCalls = round < setup.MaxRounds;
-            var toolCalls = new List<AiStreamEvent.ToolCall>();
-            lastText.Clear();
-            // Reasoning summaries are reported as progress only; they never reach the outer model.
-            var reasoningPartOpen = false;
-
-            await foreach (var streamEvent in conversation.StreamTurnAsync(allowToolCalls, cancellationToken))
+            for (; ; round++)
             {
-                switch (streamEvent)
+                // Once the budget is spent the model gets one more turn with function calls
+                // switched off, so it has to answer.
+                var allowToolCalls = round < setup.MaxRounds;
+                var toolCalls = new List<AiStreamEvent.ToolCall>();
+                lastText.Clear();
+                // Reasoning summaries are reported as progress only; they never reach the outer model.
+                var reasoningPartOpen = false;
+
+                await foreach (var streamEvent in conversation.StreamTurnAsync(allowToolCalls, cancellationToken))
                 {
-                    case AiStreamEvent.Text text:
-                        lastText.Append(text.Delta);
-                        break;
-                    case AiStreamEvent.Thinking thinking when !string.IsNullOrEmpty(thinking.Delta):
-                        if (!reasoningPartOpen)
+                    switch (streamEvent)
+                    {
+                        case AiStreamEvent.Text text:
+                            lastText.Append(text.Delta);
+                            break;
+                        case AiStreamEvent.Thinking thinking when !string.IsNullOrEmpty(thinking.Delta):
+                            if (!reasoningPartOpen)
+                            {
+                                reasoningPartOpen = true;
+                                yield return new ToolExecutionEvent.InnerReasoningPartStarted();
+                            }
+
+                            yield return new ToolExecutionEvent.InnerReasoningDelta(thinking.Delta);
+                            break;
+                        case AiStreamEvent.ThinkingBreak:
+                            reasoningPartOpen = false;
+                            break;
+                        case AiStreamEvent.ToolCall call:
+                            toolCalls.Add(call);
+                            break;
+                    }
+                }
+
+                if (toolCalls.Count == 0)
+                {
+                    break;
+                }
+
+                if (!allowToolCalls)
+                {
+                    budgetExhausted = true;
+                    break;
+                }
+
+                var results = new List<AiToolResult>(toolCalls.Count);
+
+                foreach (var call in toolCalls)
+                {
+                    cancellationToken.ThrowIfCancellationRequested();
+
+                    var function = setup.Functions.FirstOrDefault(f => f.Id == call.FunctionName);
+                    if (function == null)
+                    {
+                        results.Add(new AiToolResult(call.Id, $"Unknown function: {call.FunctionName}", IsError: true));
+                        continue;
+                    }
+
+                    yield return new ToolExecutionEvent.InnerCallStarted(function.Id);
+
+                    functionCalls++;
+                    var callStopwatch = Stopwatch.StartNew();
+                    ToolResult? result = null;
+                    var executor = _executor ??= _services.GetRequiredService<IToolExecutor>();
+                    await foreach (var evt in executor.ExecuteAsync(function, call with { Id = outerToolCallId }, context, cancellationToken))
+                    {
+                        if (evt is ToolExecutionEvent.Completed done)
                         {
-                            reasoningPartOpen = true;
-                            yield return new ToolExecutionEvent.InnerReasoningPartStarted();
+                            result = done.Result;
                         }
+                        else if (evt is ToolExecutionEvent.Deferred)
+                        {
+                            // Defer mode: the pause ends the outer call, which runs again in full
+                            // once the user has answered. Nothing of this inner run is kept.
+                            _telemetry.AgentFunctionFinished(agent.Id, call.FunctionName, "deferred", callStopwatch.ElapsedMilliseconds);
+                            outcome = "deferred";
+                            yield return evt;
+                            yield break;
+                        }
+                        else
+                        {
+                            yield return evt;
+                        }
+                    }
 
-                        yield return new ToolExecutionEvent.InnerReasoningDelta(thinking.Delta);
-                        break;
-                    case AiStreamEvent.ThinkingBreak:
-                        reasoningPartOpen = false;
-                        break;
-                    case AiStreamEvent.ToolCall call:
-                        toolCalls.Add(call);
-                        break;
-                }
-            }
-
-            if (toolCalls.Count == 0)
-            {
-                break;
-            }
-
-            if (!allowToolCalls)
-            {
-                _logger.LogWarning("Agent {AgentId} called functions after the budget ran out", agent.Id);
-                break;
-            }
-
-            var results = new List<AiToolResult>(toolCalls.Count);
-
-            foreach (var call in toolCalls)
-            {
-                cancellationToken.ThrowIfCancellationRequested();
-
-                var function = setup.Functions.FirstOrDefault(f => f.Id == call.FunctionName);
-                if (function == null)
-                {
-                    results.Add(new AiToolResult(call.Id, $"Unknown function: {call.FunctionName}", IsError: true));
-                    continue;
+                    result ??= ToolResult.Error("The function ended without a result.");
+                    _telemetry.AgentFunctionFinished(agent.Id, call.FunctionName, result.IsError ? "error" : "ok", callStopwatch.ElapsedMilliseconds);
+                    results.Add(new AiToolResult(call.Id, result.Content, result.IsError, Images: result.Images));
                 }
 
-                yield return new ToolExecutionEvent.InnerCallStarted(function.Id);
-
-                ToolResult? result = null;
-                var executor = _executor ??= _services.GetRequiredService<IToolExecutor>();
-                await foreach (var evt in executor.ExecuteAsync(function, call with { Id = outerToolCallId }, context, cancellationToken))
-                {
-                    if (evt is ToolExecutionEvent.Completed done)
-                    {
-                        result = done.Result;
-                    }
-                    else if (evt is ToolExecutionEvent.Deferred)
-                    {
-                        // Defer mode: the pause ends the outer call, which runs again in full
-                        // once the user has answered. Nothing of this inner run is kept.
-                        _logger.LogInformation("Agent {AgentId} call {Function} deferred; ending the run", agent.Id, call.FunctionName);
-                        yield return evt;
-                        yield break;
-                    }
-                    else
-                    {
-                        yield return evt;
-                    }
-                }
-
-                result ??= ToolResult.Error("The function ended without a result.");
-                // Names and status only: arguments and results carry the user's data.
-                _logger.LogInformation("Agent {AgentId} call {Function} -> {Status}", agent.Id, call.FunctionName, result.IsError ? "error" : "ok");
-                results.Add(new AiToolResult(call.Id, result.Content, result.IsError, Images: result.Images));
+                conversation.AppendToolResults(results);
             }
 
-            conversation.AppendToolResults(results);
+            var answer = lastText.ToString().Trim();
+            answerLength = answer.Length;
+            outcome = budgetExhausted ? "budget_exhausted" : answer.Length > 0 ? Outcomes.Succeeded : Outcomes.Failed;
+            yield return answer.Length > 0
+                ? new ToolExecutionEvent.Completed(ToolResult.Text(answer), ToolCallStatus.Completed)
+                : Fail("The agent produced no answer.");
         }
-
-        var answer = lastText.ToString().Trim();
-        _logger.LogInformation("Agent {AgentId} finished after {Rounds} round(s), {Chars} chars", agent.Id, round, answer.Length);
-        yield return answer.Length > 0
-            ? new ToolExecutionEvent.Completed(ToolResult.Text(answer), ToolCallStatus.Completed)
-            : Fail("The agent produced no answer.");
+        finally
+        {
+            _telemetry.AgentRunFinished(
+                agent.Id,
+                setup.Model.ModelId,
+                round,
+                functionCalls,
+                answerLength,
+                outcome ?? (cancellationToken.IsCancellationRequested ? Outcomes.Cancelled : Outcomes.Failed),
+                stopwatch.ElapsedMilliseconds);
+        }
     }
 
     private static ToolExecutionEvent.Completed Fail(string message)
