@@ -28,7 +28,7 @@ public sealed class MediaGenerationService
     private readonly IAiProviderRegistry _providers;
     private readonly IMediaGenerationStore _store;
     private readonly IHubContext<AppHub, IAppHubClient> _hubContext;
-    private readonly ILogger<MediaGenerationService> _logger;
+    private readonly Telemetry.AppTelemetry _telemetry;
     private readonly ConcurrentDictionary<string, LiveStream<MediaGenerationEvent>> _streams = new();
     private readonly ConcurrentDictionary<string, RunHandle> _runs = new();
 
@@ -36,12 +36,12 @@ public sealed class MediaGenerationService
         IAiProviderRegistry providers,
         IMediaGenerationStore store,
         IHubContext<AppHub, IAppHubClient> hubContext,
-        ILogger<MediaGenerationService> logger)
+        Telemetry.AppTelemetry telemetry)
     {
         _providers = providers;
         _store = store;
         _hubContext = hubContext;
-        _logger = logger;
+        _telemetry = telemetry;
     }
 
     /// <summary>Starts an image generation or edit. The request must already have passed <see cref="ImageParameterValidator"/>.</summary>
@@ -56,8 +56,18 @@ public sealed class MediaGenerationService
             Prompt = request.Parameters.Prompt
         };
 
+        var parameters = request.Parameters;
+        var info = new Telemetry.ImageGenerationInfo(
+            generation.Id,
+            request.Model.ModelId,
+            parameters.Size is { } size ? $"{size.Width}x{size.Height}" : parameters.AutoAspectRatio ? "auto" : null,
+            parameters.Quality?.ToString(),
+            parameters.Count,
+            parameters.InputImages.Count);
+        _telemetry.ImageGenerationStarted(info);
+
         var provider = _providers.For(request.Endpoint.EndpointType);
-        Start(generation, TimeoutPerImage * request.Parameters.Count, (stream, stopwatch, cancellationToken) => RunImageGenerationAsync(provider, request, generation, stream, stopwatch, cancellationToken));
+        Start(generation, info, TimeoutPerImage * request.Parameters.Count, (stream, stopwatch, cancellationToken) => RunImageGenerationAsync(provider, request, generation, stream, stopwatch, cancellationToken));
         return generation;
     }
 
@@ -89,7 +99,7 @@ public sealed class MediaGenerationService
     {
         if (!_streams.TryGetValue(Key(userId, generationId), out var stream))
         {
-            _logger.LogWarning("Client requested the stream of a generation that has none: {GenerationId}", generationId);
+            _telemetry.ImageStreamMissing(generationId);
             return;
         }
 
@@ -104,13 +114,14 @@ public sealed class MediaGenerationService
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error streaming generation {GenerationId} to client {ConnectionId}", generationId, connectionId);
+                _telemetry.ImageStreamFailed(generationId, connectionId, ex);
             }
         });
     }
 
     private void Start(
         MediaGeneration generation,
+        Telemetry.ImageGenerationInfo info,
         TimeSpan timeout,
         Func<LiveStream<MediaGenerationEvent>, Stopwatch, CancellationToken, Task> run)
     {
@@ -134,26 +145,27 @@ public sealed class MediaGenerationService
             {
                 await run(stream, stopwatch, cancellation.Token);
                 Finish(generation, stream, stopwatch, MediaGenerationStatus.Completed);
+                Record(Telemetry.Outcomes.Succeeded, null, null);
             }
             catch (Exception) when (handle.UserCancelled)
             {
-                _logger.LogInformation("Generation {GenerationId} cancelled by user", generation.Id);
                 Finish(generation, stream, stopwatch, MediaGenerationStatus.Cancelled);
+                Record(Telemetry.Outcomes.Cancelled, null, null);
             }
             catch (OperationCanceledException)
             {
-                _logger.LogWarning("Generation {GenerationId} timed out", generation.Id);
                 Finish(generation, stream, stopwatch, MediaGenerationStatus.Failed, $"The model did not finish within {timeout.TotalMinutes:0} minutes.");
+                Record(Telemetry.Outcomes.Failed, Telemetry.ErrorCategories.Timeout, null);
             }
             catch (ImageGenerationFailedException ex)
             {
-                _logger.LogWarning("Generation {GenerationId} failed: {Reason} Service response: {ServiceResponse}", generation.Id, ex.Message, ex.ServiceResponse);
                 Finish(generation, stream, stopwatch, MediaGenerationStatus.Failed, ex.Message);
+                Record(Telemetry.Outcomes.Failed, null, ex);
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error running generation {GenerationId}", generation.Id);
                 Finish(generation, stream, stopwatch, MediaGenerationStatus.Failed, GenerationFailedText);
+                Record(Telemetry.Outcomes.Failed, null, ex);
             }
             finally
             {
@@ -165,6 +177,9 @@ public sealed class MediaGenerationService
                     removed.Dispose();
                 }
             }
+
+            void Record(string outcome, string? errorCategory, Exception? exception) =>
+                _telemetry.ImageGenerationFinished(info, outcome, stopwatch.ElapsedMilliseconds, generation.InputTokens, generation.OutputTokens, errorCategory, exception);
         });
     }
 

@@ -8,6 +8,7 @@ import { addNotification } from "./notificationService";
 import { receiveMediaGenerationEvent, resumeGenerationStreams, setStreamGenerationCallback } from "./mediaGenerationService";
 import type { MediaGenerationEvent } from "../types/mediaGenerationModels";
 import type { NotifyLevel } from "../types/notification";
+import { telemetryQuery, trackError } from "./telemetryService";
 
 class SignalrService {
   private static instance: SignalrService;
@@ -70,7 +71,7 @@ class SignalrService {
 
       if (!this.connection || this.connection.state === signalR.HubConnectionState.Disconnected) {
         this.connection = new signalR.HubConnectionBuilder()
-          .withUrl("/apphub", {
+          .withUrl(`/apphub?${telemetryQuery()}`, {
             accessTokenFactory: () => authService.getAccessToken().then(t => t || "")
           })
           .withAutomaticReconnect()
@@ -94,6 +95,7 @@ class SignalrService {
       this.isInitialized = true;
     } catch (error) {
       console.error("Failed to initialize SignalR connection:", error);
+      trackError("realtime", { message: "The connection to the hub could not start", error });
       throw error;
     }
   }
@@ -131,6 +133,10 @@ class SignalrService {
     // Requests the running generations' events again on the new connection
     this.connection.onreconnected(() => {
       resumeGenerationStreams();
+    });
+
+    this.connection.onreconnecting(error => {
+      trackError("realtime", { message: "The connection to the hub was lost and is reconnecting", error });
     });
 
   }

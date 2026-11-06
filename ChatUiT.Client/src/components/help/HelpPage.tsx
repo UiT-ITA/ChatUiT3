@@ -27,6 +27,7 @@ import Text from '../common/Text';
 import Box from '../common/Box';
 import RichText, { RichTextLink } from '../common/RichText';
 import KeyCombo from '../common/KeyCombo';
+import { trackError } from '../../services/telemetryService';
 
 /**
  * Blockquotes whose first paragraph is one of these markers render as callouts.
@@ -207,7 +208,10 @@ const HelpPage = () => {
                 variant="ghost"
                 size="small"
                 startIcon="copy"
-                onClick={() => navigator.clipboard.writeText(codeText).catch(err => console.error('Failed to copy code:', err))}
+                onClick={() => navigator.clipboard.writeText(codeText).catch(err => {
+                  console.error('Failed to copy code:', err);
+                  trackError('clipboard', { message: 'Help code could not be copied', error: err });
+                })}
                 title={t('chat.actions.copyCode')}
               >
                 {t('chat.actions.copyCode')}

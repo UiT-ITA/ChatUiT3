@@ -52,7 +52,7 @@ public sealed class LoadKnowledgeFileTool : Tool<LoadKnowledgeFileArgs>
     private readonly IReadOnlyList<AssistantFile> _files;
     private readonly IDatabaseService _database;
     private readonly ITokenCountingService _tokenCounting;
-    private readonly ILogger _logger;
+    private readonly Telemetry.AppTelemetry _telemetry;
     private readonly int _windowChars;
 
     public LoadKnowledgeFileTool(
@@ -61,13 +61,13 @@ public sealed class LoadKnowledgeFileTool : Tool<LoadKnowledgeFileArgs>
         IDatabaseService database,
         ITokenCountingService tokenCounting,
         ToolOptions options,
-        ILogger logger)
+        Telemetry.AppTelemetry telemetry)
     {
         _assistantId = assistantId;
         _files = files;
         _database = database;
         _tokenCounting = tokenCounting;
-        _logger = logger;
+        _telemetry = telemetry;
         _windowChars = Math.Max(1_000, options.MaxModelContentChars - EnvelopeHeadroomChars);
     }
 
@@ -149,11 +149,11 @@ public sealed class LoadKnowledgeFileTool : Tool<LoadKnowledgeFileArgs>
         });
         if (pinned)
         {
-            _logger.LogInformation("Pinned file {FileId} ({Filename}) to chat {ChatId}", file.Id, file.SourceFilename, context.ChatId);
+            _telemetry.KnowledgeFileLoaded(file.Id, file.SourceFilename, _assistantId, context.ChatId);
         }
         else
         {
-            _logger.LogWarning("Could not pin file {FileId} to chat {ChatId}: chat not found", file.Id, context.ChatId);
+            _telemetry.KnowledgeFilePinFailed(file.Id, context.ChatId);
         }
 
         return pinned;

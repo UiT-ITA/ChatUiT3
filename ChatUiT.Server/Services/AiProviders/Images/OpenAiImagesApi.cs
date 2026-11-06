@@ -207,7 +207,7 @@ public sealed class OpenAiImagesApi : IImageApi
             if (type == "error" || (root.TryGetProperty("error", out var error) && error.ValueKind == JsonValueKind.Object))
             {
                 var (code, message) = ImageApiHttp.ReadError(root);
-                throw ImageApiHttp.Failure(null, code, message, payload);
+                throw ImageApiHttp.Failure(null, code, message);
             }
 
             if (type.EndsWith(".partial_image", StringComparison.Ordinal))

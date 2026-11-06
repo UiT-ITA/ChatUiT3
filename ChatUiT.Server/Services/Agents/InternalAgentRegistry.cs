@@ -26,7 +26,7 @@ public sealed partial class InternalAgentRegistry : IInternalAgentRegistry
 
     private readonly Dictionary<string, InternalAgent> _byId = new(StringComparer.Ordinal);
 
-    public InternalAgentRegistry(IEnumerable<InternalAgent> agents, ILogger<InternalAgentRegistry> logger)
+    public InternalAgentRegistry(IEnumerable<InternalAgent> agents)
     {
         foreach (var agent in agents)
         {
@@ -48,7 +48,6 @@ public sealed partial class InternalAgentRegistry : IInternalAgentRegistry
         }
 
         Agents = _byId.Values.OrderBy(a => a.Id, StringComparer.Ordinal).ToList();
-        logger.LogInformation("Registered {Count} internal agents: {Ids}", Agents.Count, string.Join(", ", Agents.Select(a => a.Id)));
     }
 
     public IReadOnlyList<InternalAgent> Agents { get; }

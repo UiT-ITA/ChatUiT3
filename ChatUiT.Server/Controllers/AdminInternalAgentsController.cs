@@ -3,6 +3,7 @@ using ChatUiT.Server.Services;
 using ChatUiT.Server.Services.Agents;
 using ChatUiT.Server.Services.ApiCatalog;
 using ChatUiT.Server.Services.Tools;
+using ChatUiT.Server.Telemetry;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
@@ -21,76 +22,66 @@ public class AdminInternalAgentsController : ControllerBase
     private readonly IInternalAgentRegistry _agents;
     private readonly InternalAgentSettingsService _settings;
     private readonly IModelService _models;
-    private readonly ILogger<AdminInternalAgentsController> _logger;
+    private readonly AppTelemetry _telemetry;
 
     public AdminInternalAgentsController(
         IInternalAgentRegistry agents,
         InternalAgentSettingsService settings,
         IModelService models,
-        ILogger<AdminInternalAgentsController> logger)
+        AppTelemetry telemetry)
     {
         _agents = agents;
         _settings = settings;
         _models = models;
-        _logger = logger;
+        _telemetry = telemetry;
     }
 
     [HttpGet]
     public async Task<ActionResult<List<InternalAgentAdminDto>>> GetAgents()
     {
-        try
+        var result = new List<InternalAgentAdminDto>();
+        foreach (var agent in _agents.Agents)
         {
-            var result = new List<InternalAgentAdminDto>();
-            foreach (var agent in _agents.Agents)
-            {
-                result.Add(await ToDtoAsync(agent));
-            }
+            result.Add(await ToDtoAsync(agent));
+        }
 
-            return Ok(result);
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Error listing internal agents");
-            return StatusCode(500, "Internal server error");
-        }
+        return Ok(result);
     }
 
     [HttpPut("{id}")]
     public async Task<ActionResult<InternalAgentAdminDto>> SaveSetting(string id, [FromBody] InternalAgentSettingDto dto)
     {
-        try
+        var agent = _agents.Find(id);
+        if (agent == null)
         {
-            var agent = _agents.Find(id);
-            if (agent == null)
-            {
-                return NotFound($"Internal agent {id} not found");
-            }
-
-            var model = string.IsNullOrWhiteSpace(dto.ModelId) ? null : await _models.GetModelAsync<LanguageModel>(dto.ModelId);
-            if (model == null)
-            {
-                return BadRequest(new { error = "unknown_model", message = "Choose the model the agent runs on." });
-            }
-
-            if (!model.Capabilities.SupportsFunctionCalling)
-            {
-                return BadRequest(new { error = "model_cannot_call_functions", message = $"'{model.ModelName}' does not support function calling, which an agent needs." });
-            }
-
-            if (dto.ExposedInApi && ApiCatalogService.ExposureProblem(agent) is { } problem)
-            {
-                return BadRequest(new { error = "agent_not_exposable", message = problem });
-            }
-
-            // Stored as the model can honour it, the same reconciliation as assistant settings.
-            await _settings.SaveAsync(new InternalAgentSetting(agent.Id, model.Id, model.Capabilities.ClampEffort(dto.ReasoningEffort), dto.ExposedInApi, DateTime.UtcNow));
-            return Ok(await ToDtoAsync(agent));
+            return NotFound($"Internal agent {id} not found");
         }
-        catch (Exception ex)
+
+        var model = string.IsNullOrWhiteSpace(dto.ModelId) ? null : await _models.GetModelAsync<LanguageModel>(dto.ModelId);
+        if (model == null)
         {
-            _logger.LogError(ex, "Error saving the setting of internal agent {AgentId}", id);
-            return StatusCode(500, "Internal server error");
+            return BadRequest(new { error = "unknown_model", message = "Choose the model the agent runs on." });
         }
+
+        if (!model.Capabilities.SupportsFunctionCalling)
+        {
+            return BadRequest(new { error = "model_cannot_call_functions", message = $"'{model.ModelName}' does not support function calling, which an agent needs." });
+        }
+
+        if (dto.ExposedInApi && ApiCatalogService.ExposureProblem(agent) is { } problem)
+        {
+            return BadRequest(new { error = "agent_not_exposable", message = problem });
+        }
+
+        // Stored as the model can honour it, the same reconciliation as assistant settings.
+        var before = await ToDtoAsync(agent);
+        await _settings.SaveAsync(new InternalAgentSetting(agent.Id, model.Id, model.Capabilities.ClampEffort(dto.ReasoningEffort), dto.ExposedInApi, DateTime.UtcNow));
+        var after = await ToDtoAsync(agent);
+        var diff = TelemetryDiff.Compute(
+            new { modelId = before.ModelId, reasoningEffort = before.ReasoningEffort?.ToString(), exposedInApi = before.ExposedInApi },
+            new { modelId = after.ModelId, reasoningEffort = after.ReasoningEffort?.ToString(), exposedInApi = after.ExposedInApi });
+        _telemetry.AdminChanged("internal_agent", agent.Id, "updated", diff.Changed, diff.Changes);
+        return Ok(after);
     }
 
     private async Task<InternalAgentAdminDto> ToDtoAsync(InternalAgent agent)

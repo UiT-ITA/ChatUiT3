@@ -178,8 +178,8 @@ public static class ToolSchema
     }
 }
 
-/// <summary>The model sent arguments the tool cannot use. The message is written for the model.</summary>
-public class ToolArgumentException : Exception
+/// <summary>The model sent arguments the tool cannot use. The message is written for the model and is never logged.</summary>
+public class ToolArgumentException : Exception, Telemetry.IContentCarryingException
 {
     public ToolArgumentException(string message, Exception? inner = null) : base(message, inner)
     {

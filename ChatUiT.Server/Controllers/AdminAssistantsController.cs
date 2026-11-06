@@ -13,55 +13,36 @@ namespace ChatUiT.Server.Controllers;
 public class AdminAssistantsController : ControllerBase
 {
     private readonly IAssistantService _assistantService;
-    private readonly ILogger<AdminAssistantsController> _logger;
     private readonly IToolboxRegistry _toolboxes;
     private readonly IKnowledgeSourceRegistry _knowledgeSources;
 
     public AdminAssistantsController(
         IAssistantService assistantService,
         IToolboxRegistry toolboxes,
-        IKnowledgeSourceRegistry knowledgeSources,
-        ILogger<AdminAssistantsController> logger)
+        IKnowledgeSourceRegistry knowledgeSources)
     {
         _toolboxes = toolboxes;
         _knowledgeSources = knowledgeSources;
         _assistantService = assistantService;
-        _logger = logger;
     }
 
     [HttpGet]
     public async Task<ActionResult<List<FullAssistantDto>>> GetAssistants()
     {
-        try
-        {
-            var assistants = await _assistantService.GetSystemAssistantsForAdminAsync();
-            return Ok(assistants);
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Error getting system assistants");
-            return StatusCode(500, "Internal server error");
-        }
+        var assistants = await _assistantService.GetSystemAssistantsForAdminAsync();
+        return Ok(assistants);
     }
 
     [HttpGet("{id}")]
     public async Task<ActionResult<FullAssistantDto>> GetAssistant(string id)
     {
-        try
+        var assistant = await _assistantService.GetSystemAssistantForAdminAsync(id);
+        if (assistant == null)
         {
-            var assistant = await _assistantService.GetSystemAssistantForAdminAsync(id);
-            if (assistant == null)
-            {
-                return NotFound();
-            }
+            return NotFound();
+        }
 
-            return Ok(assistant);
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Error getting system assistant {AssistantId}", id);
-            return StatusCode(500, "Internal server error");
-        }
+        return Ok(assistant);
     }
 
     [HttpPost]
@@ -94,11 +75,6 @@ public class AdminAssistantsController : ControllerBase
         catch (ArgumentException ex)
         {
             return BadRequest(ex.Message);
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Error creating system assistant");
-            return StatusCode(500, "Internal server error");
         }
     }
 
@@ -139,31 +115,18 @@ public class AdminAssistantsController : ControllerBase
         {
             return BadRequest(ex.Message);
         }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Error updating system assistant {AssistantId}", id);
-            return StatusCode(500, "Internal server error");
-        }
     }
 
     [HttpDelete("{id}")]
     public async Task<IActionResult> DeleteAssistant(string id)
     {
-        try
+        var deleted = await _assistantService.DeleteSystemAssistantAsync(id);
+        if (!deleted)
         {
-            var deleted = await _assistantService.DeleteSystemAssistantAsync(id);
-            if (!deleted)
-            {
-                return NotFound();
-            }
+            return NotFound();
+        }
 
-            return NoContent();
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Error deleting system assistant {AssistantId}", id);
-            return StatusCode(500, "Internal server error");
-        }
+        return NoContent();
     }
 
     /// <summary>System assistants serve everyone, so admins are not access-checked; unknown ids are still refused.</summary>

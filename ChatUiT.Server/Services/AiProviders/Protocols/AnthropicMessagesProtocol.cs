@@ -14,6 +14,7 @@ using Microsoft.Extensions.Logging;
 namespace ChatUiT.Server.Services.AiProviders.Protocols;
 
 using ChatUiT.Server.Models;
+using ChatUiT.Server.Telemetry;
 using ChatUiT.Server.Services.TokenCounting;
 using ChatUiT.Server.Services.Tools;
 using DomainChatMessage = ChatUiT.Server.Models.ChatMessage;
@@ -35,11 +36,11 @@ public sealed class AnthropicMessagesProtocol : IApiProtocol
     private const int NamingTokenBudget = 100;
     private const int NamingReasoningTokenBudget = 2_000;
 
-    private readonly ILogger<AnthropicMessagesProtocol> _logger;
+    private readonly AppTelemetry _telemetry;
 
-    public AnthropicMessagesProtocol(ILogger<AnthropicMessagesProtocol> logger)
+    public AnthropicMessagesProtocol(AppTelemetry telemetry)
     {
-        _logger = logger;
+        _telemetry = telemetry;
     }
 
     public ApiProtocol Protocol => ApiProtocol.AnthropicMessages;
@@ -47,7 +48,7 @@ public sealed class AnthropicMessagesProtocol : IApiProtocol
     public IAiConversation StartConversation(AiRequest request, ProtocolTarget target)
     {
         var messages = BuildMessages(request, out var lastToolUseTurnHasThinking);
-        return new Conversation(request, target, messages, allowThinking: lastToolUseTurnHasThinking, _logger);
+        return new Conversation(request, target, messages, allowThinking: lastToolUseTurnHasThinking, _telemetry);
     }
 
     public async Task<string> GenerateChatNameAsync(AiRequest request, ProtocolTarget target, CancellationToken cancellationToken = default)
@@ -248,7 +249,7 @@ public sealed class AnthropicMessagesProtocol : IApiProtocol
 
                     foreach (var call in turn.ToolCalls)
                     {
-                        blocks.Add(new ToolUseBlockParam { ID = call.Id, Name = call.Name, Input = ParseArguments(call.ArgumentsJson, call.Name, _logger) });
+                        blocks.Add(new ToolUseBlockParam { ID = call.Id, Name = call.Name, Input = ParseArguments(call.ArgumentsJson, call.Name, _telemetry) });
                     }
 
                     lastToolUseTurnHasThinking = turn.ToolCalls.Count == 0 || hasThinking;
@@ -341,7 +342,7 @@ public sealed class AnthropicMessagesProtocol : IApiProtocol
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error processing file {FileName}", file.SourceFilename);
+            _telemetry.FileProcessingFailed(file.Id, file.SourceFilename, FileFacts.TypeOf(file.SourceFilename), FileFacts.BytesOf(file), ex);
             blocks.Add(new TextBlockParam { Text = $"\n--- ERROR: Could not process file {file.SourceFilename} ---\n" });
         }
     }
@@ -371,7 +372,7 @@ public sealed class AnthropicMessagesProtocol : IApiProtocol
             }
             else
             {
-                _logger.LogWarning("Dropping an unreadable thinking block from replayed reasoning state");
+                _telemetry.GenerationReasoningDropped("anthropic_messages");
             }
         }
     }
@@ -380,7 +381,7 @@ public sealed class AnthropicMessagesProtocol : IApiProtocol
     private const string RedactedThinkingType = "redacted_thinking";
     private const string RefusalStopReason = "refusal";
 
-    private static Dictionary<string, JsonElement> ParseArguments(string json, string toolName, ILogger logger)
+    private static Dictionary<string, JsonElement> ParseArguments(string json, string toolName, AppTelemetry telemetry)
     {
         try
         {
@@ -389,7 +390,7 @@ public sealed class AnthropicMessagesProtocol : IApiProtocol
         }
         catch (JsonException ex)
         {
-            logger.LogWarning(ex, "Could not parse streamed arguments for tool {ToolName}", toolName);
+            telemetry.ToolArgumentsUnparsable(toolName, ex);
             return new Dictionary<string, JsonElement>();
         }
     }
@@ -463,20 +464,20 @@ public sealed class AnthropicMessagesProtocol : IApiProtocol
         private readonly ProtocolTarget _target;
         private readonly List<MessageParam> _messages;
         private readonly bool _allowThinking;
-        private readonly ILogger _logger;
+        private readonly AppTelemetry _telemetry;
 
         /// <param name="allowThinking">
         /// False when the replayed history ends in a tool-use turn without its thinking state.
         /// Every turn of this conversation then runs without thinking, since each one it adds is
         /// again a tool-use turn without a thinking block.
         /// </param>
-        public Conversation(AiRequest request, ProtocolTarget target, List<MessageParam> messages, bool allowThinking, ILogger logger)
+        public Conversation(AiRequest request, ProtocolTarget target, List<MessageParam> messages, bool allowThinking, AppTelemetry telemetry)
         {
             _request = request;
             _target = target;
             _messages = messages;
             _allowThinking = allowThinking;
-            _logger = logger;
+            _telemetry = telemetry;
         }
 
         public async IAsyncEnumerable<AiStreamEvent> StreamTurnAsync(
@@ -492,26 +493,31 @@ public sealed class AnthropicMessagesProtocol : IApiProtocol
             // as-is on the next tool round: thinking blocks must come back unchanged, with
             // their signatures, ahead of the text and tool_use blocks they precede.
             var blocks = new SortedDictionary<long, PendingBlock>();
+            long inputTokens = 0, outputTokens = 0, cachedTokens = 0, cacheWriteTokens = 0;
+            string? stopReason = null;
 
             await foreach (var streamEvent in client.Messages.CreateStreaming(parameters, cancellationToken))
             {
                 if (streamEvent.TryPickStart(out var messageStart) && messageStart?.Message.Usage is { } usage)
                 {
-                    _logger.LogInformation(
-                        "Anthropic turn on {Model}: {InputTokens} uncached input tokens, {CacheReadTokens} read from cache, {CacheWriteTokens} written to cache",
-                        _request.Model.ModelId, usage.InputTokens, usage.CacheReadInputTokens ?? 0, usage.CacheCreationInputTokens ?? 0);
+                    cachedTokens = usage.CacheReadInputTokens ?? 0;
+                    cacheWriteTokens = usage.CacheCreationInputTokens ?? 0;
+                    inputTokens = usage.InputTokens + cachedTokens + cacheWriteTokens;
+                    outputTokens = usage.OutputTokens;
                     continue;
                 }
 
                 // Fails the turn when the model refused it, with the refusal's category and explanation.
                 if (streamEvent.TryPickDelta(out var messageDelta) && messageDelta != null)
                 {
+                    stopReason = messageDelta.Delta.StopReason?.Raw() ?? stopReason;
+                    outputTokens = messageDelta.Usage.OutputTokens;
+
                     if (messageDelta.Delta.StopReason?.Raw() == RefusalStopReason)
                     {
                         var category = messageDelta.Delta.StopDetails?.Category?.Raw() ?? "unknown";
                         var explanation = messageDelta.Delta.StopDetails?.Explanation ?? "no explanation";
-                        _logger.LogWarning("Anthropic turn on {Model} was refused: category {Category}", _request.Model.ModelId, category);
-                        throw new AiTurnFailedException($"The model refused to answer ({category}): {explanation}");
+                        throw new AiTurnFailedException($"The model refused to answer ({category}): {explanation}", ErrorCategories.ProviderRefused, category);
                     }
 
                     continue;
@@ -602,7 +608,7 @@ public sealed class AnthropicMessagesProtocol : IApiProtocol
                         {
                             ID = block.Id!,
                             Name = block.Name!,
-                            Input = ParseArguments(arguments, block.Name!, _logger)
+                            Input = ParseArguments(arguments, block.Name!, _telemetry)
                         });
                         toolCalls.Add(new AiStreamEvent.ToolCall(block.Id!, block.Name!, arguments));
                         break;
@@ -615,6 +621,8 @@ public sealed class AnthropicMessagesProtocol : IApiProtocol
             {
                 _messages.Add(new MessageParam { Role = Role.Assistant, Content = assistantBlocks });
             }
+
+            yield return new AiStreamEvent.TurnEnded(inputTokens, outputTokens, cachedTokens, cacheWriteTokens, stopReason);
 
             if (thinkingState.Count > 0)
             {

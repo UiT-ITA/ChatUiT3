@@ -1,5 +1,7 @@
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
+using System.Linq;
 using System.Runtime.CompilerServices;
 using System.Text.Json;
 using System.Threading;
@@ -7,6 +9,8 @@ using System.Threading.Channels;
 using System.Threading.Tasks;
 using ChatUiT.Server.Models;
 using ChatUiT.Server.Services.AiProviders;
+using ChatUiT.Server.Services.Agents;
+using ChatUiT.Server.Telemetry;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 
@@ -16,16 +20,38 @@ public sealed class ToolExecutor : IToolExecutor
 {
     private readonly IToolAccessService _access;
     private readonly ToolOptions _options;
-    private readonly ILogger<ToolExecutor> _logger;
+    private readonly IToolboxRegistry _toolboxes;
+    private readonly AppTelemetry _telemetry;
 
     public ToolExecutor(
         IToolAccessService access,
         IOptions<ToolOptions> options,
-        ILogger<ToolExecutor> logger)
+        IToolboxRegistry toolboxes,
+        AppTelemetry telemetry)
     {
         _access = access;
         _options = options.Value;
-        _logger = logger;
+        _toolboxes = toolboxes;
+        _telemetry = telemetry;
+    }
+
+    /// <summary>What a run learned about its failure, for <c>tool.call_finished</c>.</summary>
+    private sealed class CallTrace
+    {
+        public Stopwatch Stopwatch { get; } = Stopwatch.StartNew();
+
+        public Exception? Failure { get; set; }
+
+        public string? ErrorCategory { get; set; }
+    }
+
+    private void RecordFinished(ITool tool, ToolExecutionContext context, ToolCallStatus status, CallTrace trace)
+    {
+        var execution = tool is InternalAgentTool ? "agent" : tool.Execution == ToolExecution.Client ? "client" : "server";
+        var toolbox = _toolboxes.All.FirstOrDefault(box => box.Tools.Any(t => t.Id == tool.Id))?.Id;
+        _telemetry.ToolCallFinished(
+            new ToolCallFinishedInfo(context.ChatId, context.MessageId, tool.Id, toolbox, execution, status.ToString(), trace.Stopwatch.ElapsedMilliseconds, trace.ErrorCategory),
+            trace.Failure);
     }
 
     public async IAsyncEnumerable<ToolExecutionEvent> ExecuteAsync(
@@ -37,10 +63,16 @@ public sealed class ToolExecutor : IToolExecutor
         // The work runs on its own task and reports through a channel, so the iterator can
         // yield freely while the worker keeps its try/catch.
         var channel = Channel.CreateUnbounded<ToolExecutionEvent>(new UnboundedChannelOptions { SingleReader = true, SingleWriter = true });
-        var worker = RunAsync(tool, call, context, resume: null, channel.Writer, cancellationToken);
+        var trace = new CallTrace();
+        var worker = RunAsync(tool, call, context, resume: null, channel.Writer, trace, cancellationToken);
 
         await foreach (var evt in channel.Reader.ReadAllAsync(cancellationToken))
         {
+            if (evt is ToolExecutionEvent.Completed done)
+            {
+                RecordFinished(tool, context, done.Status, trace);
+            }
+
             yield return evt;
         }
 
@@ -55,10 +87,16 @@ public sealed class ToolExecutor : IToolExecutor
         [EnumeratorCancellation] CancellationToken cancellationToken)
     {
         var channel = Channel.CreateUnbounded<ToolExecutionEvent>(new UnboundedChannelOptions { SingleReader = true, SingleWriter = true });
-        var worker = RunAsync(tool, call, context, input, channel.Writer, cancellationToken);
+        var trace = new CallTrace();
+        var worker = RunAsync(tool, call, context, input, channel.Writer, trace, cancellationToken);
 
         await foreach (var evt in channel.Reader.ReadAllAsync(cancellationToken))
         {
+            if (evt is ToolExecutionEvent.Completed done)
+            {
+                RecordFinished(tool, context, done.Status, trace);
+            }
+
             yield return evt;
         }
 
@@ -71,13 +109,15 @@ public sealed class ToolExecutor : IToolExecutor
         ToolExecutionContext context,
         ResumeInput? resume,
         ChannelWriter<ToolExecutionEvent> writer,
+        CallTrace trace,
         CancellationToken cancellationToken)
     {
         try
         {
             if (context.EnforceToolAccess && !await _access.CanUseAsync(tool, context.Access))
             {
-                _logger.LogWarning("User {UserId} called tool {ToolId} without access", context.UserId, tool.Id);
+                _telemetry.AccessDenied(null, tool.Id, "tool_policy");
+                trace.ErrorCategory = ErrorCategories.Auth;
                 Complete(writer, ToolResult.Error("You are not permitted to use this tool."), ToolCallStatus.Error);
                 return;
             }
@@ -103,6 +143,7 @@ public sealed class ToolExecutor : IToolExecutor
             }
             catch (JsonException ex)
             {
+                trace.ErrorCategory = ErrorCategories.Validation;
                 Complete(writer, ToolResult.Error($"Arguments are not valid JSON: {ex.Message}"), ToolCallStatus.Error);
                 return;
             }
@@ -113,7 +154,7 @@ public sealed class ToolExecutor : IToolExecutor
 
                 if (resume != null)
                 {
-                    await ResumeCoreAsync(tool, invocation, resume, writer, cancellationToken);
+                    await ResumeCoreAsync(tool, invocation, resume, writer, trace, cancellationToken);
                 }
                 else if (tool is IStreamingTool streaming)
                 {
@@ -121,15 +162,15 @@ public sealed class ToolExecutor : IToolExecutor
                 }
                 else if (tool is IConfirmableTool confirmable)
                 {
-                    await RunConfirmableAsync(confirmable, invocation, writer, cancellationToken);
+                    await RunConfirmableAsync(confirmable, invocation, writer, trace, cancellationToken);
                 }
                 else if (tool is IQuestionTool question)
                 {
-                    await RunQuestionAsync(question, invocation, writer, cancellationToken);
+                    await RunQuestionAsync(question, invocation, writer, trace, cancellationToken);
                 }
                 else
                 {
-                    await RunServerAsync(tool, invocation, writer, cancellationToken);
+                    await RunServerAsync(tool, invocation, writer, trace, cancellationToken);
                 }
             }
         }
@@ -141,14 +182,13 @@ public sealed class ToolExecutor : IToolExecutor
         }
         catch (AiTurnFailedException ex)
         {
-            // A nested agent run the provider ended early. The protocol has already logged status,
-            // reason and code; the reason is the call's result.
-            _logger.LogWarning("Tool {ToolId} failed: the provider ended a nested turn early", tool.Id);
+            // A nested agent run the provider ended early. The reason is the call's result.
+            trace.Failure = ex;
             Complete(writer, ToolResult.Error(ex.Message), ToolCallStatus.Error);
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error executing tool {ToolId}", tool.Id);
+            trace.Failure = ex;
             Complete(writer, ToolResult.Error($"Error: {ex.Message}"), ToolCallStatus.Error);
         }
         finally
@@ -157,9 +197,9 @@ public sealed class ToolExecutor : IToolExecutor
         }
     }
 
-    private async Task RunServerAsync(ITool tool, ToolInvocation invocation, ChannelWriter<ToolExecutionEvent> writer, CancellationToken cancellationToken)
+    private async Task RunServerAsync(ITool tool, ToolInvocation invocation, ChannelWriter<ToolExecutionEvent> writer, CallTrace trace, CancellationToken cancellationToken)
     {
-        var result = await RunStepAsync(() => tool.ExecuteAsync(invocation, cancellationToken), writer);
+        var result = await RunStepAsync(() => tool.ExecuteAsync(invocation, cancellationToken), writer, trace);
         if (result != null)
         {
             Complete(writer, result, result.IsError ? ToolCallStatus.Error : ToolCallStatus.Completed);
@@ -197,18 +237,18 @@ public sealed class ToolExecutor : IToolExecutor
         }
     }
 
-    private async Task RunConfirmableAsync(IConfirmableTool tool, ToolInvocation invocation, ChannelWriter<ToolExecutionEvent> writer, CancellationToken cancellationToken)
+    private async Task RunConfirmableAsync(IConfirmableTool tool, ToolInvocation invocation, ChannelWriter<ToolExecutionEvent> writer, CallTrace trace, CancellationToken cancellationToken)
     {
-        var preview = await RunStepAsync(() => tool.PrepareAsync(invocation, cancellationToken), writer);
+        var preview = await RunStepAsync(() => tool.PrepareAsync(invocation, cancellationToken), writer, trace);
         if (preview != null)
         {
             Emit(writer, new ToolExecutionEvent.Deferred(new DeferredStep.Confirmation(preview)));
         }
     }
 
-    private async Task RunQuestionAsync(IQuestionTool tool, ToolInvocation invocation, ChannelWriter<ToolExecutionEvent> writer, CancellationToken cancellationToken)
+    private async Task RunQuestionAsync(IQuestionTool tool, ToolInvocation invocation, ChannelWriter<ToolExecutionEvent> writer, CallTrace trace, CancellationToken cancellationToken)
     {
-        var questions = await RunStepAsync(() => tool.PrepareQuestionsAsync(invocation, cancellationToken), writer);
+        var questions = await RunStepAsync(() => tool.PrepareQuestionsAsync(invocation, cancellationToken), writer, trace);
         if (questions != null)
         {
             Emit(writer, new ToolExecutionEvent.Deferred(new DeferredStep.Questions(questions)));
@@ -216,7 +256,7 @@ public sealed class ToolExecutor : IToolExecutor
     }
 
     /// <summary>Continues a call with the answer a later request brought.</summary>
-    private async Task ResumeCoreAsync(ITool tool, ToolInvocation invocation, ResumeInput resume, ChannelWriter<ToolExecutionEvent> writer, CancellationToken cancellationToken)
+    private async Task ResumeCoreAsync(ITool tool, ToolInvocation invocation, ResumeInput resume, ChannelWriter<ToolExecutionEvent> writer, CallTrace trace, CancellationToken cancellationToken)
     {
         switch (resume)
         {
@@ -228,7 +268,7 @@ public sealed class ToolExecutor : IToolExecutor
                 }
 
                 Emit(writer, new ToolExecutionEvent.StatusChanged(ToolCallStatus.Approved, commit.ApprovedArguments.GetRawText()));
-                await CommitAsync(confirmable, invocation, commit.ApprovedArguments, writer, cancellationToken);
+                await CommitAsync(confirmable, invocation, commit.ApprovedArguments, writer, trace, cancellationToken);
                 return;
 
             case ResumeInput.Answers answers:
@@ -238,7 +278,7 @@ public sealed class ToolExecutor : IToolExecutor
                     return;
                 }
 
-                var result = await RunStepAsync(() => question.AnswerAsync(invocation, answers.Values, cancellationToken), writer);
+                var result = await RunStepAsync(() => question.AnswerAsync(invocation, answers.Values, cancellationToken), writer, trace);
                 if (result != null)
                 {
                     Complete(writer, result, result.IsError ? ToolCallStatus.Error : ToolCallStatus.Completed);
@@ -258,7 +298,7 @@ public sealed class ToolExecutor : IToolExecutor
     }
 
     /// <summary>Commits approved arguments: validated as an object here, then bound to the tool's argument type.</summary>
-    private async Task CommitAsync(IConfirmableTool tool, ToolInvocation invocation, JsonElement approvedArguments, ChannelWriter<ToolExecutionEvent> writer, CancellationToken cancellationToken)
+    private async Task CommitAsync(IConfirmableTool tool, ToolInvocation invocation, JsonElement approvedArguments, ChannelWriter<ToolExecutionEvent> writer, CallTrace trace, CancellationToken cancellationToken)
     {
         if (approvedArguments.ValueKind != JsonValueKind.Object)
         {
@@ -266,7 +306,7 @@ public sealed class ToolExecutor : IToolExecutor
             return;
         }
 
-        var result = await RunStepAsync(() => tool.CommitAsync(invocation, approvedArguments, cancellationToken), writer);
+        var result = await RunStepAsync(() => tool.CommitAsync(invocation, approvedArguments, cancellationToken), writer, trace);
         if (result != null)
         {
             Complete(writer, result, result.IsError ? ToolCallStatus.Error : ToolCallStatus.Completed);
@@ -296,7 +336,7 @@ public sealed class ToolExecutor : IToolExecutor
     /// or a delegated token the server could not get); the completion has then already been
     /// written and the caller must stop.
     /// </summary>
-    private async Task<T?> RunStepAsync<T>(Func<Task<T>> action, ChannelWriter<ToolExecutionEvent> writer) where T : class
+    private async Task<T?> RunStepAsync<T>(Func<Task<T>> action, ChannelWriter<ToolExecutionEvent> writer, CallTrace trace) where T : class
     {
         try
         {
@@ -304,13 +344,15 @@ public sealed class ToolExecutor : IToolExecutor
         }
         catch (ToolArgumentException ex)
         {
+            trace.ErrorCategory = ErrorCategories.Validation;
             Complete(writer, ToolResult.Error(ex.Message), ToolCallStatus.Error);
             return null;
         }
         catch (TokenUnavailableException ex)
         {
             // A missing grant is a fault in the app registration; the user is never asked to fix it.
-            _logger.LogError(ex, "No delegated token for {Scopes}", string.Join(", ", ex.Scopes));
+            trace.ErrorCategory = ErrorCategories.Auth;
+            _telemetry.DelegatedTokenFailed("no_delegated_token", ex.Scopes, null, ex);
             Complete(writer, ToolResult.Error(
                 $"The app could not get access to {string.Join(", ", ex.Scopes)}. This is a configuration error in the app registration that an administrator must fix; tell the user so and do not retry."),
                 ToolCallStatus.Error);

@@ -46,16 +46,16 @@ public sealed class AiConversationRunner
 
     private readonly IAiProviderRegistry _providers;
     private readonly IToolExecutor _toolExecutor;
-    private readonly ILogger<AiConversationRunner> _logger;
+    private readonly Telemetry.AppTelemetry _telemetry;
 
     public AiConversationRunner(
         IAiProviderRegistry providers,
         IToolExecutor toolExecutor,
-        ILogger<AiConversationRunner> logger)
+        Telemetry.AppTelemetry telemetry)
     {
         _providers = providers;
         _toolExecutor = toolExecutor;
-        _logger = logger;
+        _telemetry = telemetry;
     }
 
     public async IAsyncEnumerable<ChatStreamChunk> StreamAsync(
@@ -63,7 +63,8 @@ public sealed class AiConversationRunner
         ToolExecutionContext context,
         MessageActivity activity,
         List<TranscriptItem> transcript,
-        [EnumeratorCancellation] CancellationToken cancellationToken = default)
+        [EnumeratorCancellation] CancellationToken cancellationToken = default,
+        RunStats? stats = null)
     {
         var chatId = context.ChatId;
         var loaded = new HashSet<string>(request.LoadedToolIds, StringComparer.Ordinal);
@@ -88,6 +89,7 @@ public sealed class AiConversationRunner
                 {
                     case AiStreamEvent.Text text when !string.IsNullOrEmpty(text.Delta):
                         CloseThinking();
+                        stats?.FirstText();
                         roundText.Append(text.Delta);
                         yield return new ChatStreamChunk { Kind = ChatStreamChunkKind.Text, Text = text.Delta, ElapsedMs = clock.Now };
                         break;
@@ -118,6 +120,9 @@ public sealed class AiConversationRunner
                     case AiStreamEvent.ReasoningState state:
                         reasoningState = state.Payload;
                         break;
+                    case AiStreamEvent.TurnEnded ended:
+                        stats?.Add(ended);
+                        break;
                 }
             }
 
@@ -131,9 +136,11 @@ public sealed class AiConversationRunner
 
             if (round >= MaxToolRounds)
             {
-                _logger.LogWarning(
-                    "Stopping chat {ChatId} after {Rounds} tool rounds; the model kept requesting tools.",
-                    chatId, MaxToolRounds);
+                if (stats != null)
+                {
+                    stats.StopReason = "tool_round_limit";
+                }
+
                 yield return new ChatStreamChunk { Kind = ChatStreamChunkKind.Text, Text = $"\n_{ToolRoundLimitText}_\n", ElapsedMs = clock.Now };
                 break;
             }
@@ -173,7 +180,7 @@ public sealed class AiConversationRunner
 
                 if (tool == null)
                 {
-                    _logger.LogWarning("Model called unknown tool {ToolName} in chat {ChatId}", call.FunctionName, chatId);
+                    _telemetry.ToolUnknownCalled(chatId, call.FunctionName, notLoaded);
                     var unknown = ToolResult.Error(notLoaded
                         ? $"{call.FunctionName} is not loaded. Load its toolbox with {LoadToolsTool.ToolId} first."
                         : $"Unknown tool: {call.FunctionName}");

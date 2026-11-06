@@ -1,4 +1,5 @@
 using ChatUiT.Server.Models;
+using ChatUiT.Server.Telemetry;
 
 namespace ChatUiT.Server.Services;
 
@@ -6,16 +7,16 @@ public class SettingsService : ISettingsService
 {
     private readonly IDatabaseService _databaseService;
     private readonly IModelService _modelService;
-    private readonly ILogger<SettingsService> _logger;
+    private readonly AppTelemetry _telemetry;
     private readonly SemaphoreSlim _initLock = new(1, 1);
     private AppSettings _settings = new();
     private bool _isInitialized = false;
 
-    public SettingsService(IDatabaseService databaseService, IModelService modelService, ILogger<SettingsService> logger)
+    public SettingsService(IDatabaseService databaseService, IModelService modelService, AppTelemetry telemetry)
     {
         _databaseService = databaseService;
         _modelService = modelService;
-        _logger = logger;
+        _telemetry = telemetry;
     }
 
     private async Task EnsureInitializedAsync()
@@ -29,12 +30,6 @@ public class SettingsService : ISettingsService
 
             _settings = await _databaseService.GetAppSettingsAsync();
             _isInitialized = true;
-
-            _logger.LogInformation(
-                "Loaded app settings. DefaultModelId='{DefaultModelId}', ChatNamingModelId='{ChatNamingModelId}', DefaultAssistantId='{DefaultAssistantId}'",
-                _settings.DefaultModelId,
-                _settings.ChatNamingModelId,
-                _settings.DefaultAssistantId);
         }
         finally
         {
@@ -68,14 +63,12 @@ public class SettingsService : ISettingsService
     public async Task UpdateAppSettingsAsync(AppSettings settings)
     {
         await EnsureInitializedAsync();
+        var before = _settings;
         await _databaseService.UpdateAppSettingsAsync(settings);
         _settings = settings;
 
-        _logger.LogInformation(
-            "Saved app settings. DefaultModelId='{DefaultModelId}', ChatNamingModelId='{ChatNamingModelId}', DefaultAssistantId='{DefaultAssistantId}'",
-            settings.DefaultModelId,
-            settings.ChatNamingModelId,
-            settings.DefaultAssistantId);
+        var diff = TelemetryDiff.Compute(before, settings);
+        _telemetry.AdminChanged("settings", "app", "updated", diff.Changed, diff.Changes);
     }
 
     // Keeps the stored id when it still resolves to a model, otherwise falls back to the
@@ -91,15 +84,11 @@ public class SettingsService : ISettingsService
 
         if (fallback == null)
         {
-            _logger.LogWarning("{SettingName} is not set and no models are registered.", settingName);
+            _telemetry.SettingModelFallback(settingName, storedModelId, null);
             return string.Empty;
         }
 
-        _logger.LogWarning(
-            "{SettingName} ('{StoredModelId}') is not set or no longer resolves. Falling back to model {FallbackModelId}.",
-            settingName,
-            storedModelId,
-            fallback);
+        _telemetry.SettingModelFallback(settingName, storedModelId, fallback);
 
         return fallback;
     }

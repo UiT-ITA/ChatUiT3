@@ -39,14 +39,14 @@ public partial class DatabaseService : IDatabaseService
     private readonly object _initializationLock = new();
     private Task _initializationTask;
     private readonly IChatKeyService _chatKeys;
-    private readonly ILogger<DatabaseService> _logger;
+    private readonly Telemetry.AppTelemetry _telemetry;
     private readonly TokenCredential _credential;
     private readonly bool _usesManagedIdentity;
 
-    public DatabaseService(IConfiguration configuration, IChatKeyService chatKeys, TokenCredential credential, ILogger<DatabaseService> logger)
+    public DatabaseService(IConfiguration configuration, IChatKeyService chatKeys, TokenCredential credential, Telemetry.AppTelemetry telemetry)
     {
         _chatKeys = chatKeys;
-        _logger = logger;
+        _telemetry = telemetry;
         _credential = credential;
         _options = configuration.GetSection(ConfigurationSectionName).Get<CosmosChatStorageOptions>() ?? new CosmosChatStorageOptions();
         _options.ConnectionString ??= configuration.GetConnectionString("CosmosDBConnection");
@@ -156,22 +156,22 @@ public partial class DatabaseService : IDatabaseService
         }
         catch (CosmosException ex) when (ex.StatusCode == HttpStatusCode.Forbidden)
         {
-            _logger.LogCritical("{Message}", await BuildAccessDeniedMessageAsync(ex));
+            _telemetry.DatabaseSetupFailed("access_denied", await BuildAccessDeniedMessageAsync(ex));
             throw new CosmosSetupException("Cosmos DB denied access to the app identity. See the startup log for the role assignment.", ex);
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "The Cosmos DB check at {Endpoint} failed. It runs again on the next database call.", _client.Endpoint);
+            _telemetry.DatabaseCheckFailed(_client.Endpoint.ToString(), ex);
             throw;
         }
 
         if (missingDatabases.Count == 0 && missingContainers.Count == 0)
         {
-            _logger.LogInformation("Cosmos DB {Endpoint}: all databases and containers exist.", _client.Endpoint);
+            _telemetry.DatabaseReady(_client.Endpoint.ToString());
             return;
         }
 
-        _logger.LogCritical("{Message}", await BuildMissingMessageAsync(missingDatabases, missingContainers));
+        _telemetry.DatabaseSetupFailed("missing_resources", await BuildMissingMessageAsync(missingDatabases, missingContainers));
         throw new CosmosSetupException("Cosmos DB is missing databases or containers. See the startup log for what to create.");
     }
 
@@ -277,7 +277,7 @@ public partial class DatabaseService : IDatabaseService
         }
         catch (Exception ex)
         {
-            _logger.LogWarning(ex, "Could not read the object ID from the Cosmos DB token.");
+            _telemetry.DatabaseIdentityUnreadable(ex);
             return null;
         }
     }

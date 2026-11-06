@@ -1,6 +1,7 @@
 import { signal, Signal } from '@preact/signals-react';
 import { builtInTokenizer, type ParsedScheme, type TextEncoding, type Tokenizer } from '../utils/tokenCounting';
 import { whenIdle } from '../utils/whenIdle';
+import { trackError } from './telemetryService';
 
 /**
  * Lazily loads one tokenizer vocabulary per encoding. Each `import()` below is a static
@@ -46,6 +47,7 @@ async function load(encoding: TextEncoding, target: Signal<Tokenizer | undefined
         target.value = { countTokens: (text) => module.countTokens(text, options) };
     } catch (error) {
         console.error(`Failed to load tokenizer for ${encoding}:`, error);
+        trackError('tokenizer', { message: 'A tokenizer vocabulary could not be loaded', error, extra: { encoding } });
     } finally {
         loading.delete(encoding);
     }
