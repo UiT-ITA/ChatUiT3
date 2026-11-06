@@ -33,18 +33,32 @@ public abstract record AiStreamEvent
     /// <see cref="AiInputItem.ReasoningState"/>.
     /// </summary>
     public sealed record ReasoningState(JsonElement Payload) : AiStreamEvent;
+
+    /// <summary>
+    /// The end of one turn: the tokens it used and the provider's stop reason. <paramref name="InputTokens"/>
+    /// counts all input, cached input included.
+    /// </summary>
+    public sealed record TurnEnded(long InputTokens, long OutputTokens, long CachedTokens, long CacheWriteTokens, string? StopReason) : AiStreamEvent;
 }
 
 /// <summary>
 /// The provider ended a turn early: the stream reported the response as incomplete or failed,
-/// or sent an error. The message carries the service's reason and is safe to show; it never
-/// holds generated content.
+/// or sent an error. The message carries the service's reason and is shown to the user. The
+/// message is never logged: <see cref="Category"/> and <see cref="Code"/> are.
 /// </summary>
-public sealed class AiTurnFailedException : Exception
+public sealed class AiTurnFailedException : Exception, Telemetry.IContentCarryingException
 {
-    public AiTurnFailedException(string message) : base(message)
+    public AiTurnFailedException(string message, string category, string? code = null) : base(message)
     {
+        Category = category;
+        Code = code;
     }
+
+    /// <summary>The error category, one of <see cref="Telemetry.ErrorCategories"/>.</summary>
+    public string Category { get; }
+
+    /// <summary>The provider's code: the refusal category, the incomplete reason, or the error code.</summary>
+    public string? Code { get; }
 }
 
 /// <summary>

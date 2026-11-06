@@ -9,14 +9,14 @@ namespace ChatUiT.Server.Services;
 
 public class StreamingService
 {
-    private readonly ILogger<StreamingService> _logger;
+    private readonly Telemetry.AppTelemetry _telemetry;
     private readonly IHubContext<AppHub, IAppHubClient> _hubContext;
     private readonly ConcurrentDictionary<string, LiveStream<ChatStreamChunk>> _activeStreams = new();
     private readonly ConcurrentDictionary<string, RunHandle> _activeGenerations = new();
 
-    public StreamingService(ILogger<StreamingService> logger, IHubContext<AppHub, IAppHubClient> hubContext)
+    public StreamingService(Telemetry.AppTelemetry telemetry, IHubContext<AppHub, IAppHubClient> hubContext)
     {
-        _logger = logger;
+        _telemetry = telemetry;
         _hubContext = hubContext;
     }
 
@@ -113,7 +113,7 @@ public class StreamingService
         }
         else
         {
-            _logger.LogWarning("Attempted to add chunk to non-existent stream: {StreamKey}", streamKey);
+            _telemetry.StreamChunkDropped(streamKey);
         }
     }
 
@@ -138,7 +138,7 @@ public class StreamingService
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error streaming to client {ClientId} for message {UserId}:{MessageId}", clientId, userId, messageId);
+                _telemetry.StreamClientFailed($"{userId}:{messageId}", clientId, ex);
             }
         });
     }
@@ -149,7 +149,7 @@ public class StreamingService
         
         if (!_activeStreams.TryGetValue(streamKey, out var stream))
         {
-            _logger.LogWarning("Client requested stream for non-existent message: {StreamKey}", streamKey);
+            _telemetry.StreamMissing(streamKey);
             return;
         }
 
@@ -162,7 +162,7 @@ public class StreamingService
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error streaming to client {ClientId} for message {StreamKey}", clientId, streamKey);
+            _telemetry.StreamClientFailed(streamKey, clientId, ex);
         }
     }
 

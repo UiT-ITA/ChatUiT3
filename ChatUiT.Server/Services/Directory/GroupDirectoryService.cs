@@ -97,7 +97,7 @@ public sealed class GroupDirectoryService : IGroupDirectoryService
         var body = await response.Content.ReadAsStringAsync(ct);
         if (!response.IsSuccessStatusCode)
         {
-            throw new InvalidOperationException($"Microsoft Graph returned {(int)response.StatusCode} for group lookup: {ExtractError(body)}");
+            throw new InvalidOperationException($"Microsoft Graph returned {(int)response.StatusCode} for group lookup.");
         }
 
         return JsonDocument.Parse(body);
@@ -113,21 +113,4 @@ public sealed class GroupDirectoryService : IGroupDirectoryService
         Description = group.TryGetProperty("description", out var d) ? d.GetString() : null,
         Mail = group.TryGetProperty("mail", out var m) ? m.GetString() : null
     };
-
-    private static string ExtractError(string body)
-    {
-        try
-        {
-            using var document = JsonDocument.Parse(body);
-            if (document.RootElement.TryGetProperty("error", out var error) && error.TryGetProperty("message", out var message))
-            {
-                return message.GetString() ?? string.Empty;
-            }
-        }
-        catch (JsonException)
-        {
-        }
-
-        return body.Length > 300 ? body[..300] : body;
-    }
 }

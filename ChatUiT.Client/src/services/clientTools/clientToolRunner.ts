@@ -1,6 +1,7 @@
 import type { ActivityEntryDto, ChatDto, ToolPreviewDto } from "../../types/chatModels";
 import { respondToToolCall } from "../chatService";
 import { getClientTool } from "./clientToolRegistry";
+import { trackError } from "../telemetryService";
 
 const inFlight = new Set<string>();
 
@@ -32,6 +33,7 @@ export async function previewClientToolCall(entry: ActivityEntryDto): Promise<To
     return await tool.preview(parseArguments(entry));
   } catch (error) {
     console.error(`Preview of client tool "${entry.toolName}" failed:`, error);
+    trackError("client_tool", { message: "A client tool preview failed", error, extra: { "tool.name": entry.toolName } });
     return null;
   }
 }

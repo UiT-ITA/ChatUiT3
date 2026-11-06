@@ -22,6 +22,7 @@ import MessageActivity from './MessageActivity';
 import useMediaQuery from '../../hooks/useMediaQuery';
 import { MOBILE } from '../common/breakpoints';
 import './Message.css';
+import { track, trackError } from '../../services/telemetryService';
 
 interface ChatMessageProps {
   /** The chat this message belongs to — attachments resolve their content against it. */
@@ -57,7 +58,11 @@ const StreamingContext = createContext(false);
 
 function copyCode(code: string) {
   navigator.clipboard.writeText(code)
-    .catch(err => console.error('Failed to copy code:', err));
+    .then(() => track('client.message_copied', { copied: 'code' }))
+    .catch(err => {
+      console.error('Failed to copy code:', err);
+      trackError('clipboard', { message: 'Code could not be copied', error: err });
+    });
 }
 
 /** Mermaid code block: header with the fit/full size toggle and copy action, then the diagram. Clicking the diagram toggles its size. */
@@ -185,9 +190,11 @@ function ChatMessage({ chatId, message, fallbackAssistantName }: ChatMessageProp
       });
       
       await navigator.clipboard.write([clipboardItem]);
+      track('client.message_copied', { 'message.id': message.id, copied: 'message' });
       setTimeout(() => setIsCopied(false), 2000);
     } catch (err) {
       console.error('Failed to copy message:', err);
+      trackError('clipboard', { message: 'A message could not be copied', error: err });
       setIsCopied(false);
     }
   };

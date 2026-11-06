@@ -1,6 +1,7 @@
 using ChatUiT.Server.Models;
 using ChatUiT.Server.Services.Tools;
 using ChatUiT.Server.Hubs;
+using ChatUiT.Server.Telemetry;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.SignalR;
@@ -19,109 +20,89 @@ public class AdminToolsController : ControllerBase
     private readonly IToolboxRegistry _registry;
     private readonly IToolAccessService _access;
     private readonly IHubContext<AppHub, IAppHubClient> _hubContext;
-    private readonly ILogger<AdminToolsController> _logger;
+    private readonly AppTelemetry _telemetry;
 
     public AdminToolsController(
         IToolboxRegistry registry,
         IToolAccessService access,
         IHubContext<AppHub, IAppHubClient> hubContext,
-        ILogger<AdminToolsController> logger)
+        AppTelemetry telemetry)
     {
         _registry = registry;
         _access = access;
         _hubContext = hubContext;
-        _logger = logger;
+        _telemetry = telemetry;
     }
 
     [HttpGet]
     public async Task<ActionResult<List<ToolAdminDto>>> GetTools()
     {
-        try
+        var result = new List<ToolAdminDto>();
+        foreach (var toolbox in _registry.All)
         {
-            var result = new List<ToolAdminDto>();
-            foreach (var toolbox in _registry.All)
-            {
-                result.Add(await ToAdminDtoAsync(toolbox));
-            }
+            result.Add(await ToAdminDtoAsync(toolbox));
+        }
 
-            result.Add(await ClientToolsEntryAsync());
-            return Ok(result);
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Error listing tools");
-            return StatusCode(500, "Internal server error");
-        }
+        result.Add(await ClientToolsEntryAsync());
+        return Ok(result);
     }
 
     [HttpGet("{id}")]
     public async Task<ActionResult<ToolAdminDto>> GetTool(string id)
     {
-        try
+        if (id == ToolRegistry.ClientToolsPolicyId)
         {
-            if (id == ToolRegistry.ClientToolsPolicyId)
-            {
-                return Ok(await ClientToolsEntryAsync());
-            }
+            return Ok(await ClientToolsEntryAsync());
+        }
 
-            var toolbox = _registry.Find(id);
-            return toolbox == null ? NotFound($"Tool {id} not found") : Ok(await ToAdminDtoAsync(toolbox));
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Error getting tool {ToolId}", id);
-            return StatusCode(500, "Internal server error");
-        }
+        var toolbox = _registry.Find(id);
+        return toolbox == null ? NotFound($"Tool {id} not found") : Ok(await ToAdminDtoAsync(toolbox));
     }
 
     [HttpPut("{id}/policy")]
     public async Task<ActionResult<ToolAdminDto>> SetPolicy(string id, [FromBody] ToolAccessPolicyDto policyDto)
     {
-        try
+        if (!IsKnown(id))
         {
-            if (!IsKnown(id))
-            {
-                return NotFound($"Tool {id} not found");
-            }
-
-            var invalidGroups = (policyDto.AllowedGroupIds ?? []).Where(g => !Guid.TryParse(g?.Trim(), out _)).ToList();
-            if (invalidGroups.Count > 0)
-            {
-                return BadRequest(new { error = "invalid_group_ids", groupIds = invalidGroups });
-            }
-
-            await _access.SetOverrideAsync(id, ToolMapping.ToPolicy(policyDto));
-            await _hubContext.Clients.All.AssistantsUpdated();
-
-            return Ok(await GetDtoAsync(id));
+            return NotFound($"Tool {id} not found");
         }
-        catch (Exception ex)
+
+        var invalidGroups = (policyDto.AllowedGroupIds ?? []).Where(g => !Guid.TryParse(g?.Trim(), out _)).ToList();
+        if (invalidGroups.Count > 0)
         {
-            _logger.LogError(ex, "Error setting policy for tool {ToolId}", id);
-            return StatusCode(500, "Internal server error");
+            return BadRequest(new { error = "invalid_group_ids", groupIds = invalidGroups });
         }
+
+        var before = await GetDtoAsync(id);
+        await _access.SetOverrideAsync(id, ToolMapping.ToPolicy(policyDto));
+        await _hubContext.Clients.All.AssistantsUpdated();
+
+        var after = await GetDtoAsync(id);
+        RecordChange(id, "updated", before, after);
+        return Ok(after);
     }
 
     [HttpDelete("{id}/policy")]
     public async Task<ActionResult<ToolAdminDto>> ResetPolicy(string id)
     {
-        try
+        if (!IsKnown(id))
         {
-            if (!IsKnown(id))
-            {
-                return NotFound($"Tool {id} not found");
-            }
-
-            await _access.ClearOverrideAsync(id);
-            await _hubContext.Clients.All.AssistantsUpdated();
-
-            return Ok(await GetDtoAsync(id));
+            return NotFound($"Tool {id} not found");
         }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Error resetting policy for tool {ToolId}", id);
-            return StatusCode(500, "Internal server error");
-        }
+
+        var before = await GetDtoAsync(id);
+        await _access.ClearOverrideAsync(id);
+        await _hubContext.Clients.All.AssistantsUpdated();
+
+        var after = await GetDtoAsync(id);
+        RecordChange(id, "reset", before, after);
+        return Ok(after);
+    }
+
+    private void RecordChange(string id, string action, ToolAdminDto before, ToolAdminDto after)
+    {
+        var diff = TelemetryDiff.Compute(new { policy = before.Policy, overridden = before.IsOverridden }, new { policy = after.Policy, overridden = after.IsOverridden });
+        _telemetry.AdminChanged("tool_policy", id, action, diff.Changed, diff.Changes);
     }
 
     private bool IsKnown(string id) => id == ToolRegistry.ClientToolsPolicyId || _registry.Find(id) != null;

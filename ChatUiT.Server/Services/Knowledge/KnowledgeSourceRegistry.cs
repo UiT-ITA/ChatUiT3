@@ -39,7 +39,7 @@ public sealed partial class KnowledgeSourceRegistry : IKnowledgeSourceRegistry
 
     private readonly Dictionary<string, IKnowledgeSource> _byId = new(StringComparer.Ordinal);
 
-    public KnowledgeSourceRegistry(IEnumerable<IKnowledgeSource> sources, ILogger<KnowledgeSourceRegistry> logger)
+    public KnowledgeSourceRegistry(IEnumerable<IKnowledgeSource> sources)
     {
         foreach (var source in sources)
         {
@@ -59,7 +59,6 @@ public sealed partial class KnowledgeSourceRegistry : IKnowledgeSourceRegistry
             .OrderBy(s => s.Group, StringComparer.OrdinalIgnoreCase)
             .ThenBy(s => s.DisplayName, StringComparer.OrdinalIgnoreCase)
             .ToList();
-        logger.LogInformation("Registered {Count} knowledge sources: {Ids}", Sources.Count, string.Join(", ", Sources.Select(s => s.Id)));
     }
 
     public IReadOnlyList<IKnowledgeSource> Sources { get; }

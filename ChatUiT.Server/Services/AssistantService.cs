@@ -7,6 +7,8 @@ using ChatUiT.Server.Services.Tools;
 using Microsoft.AspNetCore.SignalR;
 using Microsoft.Extensions.Options;
 
+using ChatUiT.Server.Telemetry;
+
 namespace ChatUiT.Server.Services
 {
     public class AssistantService : IAssistantService
@@ -18,7 +20,7 @@ namespace ChatUiT.Server.Services
         private readonly IToolAccessService _toolAccess;
         private readonly ITokenCountingService _tokenCounting;
         private readonly ToolOptions _toolOptions;
-        private readonly ILogger<AssistantService> _logger;
+        private readonly Telemetry.AppTelemetry _telemetry;
 
         // Keyed by assistant id. Invalidated by the assistant's UpdatedAt and by the set of
         // active schemes, so both an edit and a newly registered model recount.
@@ -47,7 +49,7 @@ namespace ChatUiT.Server.Services
             IToolAccessService toolAccess,
             ITokenCountingService tokenCounting,
             IOptions<ToolOptions> toolOptions,
-            ILogger<AssistantService> logger)
+            Telemetry.AppTelemetry telemetry)
         {
             _databaseService = databaseService;
             _modelService = modelService;
@@ -56,7 +58,7 @@ namespace ChatUiT.Server.Services
             _toolAccess = toolAccess;
             _tokenCounting = tokenCounting;
             _toolOptions = toolOptions.Value;
-            _logger = logger;
+            _telemetry = telemetry;
         }
 
         // The fixed cost of every request through this assistant, per scheme. Counted from the
@@ -100,7 +102,7 @@ namespace ChatUiT.Server.Services
             var onDemandFiles = KnowledgeFileMessages.Loadable(files, noLoadedFiles);
             if (canLoadOnDemand && onDemandFiles.Count > 0)
             {
-                tools.Add(new LoadKnowledgeFileTool(assistant.Id, onDemandFiles, _databaseService, _tokenCounting, _toolOptions, _logger));
+                tools.Add(new LoadKnowledgeFileTool(assistant.Id, onDemandFiles, _databaseService, _tokenCounting, _toolOptions, _telemetry));
             }
 
             if (canLoadOnDemand)
@@ -326,6 +328,7 @@ namespace ChatUiT.Server.Services
             var assistant = await BuildAssistantAsync(createDto, userId);
             EnsureAlwaysLoadedFits(assistant, [], [], modelChanged: true);
             await _databaseService.CreateAssistantAsync(assistant);
+            _telemetry.AssistantChanged("created", await TelemetrySummaryAsync(assistant));
 
             await NotifyAssistantsUpdated(userId);
             
@@ -340,6 +343,7 @@ namespace ChatUiT.Server.Services
             var previousModelId = assistant.ChatSettings.Model.Id;
             var previousFiles = assistant.Files;
             var storedCounts = await GetFileTokenCountsAsync(assistant);
+            var before = TelemetryView(assistant);
 
             var updated = await ApplyAssistantUpdateAsync(assistant, updateDto);
             if (!updated) return false;
@@ -347,6 +351,8 @@ namespace ChatUiT.Server.Services
 
             var updatedAssistant = await _databaseService.UpdateAssistantAsync(assistant);
             if (updatedAssistant == null) return false;
+            var diff = TelemetryDiff.Compute(before, TelemetryView(assistant), ValuelessPaths, includeOld: false);
+            _telemetry.AssistantChanged("updated", await TelemetrySummaryAsync(assistant), diff.Changed, diff.Changes);
             _promptTokenCache.TryRemove(assistant.Id, out _);
             _fileTokenCache.TryRemove(assistant.Id, out _);
 
@@ -380,6 +386,7 @@ namespace ChatUiT.Server.Services
             
             if (success)
             {
+                _telemetry.AssistantChanged("deleted", await TelemetrySummaryAsync(assistant));
                 _promptTokenCache.TryRemove(assistantId, out _);
                 _fileTokenCache.TryRemove(assistantId, out _);
                 await NotifyAssistantsUpdated(userId);
@@ -411,6 +418,7 @@ namespace ChatUiT.Server.Services
             {
                 user.Preferences.SharedAssistantIds.Add(assistantId);
                 await _databaseService.UpdateUserAsync(user);
+                _telemetry.AssistantShared("shared_added", assistantId, assistant.Name);
 
                 await NotifyAssistantsUpdated(userId);
             }
@@ -428,6 +436,7 @@ namespace ChatUiT.Server.Services
                 user.Preferences.SharedAssistantIds.Remove(assistantId);
                 ForgetAssistantInPreferences(user, assistantId);
                 await _databaseService.UpdateUserAsync(user);
+                _telemetry.AssistantShared("shared_removed", assistantId, (await _databaseService.GetAssistantByIdAsync(assistantId))?.Name);
                 await NotifyAssistantsUpdated(userId);
             }
 
@@ -452,6 +461,7 @@ namespace ChatUiT.Server.Services
 
             user.Preferences.DefaultAssistantId = assistantId;
             await _databaseService.UpdateUserAsync(user);
+            _telemetry.AssistantPreferenceChanged(assistantId, "default", true);
             await NotifyAssistantsUpdated(userId);
 
             return true;
@@ -464,8 +474,10 @@ namespace ChatUiT.Server.Services
 
             if (user.Preferences.DefaultAssistantId != null)
             {
+                var previousDefault = user.Preferences.DefaultAssistantId;
                 user.Preferences.DefaultAssistantId = null;
                 await _databaseService.UpdateUserAsync(user);
+                _telemetry.AssistantPreferenceChanged(previousDefault, "default", false);
                 await NotifyAssistantsUpdated(userId);
             }
 
@@ -513,6 +525,7 @@ namespace ChatUiT.Server.Services
             }
 
             await _databaseService.UpdateUserAsync(user);
+            _telemetry.AssistantPreferenceChanged(assistantId, "visibility", user.Preferences.HiddenAssistantIds.Contains(assistantId) ? "hidden" : "visible");
 
             await NotifyAssistantsUpdated(userId);
 
@@ -534,6 +547,7 @@ namespace ChatUiT.Server.Services
             }
 
             await _databaseService.UpdateUserAsync(user);
+            _telemetry.AssistantPreferenceChanged(assistantId, "favorite", user.Preferences.FavoritedAssistantIds.Contains(assistantId));
 
             await NotifyAssistantsUpdated(userId);
 
@@ -548,6 +562,7 @@ namespace ChatUiT.Server.Services
                 throw new UnauthorizedAccessException("Cannot share assistant that is not owned by user");
             }
 
+            _telemetry.AssistantShared("share_link_created", assistantId, assistant.Name);
             return $"/assistants?add={assistantId}";
         }
 
@@ -627,6 +642,8 @@ namespace ChatUiT.Server.Services
             var assistant = await BuildAssistantAsync(createDto, "System");
             EnsureAlwaysLoadedFits(assistant, [], [], modelChanged: true);
             var createdAssistant = await WithModelAsync(await _databaseService.CreateAssistantAsync(assistant));
+            var created = TelemetryDiff.Compute(null, TelemetryView(createdAssistant), ValuelessPaths);
+            _telemetry.AdminChanged("system_assistant", createdAssistant.Id, "created", created.Changed, created.Changes);
 
             await NotifyAllUsersAssistantsUpdated();
 
@@ -644,6 +661,7 @@ namespace ChatUiT.Server.Services
             var previousModelId = assistant.ChatSettings.Model.Id;
             var previousFiles = assistant.Files;
             var storedCounts = await GetFileTokenCountsAsync(assistant);
+            var before = TelemetryView(assistant);
 
             var updated = await ApplyAssistantUpdateAsync(assistant, updateDto);
             if (!updated)
@@ -658,6 +676,8 @@ namespace ChatUiT.Server.Services
                 return null;
             }
 
+            var diff = TelemetryDiff.Compute(before, TelemetryView(assistant), ValuelessPaths);
+            _telemetry.AdminChanged("system_assistant", assistantId, "updated", diff.Changed, diff.Changes);
             _promptTokenCache.TryRemove(assistantId, out _);
             _fileTokenCache.TryRemove(assistantId, out _);
             await NotifyAllUsersAssistantsUpdated();
@@ -677,12 +697,53 @@ namespace ChatUiT.Server.Services
             var deleted = await _databaseService.DeleteAssistantAsync(assistantId);
             if (deleted)
             {
+                var removed = TelemetryDiff.Compute(TelemetryView(assistant), null, ValuelessPaths);
+                _telemetry.AdminChanged("system_assistant", assistantId, "deleted", removed.Changed, removed.Changes);
                 _promptTokenCache.TryRemove(assistantId, out _);
                 _fileTokenCache.TryRemove(assistantId, out _);
                 await NotifyAllUsersAssistantsUpdated();
             }
 
             return deleted;
+        }
+
+        /// <summary>The paths of <see cref="TelemetryView"/> whose values are never logged.</summary>
+        private static readonly IReadOnlySet<string> ValuelessPaths = new HashSet<string> { "instructions" };
+
+        /// <summary>The assistant's metadata as it is compared in telemetry. Instructions appear only as a fingerprint.</summary>
+        private static object TelemetryView(Assistant assistant) => new
+        {
+            name = assistant.Name,
+            description = assistant.Description,
+            tags = assistant.Tags,
+            model = assistant.ChatSettings.Model?.Id,
+            temperature = assistant.ChatSettings.Temperature,
+            reasoningEffort = assistant.ChatSettings.ReasoningEffort.ToString(),
+            tools = assistant.ChatSettings.AvailableToolIds,
+            promptSnippets = assistant.ChatSettings.PromptSnippets,
+            instructions = TelemetryDiff.Fingerprint(assistant.ChatSettings.SystemPrompt),
+            files = assistant.Files.Select(f => new { name = f.SourceFilename, category = f.Category, description = f.Description }).ToList(),
+            knowledgeSources = assistant.KnowledgeSourceIds,
+            access = assistant.Access == null ? null : new
+            {
+                roles = assistant.Access.AllowedRoles.Select(r => r.ToString()).ToList(),
+                groups = assistant.Access.AllowedGroupIds
+            }
+        };
+
+        private async Task<AssistantSummary> TelemetrySummaryAsync(Assistant assistant)
+        {
+            var model = string.IsNullOrWhiteSpace(assistant.ChatSettings.Model?.Id)
+                ? null
+                : await _modelService.GetModelAsync<LanguageModel>(assistant.ChatSettings.Model.Id);
+            return new AssistantSummary(
+                assistant.Id,
+                assistant.Name,
+                model?.ModelId,
+                assistant.ChatSettings.AvailableToolIds.Count,
+                assistant.Files.Count,
+                assistant.KnowledgeSourceIds.Count,
+                ClassificationOf(assistant).ToString());
         }
 
         private async Task NotifyAssistantsUpdated(string userId)

@@ -14,20 +14,20 @@ public sealed class ImagePromptRefiner
     private readonly IModelService _modelService;
     private readonly IAiProviderRegistry _providers;
     private readonly ITokenCountingService _tokenCounting;
-    private readonly ILogger<ImagePromptRefiner> _logger;
+    private readonly Telemetry.AppTelemetry _telemetry;
 
     public ImagePromptRefiner(
         ISettingsService settingsService,
         IModelService modelService,
         IAiProviderRegistry providers,
         ITokenCountingService tokenCounting,
-        ILogger<ImagePromptRefiner> logger)
+        Telemetry.AppTelemetry telemetry)
     {
         _settingsService = settingsService;
         _modelService = modelService;
         _providers = providers;
         _tokenCounting = tokenCounting;
-        _logger = logger;
+        _telemetry = telemetry;
     }
 
     /// <summary>
@@ -38,6 +38,27 @@ public sealed class ImagePromptRefiner
     /// No default model is usable, the prompt does not fit its context, or the model failed or returned no text.
     /// </exception>
     public async Task<string> RefineAsync(ImageModel imageModel, string prompt, bool isEdit, CancellationToken cancellationToken)
+    {
+        var stopwatch = System.Diagnostics.Stopwatch.StartNew();
+        try
+        {
+            var refined = await RefineCoreAsync(imageModel, prompt, isEdit, cancellationToken);
+            _telemetry.ImagePromptRefined(imageModel.ModelId, stopwatch.ElapsedMilliseconds, Telemetry.Outcomes.Succeeded);
+            return refined;
+        }
+        catch (ImagePromptRefinementException ex)
+        {
+            _telemetry.ImagePromptRefined(imageModel.ModelId, stopwatch.ElapsedMilliseconds, Telemetry.Outcomes.Failed, ex.InnerException);
+            throw;
+        }
+        catch (OperationCanceledException)
+        {
+            _telemetry.ImagePromptRefined(imageModel.ModelId, stopwatch.ElapsedMilliseconds, Telemetry.Outcomes.Cancelled);
+            throw;
+        }
+    }
+
+    private async Task<string> RefineCoreAsync(ImageModel imageModel, string prompt, bool isEdit, CancellationToken cancellationToken)
     {
         var settings = await _settingsService.GetEffectiveAppSettingsAsync();
         var resolved = string.IsNullOrWhiteSpace(settings.DefaultModelId)
@@ -82,8 +103,7 @@ public sealed class ImagePromptRefiner
         }
         catch (Exception ex) when (ex is not OperationCanceledException)
         {
-            _logger.LogWarning(ex, "Refining a prompt with model {ModelId} failed.", model.Id);
-            throw new ImagePromptRefinementException("The model could not refine the prompt.");
+            throw new ImagePromptRefinementException("The model could not refine the prompt.", ex);
         }
 
         if (refined.Length == 0)
@@ -116,7 +136,7 @@ public sealed class ImagePromptRefiner
 /// <summary>The prompt could not be refined. The message is safe to show.</summary>
 public sealed class ImagePromptRefinementException : Exception
 {
-    public ImagePromptRefinementException(string message) : base(message)
+    public ImagePromptRefinementException(string message, Exception? inner = null) : base(message, inner)
     {
     }
 }

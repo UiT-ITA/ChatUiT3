@@ -13,30 +13,20 @@ namespace ChatUiT.Server.Controllers;
 public class AppSettingsController : ControllerBase
 {
     private readonly ISettingsService _settingsService;
-    private readonly ILogger<AppSettingsController> _logger;
 
-    public AppSettingsController(ISettingsService settingsService, ILogger<AppSettingsController> logger)
+    public AppSettingsController(ISettingsService settingsService)
     {
         _settingsService = settingsService;
-        _logger = logger;
     }
 
     [HttpGet]
     public async Task<ActionResult<PublicAppSettingsDto>> GetSettings()
     {
-        try
+        var settings = await _settingsService.GetEffectiveAppSettingsAsync();
+        return Ok(new PublicAppSettingsDto
         {
-            var settings = await _settingsService.GetEffectiveAppSettingsAsync();
-            return Ok(new PublicAppSettingsDto
-            {
-                DefaultModelId = settings.DefaultModelId,
-                DefaultAssistantId = settings.DefaultAssistantId
-            });
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Error getting public app settings");
-            return StatusCode(500, $"Internal server error: {ex.Message}");
-        }
+            DefaultModelId = settings.DefaultModelId,
+            DefaultAssistantId = settings.DefaultAssistantId
+        });
     }
 }

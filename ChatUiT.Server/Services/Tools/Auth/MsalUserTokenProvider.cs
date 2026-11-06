@@ -21,14 +21,14 @@ namespace ChatUiT.Server.Services.Tools;
 public sealed class MsalUserTokenProvider : IUserTokenProvider
 {
     private readonly IServiceScopeFactory _scopeFactory;
-    private readonly ILogger _logger;
+    private readonly Telemetry.AppTelemetry _telemetry;
     private readonly ClaimsPrincipal _user;
 
-    public MsalUserTokenProvider(ClaimsPrincipal user, string? incomingToken, IServiceScopeFactory scopeFactory, ILogger logger)
+    public MsalUserTokenProvider(ClaimsPrincipal user, string? incomingToken, IServiceScopeFactory scopeFactory, Telemetry.AppTelemetry telemetry)
     {
         _user = WithAssertion(user, incomingToken);
         _scopeFactory = scopeFactory;
-        _logger = logger;
+        _telemetry = telemetry;
     }
 
     private static ClaimsPrincipal WithAssertion(ClaimsPrincipal user, string? incomingToken)
@@ -69,7 +69,7 @@ public sealed class MsalUserTokenProvider : IUserTokenProvider
         }
         catch (MsalClientException ex) when (ex.ErrorCode == MsalError.ClientCredentialAuthenticationTypeMustBeDefined)
         {
-            _logger.LogError(ex, "On-Behalf-Of needs a client credential; EntraId:ClientSecret (or ClientCertificates) is not configured");
+            _telemetry.DelegatedTokenFailed("no_client_credential", scopes, ex.ErrorCode, ex);
             throw new InvalidOperationException(
                 "Delegated access is not configured on the server: the API has no client secret or certificate for the On-Behalf-Of exchange. Tell the user an administrator must configure EntraId:ClientSecret.", ex);
         }
@@ -83,11 +83,11 @@ public sealed class MsalUserTokenProvider : IUserTokenProvider
     {
         if (msal?.ErrorCode == MsalError.UserNullError)
         {
-            _logger.LogError(original, "On-Behalf-Of had no user assertion for {Scopes}", string.Join(",", scopes));
+            _telemetry.DelegatedTokenFailed("no_user_assertion", scopes, msal.ErrorCode, original);
             return new InvalidOperationException("Delegated access is not available: the server has no user assertion for On-Behalf-Of.", original);
         }
 
-        _logger.LogError("Entra issued no token for {Scopes}: {Code} {Message}", string.Join(",", scopes), msal?.ErrorCode, original.Message);
+        _telemetry.DelegatedTokenFailed("token_not_issued", scopes, msal?.ErrorCode, null);
         return new TokenUnavailableException(scopes, original);
     }
 }
@@ -95,14 +95,14 @@ public sealed class MsalUserTokenProvider : IUserTokenProvider
 public sealed class MsalUserTokenProviderFactory : IUserTokenProviderFactory
 {
     private readonly IServiceScopeFactory _scopeFactory;
-    private readonly ILogger<MsalUserTokenProvider> _logger;
+    private readonly Telemetry.AppTelemetry _telemetry;
 
-    public MsalUserTokenProviderFactory(IServiceScopeFactory scopeFactory, ILogger<MsalUserTokenProvider> logger)
+    public MsalUserTokenProviderFactory(IServiceScopeFactory scopeFactory, Telemetry.AppTelemetry telemetry)
     {
         _scopeFactory = scopeFactory;
-        _logger = logger;
+        _telemetry = telemetry;
     }
 
     public IUserTokenProvider Create(ClaimsPrincipal user, string? incomingToken)
-        => new MsalUserTokenProvider(user, incomingToken, _scopeFactory, _logger);
+        => new MsalUserTokenProvider(user, incomingToken, _scopeFactory, _telemetry);
 }

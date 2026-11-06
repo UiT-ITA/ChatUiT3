@@ -81,7 +81,7 @@ public static class ImageApiHttp
     {
         var body = await response.Content.ReadAsStringAsync(cancellationToken);
         var (code, message) = ReadError(body);
-        return Failure(response.StatusCode, code, message, body);
+        return Failure(response.StatusCode, code, message);
     }
 
     /// <summary>The <c>error</c> object of an error body or stream event: its code and message.</summary>
@@ -106,21 +106,23 @@ public static class ImageApiHttp
         return (code, message);
     }
 
-    public static ImageGenerationFailedException Failure(HttpStatusCode? status, string? code, string? message, string serviceResponse)
+    public static ImageGenerationFailedException Failure(HttpStatusCode? status, string? code, string? message)
     {
+        var errorCode = code ?? (status is { } s ? ((int)s).ToString() : null);
+
         if (code != null && ContentFilterCodes.Contains(code))
         {
-            return new ImageGenerationFailedException($"The content filter blocked the request. {message}".Trim(), serviceResponse);
+            return new ImageGenerationFailedException($"The content filter blocked the request. {message}".Trim(), Telemetry.ErrorCategories.ProviderRefused, errorCode);
         }
 
         if (status == HttpStatusCode.TooManyRequests)
         {
-            return new ImageGenerationFailedException("The image service is busy. Try again in a minute.", serviceResponse);
+            return new ImageGenerationFailedException("The image service is busy. Try again in a minute.", Telemetry.ErrorCategories.ProviderRateLimited, errorCode);
         }
 
         var reason = string.IsNullOrWhiteSpace(message) ? "no reason given" : message;
         return status is { } statusCode
-            ? new ImageGenerationFailedException($"The image service returned {(int)statusCode}: {reason}", serviceResponse)
-            : new ImageGenerationFailedException($"The image service failed: {reason}", serviceResponse);
+            ? new ImageGenerationFailedException($"The image service returned {(int)statusCode}: {reason}", Telemetry.ErrorClassification.FromStatus((int)statusCode), errorCode)
+            : new ImageGenerationFailedException($"The image service failed: {reason}", Telemetry.ErrorCategories.ProviderUnavailable, errorCode);
     }
 }

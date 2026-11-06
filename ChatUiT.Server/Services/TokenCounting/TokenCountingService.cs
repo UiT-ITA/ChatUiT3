@@ -32,14 +32,12 @@ public sealed class TokenCountingService : ITokenCountingService
     private const int FallbackImageHeight = 1024;
 
     private readonly IModelService _modelService;
-    private readonly ILogger<TokenCountingService> _logger;
     private readonly Lazy<TiktokenTokenizer> _o200k = new(() => TiktokenTokenizer.CreateForEncoding("o200k_base"));
     private readonly Lazy<TiktokenTokenizer> _cl100k = new(() => TiktokenTokenizer.CreateForEncoding("cl100k_base"));
 
-    public TokenCountingService(IModelService modelService, ILogger<TokenCountingService> logger)
+    public TokenCountingService(IModelService modelService)
     {
         _modelService = modelService;
-        _logger = logger;
     }
 
     public async Task<IReadOnlyList<string>> GetActiveSchemeIdsAsync()
@@ -209,7 +207,6 @@ public sealed class TokenCountingService : ITokenCountingService
             return (width, height);
         }
 
-        _logger.LogDebug("Could not read image dimensions ({MediaType}); assuming {Width}x{Height}", image.MediaType, FallbackImageWidth, FallbackImageHeight);
         return (FallbackImageWidth, FallbackImageHeight);
     }
 

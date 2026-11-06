@@ -251,7 +251,7 @@ public sealed class GraphClient
     }
 }
 
-public sealed class GraphRequestException : Exception
+public sealed class GraphRequestException : Exception, Telemetry.IContentCarryingException
 {
     public GraphRequestException(HttpStatusCode status, string detail)
         : base($"Microsoft Graph returned {(int)status} {status}: {detail}")

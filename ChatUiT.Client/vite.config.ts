@@ -34,12 +34,24 @@ if (!fs.existsSync(certFilePath) || !fs.existsSync(keyFilePath)) {
     }
 }
 
+// The commit the client is built from, sent with every API call as X-ChatUiT-Version.
+function appVersion(): string {
+    if (env.GITHUB_SHA) {
+        return env.GITHUB_SHA.slice(0, 12);
+    }
+    const result = child_process.spawnSync('git', ['rev-parse', '--short=12', 'HEAD'], { encoding: 'utf8' });
+    return result.status === 0 ? result.stdout.trim() : 'dev';
+}
+
 const target = env.ASPNETCORE_HTTPS_PORT ? `https://localhost:${env.ASPNETCORE_HTTPS_PORT}` :
     env.ASPNETCORE_URLS ? env.ASPNETCORE_URLS.split(';')[0] : 'https://localhost:7254';
 
 // https://vitejs.dev/config/
 export default defineConfig({
     plugins: [plugin()],
+    define: {
+        __APP_VERSION__: JSON.stringify(appVersion())
+    },
     build: {
         chunkSizeWarningLimit: 2100
     },

@@ -10,6 +10,8 @@ import MainLayout from './components/layout/MainLayout';
 import LoadingIndicator from './components/common/LoadingIndicator';
 import InitErrorScreen from './components/common/InitErrorScreen';
 import ProtectedRoute from './components/layout/ProtectedRoute';
+import RouteTracker from './components/layout/RouteTracker';
+import { trackError } from './services/telemetryService';
 import { getChats } from './services/chatService';
 import { whenIdle } from './utils/whenIdle';
 
@@ -45,6 +47,7 @@ const App: React.FC = () => {
         if (!(error instanceof BrowserAuthError && 
               error.errorCode === 'interaction_in_progress')) {
           console.error('Login error:', error);
+          trackError('auth', { message: 'Sign-in failed', error });
         }
       });
     }
@@ -78,6 +81,7 @@ const App: React.FC = () => {
 
   return (
     <BrowserRouter>
+      <RouteTracker />
       <Routes>
         <Route element={<MainLayout />}>
           {/* Chat routes render nothing here on purpose: the chat surface is

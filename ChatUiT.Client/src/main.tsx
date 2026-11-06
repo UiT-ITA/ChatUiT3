@@ -4,6 +4,7 @@
 import { EventType, type AuthenticationResult } from '@azure/msal-browser'
 import { msalInstance } from './msalInstance'
 import authService from './services/authService.ts'
+import { trackError } from './services/telemetryService.ts'
 
 const loadApp = () => import('./bootstrap.tsx')
 
@@ -32,6 +33,7 @@ async function start(): Promise<void> {
     await msalInstance.handleRedirectPromise()
   } catch (error) {
     console.error('Login redirect failed:', error)
+    trackError('auth', { message: 'The sign-in redirect could not be processed', error })
   }
 
   if (!msalInstance.getActiveAccount() && msalInstance.getAllAccounts().length > 0) {
@@ -49,6 +51,7 @@ async function start(): Promise<void> {
       // The loop guard refused to redirect again. Load the app so it can
       // handle the signed-out state as before.
       console.error('Login error:', error)
+      trackError('auth', { message: 'Sign-in failed', error })
     }
   } else {
     // Overlap the API token request with the app download. A cached account

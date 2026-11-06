@@ -7,6 +7,7 @@ using ChatUiT.Server.Hubs;
 using ChatUiT.Server.Models;
 using ChatUiT.Server.Extentions;
 using ChatUiT.Server.Services.Tools;
+using ChatUiT.Server.Telemetry;
 
 namespace ChatUiT.Server.Controllers;
 
@@ -19,7 +20,8 @@ public class ChatsController : ControllerBase
 
     private readonly IChatService _chatService;
     private readonly UserService _userService;
-    private readonly ILogger<ChatsController> _logger;
+    private readonly AppTelemetry _telemetry;
+    private readonly IDatabaseService _databaseService;
     private readonly IHubContext<AppHub, IAppHubClient> _hubContext;
     private readonly IAssistantService _assistantService;
     private readonly IModelService _modelService;
@@ -28,7 +30,8 @@ public class ChatsController : ControllerBase
     public ChatsController(
         IChatService chatService,
         UserService userService,
-        ILogger<ChatsController> logger,
+        AppTelemetry telemetry,
+        IDatabaseService databaseService,
         IHubContext<AppHub, IAppHubClient> hubContext,
         IAssistantService assistantService,
         IModelService modelService,
@@ -37,7 +40,8 @@ public class ChatsController : ControllerBase
         _tokenProviders = tokenProviders;
         _chatService = chatService;
         _userService = userService;
-        _logger = logger;
+        _telemetry = telemetry;
+        _databaseService = databaseService;
         _hubContext = hubContext;
         _assistantService = assistantService;
         _modelService = modelService;
@@ -109,92 +113,65 @@ public class ChatsController : ControllerBase
     [HttpGet]
     public async Task<ActionResult<IEnumerable<ChatHeaderDto>>> GetChats()
     {
-        try
-        {
-            var userId = GetCurrentUserId();
-            var chats = await _chatService.GetChatListAsync(userId);
-            var chatDtos = chats.Select(MapToHeaderDto);
-            return Ok(chatDtos);
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Error getting chats");
-            return StatusCode(500, "Internal server error");
-        }
+        var userId = GetCurrentUserId();
+        var chats = await _chatService.GetChatListAsync(userId);
+        var chatDtos = chats.Select(MapToHeaderDto);
+        return Ok(chatDtos);
     }
 
     [HttpGet("{chatId}")]
     public async Task<ActionResult<ChatDto>> GetChat(string chatId)
     {
-        try
-        {
-            var userId = GetCurrentUserId();
-            var chat = await _chatService.GetChatByIdAsync(userId, chatId, includeFileContent: false);
+        var userId = GetCurrentUserId();
+        var chat = await _chatService.GetChatByIdAsync(userId, chatId, includeFileContent: false);
 
-            if (chat == null)
-            {
-                return NotFound("Chat not found");
-            }
-
-            return Ok(MapToDto(chat));
-        }
-        catch (Exception ex)
+        if (chat == null)
         {
-            _logger.LogError(ex, "Error getting chat {ChatId}", chatId);
-            return StatusCode(500, "Internal server error");
+            return NotFound("Chat not found");
         }
+
+        return Ok(MapToDto(chat));
     }
 
     [HttpGet("{chatId}/files/{fileId}")]
     public async Task<ActionResult<ChatFileDto>> GetChatFile(string chatId, string fileId)
     {
-        try
-        {
-            var userId = GetCurrentUserId();
-            var file = await _chatService.GetChatFileAsync(userId, chatId, fileId);
+        var userId = GetCurrentUserId();
+        var file = await _chatService.GetChatFileAsync(userId, chatId, fileId);
 
-            if (file == null)
-            {
-                return NotFound("File not found");
-            }
-
-            return Ok(MapFilesToDto(new List<ChatFile> { file }).First());
-        }
-        catch (Exception ex)
+        if (file == null)
         {
-            _logger.LogError(ex, "Error getting file {FileId} for chat {ChatId}", fileId, chatId);
-            return StatusCode(500, "Internal server error");
+            return NotFound("File not found");
         }
+
+        return Ok(MapFilesToDto(new List<ChatFile> { file }).First());
     }
 
     [HttpPost]
     public async Task<ActionResult<ChatDto>> CreateChat([FromBody] CreateChatDto request)
     {
-        try
+        var userId = GetCurrentUserId();
+
+        if (!await CanUseAssistantAsync(request.AssistantId))
         {
-            var userId = GetCurrentUserId();
-
-            if (!await CanUseAssistantAsync(request.AssistantId))
-            {
-                return Forbid();
-            }
-
-            if (request.RedEnabled && await RefuseRedAssistantAsync(userId, request.AssistantId) is { } refused)
-            {
-                return refused;
-            }
-
-            var chat = await _chatService.CreateChatAsync(userId, request.AssistantId, request.RedEnabled);
-
-            await _hubContext.Clients.Group(userId).ChatListUpdated();
-
-            return CreatedAtAction(nameof(GetChat), new { chatId = chat.Id }, MapToDto(chat));
+            return Forbid();
         }
-        catch (Exception ex)
+
+        if (request.RedEnabled && await RefuseRedAssistantAsync(userId, request.AssistantId) is { } refused)
         {
-            _logger.LogError(ex, "Error creating chat");
-            return StatusCode(500, "Internal server error");
+            return refused;
         }
+
+        var chat = await _chatService.CreateChatAsync(userId, request.AssistantId, request.RedEnabled);
+        _telemetry.ChatCreated(chat.Id, request.AssistantId);
+        if (request.RedEnabled)
+        {
+            _telemetry.ChatRedEnabled(chat.Id, request.AssistantId);
+        }
+
+        await _hubContext.Clients.Group(userId).ChatListUpdated();
+
+        return CreatedAtAction(nameof(GetChat), new { chatId = chat.Id }, MapToDto(chat));
     }
 
     [HttpPost("{chatId}/messages")]
@@ -234,31 +211,18 @@ public class ChatsController : ControllerBase
         {
             return BadRequest(new { error = "invalid_response", message = ex.Message });
         }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Error sending message to chat {ChatId}", chatId);
-            return StatusCode(500, "Internal server error");
-        }
     }
 
     [HttpPost("{chatId}/messages/{messageId}/cancel")]
     public async Task<ActionResult<object>> CancelMessage(string chatId, string messageId)
     {
-        try
-        {
-            var userId = GetCurrentUserId();
+        var userId = GetCurrentUserId();
 
-            // False means the generation already finished (or was never this user's): the client
-            // leaves the completed message alone instead of restoring the composer.
-            var (cancelled, undone) = await _chatService.CancelGenerationAsync(userId, chatId, messageId);
+        // False means the generation already finished (or was never this user's): the client
+        // leaves the completed message alone instead of restoring the composer.
+        var (cancelled, undone) = await _chatService.CancelGenerationAsync(userId, chatId, messageId);
 
-            return Ok(new { cancelled, undone });
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Error cancelling message {MessageId} in chat {ChatId}", messageId, chatId);
-            return StatusCode(500, "Internal server error");
-        }
+        return Ok(new { cancelled, undone });
     }
 
     /// <summary>
@@ -287,11 +251,6 @@ public class ChatsController : ControllerBase
         catch (ArgumentException ex)
         {
             return BadRequest(new { error = "invalid_response", message = ex.Message });
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Error responding to tool call {ToolCallId} on message {MessageId}", toolCallId, messageId);
-            return StatusCode(500, "Internal server error");
         }
     }
 
@@ -429,93 +388,90 @@ public class ChatsController : ControllerBase
     [HttpPatch("{chatId}")]
     public async Task<ActionResult> UpdateChat(string chatId, [FromBody] UpdateChatDto request)
     {
-        try
+        var userId = GetCurrentUserId();
+
+        string? newName = null;
+        if (request.Name != null)
         {
-            var userId = GetCurrentUserId();
-
-            string? newName = null;
-            if (request.Name != null)
+            newName = request.Name.Trim();
+            if (newName.Length == 0)
             {
-                newName = request.Name.Trim();
-                if (newName.Length == 0)
-                {
-                    return BadRequest("Chat name cannot be empty");
-                }
-                if (newName.Length > MaxChatNameLength)
-                {
-                    return BadRequest($"Chat name cannot be longer than {MaxChatNameLength} characters");
-                }
+                return BadRequest("Chat name cannot be empty");
             }
-
-            var enableRed = false;
-            if (request.RedEnabled.HasValue)
+            if (newName.Length > MaxChatNameLength)
             {
-                var chat = await _chatService.GetChatHeaderAsync(userId, chatId);
-                if (chat == null)
-                {
-                    return NotFound();
-                }
-
-                if (!request.RedEnabled.Value && chat.RedEnabled)
-                {
-                    return BadRequest("Red data cannot be switched off once allowed");
-                }
-
-                if (request.RedEnabled.Value && !chat.RedEnabled)
-                {
-                    var assistantId = string.IsNullOrWhiteSpace(request.AssistantId) ? chat.AssistantId : request.AssistantId;
-                    if (!await CanUseAssistantAsync(assistantId))
-                    {
-                        return Forbid();
-                    }
-                    if (await RefuseRedAssistantAsync(userId, assistantId) is { } refused)
-                    {
-                        return refused;
-                    }
-                    enableRed = true;
-                }
+                return BadRequest($"Chat name cannot be longer than {MaxChatNameLength} characters");
             }
-
-            if (newName != null)
-            {
-                await _chatService.UpdateChatAsync(userId, chatId, newName);
-            }
-
-            if (enableRed)
-            {
-                await _chatService.EnableRedAsync(userId, chatId, request.AssistantId);
-            }
-
-            if (request.IsFavorite.HasValue)
-            {
-                await _chatService.SetChatFavoriteAsync(userId, chatId, request.IsFavorite.Value);
-            }
-
-            return NoContent();
         }
-        catch (Exception ex)
+
+        var enableRed = false;
+        if (request.RedEnabled.HasValue)
         {
-            _logger.LogError(ex, "Error updating chat {ChatId}", chatId);
-            return StatusCode(500, "Internal server error");
+            var chat = await _chatService.GetChatHeaderAsync(userId, chatId);
+            if (chat == null)
+            {
+                return NotFound();
+            }
+
+            if (!request.RedEnabled.Value && chat.RedEnabled)
+            {
+                return BadRequest("Red data cannot be switched off once allowed");
+            }
+
+            if (request.RedEnabled.Value && !chat.RedEnabled)
+            {
+                var assistantId = string.IsNullOrWhiteSpace(request.AssistantId) ? chat.AssistantId : request.AssistantId;
+                if (!await CanUseAssistantAsync(assistantId))
+                {
+                    return Forbid();
+                }
+                if (await RefuseRedAssistantAsync(userId, assistantId) is { } refused)
+                {
+                    return refused;
+                }
+                enableRed = true;
+            }
         }
+
+        if (newName != null)
+        {
+            await _chatService.UpdateChatAsync(userId, chatId, newName);
+        }
+
+        if (enableRed)
+        {
+            await _chatService.EnableRedAsync(userId, chatId, request.AssistantId);
+            _telemetry.ChatRedEnabled(chatId, request.AssistantId);
+        }
+
+        if (request.IsFavorite.HasValue)
+        {
+            await _chatService.SetChatFavoriteAsync(userId, chatId, request.IsFavorite.Value);
+        }
+
+        var newAssistantId = enableRed && !string.IsNullOrWhiteSpace(request.AssistantId) ? request.AssistantId : null;
+        if (newName != null || request.IsFavorite.HasValue || newAssistantId != null)
+        {
+            _telemetry.ChatUpdated(chatId, newName, request.IsFavorite, newAssistantId);
+        }
+
+        return NoContent();
     }
 
     [HttpDelete("{chatId}")]
     public async Task<ActionResult> DeleteChat(string chatId)
     {
-        try
-        {
-            var userId = GetCurrentUserId();
-            await _chatService.DeleteChatAsync(userId, chatId);
-            
-            await _hubContext.Clients.Group(userId).ChatListUpdated();
-            
-            return NoContent();
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Error deleting chat {ChatId}", chatId);
-            return StatusCode(500, "Internal server error");
-        }
+        var userId = GetCurrentUserId();
+        var existing = await _databaseService.GetChatByIdAsync(userId, chatId, includeFileContent: false);
+        await _chatService.DeleteChatAsync(userId, chatId);
+        _telemetry.ChatDeleted(
+            chatId,
+            existing?.Name,
+            existing?.Messages.Count(m => m.Role != AiChatRole.System),
+            existing == null ? null : (int)(DateTime.UtcNow - existing.CreatedAt).TotalDays);
+        
+        await _hubContext.Clients.Group(userId).ChatListUpdated();
+        
+        return NoContent();
     }
 }

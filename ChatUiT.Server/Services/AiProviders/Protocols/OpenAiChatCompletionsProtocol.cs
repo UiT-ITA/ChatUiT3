@@ -20,6 +20,7 @@ using OpenAI.Chat;
 namespace ChatUiT.Server.Services.AiProviders.Protocols;
 
 using ChatUiT.Server.Models;
+using ChatUiT.Server.Telemetry;
 using ChatUiT.Server.Services.TokenCounting;
 using ChatUiT.Server.Services.Tools;
 using DomainChatMessage = ChatUiT.Server.Models.ChatMessage;
@@ -45,18 +46,18 @@ public sealed class OpenAiChatCompletionsProtocol : IApiProtocol
     private static readonly byte[] ReasoningContentPath = "$.reasoning_content"u8.ToArray();
     private const string ReasoningContentField = "reasoning_content";
 
-    private readonly ILogger<OpenAiChatCompletionsProtocol> _logger;
+    private readonly AppTelemetry _telemetry;
 
-    public OpenAiChatCompletionsProtocol(ILogger<OpenAiChatCompletionsProtocol> logger)
+    public OpenAiChatCompletionsProtocol(AppTelemetry telemetry)
     {
-        _logger = logger;
+        _telemetry = telemetry;
     }
 
     public ApiProtocol Protocol => ApiProtocol.OpenAiChatCompletions;
 
     public IAiConversation StartConversation(AiRequest request, ProtocolTarget target)
     {
-        return new Conversation(request, target, BuildMessages(request), _logger);
+        return new Conversation(request, target, BuildMessages(request), _telemetry);
     }
 
     public async Task<string> GenerateChatNameAsync(AiRequest request, ProtocolTarget target, CancellationToken cancellationToken = default)
@@ -311,15 +312,15 @@ public sealed class OpenAiChatCompletionsProtocol : IApiProtocol
         private readonly AiRequest _request;
         private readonly ProtocolTarget _target;
         private readonly List<OpenAiChatMessage> _messages;
-        private readonly ILogger _logger;
+        private readonly AppTelemetry _telemetry;
         private readonly HashSet<string> _loaded;
 
-        public Conversation(AiRequest request, ProtocolTarget target, List<OpenAiChatMessage> messages, ILogger logger)
+        public Conversation(AiRequest request, ProtocolTarget target, List<OpenAiChatMessage> messages, AppTelemetry telemetry)
         {
             _request = request;
             _target = target;
             _messages = messages;
-            _logger = logger;
+            _telemetry = telemetry;
             _loaded = new HashSet<string>(request.LoadedToolIds, StringComparer.Ordinal);
         }
 
@@ -332,14 +333,21 @@ public sealed class OpenAiChatCompletionsProtocol : IApiProtocol
 
             var turn = new TurnState();
             var toolCalls = new SortedDictionary<int, PendingToolCall>();
+            long inputTokens = 0, outputTokens = 0, cachedTokens = 0;
+            string? stopReason = null;
 
             await foreach (var update in client.CompleteChatStreamingAsync(_messages, options, cancellationToken).WithCancellation(cancellationToken))
             {
                 if (update.Usage is { } usage)
                 {
-                    _logger.LogInformation(
-                        "Chat Completions turn on {Model}: {InputTokens} input tokens, {CacheReadTokens} read from cache",
-                        _request.Model.ModelId, usage.InputTokenCount, usage.InputTokenDetails?.CachedTokenCount ?? 0);
+                    inputTokens = usage.InputTokenCount;
+                    outputTokens = usage.OutputTokenCount;
+                    cachedTokens = usage.InputTokenDetails?.CachedTokenCount ?? 0;
+                }
+
+                if (update.FinishReason is { } finishReason)
+                {
+                    stopReason = finishReason.ToString();
                 }
 
                 if (update.Patch.TryGetValue(ReasoningContentDeltaPath, out string? reasoningDelta) && !string.IsNullOrEmpty(reasoningDelta))
@@ -393,7 +401,7 @@ public sealed class OpenAiChatCompletionsProtocol : IApiProtocol
             var calls = toolCalls.Values.Where(call => call.Id != null && call.Name != null).ToList();
             foreach (var dropped in toolCalls.Values.Except(calls))
             {
-                _logger.LogWarning("Dropping an incomplete streamed tool call (id {Id}, name {Name})", dropped.Id, dropped.Name);
+                _telemetry.ToolCallDropped(dropped.Id, dropped.Name);
             }
 
             var text = turn.Content;
@@ -423,6 +431,8 @@ public sealed class OpenAiChatCompletionsProtocol : IApiProtocol
 
                 _messages.Add(assistant);
             }
+
+            yield return new AiStreamEvent.TurnEnded(inputTokens, outputTokens, cachedTokens, 0, stopReason);
 
             if (turn.Reasoning.Length > 0)
             {

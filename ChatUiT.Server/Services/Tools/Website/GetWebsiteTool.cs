@@ -101,6 +101,7 @@ public sealed class GetWebsiteTool : Tool<GetWebsiteArgs>
   {
     using var request = new HttpRequestMessage(HttpMethod.Get, uri);
     request.Headers.UserAgent.ParseAdd(UserAgent);
+    request.Options.Set(Telemetry.TelemetryHttp.Untracked, true);
 
     using var response = await _httpClientFactory.CreateClient(nameof(GetWebsiteTool)).SendAsync(request, cancellationToken);
     response.EnsureSuccessStatusCode();

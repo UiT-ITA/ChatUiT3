@@ -281,7 +281,7 @@ public partial class DatabaseService
         }
         catch (Exception ex) when (ex is CryptographicException or FormatException)
         {
-            _logger.LogError(ex, "Content block {BlockId} could not be decrypted.", block.Id);
+            _telemetry.ContentDecryptFailed(block.Id, ex);
             return null;
         }
     }

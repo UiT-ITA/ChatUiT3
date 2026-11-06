@@ -6,6 +6,7 @@ import { Icon } from './Icon';
 import { cx } from './layout';
 import { scrollFadeClass } from './scrollFade';
 import './MermaidDiagram.css';
+import { trackError } from '../../services/telemetryService';
 
 // Mermaid theme variables and the app tokens they take their colour from. Mermaid derives the other variables from these.
 const THEME_TOKENS: Record<string, string> = {
@@ -124,6 +125,7 @@ function MermaidDiagram({ chart, fullSize = false, showScrollbar = false }: Merm
     render()
       .catch((err) => {
         console.error('Mermaid rendering error:', err);
+        trackError('render_mermaid', { message: 'A Mermaid diagram could not be rendered', error: err });
         if (!cancelled) setError(err instanceof Error ? err.message : t('chat.mermaid.renderError'));
       })
       .finally(() => {

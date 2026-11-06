@@ -1,6 +1,7 @@
 import authService from "./authService";
 import { addNotification } from "./notificationService";
 import type { NotifyLevel } from "../types/notification";
+import { telemetryHeaders, trackError } from "./telemetryService";
 
 // const API_BASE_URL = "https://localhost:7254";
 const API_BASE_URL = "";
@@ -30,6 +31,9 @@ async function send(
 
   const headers = new Headers(options.headers);
   headers.set("Accept", accept);
+  for (const [name, value] of Object.entries(telemetryHeaders())) {
+    headers.set(name, value);
+  }
   if (!(options.body instanceof FormData)) {
     headers.set("Content-Type", "application/json");
   }
@@ -48,6 +52,7 @@ async function send(
     });
   } catch (err) {
     addNotification({ level: "Error", message: "Network error. Please check your connection and try again." });
+    trackError("network", { message: "The request did not reach the server", error: err });
     throw err;
   }
 

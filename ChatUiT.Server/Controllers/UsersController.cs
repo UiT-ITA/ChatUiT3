@@ -16,56 +16,48 @@ public class UsersController : ControllerBase
 
     private readonly IDatabaseService _databaseService;
     private readonly UserService _userService;
-    private readonly ILogger<UsersController> _logger;
+    private readonly Telemetry.AppTelemetry _telemetry;
 
-    public UsersController(IDatabaseService databaseService, UserService userService, ILogger<UsersController> logger)
+    public UsersController(IDatabaseService databaseService, UserService userService, Telemetry.AppTelemetry telemetry)
     {
         _databaseService = databaseService;
         _userService = userService;
-        _logger = logger;
+        _telemetry = telemetry;
     }
 
     [HttpGet]
     public async Task<ActionResult<UserProfileDto>> GetProfile()
     {
-        try
-        {
-            var user = await _databaseService.GetUserAsync(_userService.GetCurrentUserId(User));
-            return Ok(MapToDto(user?.Preferences.Profile ?? new UserProfile()));
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Error getting user profile");
-            return StatusCode(500, "Internal server error");
-        }
+        var user = await _databaseService.GetUserAsync(_userService.GetCurrentUserId(User));
+        return Ok(MapToDto(user?.Preferences.Profile ?? new UserProfile()));
     }
 
     [HttpPut]
     public async Task<ActionResult<UserProfileDto>> UpdateProfile([FromBody] UserProfileDto request)
     {
-        try
+        var user = await _databaseService.GetUserAsync(_userService.GetCurrentUserId(User));
+        if (user == null)
         {
-            var user = await _databaseService.GetUserAsync(_userService.GetCurrentUserId(User));
-            if (user == null)
-            {
-                return NotFound();
-            }
-
-            user.Preferences.Profile = new UserProfile
-            {
-                DisplayName = Clamp(request.DisplayName, NameMaxLength),
-                JobRole = Clamp(request.JobRole, NameMaxLength),
-                AnswerPreferences = Clamp(request.AnswerPreferences, AnswerPreferencesMaxLength)
-            };
-
-            await _databaseService.UpdateUserAsync(user);
-            return Ok(MapToDto(user.Preferences.Profile));
+            return NotFound();
         }
-        catch (Exception ex)
+
+        var previous = user.Preferences.Profile;
+        user.Preferences.Profile = new UserProfile
         {
-            _logger.LogError(ex, "Error updating user profile");
-            return StatusCode(500, "Internal server error");
-        }
+            DisplayName = Clamp(request.DisplayName, NameMaxLength),
+            JobRole = Clamp(request.JobRole, NameMaxLength),
+            AnswerPreferences = Clamp(request.AnswerPreferences, AnswerPreferencesMaxLength)
+        };
+
+        await _databaseService.UpdateUserAsync(user);
+
+        var profile = user.Preferences.Profile;
+        var changed = new List<string>();
+        if (previous.DisplayName != profile.DisplayName) changed.Add("displayName");
+        if (previous.JobRole != profile.JobRole) changed.Add("jobRole");
+        if (previous.AnswerPreferences != profile.AnswerPreferences) changed.Add("answerPreferences");
+        _telemetry.ProfileUpdated(changed);
+        return Ok(MapToDto(user.Preferences.Profile));
     }
 
     private static string Clamp(string? value, int maxLength)

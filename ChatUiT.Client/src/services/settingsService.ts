@@ -1,6 +1,7 @@
 import { AppSettings, DEFAULT_SETTINGS } from '../types/settingsModels';
 import { setTheme, setMode, setSize } from '../utils/themeUtils';
 import { initializeI18n } from '../i18n';
+import { trackError } from './telemetryService';
 
 const SETTINGS_STORAGE_KEY = 'chatuit-settings';
 
@@ -28,6 +29,7 @@ export class SettingsService {
       return settings;
     } catch (error) {
       console.warn('Failed to load settings from localStorage:', error);
+      trackError('storage', { message: 'Settings could not be read from localStorage', error });
       return DEFAULT_SETTINGS;
     }
   }
@@ -47,6 +49,7 @@ export class SettingsService {
       localStorage.setItem(SETTINGS_STORAGE_KEY, JSON.stringify(settings));
     } catch (error) {
       console.error('Failed to save settings to localStorage:', error);
+      trackError('storage', { message: 'Settings could not be saved to localStorage', error });
     }
   }
 

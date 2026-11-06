@@ -10,6 +10,7 @@ using System.Text;
 using System.Text.Json;
 using System.Security.Claims;
 using Microsoft.Extensions.Options;
+using ChatUiT.Server.Telemetry;
 
 namespace ChatUiT.Server.Services;
 
@@ -30,7 +31,7 @@ public class ChatService : IChatService
     private readonly AiConversationRunner _conversationRunner;
     private readonly IAiProviderRegistry _providers;
     private readonly IHubContext<AppHub, IAppHubClient> _hubContext;
-    private readonly ILogger<ChatService> _logger;
+    private readonly AppTelemetry _telemetry;
     private readonly IDatabaseService _databaseService;
     private readonly StreamingService _streamingService;
     private readonly IAssistantService _assistantService;
@@ -47,7 +48,7 @@ public class ChatService : IChatService
         AiConversationRunner conversationRunner,
         IAiProviderRegistry providers,
         IHubContext<AppHub, IAppHubClient> hubContext,
-        ILogger<ChatService> logger,
+        AppTelemetry telemetry,
         IDatabaseService databaseService,
         StreamingService streamingService,
         IAssistantService assistantService,
@@ -63,7 +64,7 @@ public class ChatService : IChatService
         _conversationRunner = conversationRunner;
         _providers = providers;
         _hubContext = hubContext;
-        _logger = logger;
+        _telemetry = telemetry;
         _databaseService = databaseService;
         _streamingService = streamingService;
         _assistantService = assistantService;
@@ -340,7 +341,7 @@ public class ChatService : IChatService
             if (wasEmpty)
             {
                 _ = Task.Run(async () => {
-                    var name = await GenerateChatNameAsync(userMessage.Content);
+                    var name = await GenerateChatNameAsync(chatId, userMessage.Content);
                     if (name != null)
                     {
                         await UpdateChatAsync(userId, chatId, name, null);
@@ -352,6 +353,7 @@ public class ChatService : IChatService
             if (chat != null && !string.IsNullOrWhiteSpace(assistantId) && assistantId != chat.AssistantId)
             {
                 await UpdateChatAsync(userId, chatId, null, assistantId);
+                _telemetry.ChatUpdated(chatId, null, null, assistantId);
             }
             if (string.IsNullOrWhiteSpace(effectiveAssistantId))
             {
@@ -360,7 +362,6 @@ public class ChatService : IChatService
             }
             // Pin order is kept: pinned files are placed in the request in the order they were loaded.
             var pinnedFileIds = (chat?.LoadedFiles ?? new List<ChatLoadedFile>()).Select(f => f.FileId).Distinct().ToList();
-            _logger.LogInformation("Chat {ChatId} read with {PinnedCount} pinned files", chatId, pinnedFileIds.Count);
             var resolved = await ResolveAssistantForChatAsync(userId, effectiveAssistantId, promptUser, tools.Access, pinnedFileIds);
 
             var modelId = resolved.Assistant.ChatSettings.Model.Id;
@@ -401,7 +402,25 @@ public class ChatService : IChatService
                 messages.Insert(Math.Max(0, messages.FindIndex(m => m.Id == userMessage.Id)), knowledge);
             }
 
-            request = await BuildAiRequestAsync(model, endpoint, resolved, messages, tools);
+            RequestFacts facts;
+            (request, facts) = await BuildAiRequestAsync(model, endpoint, resolved, messages, tools);
+
+            _telemetry.MessageSent(new MessageSentInfo(
+                chatId,
+                userMessage.Id,
+                resolved.Assistant.Id,
+                model.ModelId,
+                _assistantService.ClassificationOf(resolved.Assistant).ToString(),
+                request.Parameters.Effort.ToString(),
+                userMessage.Files.Select(f => f.SourceFilename).ToList(),
+                userMessage.Files.Select(f => FileFacts.TypeOf(f.SourceFilename) ?? string.Empty).ToList(),
+                userMessage.Files.Sum(FileFacts.BytesOf),
+                facts.PinnedFileIds,
+                facts.OnDemandFileIds,
+                facts.Toolboxes,
+                facts.LoadedToolIds,
+                facts.ClientToolNames,
+                TokenCountingSchemes.IdFor(model.Capabilities) is { } scheme && userMessage.TokenCounts.TryGetValue(scheme, out var promptTokens) ? promptTokens : null));
         }
         catch
         {
@@ -480,6 +499,8 @@ public class ChatService : IChatService
             var startMs = activity.TotalMs;
             var stopwatch = Stopwatch.StartNew();
             var waiting = false;
+            var stats = new RunStats();
+            _telemetry.GenerationStarted(chatId, message.Id, plan.Request.Model.ModelId, plan.Request.Endpoint.EndpointType.ToString());
 
             using var cancellation = registered;
 
@@ -497,7 +518,7 @@ public class ChatService : IChatService
                 if (!waiting)
                 {
                     var request = plan.RequestAfterResume?.Invoke() ?? plan.Request;
-                    await foreach (var chunk in _conversationRunner.StreamAsync(request, plan.ToolContext, activity, transcript, cancellation.Token))
+                    await foreach (var chunk in _conversationRunner.StreamAsync(request, plan.ToolContext, activity, transcript, cancellation.Token, stats))
                     {
                         _streamingService.AddChunk(userId, message.Id, chunk);
                         waiting |= chunk.Kind == ChatStreamChunkKind.AwaitingUser;
@@ -527,6 +548,7 @@ public class ChatService : IChatService
                 await _databaseService.UpdateMessageAsync(userId, chatId, message);
 
                 NotifyChatUpdated(userId, chatId);
+                RecordFinished(Outcomes.Succeeded, null, waiting);
             }
             catch (Exception ex)
             {
@@ -542,16 +564,16 @@ public class ChatService : IChatService
                 var failedText = GenerationFailedText;
                 if (cancelledByUser)
                 {
-                    _logger.LogInformation("Continued message {MessageId} stopped by the user", message.Id);
-                }
-                else if (ex is AiTurnFailedException turnFailed)
-                {
-                    _logger.LogWarning("Chat completion failed: the provider ended the turn early");
-                    failedText = $"*{turnFailed.Message}*";
+                    RecordFinished(Outcomes.Cancelled, null);
                 }
                 else
                 {
-                    _logger.LogError(ex, "Error getting chat completion");
+                    if (ex is AiTurnFailedException turnFailed)
+                    {
+                        failedText = $"*{turnFailed.Message}*";
+                    }
+
+                    RecordFinished(Outcomes.Failed, ex);
                 }
 
                 _streamingService.CompleteMessage(userId, message.Id);
@@ -579,10 +601,29 @@ public class ChatService : IChatService
 
             async Task UndoCancelledGenerationAsync()
             {
-                _logger.LogInformation("Generation cancelled by user for message {MessageId}", message.Id);
+                RecordFinished(Outcomes.Cancelled, null);
                 _streamingService.CompleteMessage(userId, message.Id);
                 await plan.UndoOnCancelAsync!();
             }
+
+            void RecordFinished(string outcome, Exception? exception, bool awaitingUser = false) =>
+                _telemetry.GenerationFinished(new GenerationFinishedInfo(
+                    chatId,
+                    message.Id,
+                    plan.Request.Model.ModelId,
+                    outcome,
+                    stats.ElapsedMs,
+                    stats.TimeToFirstTokenMs,
+                    activity.ThinkingMs,
+                    activity.ToolMs,
+                    activity.ToolRounds,
+                    stats.ModelTurns,
+                    stats.InputTokens,
+                    stats.OutputTokens,
+                    stats.CachedTokens,
+                    stats.CacheWriteTokens,
+                    stats.StopReason,
+                    awaitingUser), exception);
         });
     }
 
@@ -599,7 +640,7 @@ public class ChatService : IChatService
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Could not mark message {MessageId} as failed", assistantMessage.Id);
+            _telemetry.MessageStatusSaveFailed(assistantMessage.Id, ex);
         }
 
         NotifyChatUpdated(userId, chatId);
@@ -738,7 +779,15 @@ public class ChatService : IChatService
     // loader for the on-demand files still loadable, plus the client's own tools. Knowledge files
     // (always-loaded and pinned) lead the history as synthetic user messages; earlier assistant
     // messages replay their transcripts.
-    private async Task<AiRequest> BuildAiRequestAsync(
+    /// <summary>What a request was built from, for <c>message.sent</c>.</summary>
+    private sealed record RequestFacts(
+        IReadOnlyList<string> PinnedFileIds,
+        IReadOnlyList<string> OnDemandFileIds,
+        IReadOnlyList<string> Toolboxes,
+        IReadOnlyList<string> LoadedToolIds,
+        IReadOnlyList<string> ClientToolNames);
+
+    private async Task<(AiRequest Request, RequestFacts Facts)> BuildAiRequestAsync(
         LanguageModel model,
         ModelEndpoint endpoint,
         ResolvedAssistant resolved,
@@ -781,7 +830,7 @@ public class ChatService : IChatService
 
         if (canLoadOnDemand && onDemandFiles.Count > 0)
         {
-            resolvedTools.Add(new LoadKnowledgeFileTool(assistant.Id, onDemandFiles, _databaseService, _tokenCounting, _toolOptions, _logger));
+            resolvedTools.Add(new LoadKnowledgeFileTool(assistant.Id, onDemandFiles, _databaseService, _tokenCounting, _toolOptions, _telemetry));
         }
 
         if (canLoadOnDemand)
@@ -789,22 +838,21 @@ public class ChatService : IChatService
             resolvedTools.Add(new AskUserTool());
         }
 
+        var clientTools = new List<ITool>();
         if (canLoadOnDemand && tools.ClientTools.Count > 0 && await _toolAccess.MayUseClientToolsAsync(tools.Access))
         {
-            resolvedTools.AddRange(_toolRegistry.CreateClientTools(tools.ClientTools));
+            clientTools.AddRange(_toolRegistry.CreateClientTools(tools.ClientTools));
+            resolvedTools.AddRange(clientTools);
         }
 
-        _logger.LogInformation(
-            "Assistant {AssistantId}: {PinnedCount} pinned files ({PinnedIds}), {OnDemandCount} on-demand files offered ({OnDemandIds}), toolboxes {Toolboxes}, {LoadedCount} tools loaded",
-            assistant.Id,
-            pinnedFileIds.Count,
-            string.Join(",", pinnedFileIds),
-            onDemandFiles.Count,
-            string.Join(",", onDemandFiles.Select(f => f.Id)),
-            string.Join(",", toolboxes.Select(t => t.Toolbox.Id)),
-            loadedToolIds.Count);
+        var facts = new RequestFacts(
+            resolved.PinnedFileIds.ToList(),
+            onDemandFiles.Select(f => f.Id).ToList(),
+            toolboxes.Select(t => t.Toolbox.Id).ToList(),
+            loadedToolIds.ToList(),
+            clientTools.Select(t => t.Id).ToList());
 
-        return new AiRequest
+        var request = new AiRequest
         {
             Model = model,
             Endpoint = endpoint,
@@ -815,6 +863,8 @@ public class ChatService : IChatService
             LoadableTools = loadableTools,
             LoadedToolIds = loadedToolIds
         };
+
+        return (request, facts);
     }
 
     /// <summary>The knowledge files, then the messages. A model that cannot call tools gets earlier messages as text.</summary>
@@ -903,7 +953,7 @@ public class ChatService : IChatService
             Now = DateTimeOffset.UtcNow
         };
 
-        return await KnowledgeSourceMessages.BuildAsync(sources, context, _logger, CancellationToken.None);
+        return await KnowledgeSourceMessages.BuildAsync(sources, context, _telemetry, CancellationToken.None);
     }
 
     public async Task<ToolCallResponseResultDto> RespondToToolCallAsync(
@@ -928,6 +978,7 @@ public class ChatService : IChatService
 
             var checkedResponse = CheckResponse(entry, response);
             entry.Response = checkedResponse;
+            _telemetry.ToolResponded(chatId, messageId, entry.ToolName, ResponseName(checkedResponse));
 
             if (message.Activity!.Entries.Any(e => e.Status.IsAwaiting() && e.Response == null))
             {
@@ -951,6 +1002,14 @@ public class ChatService : IChatService
             messageLock.Release();
         }
     }
+
+    /// <summary>The <c>response</c> field of <c>tool.responded</c>: approved, rejected or answered.</summary>
+    private static string ResponseName(ToolCallResponseDto response) => response.Decision switch
+    {
+        ToolCallDecision.Approve => "approved",
+        ToolCallDecision.Reject => "rejected",
+        _ => "answered"
+    };
 
     /// <summary>The chat, the message that waits and its call that still waits under that id; nulls when there is none.</summary>
     private async Task<(Chat? Chat, Models.ChatMessage? Message, ActivityEntry? Entry)> FindWaitingCallAsync(
@@ -1055,7 +1114,7 @@ public class ChatService : IChatService
         };
 
         var messages = chat.Messages.TakeWhile(m => m.Id != message.Id).Append(message).ToList();
-        var request = await BuildAiRequestAsync(model, endpoint, resolved, messages, tools);
+        var (request, _) = await BuildAiRequestAsync(model, endpoint, resolved, messages, tools);
         var resumes = message.Activity!.Entries
             .Where(e => e.Status.IsAwaiting() && e.Response != null)
             .Select(e => new ResumedCall(e, ToResumeInput(e)))
@@ -1196,7 +1255,7 @@ public class ChatService : IChatService
         }
         catch (JsonException ex)
         {
-            throw new ArgumentException($"The arguments are not valid JSON: {ex.Message}", ex);
+            throw new ArgumentException("The arguments are not valid JSON.", ex);
         }
     }
 
@@ -1212,27 +1271,27 @@ public class ChatService : IChatService
 
     // Generates a chat name using the model configured in the admin settings.
     // Returns null when no naming model is configured or it can no longer be resolved.
-    private async Task<string?> GenerateChatNameAsync(string prompt)
+    private async Task<string?> GenerateChatNameAsync(string chatId, string prompt)
     {
         var settings = await _settingsService.GetEffectiveAppSettingsAsync();
 
         if (string.IsNullOrWhiteSpace(settings.ChatNamingModelId))
         {
-            _logger.LogWarning("No chat naming model configured and no models are registered. Skipping chat name generation.");
+            _telemetry.ChatNamingUnavailable("no_model", null, null);
             return null;
         }
 
         var resolved = await _modelService.GetModelWithEndpointAsync<LanguageModel>(settings.ChatNamingModelId);
         if (resolved == null)
         {
-            _logger.LogWarning("Configured chat naming model {ModelId} could not be resolved to a model and endpoint.", settings.ChatNamingModelId);
+            _telemetry.ChatNamingUnavailable("model_not_resolved", settings.ChatNamingModelId, null);
             return null;
         }
 
         var (endpoint, model) = resolved.Value;
         if (!_providers.Supports(endpoint.EndpointType))
         {
-            _logger.LogWarning("Chat naming model {ModelId} uses unsupported endpoint type {EndpointType}.", settings.ChatNamingModelId, endpoint.EndpointType);
+            _telemetry.ChatNamingUnavailable("endpoint_not_supported", model.ModelId, endpoint.EndpointType.ToString());
             return null;
         }
 
@@ -1257,14 +1316,17 @@ public class ChatService : IChatService
             Parameters = ChatParameterResolver.Resolve(model.Capabilities, namingSettings)
         };
 
+        var stopwatch = Stopwatch.StartNew();
         try
         {
-            return await _providers.For(endpoint.EndpointType).GenerateChatNameAsync(request);
+            var name = await _providers.For(endpoint.EndpointType).GenerateChatNameAsync(request);
+            _telemetry.ChatNamed(chatId, name, model.ModelId, stopwatch.ElapsedMilliseconds, Outcomes.Succeeded);
+            return name;
         }
         catch (Exception ex)
         {
             // A failed naming call leaves the chat unnamed.
-            _logger.LogWarning(ex, "Chat name generation with model {ModelId} failed.", settings.ChatNamingModelId);
+            _telemetry.ChatNamed(chatId, null, model.ModelId, stopwatch.ElapsedMilliseconds, Outcomes.Failed, ex);
             return null;
         }
     }
@@ -1277,7 +1339,7 @@ public class ChatService : IChatService
 
     private async void SetChatName(string userId, string chatId, string prompt)
     {
-        var name = await GenerateChatNameAsync(prompt);
+        var name = await GenerateChatNameAsync(chatId, prompt);
         if (name != null)
         {
             await UpdateChatAsync(userId, chatId, null, name);
