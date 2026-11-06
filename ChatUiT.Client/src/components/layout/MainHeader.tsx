@@ -1,4 +1,4 @@
-import { useLocation, useNavigate } from 'react-router-dom';
+import { useLocation } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { useSignals } from '@preact/signals-react/runtime';
 import Button from '../common/Button';
@@ -6,7 +6,7 @@ import IconButton from '../common/IconButton';
 import { Icon } from '../common/Icon';
 import { getChat } from '../../services/chatService';
 import { getAssistants } from '../../services/assistantService';
-import { conversationPanelOpenSignal, editorHeaderSignal } from '../../services/uiService';
+import { conversationPanelOpenSignal, editorHeaderSignal, filledCodeBlockSignal } from '../../services/uiService';
 import useMediaQuery from '../../hooks/useMediaQuery';
 import { isHelpSection } from '../help/helpSections';
 import Badge from '../common/Badge';
@@ -29,7 +29,6 @@ interface MainHeaderProps {
 export const MainHeaderContent = ({ isMobile, sidebarCollapsed, onToggleSidebar }: MainHeaderProps) => {
   useSignals();
   const { t } = useTranslation();
-  const navigate = useNavigate();
   const isWide = useMediaQuery(WIDE);
   const { section, params, chatId } = parseRoute(useLocation().pathname);
   const back = useHeaderBack(isMobile);
@@ -39,7 +38,8 @@ export const MainHeaderContent = ({ isMobile, sidebarCollapsed, onToggleSidebar 
   let chip = '';
 
   if (section === 'chats') {
-    title = chatId ? (chat?.name || '…') : t('chat.newChat');
+    const filled = filledCodeBlockSignal.value;
+    title = filled && chatId ? filled.title : chatId ? (chat?.name || '…') : t('chat.newChat');
   } else if (section === 'assistants' && params[0] && params[0] !== 'new') {
     const list = getAssistants().value;
     title = [...(list?.owned ?? []), ...(list?.system ?? []), ...(list?.shared ?? [])].find(a => a.id === params[0])?.name ?? title;
@@ -60,9 +60,9 @@ export const MainHeaderContent = ({ isMobile, sidebarCollapsed, onToggleSidebar 
         <IconButton icon="sidebarToggle" iconSize="md" label={t(sidebarCollapsed ? 'sidebar.expandSidebar' : 'sidebar.collapseSidebar')} variant="ghost" size="small" onClick={onToggleSidebar} />
       )}
       {back && (isMobile ? (
-        <IconButton icon="back" label={back.label} variant="ghost" onClick={() => navigate(back.path)} />
+        <IconButton icon="back" label={back.label} variant="ghost" onClick={back.onBack} />
       ) : (
-        <AppHeaderCrumb onClick={() => navigate(back.path)}>{back.label}</AppHeaderCrumb>
+        <AppHeaderCrumb onClick={back.onBack}>{back.label}</AppHeaderCrumb>
       ))}
       <AppHeaderTitle>{title}</AppHeaderTitle>
       {chip && !isMobile && <Badge tone="accent" size="medium" maxWidth="2xs">{chip}</Badge>}

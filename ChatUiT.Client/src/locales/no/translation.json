@@ -102,7 +102,14 @@
       "branch": "Forgren samtale",
       "copyCode": "Kopier kode",
       "copySource": "Kopier kilde",
-      "wrapLines": "Bryt linjer"
+      "wrapLines": "Bryt linjer",
+      "fullView": "Fullvisning",
+      "closeFullView": "Lukk fullvisning"
+    },
+    "html": {
+      "preview": "Forhåndsvis",
+      "previewTitle": "HTML-forhåndsvisning",
+      "navigatedAway": "Siden prøvde å åpne en annen adresse og ble lukket."
     },
     "status": {
       "done": "Ferdig",
@@ -215,6 +222,7 @@
       "snippets": {
         "formatMarkdown": "Formater tekst",
         "equations": "Vis likninger",
+        "htmlVisuals": "Vis HTML-visualiseringer",
         "basicUserInfo": "Ta med grunnleggende info om deg",
         "answerPreferences": "Ta med dine svarpreferanser"
       },

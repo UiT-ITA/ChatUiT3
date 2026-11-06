@@ -5,7 +5,7 @@ import { PiSidebarSimple } from "react-icons/pi";
 import { VscLayoutSidebarLeft, VscLayoutSidebarLeftOff } from "react-icons/vsc";
 import { RiSettings3Line, RiChat1Line, RiChatAiLine, RiUserLine, RiRobot2Line, RiMenuLine, RiServerLine, RiCpuLine, RiToolsLine, RiCodeBoxLine, RiPulseLine } from 'react-icons/ri';
 import { GrHelpBook } from "react-icons/gr";
-import { MdOutlineVpnKey, MdContentCopy, MdCheck, MdRefresh, MdOutlineEdit, MdKeyboardArrowDown, MdMoreHoriz, MdAttachFile, MdSend, MdKeyboardArrowUp, MdInfoOutline, MdOutlineRemoveRedEye, MdPublic, MdOutlinePsychology, MdMoreVert, MdClose, MdOutlineInsertDriveFile, MdOutlineLightMode, MdOutlineDarkMode, MdSearch, MdAdd, MdArrowBack, MdStop, MdOutlineGridView, MdOutlineVerifiedUser, MdOutlinePeopleAlt, MdLockOutline, MdCheckCircle, MdOutlineCheckCircle, MdVisibility, MdVisibilityOff, MdOutlineImage, MdDeleteOutline, MdOutlineMail, MdOutlineEvent, MdHelpOutline, MdChevronLeft, MdChevronRight, MdOutlineSchedule, MdOutlineFilterAlt, MdOutlineShield, MdOutlineFileUpload, MdErrorOutline, MdOutlineVolumeUp, MdZoomIn, MdZoomOut, MdWrapText, MdArrowOutward } from "react-icons/md";
+import { MdOutlineVpnKey, MdContentCopy, MdCheck, MdRefresh, MdOutlineEdit, MdKeyboardArrowDown, MdMoreHoriz, MdAttachFile, MdSend, MdKeyboardArrowUp, MdInfoOutline, MdOutlineRemoveRedEye, MdPublic, MdOutlinePsychology, MdMoreVert, MdClose, MdOutlineInsertDriveFile, MdOutlineLightMode, MdOutlineDarkMode, MdSearch, MdAdd, MdArrowBack, MdStop, MdOutlineGridView, MdOutlineVerifiedUser, MdOutlinePeopleAlt, MdLockOutline, MdCheckCircle, MdOutlineCheckCircle, MdVisibility, MdVisibilityOff, MdOutlineImage, MdDeleteOutline, MdOutlineMail, MdOutlineEvent, MdHelpOutline, MdChevronLeft, MdChevronRight, MdOutlineSchedule, MdOutlineFilterAlt, MdOutlineShield, MdOutlineFileUpload, MdErrorOutline, MdOutlineVolumeUp, MdZoomIn, MdZoomOut, MdWrapText, MdArrowOutward, MdOpenInFull, MdCloseFullscreen } from "react-icons/md";
 import { FaStar } from "react-icons/fa";
 import { LuGitBranch, LuStar } from "react-icons/lu";
 
@@ -76,6 +76,8 @@ const iconMap = {
   zoomOut: MdZoomOut,
   wrap: MdWrapText,
   externalLink: MdArrowOutward,
+  fullView: MdOpenInFull,
+  closeFullView: MdCloseFullscreen,
 } as const;
 
 export type IconName = keyof typeof iconMap;
