@@ -15,6 +15,7 @@ public static class PromptSnippets
 {
     public const string FormatMarkdown = "formatMarkdown";
     public const string Equations = "equations";
+    public const string HtmlVisuals = "htmlVisuals";
     public const string BasicUserInfo = "basicUserInfo";
     public const string AnswerPreferences = "answerPreferences";
 
@@ -23,6 +24,7 @@ public static class PromptSnippets
     {
         FormatMarkdown,
         Equations,
+        HtmlVisuals,
         BasicUserInfo,
         AnswerPreferences
     };
@@ -37,6 +39,14 @@ public static class PromptSnippets
         "$$\n" +
         "E = mc^2\n" +
         "$$";
+
+    public const string HtmlVisualsText =
+        "When a visual helps the answer (a chart, a diagram, an interactive demo or a small tool), show it as a live HTML page: " +
+        "write a complete, self-contained HTML page with its CSS and JavaScript in a fenced code block with the language `html-preview`. " +
+        "The user sees the rendered page and can switch to the source.\n" +
+        "- The page runs in a sandbox. It can load scripts, styles and fonts only from https://cdn.jsdelivr.net (for example Chart.js or D3), with exact versions in the URLs. All other network requests are blocked.\n" +
+        "- It has no fetch, forms, pop-ups, cookies or local storage, and no access to the conversation, so put all data in the page.\n" +
+        "- Use a fenced code block with the language `html` instead when the user wants to read or copy HTML source.";
 
     /// <summary>Known ids only, de-duplicated, in registry order.</summary>
     public static List<string> Normalize(IEnumerable<string>? requested)

@@ -76,6 +76,10 @@ public static class SystemPromptAssembler
         {
             blocks.Add(PromptSnippets.EquationsText);
         }
+        if (snippetIds.Contains(PromptSnippets.HtmlVisuals))
+        {
+            blocks.Add(PromptSnippets.HtmlVisualsText);
+        }
 
         return blocks.Count == 0
             ? null

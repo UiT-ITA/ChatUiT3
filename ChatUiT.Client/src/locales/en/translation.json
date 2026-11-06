@@ -102,7 +102,14 @@
       "branch": "Branch conversation",
       "copyCode": "Copy code",
       "copySource": "Copy source",
-      "wrapLines": "Wrap lines"
+      "wrapLines": "Wrap lines",
+      "fullView": "Full view",
+      "closeFullView": "Close full view"
+    },
+    "html": {
+      "preview": "Preview",
+      "previewTitle": "HTML preview",
+      "navigatedAway": "The page tried to open another address and was closed."
     },
     "status": {
       "done": "Done",
@@ -215,6 +222,7 @@
       "snippets": {
         "formatMarkdown": "Format text",
         "equations": "Render equations",
+        "htmlVisuals": "Render HTML visuals",
         "basicUserInfo": "Include basic info about you",
         "answerPreferences": "Include your answer preferences"
       },

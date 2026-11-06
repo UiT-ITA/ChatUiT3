@@ -1,5 +1,6 @@
 /* Code block in rendered markdown: a header bar with the label and actions, then the code */
 .code-block-wrapper {
+  container: code-block / inline-size;
   background: var(--code-bg);
   border: var(--border-sm) solid var(--line-strong);
   border-radius: var(--radius-md);
@@ -52,19 +53,58 @@
   gap: var(--space-xs);
 }
 
-/* Narrow screens: tighter action buttons; the actions wrap under the label when the row is full */
+/* Narrow screens: tighter header and action buttons */
 @media (width <= 50rem) {
   .code-block-header {
-    flex-wrap: wrap;
-    gap: 0 var(--space-sm);
+    gap: var(--space-sm);
     padding-left: var(--space-md);
     padding-right: var(--space-xs);
   }
 
   .code-block-actions {
     gap: 0;
-    margin-left: auto;
   }
+}
+
+/* A narrow block shows its actions as their icons, in square buttons like the icon-only small button */
+@container code-block (width < 32rem) {
+  .code-block-actions .button {
+    min-width: var(--control-sm);
+    padding: 0 var(--space-xs);
+  }
+
+  .code-block-actions .button__label {
+    display: none;
+  }
+}
+
+/* The content: each child shrinks to fit a limited height and scrolls its own overflow */
+.code-block-body {
+  display: flex;
+  flex-direction: column;
+}
+
+.code-block-wrapper--limited .code-block-body {
+  max-height: var(--size-md);
+}
+
+.code-block-body > * {
+  flex: 0 1 auto;
+  min-height: 0;
+  overflow: auto;
+}
+
+/* Filled: the block takes its container's full height and the content the height below the header */
+.code-block-wrapper--filled {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  margin: 0;
+}
+
+.code-block-wrapper--filled .code-block-body {
+  flex: 1 1 auto;
+  min-height: 0;
 }
 
 .code-block-wrapper pre {
@@ -101,6 +141,7 @@
 }
 
 .code-block-wrapper pre::-webkit-scrollbar {
+  width: var(--space-xs);
   height: var(--space-xs);
 }
 

@@ -1,7 +1,9 @@
 import { useSignals } from '@preact/signals-react/runtime';
-import { Suspense, createContext, lazy, useContext, useMemo, useState, memo, type ComponentProps } from 'react';
+import { Suspense, createContext, lazy, useContext, useEffect, useId, useMemo, useRef, useState, memo, type ComponentProps, type ReactNode } from 'react';
+import { createPortal } from 'react-dom';
 import { useTranslation } from 'react-i18next';
 import { getActivitySignal, getStreamSignal } from '../../services/chatService';
+import { filledCodeBlockSignal } from '../../services/uiService';
 import type { ChatMessageDto } from '../../types/chatModels';
 import ReactMarkdown, { type ExtraProps } from 'react-markdown';
 import remarkGfm from 'remark-gfm';
@@ -19,8 +21,10 @@ import ZoomToggle from '../common/ZoomToggle';
 import type { IconName } from '../common/Icon';
 import FileThumbnail from './FileThumbnail';
 import MessageActivity from './MessageActivity';
+import { FillLayerContext, FilledContext } from './codeBlockFill';
 import useMediaQuery from '../../hooks/useMediaQuery';
 import { MOBILE } from '../common/breakpoints';
+import { pxToRem } from '../../utils/units';
 import './Message.css';
 import { track, trackError } from '../../services/telemetryService';
 
@@ -35,6 +39,7 @@ interface ChatMessageProps {
 // The diagram and code renderers load on first use
 const MermaidDiagram = lazy(() => import('../common/MermaidDiagram'));
 const LazyCodeHighlighter = lazy(() => import('../common/CodeHighlighter'));
+const HtmlPreview = lazy(() => import('./HtmlPreview'));
 
 function CodeHighlighter(props: { code: string; language: string; wrap?: boolean }) {
   return (
@@ -65,6 +70,93 @@ function copyCode(code: string) {
     });
 }
 
+/** Whether a code block wraps long lines: on narrow screens until the user turns it off, elsewhere when the user turns it on. */
+function useWrapLines() {
+  const narrow = useMediaQuery(MOBILE);
+  const [wrapChoice, setWrapChoice] = useState<boolean | null>(null);
+  const wrap = wrapChoice ?? narrow;
+  return [wrap, () => setWrapChoice(!wrap)] as const;
+}
+
+/** The line wrap toggle in a code block's header. */
+function WrapAction({ wrap, onToggle }: { wrap: boolean; onToggle: () => void }) {
+  const { t } = useTranslation();
+  return (
+    <CodeAction
+      label={t('chat.actions.wrapLines')}
+      startIcon="wrap"
+      frame="line"
+      active={wrap}
+      aria-pressed={wrap}
+      onClick={onToggle}
+    />
+  );
+}
+
+/**
+ * A code block in a message, at most md tall, with a full view action. In full view the block moves into the layer
+ * over the chat area, a placeholder of its height keeps its place in the message, and focus moves to its close
+ * action. Closing it, or the header's back control, moves it back and returns focus to its full view action.
+ */
+function ChatCodeBlock({ title, actions, wrap, children }: { title: string; actions: ReactNode; wrap?: boolean; children: ReactNode }) {
+  useSignals();
+  const { t } = useTranslation();
+  const id = useId();
+  const fillLayer = useContext(FillLayerContext);
+  const isFilled = filledCodeBlockSignal.value?.id === id && fillLayer !== null;
+  const placeRef = useRef<HTMLDivElement>(null);
+  const openRef = useRef<HTMLButtonElement>(null);
+  const closeRef = useRef<HTMLButtonElement>(null);
+  const wasFilledRef = useRef(false);
+  const [placeholderHeight, setPlaceholderHeight] = useState<string>();
+
+  // Leaves full view when the block goes away
+  useEffect(() => () => {
+    if (filledCodeBlockSignal.peek()?.id === id) filledCodeBlockSignal.value = null;
+  }, [id]);
+
+  useEffect(() => {
+    if (isFilled) closeRef.current?.focus();
+    else if (wasFilledRef.current) openRef.current?.focus();
+    wasFilledRef.current = isFilled;
+  }, [isFilled]);
+
+  const open = () => {
+    setPlaceholderHeight(pxToRem(placeRef.current?.getBoundingClientRect().height ?? 0));
+    filledCodeBlockSignal.value = { id, title };
+  };
+
+  const block = (filled: boolean) => (
+    <FilledContext.Provider value={filled}>
+      <CodeBlock
+        label={title}
+        wrap={wrap}
+        limited={!filled}
+        filled={filled}
+        actions={(
+          <>
+            {actions}
+            {filled ? (
+              <CodeAction ref={closeRef} label={t('chat.actions.closeFullView')} startIcon="closeFullView" onClick={() => { filledCodeBlockSignal.value = null; }} />
+            ) : (
+              <CodeAction ref={openRef} label={t('chat.actions.fullView')} startIcon="fullView" onClick={open} />
+            )}
+          </>
+        )}
+      >
+        {children}
+      </CodeBlock>
+    </FilledContext.Provider>
+  );
+
+  return (
+    <div ref={placeRef} className="chat-code-block">
+      {isFilled ? <div style={{ height: placeholderHeight }} /> : block(false)}
+      {isFilled && createPortal(block(true), fillLayer)}
+    </div>
+  );
+}
+
 /** Mermaid code block: header with the fit/full size toggle and copy action, then the diagram. Clicking the diagram toggles its size. */
 function MermaidBlock({ code }: { code: string }) {
   const { t } = useTranslation();
@@ -76,8 +168,8 @@ function MermaidBlock({ code }: { code: string }) {
   const clickHint = fullSize ? t('chat.mermaid.clickToFit') : t('chat.mermaid.clickToEnlarge');
 
   return (
-    <CodeBlock
-      label={t('chat.mermaid.label')}
+    <ChatCodeBlock
+      title={t('chat.mermaid.label')}
       actions={(
         <>
           {!isStreaming && (
@@ -102,38 +194,71 @@ function MermaidBlock({ code }: { code: string }) {
           </Suspense>
         </ZoomToggle>
       )}
-    </CodeBlock>
+    </ChatCodeBlock>
   );
 }
 
 /** Code block: header with the language, a line wrap toggle and the copy action, then the highlighted code. */
 function CodeSnippet({ code, language }: { code: string; language: string }) {
   const { t } = useTranslation();
-  // Narrow screens wrap long lines until the user turns wrapping off
-  const narrow = useMediaQuery(MOBILE);
-  const [wrapChoice, setWrapChoice] = useState<boolean | null>(null);
-  const wrap = wrapChoice ?? narrow;
+  const [wrap, toggleWrap] = useWrapLines();
 
   return (
-    <CodeBlock
-      label={language}
+    <ChatCodeBlock
+      title={language}
       wrap={wrap}
       actions={(
         <>
-          <CodeAction
-            label={t('chat.actions.wrapLines')}
-            startIcon="wrap"
-            frame="line"
-            active={wrap}
-            aria-pressed={wrap}
-            onClick={() => setWrapChoice(!wrap)}
-          />
+          <WrapAction wrap={wrap} onToggle={toggleWrap} />
           <CodeAction label={t('chat.actions.copyCode')} startIcon="copy" onClick={() => copyCode(code)} />
         </>
       )}
     >
       <CodeHighlighter code={code} language={language} wrap={wrap} />
-    </CodeBlock>
+    </ChatCodeBlock>
+  );
+}
+
+/**
+ * HTML code block: switches between the highlighted code and the rendered page. ```html-preview opens on the page,
+ * ```html on the code. While the message streams it shows the code.
+ */
+function HtmlBlock({ code, previewFirst }: { code: string; previewFirst: boolean }) {
+  const { t } = useTranslation();
+  const isStreaming = useContext(StreamingContext);
+  const [wrap, toggleWrap] = useWrapLines();
+  const [previewChoice, setPreviewChoice] = useState(previewFirst);
+  const preview = previewChoice && !isStreaming;
+
+  return (
+    <ChatCodeBlock
+      title="html"
+      wrap={!preview && wrap}
+      actions={(
+        <>
+          {!isStreaming && (
+            <CodeAction
+              label={t('chat.html.preview')}
+              startIcon="eye"
+              frame="line"
+              active={preview}
+              aria-pressed={preview}
+              onClick={() => setPreviewChoice(!previewChoice)}
+            />
+          )}
+          {!preview && <WrapAction wrap={wrap} onToggle={toggleWrap} />}
+          <CodeAction label={t('chat.actions.copyCode')} startIcon="copy" onClick={() => copyCode(code)} />
+        </>
+      )}
+    >
+      {preview ? (
+        <Suspense fallback={<CodeHighlighter code={code} language="html" />}>
+          <HtmlPreview code={code} />
+        </Suspense>
+      ) : (
+        <CodeHighlighter code={code} language="html" wrap={wrap} />
+      )}
+    </ChatCodeBlock>
   );
 }
 
@@ -142,9 +267,10 @@ type AnchorProps = ComponentProps<'a'> & ExtraProps;
 
 const markdownComponents = {
   code({ node, className, children, style, ...props }: CodeProps) {
-    const language = /language-(\w+)/.exec(className || '')?.[1];
+    const language = /language-(html-preview|\w+)/.exec(className || '')?.[1];
     const codeText = String(children).replace(/\n$/, '');
     if (language === 'mermaid') return <MermaidBlock code={codeText} />;
+    if (language === 'html' || language === 'html-preview') return <HtmlBlock code={codeText} previewFirst={language === 'html-preview'} />;
     if (language) return <CodeSnippet code={codeText} language={language} />;
     return <code className={className} style={style} {...props}>{children}</code>;
   },

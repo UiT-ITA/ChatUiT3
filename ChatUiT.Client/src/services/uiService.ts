@@ -19,3 +19,12 @@ export interface EditorHeaderConfig {
 
 // The open edit page's header buttons; undefined when no edit page is open
 export const editorHeaderSignal = signal<EditorHeaderConfig | undefined>(undefined);
+
+/** A code block shown over the whole chat area: its id and the title the header shows for it. */
+export interface FilledCodeBlock {
+  id: string;
+  title: string;
+}
+
+// The code block shown over the whole chat area; null when the conversation is shown
+export const filledCodeBlockSignal = signal<FilledCodeBlock | null>(null);

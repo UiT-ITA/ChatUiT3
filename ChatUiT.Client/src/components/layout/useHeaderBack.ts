@@ -1,17 +1,24 @@
-import { useLocation } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
-import { editorHeaderSignal } from '../../services/uiService';
+import { getChat } from '../../services/chatService';
+import { editorHeaderSignal, filledCodeBlockSignal } from '../../services/uiService';
 import { parseRoute, sectionPath } from '../../utils/routes';
 
 /**
- * The header's back control: to the list of an open edit page, or to the section root from a mobile detail view.
- * Undefined when the header has none. Reads a signal, so the calling component calls useSignals.
+ * The header's back control: to the conversation from a code block in full view, to the list of an open edit page,
+ * or to the section root from a mobile detail view. Undefined when the header has none. Reads signals, so the
+ * calling component calls useSignals.
  */
-export function useHeaderBack(isMobile?: boolean): { path: string; label: string } | undefined {
+export function useHeaderBack(isMobile?: boolean): { label: string; onBack: () => void } | undefined {
   const { t } = useTranslation();
-  const { section, newChat, view } = parseRoute(useLocation().pathname);
+  const navigate = useNavigate();
+  const { section, newChat, view, chatId } = parseRoute(useLocation().pathname);
+  const filled = filledCodeBlockSignal.value;
+  if (filled && section === 'chats' && chatId) {
+    return { label: getChat(chatId).value?.name || '…', onBack: () => { filledCodeBlockSignal.value = null; } };
+  }
   const editor = editorHeaderSignal.value;
-  if (editor) return { path: editor.backPath, label: editor.backLabel };
-  if (isMobile && view === 'detail' && !newChat) return { path: sectionPath(section), label: t(`contextColumn.${section}`) };
+  if (editor) return { label: editor.backLabel, onBack: () => navigate(editor.backPath) };
+  if (isMobile && view === 'detail' && !newChat) return { label: t(`contextColumn.${section}`), onBack: () => navigate(sectionPath(section)) };
   return undefined;
 }

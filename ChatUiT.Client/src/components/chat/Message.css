@@ -107,3 +107,8 @@
   vertical-align: text-bottom;
   animation: caret-blink var(--dur-loop) steps(1) infinite;
 }
+
+/* The place of a code block in a message; contains the block's margins, so its height is the block's full height */
+.chat-code-block {
+  display: flow-root;
+}

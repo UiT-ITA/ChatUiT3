@@ -4,9 +4,9 @@ import type { DataClassification } from './modelModels';
 export type AssistantFileCategory = 'alwaysLoaded' | 'selectiveLoaded' | 'ragLoaded';
 
 /** Fixed text blocks the server appends after the owner's instructions. Ids match the server registry. */
-export type PromptSnippetId = 'formatMarkdown' | 'equations' | 'basicUserInfo' | 'answerPreferences';
+export type PromptSnippetId = 'formatMarkdown' | 'equations' | 'htmlVisuals' | 'basicUserInfo' | 'answerPreferences';
 
-export const PROMPT_SNIPPET_IDS: readonly PromptSnippetId[] = ['formatMarkdown', 'equations', 'basicUserInfo', 'answerPreferences'];
+export const PROMPT_SNIPPET_IDS: readonly PromptSnippetId[] = ['formatMarkdown', 'equations', 'htmlVisuals', 'basicUserInfo', 'answerPreferences'];
 
 export interface AssistantFileDto {
     // Absent for files that are new in a create/update request.

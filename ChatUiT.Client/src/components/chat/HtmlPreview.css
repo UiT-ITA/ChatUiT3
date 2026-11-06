@@ -1,0 +1,12 @@
+/* The rendered page: 2xs tall until it reports its content height; filled, it takes the block's height */
+.html-preview {
+  display: block;
+  width: 100%;
+  height: var(--size-2xs);
+  border: 0;
+}
+
+.html-preview--filled {
+  flex: 1 1 auto;
+  height: auto;
+}
