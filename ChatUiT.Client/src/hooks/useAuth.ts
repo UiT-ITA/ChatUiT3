@@ -12,6 +12,8 @@ export interface AuthContextType {
   isAdmin: boolean;
   login: () => Promise<void>;
   logout: () => void;
+  /** False in Teams, where Teams owns the sign-in. */
+  canSignOut: boolean;
   retryInit: () => void;
   getAccessToken: () => Promise<string | null>;
 }

@@ -13,7 +13,9 @@ namespace ChatUiT.Server.Services.Agents.M365.Functions;
 
 public sealed record GetMeetingTranscriptArgs(
     [property: Description(MeetingSupport.JoinUrlDescription)]
-    string JoinUrl);
+    string? JoinUrl,
+    [property: Description(MeetingSupport.ChatIdDescription)]
+    string? ChatId);
 
 public sealed class GetMeetingTranscriptFunction : Tool<GetMeetingTranscriptArgs>
 {
@@ -30,11 +32,11 @@ public sealed class GetMeetingTranscriptFunction : Tool<GetMeetingTranscriptArgs
     public override string DisplayName => "Get meeting transcript";
     public override DataClassification Classification => DataClassification.Red;
     public override string Description => "Get the transcript of a Teams meeting as 'speaker: text' lines. Usually only available for meetings the user organized.";
-    public override IReadOnlyList<string> RequiredScopes => Scopes;
+    public override IReadOnlyList<string> RequiredScopes => [.. Scopes, .. MeetingSupport.ChatScopes];
 
     protected override async Task<ToolResult> ExecuteAsync(GetMeetingTranscriptArgs args, ToolInvocation invocation, CancellationToken ct)
     {
-        var meetingId = Uri.EscapeDataString(await MeetingSupport.FindMeetingIdAsync(_graph, invocation.Context, args.JoinUrl, Scopes, ct));
+        var meetingId = Uri.EscapeDataString(await MeetingSupport.FindMeetingIdAsync(_graph, invocation.Context, args.JoinUrl, args.ChatId, Scopes, ct));
         var transcripts = await _graph.GetAsync(invocation.Context, $"me/onlineMeetings/{meetingId}/transcripts", Scopes, ct);
 
         var text = new StringBuilder();
