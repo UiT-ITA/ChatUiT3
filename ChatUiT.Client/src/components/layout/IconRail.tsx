@@ -100,6 +100,9 @@ const IconRail = ({ isMobile }: { isMobile?: boolean }) => {
       {isAdmin && (
         <RailButton icon="admin" label={t('sidebar.admin')} active={section === 'admin'} onClick={() => go(sectionPath('admin'))} />
       )}
+      {isAdmin && (
+        <RailButton icon="pulse" label={t('sidebar.insights')} active={section === 'insights'} onClick={() => go(sectionPath('insights'))} />
+      )}
 
       <RailSpacer />
 

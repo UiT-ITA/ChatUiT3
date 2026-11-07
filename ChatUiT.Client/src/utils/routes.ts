@@ -1,4 +1,4 @@
-const SECTIONS = ['chats', 'assistants', 'generate', 'admin', 'settings', 'help', 'status'] as const;
+const SECTIONS = ['chats', 'assistants', 'generate', 'admin', 'insights', 'settings', 'help', 'status'] as const;
 
 export type Section = (typeof SECTIONS)[number];
 

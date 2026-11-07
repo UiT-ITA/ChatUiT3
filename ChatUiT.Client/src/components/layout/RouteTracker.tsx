@@ -18,6 +18,8 @@ const ROUTE_TEMPLATES = [
   '/admin/:tab/:id',
   '/admin/:tab',
   '/admin',
+  '/insights/:tab',
+  '/insights',
   '/status',
   '/',
 ];

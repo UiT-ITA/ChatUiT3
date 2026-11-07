@@ -1,0 +1,70 @@
+/* A line chart that fills the width of its card */
+.time-chart__plot {
+  position: relative;
+}
+
+/* The spacing of the plot, read by TimeChart.tsx */
+.time-chart__svg {
+  --time-chart-inset-top: var(--space-sm);
+  --time-chart-inset-right: var(--space-sm);
+  --time-chart-inset-bottom: var(--space-xl);
+  --time-chart-inset-left: var(--space-2xl);
+  --time-chart-label-gap: var(--space-xs);
+  --time-chart-dot: var(--space-xs);
+  display: block;
+  height: var(--size-2xs);
+  overflow: visible;
+}
+
+.time-chart__grid {
+  stroke: var(--line-soft);
+  stroke-width: var(--border-sm);
+}
+
+.time-chart__label {
+  fill: var(--text-3);
+}
+
+.time-chart__line {
+  fill: none;
+  stroke-width: var(--border-md);
+  stroke-linejoin: round;
+  stroke-linecap: round;
+}
+
+.time-chart__line--viz-1 { stroke: var(--viz-1); }
+.time-chart__line--viz-2 { stroke: var(--viz-2); }
+.time-chart__line--viz-3 { stroke: var(--viz-3); }
+.time-chart__line--viz-4 { stroke: var(--viz-4); }
+.time-chart__line--viz-5 { stroke: var(--viz-5); }
+
+.time-chart__cursor {
+  stroke: var(--line-strong);
+  stroke-width: var(--border-sm);
+}
+
+.time-chart__dot--viz-1 { fill: var(--viz-1); }
+.time-chart__dot--viz-2 { fill: var(--viz-2); }
+.time-chart__dot--viz-3 { fill: var(--viz-3); }
+.time-chart__dot--viz-4 { fill: var(--viz-4); }
+.time-chart__dot--viz-5 { fill: var(--viz-5); }
+
+/* The values of the bucket under the pointer, at the top of the plot and centred on the bucket */
+.time-chart__tooltip {
+  position: absolute;
+  top: 0;
+  transform: translateX(-50%);
+  z-index: var(--z-dropdown);
+  padding: var(--space-sm) var(--space-md);
+  border: var(--border-sm) solid var(--line);
+  border-radius: var(--radius-md);
+  background: var(--surface-raised);
+  box-shadow: var(--shadow-overlay);
+  color: var(--text);
+  white-space: nowrap;
+  pointer-events: none;
+}
+
+.time-chart__tooltip-title {
+  color: var(--text-3);
+}

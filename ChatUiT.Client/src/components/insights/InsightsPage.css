@@ -1,0 +1,42 @@
+/* The range picker and the time of the results, above the cards */
+.insights-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-md);
+  margin-top: var(--space-xl);
+}
+
+/* Cards in columns of at least the small size step; a wide card spans every column */
+.insights-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(min(var(--size-sm), 100%), 1fr));
+  gap: var(--space-lg);
+  margin-top: var(--space-lg);
+}
+
+/* The headline figures, as many to a row as fit */
+.insights-stats {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(var(--size-2xs), 100%), 1fr));
+  gap: var(--space-md);
+}
+
+/* A table wider than its card scrolls sideways inside it */
+.insights-table {
+  overflow-x: auto;
+}
+
+/* The message mix: one block per dimension, side by side where they fit */
+.insights-mix {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(min(var(--size-xs), 100%), 1fr));
+  gap: var(--space-xl);
+}
+
+.insights-mix__dimension {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-sm);
+}

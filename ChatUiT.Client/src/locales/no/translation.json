@@ -28,7 +28,8 @@
     "lightMode": "Lys modus",
     "collapseSidebar": "Skjul sidepanel",
     "expandSidebar": "Vis sidepanel",
-    "generate": "Generer"
+    "generate": "Generer",
+    "insights": "Innsikt"
   },
   "chat": {
     "mermaid": {
@@ -435,7 +436,8 @@
     "adminNote": "Administrasjon av endepunkter, modeller, systemassistenter og verktøy.",
     "help": "Hjelp",
     "status": "Status",
-    "generate": "Generer"
+    "generate": "Generer",
+    "insights": "Innsikt"
   },
   "common": {
     "allChangesSaved": "Alle endringer er lagret",
@@ -990,6 +992,163 @@
       },
       "addFiles": "Legg til filer",
       "attachFile": "Legg ved fil"
+    }
+  },
+  "insights": {
+    "intro": "Live telemetri fra Application Insights. Resultatene mellomlagres i fem minutter.",
+    "tabs": {
+      "usage": "Bruk",
+      "models": "Modeller og verktøy",
+      "diagnostics": "Diagnostikk",
+      "logging": "Logging"
+    },
+    "range": {
+      "label": "Tidsrom",
+      "1h": "1 time",
+      "24h": "24 timer",
+      "7d": "7 dager",
+      "30d": "30 dager"
+    },
+    "updated": "Oppdatert {{time}}",
+    "empty": "Ingen data i dette tidsrommet.",
+    "errors": {
+      "no_access": "Appen har ikke lesetilgang til Application Insights.",
+      "not_configured": "Application Insights er ikke satt opp.",
+      "query_failed": "Spørringen feilet.",
+      "request": "Kunne ikke hente dataene."
+    },
+    "stats": {
+      "users": "Brukere",
+      "sessions": "Økter",
+      "messagesPerUser": "Meldinger per bruker",
+      "chats": "Samtaler med meldinger",
+      "toolCalls": "Verktøykall",
+      "generations": "Genereringer",
+      "failedGenerations": "Feilede genereringer",
+      "failedToolCalls": "Feilede verktøykall",
+      "clientErrors": "Klientfeil",
+      "serverErrors": "Serverfeil",
+      "failedRequests": "Mislykkede forespørsler",
+      "scannerProbes": "Skannerforsøk"
+    },
+    "cards": {
+      "summary": "Sammendrag",
+      "activeUsers": "Aktive brukere",
+      "messagesAndTools": "Meldinger og verktøykall",
+      "users": "Brukere",
+      "clients": "Brukere per klientapp",
+      "pages": "Sidevisninger",
+      "features": "Funksjoner brukt",
+      "models": "Modeller brukt",
+      "messageMix": "Meldingsfordeling",
+      "settings": "Innstillinger endret",
+      "generations": "Genereringer per modell",
+      "tools": "Verktøykall per verktøy",
+      "errorsOverTime": "Feil",
+      "errors": "Feil per kilde",
+      "failedRequests": "Mislykkede forespørsler",
+      "audit": "Revisjonshendelser",
+      "clientVersions": "Klientversjoner i bruk",
+      "volume": "Loggvolum per kilde",
+      "events": "Hendelser per navn"
+    },
+    "columns": {
+      "user": "Bruker",
+      "users": "Brukere",
+      "messages": "Meldinger",
+      "chats": "Samtaler",
+      "sessions": "Økter",
+      "toolCalls": "Verktøykall",
+      "tokens": "Tokens",
+      "topModel": "Mest brukte modell",
+      "clients": "Klienter",
+      "lastSeen": "Sist sett",
+      "setting": "Innstilling",
+      "value": "Verdi",
+      "changes": "Endringer",
+      "model": "Modell",
+      "generations": "Genereringer",
+      "failed": "Feilet",
+      "firstToken": "Første token p50 / p95",
+      "duration": "Varighet p50 / p95",
+      "toolRounds": "Snitt verktøyrunder",
+      "tokensIn": "Tokens inn",
+      "tokensOut": "Tokens ut",
+      "tokensCached": "Bufret",
+      "tool": "Verktøy",
+      "toolbox": "Verktøykasse",
+      "calls": "Kall",
+      "source": "Kilde",
+      "kind": "Type",
+      "error": "Feil",
+      "location": "Sted",
+      "records": "Poster",
+      "request": "Forespørsel",
+      "status": "Status",
+      "requests": "Forespørsler",
+      "event": "Hendelse",
+      "detail": "Detalj",
+      "events": "Hendelser",
+      "client": "Klient",
+      "version": "Versjon",
+      "share": "Andel",
+      "execution": "Kjører på",
+      "level": "Nivå"
+    },
+    "series": {
+      "users": "Brukere",
+      "messages": "Meldinger",
+      "toolCalls": "Verktøykall",
+      "client": "Klient",
+      "server": "Server"
+    },
+    "mix": {
+      "redChat": "Røde data tillatt",
+      "classification": "Assistentens klassifisering",
+      "reasoningEffort": "Resonneringsnivå",
+      "attachments": "Vedlegg",
+      "toolboxes": "Verktøykasser"
+    },
+    "mixValues": {
+      "on": "Ja",
+      "off": "Nei",
+      "unknown": "Ikke registrert",
+      "none": "Ingen",
+      "with": "Med vedlegg",
+      "without": "Uten vedlegg"
+    },
+    "probes": "Skannerforsøk (404 på stier ingen rute treffer)",
+    "peak": "høyeste",
+    "total": "totalt",
+    "usersCount_one": "{{count}} bruker",
+    "usersCount_other": "{{count}} brukere",
+    "sessionsCount_one": "{{count}} økt",
+    "sessionsCount_other": "{{count}} økter",
+    "notTagged": "Ikke merket",
+    "noUpn": "(ingen UPN) {{id}}",
+    "core": "Kjerne",
+    "volumeGroups": {
+      "events": "ChatUiT-hendelser",
+      "records": "ChatUiT-poster"
+    },
+    "features": {
+      "message.sent": "Chatmeldinger",
+      "chat.created": "Nye samtaler",
+      "tool.call_finished": "Verktøykall",
+      "knowledge_file.loaded": "Kunnskapsfiler lastet",
+      "knowledge_source.loaded": "Kunnskapskilder lastet",
+      "client.file_imported": "Filer lagt ved",
+      "image.generation_finished": "Bildegenerering",
+      "agent.run_finished": "Agentkjøringer",
+      "client.message_copied": "Svar kopiert",
+      "chat.red_enabled": "Samtaler merket røde",
+      "chat.deleted": "Samtaler slettet",
+      "assistant.created": "Assistenter opprettet",
+      "assistant.updated": "Assistenter endret",
+      "assistant.shared_added": "Assistenter delt",
+      "assistant.share_link_created": "Delingslenker for assistenter",
+      "client.setting_changed": "Innstillinger endret",
+      "profile.updated": "Profil oppdatert"
     }
   }
 }

@@ -1,0 +1,4 @@
+/* A card of the Insights grid that spans every column */
+.insights-card--wide {
+  grid-column: 1 / -1;
+}
