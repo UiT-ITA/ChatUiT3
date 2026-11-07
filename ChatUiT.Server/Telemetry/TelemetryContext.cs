@@ -20,7 +20,7 @@ public static partial class TelemetryContext
 
     private const string ObjectIdClaim = "http://schemas.microsoft.com/identity/claims/objectidentifier";
     private const string UpnClaim = "http://schemas.xmlsoap.org/ws/2005/05/identity/claims/upn";
-    private static readonly string[] KnownClients = ["web", "office"];
+    private static readonly string[] KnownClients = ["web", "word", "excel", "powerpoint", "outlook", "teams"];
 
     public static List<KeyValuePair<string, object?>> Fields(ClaimsPrincipal? user, HttpRequest? request)
     {

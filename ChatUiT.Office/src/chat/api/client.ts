@@ -1,7 +1,8 @@
 /* global AbortSignal, fetch */
 
-import OpenAI from "openai";
+import OpenAI, { APIConnectionError } from "openai";
 import type { ResponseCreateParamsStreaming } from "openai/resources/responses/responses";
+import { telemetryHeaders, trackError } from "../telemetry/telemetryService";
 import type { CreateResponseRequest, StreamEvent } from "./types";
 
 export interface ResponsesClient {
@@ -30,8 +31,15 @@ export function createResponsesClient(options: ResponsesClientOptions): Response
     async stream(request, signal) {
       // The wire items include ChatUiT extensions that the SDK types do not know.
       const body = { ...request, stream: true } as unknown as ResponseCreateParamsStreaming;
-      const stream = await openai.responses.create(body, { signal });
-      return stream as unknown as AsyncIterable<StreamEvent>;
+      try {
+        const stream = await openai.responses.create(body, { signal, headers: telemetryHeaders() });
+        return stream as unknown as AsyncIterable<StreamEvent>;
+      } catch (error) {
+        if (error instanceof APIConnectionError && !signal.aborted) {
+          trackError("network", { message: "The request did not reach the server", error });
+        }
+        throw error;
+      }
     },
   };
 }

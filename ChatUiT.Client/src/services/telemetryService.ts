@@ -34,6 +34,12 @@ const ENDPOINT = "/api/telemetry";
 const FLUSH_INTERVAL_MS = 5000;
 const MAX_BATCH = 50;
 const MAX_QUEUE = 500;
+const MAX_RETRY_MS = 60000;
+/** Below the server's 64 KB request limit and the browser's 64 KB limit on keepalive bodies in flight. */
+const MAX_BODY_BYTES = 60000;
+/** The bytes of `{"records":[` and `]}`. */
+const BODY_OVERHEAD_BYTES = 14;
+const encoder = new TextEncoder();
 
 export const CLIENT_APP = "web";
 export const CLIENT_VERSION: string = __APP_VERSION__;
@@ -61,8 +67,10 @@ export function telemetryQuery(): string {
   return params.toString();
 }
 
-let queue: TelemetryRecord[] = [];
+const queue: TelemetryRecord[] = [];
 let timer: ReturnType<typeof setTimeout> | null = null;
+let lastToken: string | null = null;
+let retryDelay = FLUSH_INTERVAL_MS;
 let currentRoute = "unknown";
 
 /** Sets the route template that error records carry. */
@@ -121,44 +129,87 @@ function errorCode(error: unknown): string | undefined {
   return undefined;
 }
 
-function schedule(): void {
+function schedule(delay = FLUSH_INTERVAL_MS): void {
   if (timer !== null) {
     return;
   }
   timer = setTimeout(() => {
     timer = null;
     void flush(false);
-  }, FLUSH_INTERVAL_MS);
+  }, delay);
 }
 
+/**
+ * Sends the queue. Without a token the queue is kept and sending is retried, each time after twice the delay, up to
+ * {@link MAX_RETRY_MS}. A keepalive flush uses the last token at once when there is one, and sends at most
+ * {@link MAX_BODY_BYTES} in all without waiting for the responses.
+ */
 async function flush(keepalive: boolean): Promise<void> {
-  if (queue.length === 0 || !authService.isAuthenticated()) {
+  if (queue.length === 0) {
     return;
   }
 
-  const token = await authService.getAccessToken().catch(() => null);
+  let token = keepalive ? lastToken : null;
+  if (!token && authService.isAuthenticated()) {
+    token = await authService.getAccessToken().catch(() => null);
+  }
   if (!token) {
+    retryDelay = Math.min(retryDelay * 2, MAX_RETRY_MS);
+    schedule(retryDelay);
     return;
   }
+  lastToken = token;
+  retryDelay = FLUSH_INTERVAL_MS;
 
+  let budget = MAX_BODY_BYTES;
   while (queue.length > 0) {
-    const batch = queue.slice(0, MAX_BATCH);
-    queue = queue.slice(MAX_BATCH);
-    try {
-      await fetch(ENDPOINT, {
-        method: "POST",
-        keepalive,
-        headers: {
-          ...telemetryHeaders(),
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify({ records: batch.map(r => ({ name: r.name, fields: withoutEmpty(r.fields) })) }),
-      });
-    } catch {
+    const batch = takeBatch(budget);
+    if (!batch) {
+      break;
+    }
+    if (keepalive) {
+      budget -= batch.bytes;
+    }
+    const sending = fetch(ENDPOINT, {
+      method: "POST",
+      keepalive,
+      headers: {
+        ...telemetryHeaders(),
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`,
+      },
+      body: batch.body,
+    }).catch(() => {
       // A batch that cannot be sent is dropped.
+    });
+    if (!keepalive) {
+      await sending;
     }
   }
+}
+
+/**
+ * Takes the next records off the queue, at most {@link MAX_BATCH} and at most `maxBytes` of request body. A record
+ * larger than {@link MAX_BODY_BYTES} on its own is dropped. Null when nothing fits.
+ */
+function takeBatch(maxBytes: number): { body: string; bytes: number } | null {
+  const records: string[] = [];
+  let bytes = BODY_OVERHEAD_BYTES;
+  while (queue.length > 0 && records.length < MAX_BATCH) {
+    const record = JSON.stringify({ name: queue[0].name, fields: withoutEmpty(queue[0].fields) });
+    const recordBytes = encoder.encode(record).length + (records.length > 0 ? 1 : 0);
+    if (bytes + recordBytes > maxBytes) {
+      if (records.length === 0 && BODY_OVERHEAD_BYTES + recordBytes > MAX_BODY_BYTES) {
+        queue.shift();
+        continue;
+      }
+      break;
+    }
+    records.push(record);
+    bytes += recordBytes;
+    queue.shift();
+  }
+  return records.length > 0 ? { body: `{"records":[${records.join(",")}]}`, bytes } : null;
 }
 
 function withoutEmpty(fields: Record<string, FieldValue>): Record<string, string | number> {

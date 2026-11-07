@@ -17,6 +17,14 @@ async function loadProcessor<T>(load: () => Promise<T>): Promise<T> {
     }
 }
 
+/** The processors of the complex file types, by extension. */
+const complexProcessors = new Map<string, (file: File) => Promise<ChatFile>>([
+    ['pdf', async file => (await loadProcessor(() => import('../import/pdfImportProcessor'))).processPdfImport(file)],
+    ['docx', async file => (await loadProcessor(() => import('../import/docxImportProcessor'))).processDocxImport(file)],
+    ['pptx', async file => (await loadProcessor(() => import('../import/pptxImportProcessor'))).processPptxImport(file)],
+    ['xlsx', async file => (await loadProcessor(() => import('../import/xlsxImportProcessor'))).processXlsxImport(file)],
+]);
+
 export class FileProcessingService {
     /** The name of the processor that imports the file: image, text, pdf, docx, pptx, xlsx or unsupported. */
     static processorFor(file: File): string {
@@ -25,7 +33,7 @@ export class FileProcessingService {
             return kind;
         }
         const extension = getFileExtension(file.name);
-        return kind === 'complex' && ['pdf', 'docx', 'pptx', 'xlsx'].includes(extension) ? extension : 'unsupported';
+        return kind === 'complex' && complexProcessors.has(extension) ? extension : 'unsupported';
     }
 
     /** Imports the file and records client.file_imported. */
@@ -66,28 +74,9 @@ export class FileProcessingService {
             return processTextImport(file, extension === 'md' || extension === 'markdown' ? 'markdown' : 'plain');
         }
 
-        if (kind === 'complex') {
-            const extension = getFileExtension(file.name);
-
-            if (extension === 'pdf') {
-                const { processPdfImport } = await loadProcessor(() => import('../import/pdfImportProcessor'));
-                return processPdfImport(file);
-            }
-
-            if (extension === 'docx') {
-                const { processDocxImport } = await loadProcessor(() => import('../import/docxImportProcessor'));
-                return processDocxImport(file);
-            }
-
-            if (extension === 'pptx') {
-                const { processPptxImport } = await loadProcessor(() => import('../import/pptxImportProcessor'));
-                return processPptxImport(file);
-            }
-
-            if (extension === 'xlsx') {
-                const { processXlsxImport } = await loadProcessor(() => import('../import/xlsxImportProcessor'));
-                return processXlsxImport(file);
-            }
+        const complexProcessor = kind === 'complex' ? complexProcessors.get(getFileExtension(file.name)) : undefined;
+        if (complexProcessor) {
+            return complexProcessor(file);
         }
 
         throw new Error(`Unsupported file type: ${file.type}`);

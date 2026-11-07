@@ -10,6 +10,7 @@ import {
   type AccountInfo,
   type IPublicClientApplication,
 } from "@azure/msal-browser";
+import { trackError } from "../telemetry/telemetryService";
 
 export { AccountManager };
 
@@ -98,7 +99,21 @@ class AccountManager {
     } catch (popupError) {
       // Acquire token interactive failure.
       console.log(`Unable to acquire token interactively: ${popupError}`);
+      trackError("auth", { message: "An access token could not be acquired", error: popupError });
       throw new Error(`Unable to acquire access token: ${popupError}`, { cause: popupError });
+    }
+  }
+
+  /** Returns a token from the cache or a silent refresh, or null. Never shows a prompt. */
+  async silentToken(scopes: string[]): Promise<string | null> {
+    const account = this.findAccount();
+    if (this.pca === undefined || account === undefined) {
+      return null;
+    }
+    try {
+      return (await this.pca.acquireTokenSilent({ scopes, account })).accessToken;
+    } catch {
+      return null;
     }
   }
 
@@ -125,10 +140,26 @@ let initialization: Promise<void> | undefined;
  * The first call for a scope the user has not consented to opens the consent prompt.
  */
 export async function requestScopes(scopes: string[]): Promise<string> {
+  await initialize();
+  return accountManager.ssoGetToken(scopes);
+}
+
+/** Returns an access token for the given scopes from the cache or a silent refresh, or null. Never shows a prompt. */
+export async function requestScopesSilently(scopes: string[]): Promise<string | null> {
+  try {
+    await initialize();
+  } catch {
+    return null;
+  }
+  return accountManager.silentToken(scopes);
+}
+
+/** Initializes MSAL once. A failed initialization is tried again on the next call. */
+function initialize(): Promise<void> {
   initialization ??= accountManager.initialize().catch((error: unknown) => {
     initialization = undefined;
+    trackError("auth", { message: "Sign-in could not start", error });
     throw error;
   });
-  await initialization;
-  return accountManager.ssoGetToken(scopes);
+  return initialization;
 }

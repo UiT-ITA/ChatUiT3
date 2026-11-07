@@ -8,6 +8,7 @@ import { useConversation } from "../conversation/useConversation";
 import { logToolError } from "../dev/toolErrorLog";
 import { useChatHistory } from "../history/useChatHistory";
 import type { HostAdapter } from "../host";
+import { trackError } from "../telemetry/telemetryService";
 import { Composer } from "./Composer";
 import { InteractionCard } from "./InteractionCard";
 import { useInteractionDock } from "./useInteractionDock";
@@ -83,13 +84,27 @@ interface ChatProps {
 function Chat({ adapter, client, dev }: ChatProps) {
   const styles = useStyles();
   const devHost = dev?.host ?? null;
-  const logFailure = useCallback((failure: ToolFailure) => devHost && logToolError(failure, devHost), [devHost]);
+  const onToolError = useCallback(
+    (failure: ToolFailure) => {
+      if ("thrown" in failure) {
+        trackError("client_tool", {
+          message: "A client tool failed",
+          error: failure.thrown,
+          extra: { "tool.name": failure.name },
+        });
+      }
+      if (devHost) {
+        logToolError(failure, devHost);
+      }
+    },
+    [devHost]
+  );
   const { state, conversation } = useConversation(
     client,
     adapter.model,
     adapter.instructions,
     adapter.tools,
-    devHost ? logFailure : undefined,
+    onToolError,
     adapter.getContext
   );
   const history = useChatHistory(state, conversation, adapter.getDocumentKey);

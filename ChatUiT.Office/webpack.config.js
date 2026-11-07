@@ -1,5 +1,6 @@
 /* eslint-disable no-undef */
 
+const child_process = require("child_process");
 const fs = require("fs");
 const path = require("path");
 const devCerts = require("office-addin-dev-certs");
@@ -26,6 +27,15 @@ function apiDev() {
   } catch {
     return "https://localhost:7254";
   }
+}
+
+/** The commit the add-in is built from, sent with every API call as X-ChatUiT-Version. */
+function appVersion() {
+  if (process.env.GITHUB_SHA) {
+    return process.env.GITHUB_SHA.slice(0, 12);
+  }
+  const result = child_process.spawnSync("git", ["rev-parse", "--short=12", "HEAD"], { encoding: "utf8" });
+  return result.status === 0 ? result.stdout.trim() : "dev";
 }
 
 /** The prod environment, or an error naming every value that is still empty. */
@@ -129,6 +139,7 @@ module.exports = async (env, options) => {
         // A production build serves its one server; a dev build starts on the first dev host and can switch.
         CHATUIT_API_ORIGIN: JSON.stringify(dev ? Object.values(environment.apiHosts)[0] : environment.apiOrigin),
         CHATUIT_DEV_API_HOSTS: JSON.stringify(dev ? environment.apiHosts : null),
+        CHATUIT_APP_VERSION: JSON.stringify(appVersion()),
       }),
       new HtmlWebpackPlugin({
         filename: "taskpane.html",

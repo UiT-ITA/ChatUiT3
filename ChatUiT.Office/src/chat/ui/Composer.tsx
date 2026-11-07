@@ -14,8 +14,9 @@ import {
 } from "react";
 import type { ChatFile } from "../files/fileModels";
 import { MAX_FILES } from "../files/filePart";
-import { getSupportedImportKind, SUPPORTED_IMPORT_ACCEPT } from "../files/kinds";
-import { readFile } from "../files/readFile";
+import { getFileExtension, getSupportedImportKind, SUPPORTED_IMPORT_ACCEPT } from "../files/kinds";
+import { processorFor, readFile } from "../files/readFile";
+import { trackError } from "../telemetry/telemetryService";
 import { Icon } from "./icons";
 import { ToolbarButton } from "./ToolbarButton";
 import { color, fontSize, radius, typography } from "./tokens";
@@ -170,6 +171,16 @@ export function Composer({ draft, busy, dock, onSend, onStop }: ComposerProps) {
     setReading((count) => count - supported.length);
     results.forEach((result, index) => {
       if (result.status === "rejected") {
+        trackError("file_import", {
+          message: "A file attached to a message could not be imported",
+          error: result.reason,
+          extra: {
+            "file.name": supported[index].name,
+            "file.type": getFileExtension(supported[index].name),
+            "file.bytes": supported[index].size,
+            processor: processorFor(supported[index]),
+          },
+        });
         const reason = result.reason instanceof Error ? result.reason.message : "it could not be read";
         problems.push(`${supported[index].name}: ${reason}`);
       }
