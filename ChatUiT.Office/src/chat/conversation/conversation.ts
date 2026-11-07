@@ -145,6 +145,8 @@ export interface ToolFailure {
   name: string;
   arguments: string;
   error: string;
+  /** What the tool's handler threw. Absent when the call failed before the handler ran. */
+  thrown?: unknown;
 }
 
 const initialState: ConversationState = {
@@ -561,7 +563,12 @@ export class Conversation {
           output = toolError(result.error);
           failed = call;
           if (!signal.aborted) {
-            this.options.onToolError?.({ name: call.name, arguments: call.arguments, error: result.error });
+            this.options.onToolError?.({
+              name: call.name,
+              arguments: call.arguments,
+              error: result.error,
+              ...("thrown" in result ? { thrown: result.thrown } : {}),
+            });
           }
         }
       }
@@ -592,7 +599,7 @@ export class Conversation {
   private async executeTool(
     call: FunctionCallItem,
     signal: AbortSignal
-  ): Promise<{ ok: true; output: FunctionCallOutputItem["output"] } | { ok: false; error: string }> {
+  ): Promise<{ ok: true; output: FunctionCallOutputItem["output"] } | { ok: false; error: string; thrown?: unknown }> {
     const tool = this.options.tools.find((candidate) => candidate.name === call.name);
     if (!tool) {
       return { ok: false, error: `Unknown tool "${call.name}".` };
@@ -622,7 +629,7 @@ export class Conversation {
       }
       return { ok: true, output: JSON.stringify(result ?? null) };
     } catch (error) {
-      return { ok: false, error: signal.aborted ? "Cancelled by the user." : describeError(error) };
+      return { ok: false, error: signal.aborted ? "Cancelled by the user." : describeError(error), thrown: error };
     }
   }
 

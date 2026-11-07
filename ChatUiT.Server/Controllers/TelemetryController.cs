@@ -6,9 +6,10 @@ using Microsoft.AspNetCore.Mvc;
 namespace ChatUiT.Server.Controllers;
 
 /// <summary>
-/// Takes batches of usage and error records from the web client. Each record is checked against
-/// <see cref="Schema"/>: an unknown record name, an unknown field, or a value of the wrong type or
-/// length rejects that record, and the rejection is recorded as <c>client.telemetry_rejected</c>.
+/// Takes batches of usage and error records from the web client and the Office and Teams panes.
+/// Each record is checked against <see cref="Schema"/>: an unknown record name, an unknown field,
+/// or a value of the wrong type or length rejects that record, and the rejection is recorded as
+/// <c>client.telemetry_rejected</c>.
 /// </summary>
 [ApiController]
 [Route("api/telemetry")]

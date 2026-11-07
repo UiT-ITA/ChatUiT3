@@ -2,6 +2,7 @@
 
 import { createRoot } from "react-dom/client";
 import { configureLoginHint } from "../../chat/auth/accountManager";
+import { reportRenderError, startPaneTelemetry } from "../../chat/telemetry/pane";
 import { App } from "../../chat/ui/App";
 import type { PaneTheme } from "../../chat/ui/tokens";
 import { resolveHost } from "../hosts";
@@ -15,7 +16,10 @@ Office.onReady((info) => {
     return;
   }
   const host = resolveHost(info.host);
-  const root = createRoot(container);
+  if ("adapter" in host) {
+    startPaneTelemetry(host.clientApp, "taskpane");
+  }
+  const root = createRoot(container, { onUncaughtError: reportRenderError });
   let shown: PaneTheme | null = null;
   const render = (theme: PaneTheme) => {
     if (shown && shown.mode === theme.mode && shown.background === theme.background) {

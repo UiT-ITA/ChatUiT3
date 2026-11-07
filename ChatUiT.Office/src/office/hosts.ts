@@ -1,6 +1,7 @@
 /* global Office */
 
 import type { HostAdapter } from "../chat/host";
+import type { ClientApp } from "../chat/telemetry/telemetryService";
 import type { ClientToolDefinition } from "../chat/tools/types";
 import { isSetSupported, type OfficeApp, type OfficeToolDefinition, type RequirementSet } from "./shared/officeTool";
 import { callAsync } from "./shared/callAsync";
@@ -16,18 +17,18 @@ const OFFICE_MODEL = "office";
 /** Sign-in uses nested app authentication, which every app needs. */
 const NESTED_APP_AUTH: RequirementSet = { set: "NestedAppAuth", version: "1.1" };
 
-export type HostResult = { adapter: HostAdapter } | { message: string };
+export type HostResult = { adapter: HostAdapter; clientApp: ClientApp } | { message: string };
 
-function appFor(host: Office.HostType | null): OfficeApp | null {
+function appFor(host: Office.HostType | null): { app: OfficeApp; clientApp: ClientApp } | null {
   switch (host) {
     case Office.HostType.Word:
-      return wordApp;
+      return { app: wordApp, clientApp: "word" };
     case Office.HostType.Excel:
-      return excelApp;
+      return { app: excelApp, clientApp: "excel" };
     case Office.HostType.PowerPoint:
-      return powerPointApp;
+      return { app: powerPointApp, clientApp: "powerpoint" };
     case Office.HostType.Outlook:
-      return outlookApp;
+      return { app: outlookApp, clientApp: "outlook" };
     default:
       return null;
   }
@@ -38,14 +39,16 @@ function appFor(host: Office.HostType | null): OfficeApp | null {
  * because it checks the app's API sets and drops the tools whose set the app lacks.
  */
 export function resolveHost(host: Office.HostType | null): HostResult {
-  const app = appFor(host);
-  if (!app) {
+  const found = appFor(host);
+  if (!found) {
     return { message: "Open ChatUiT from Word, Excel, PowerPoint or Outlook." };
   }
+  const { app, clientApp } = found;
   if (!isSetSupported(NESTED_APP_AUTH) || !isSetSupported(app.minimum)) {
     return { message: `ChatUiT needs a newer version of ${app.name}.` };
   }
   return {
+    clientApp,
     adapter: {
       logoUrl: "assets/chatuit-logo.svg",
       emptyMessage: app.emptyMessage,

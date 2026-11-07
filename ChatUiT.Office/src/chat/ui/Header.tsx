@@ -14,6 +14,7 @@ import {
 } from "@fluentui/react-components";
 import { useEffect, useState, type ComponentType } from "react";
 import type { ChatList } from "../history/useChatHistory";
+import { trackError } from "../telemetry/telemetryService";
 import { ToolbarButton } from "./ToolbarButton";
 import { color, typography } from "./tokens";
 
@@ -80,6 +81,7 @@ export function Header({
       setChats(undefined);
       listChats().then(setChats, (error: unknown) => {
         console.warn("The saved chats could not be read.", error);
+        trackError("storage", { message: "The saved chats could not be read", error });
         setChats("failed");
       });
     }

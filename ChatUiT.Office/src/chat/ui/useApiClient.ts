@@ -1,9 +1,10 @@
 /* global localStorage */
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { createResponsesClient, type ResponsesClient } from "../api/client";
 import { requestScopes } from "../auth/accountManager";
 import { API_ORIGIN, API_SCOPES, apiBaseUrl, DEV_API_HOSTS } from "../config";
+import { setTelemetryOrigin } from "../telemetry/telemetryService";
 
 const STORAGE_KEY = "chatuit.devApiHost";
 
@@ -25,6 +26,8 @@ export function useApiClient(): ApiClientHandle {
     () => createResponsesClient({ baseURL: apiBaseUrl(origin), getToken: () => requestScopes(API_SCOPES) }),
     [origin]
   );
+
+  useEffect(() => setTelemetryOrigin(origin), [origin]);
 
   const select = (next: string) => {
     setHost(next);

@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useRef } from "react";
 import type { InputItem } from "../api/types";
 import { CONTEXT_PREFIX, isBusy, type Conversation, type ConversationState } from "../conversation/conversation";
+import { trackError } from "../telemetry/telemetryService";
 import { listChats, loadChat, saveChat, type SavedChatSummary } from "./historyStore";
 
 /** The saved chats of the pane's document, or null when the document has no key yet. */
@@ -44,6 +45,8 @@ export function useChatHistory(
   const pendingItems = useRef<readonly InputItem[] | null>(null);
   /** The saves in order, so a later one never overtakes an earlier one. */
   const saving = useRef<Promise<void>>(Promise.resolve());
+  /** True from a failed save until a save succeeds, so a run of failed saves is recorded once. */
+  const saveFailing = useRef(false);
 
   useEffect(() => {
     chat.current = newChat();
@@ -86,6 +89,7 @@ export function useChatHistory(
             target.savedItems
           );
           target.savedItems = items;
+          saveFailing.current = false;
         })
         .catch((error: unknown) => {
           // Saved again on the next change, or when the chat is left.
@@ -93,6 +97,10 @@ export function useChatHistory(
             pendingItems.current = null;
           }
           console.warn("The chat could not be saved.", error);
+          if (!saveFailing.current) {
+            saveFailing.current = true;
+            trackError("storage", { message: "The chat could not be saved", error });
+          }
         });
       return saving.current;
     },
@@ -125,6 +133,7 @@ export function useChatHistory(
       await leave();
       const saved = await loadChat(id).catch((error: unknown) => {
         console.warn("The chat could not be opened.", error);
+        trackError("storage", { message: "A saved chat could not be opened", error });
         return undefined;
       });
       if (!saved) {

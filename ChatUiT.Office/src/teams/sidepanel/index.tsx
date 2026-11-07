@@ -3,6 +3,7 @@
 import { app } from "@microsoft/teams-js";
 import { createRoot } from "react-dom/client";
 import { configureLoginHint } from "../../chat/auth/accountManager";
+import { reportRenderError, startPaneTelemetry } from "../../chat/telemetry/pane";
 import { App } from "../../chat/ui/App";
 import { teamsAdapter } from "../adapter";
 import { paneTheme } from "../theme";
@@ -12,7 +13,7 @@ async function start() {
   if (!container) {
     return;
   }
-  const root = createRoot(container);
+  const root = createRoot(container, { onUncaughtError: reportRenderError });
   let context: app.Context;
   try {
     await app.initialize();
@@ -24,6 +25,7 @@ async function start() {
     return;
   }
   configureLoginHint(async () => context.user?.loginHint || context.user?.userPrincipalName || undefined);
+  startPaneTelemetry("teams", "sidepanel");
   const adapter = teamsAdapter(context);
   const render = (theme: string | undefined) =>
     root.render(<App adapter={adapter} unsupportedMessage="" theme={paneTheme(theme)} />);
