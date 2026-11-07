@@ -411,6 +411,7 @@ public class ChatService : IChatService
                 resolved.Assistant.Id,
                 model.ModelId,
                 _assistantService.ClassificationOf(resolved.Assistant).ToString(),
+                chatHeader?.RedEnabled ?? false,
                 request.Parameters.Effort.ToString(),
                 userMessage.Files.Select(f => f.SourceFilename).ToList(),
                 userMessage.Files.Select(f => FileFacts.TypeOf(f.SourceFilename) ?? string.Empty).ToList(),
