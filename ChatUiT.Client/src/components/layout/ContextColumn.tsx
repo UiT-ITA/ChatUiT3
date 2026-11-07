@@ -4,6 +4,7 @@ import { useTranslation } from 'react-i18next';
 import { useSignals } from '@preact/signals-react/runtime';
 import Button from '../common/Button';
 import NavItem from '../common/NavItem';
+import { INSIGHTS_TABS, INSIGHTS_TAB_ICONS, isInsightsTab } from '../../types/insights';
 import type { IconName } from '../common/Icon';
 import SearchField from '../common/SearchField';
 import { ChatList } from '../chat/ChatList';
@@ -71,12 +72,14 @@ const ContextColumn = ({ isMobile, collapsed, peek }: ContextColumnProps) => {
     assistants: t('assistants.intro'),
     generate: t('generate.intro'),
     admin: t('admin.intro'),
+    insights: t('insights.intro'),
   };
 
   // The open tab or item of the section, and the open item of an admin tab
   const [activeId, activeAdminId] = params;
   const activeSettingsTab = SETTINGS_TABS.includes(activeId as SettingsCategory) ? activeId : 'appearance';
   const activeHelpSection = isHelpSection(activeId) ? activeId : HELP_SECTIONS[0];
+  const activeInsightsTab = isInsightsTab(activeId) ? activeId : INSIGHTS_TABS[0];
 
   const loading = <SideColumnNote>{t('common.loading')}</SideColumnNote>;
   const adminItem = (domain: AdminDomain, id: string, label: string, description?: string) => (
@@ -192,6 +195,21 @@ const ContextColumn = ({ isMobile, collapsed, peek }: ContextColumnProps) => {
       {section === 'help' && (
         <SideColumnScroll>
           <HelpSectionNav activeSection={activeHelpSection} />
+        </SideColumnScroll>
+      )}
+
+      {section === 'insights' && isAdmin && (
+        <SideColumnScroll>
+          {INSIGHTS_TABS.map((tabId) => (
+            <NavItem
+              key={tabId}
+              icon={INSIGHTS_TAB_ICONS[tabId]}
+              active={activeInsightsTab === tabId}
+              onClick={() => navigate(`/insights/${tabId}`)}
+            >
+              {t(`insights.tabs.${tabId}`)}
+            </NavItem>
+          ))}
         </SideColumnScroll>
       )}
 

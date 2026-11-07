@@ -47,6 +47,8 @@ export const MainHeaderContent = ({ isMobile, sidebarCollapsed, onToggleSidebar 
     chip = t(`settings.categories.${params[0]}`, { defaultValue: '' });
   } else if (section === 'admin' && params[0]) {
     chip = t(`admin.tabs.${params[0]}`, { defaultValue: '' });
+  } else if (section === 'insights' && params[0]) {
+    chip = t(`insights.tabs.${params[0]}`, { defaultValue: '' });
   } else if (section === 'help' && isHelpSection(params[0])) {
     chip = t(`help.sections.${params[0]}`);
   }

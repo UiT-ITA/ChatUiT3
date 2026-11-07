@@ -28,7 +28,8 @@
     "lightMode": "Light mode",
     "collapseSidebar": "Collapse sidebar",
     "expandSidebar": "Expand sidebar",
-    "generate": "Generate"
+    "generate": "Generate",
+    "insights": "Insights"
   },
   "chat": {
     "mermaid": {
@@ -435,7 +436,8 @@
     "adminNote": "Administration of endpoints, models, system assistants and tools.",
     "help": "Help",
     "status": "Status",
-    "generate": "Generate"
+    "generate": "Generate",
+    "insights": "Insights"
   },
   "common": {
     "allChangesSaved": "All changes saved",
@@ -990,6 +992,163 @@
       },
       "addFiles": "Add files",
       "attachFile": "Attach file"
+    }
+  },
+  "insights": {
+    "intro": "Live telemetry from Application Insights. Results are cached for five minutes.",
+    "tabs": {
+      "usage": "Usage",
+      "models": "Models and tools",
+      "diagnostics": "Diagnostics",
+      "logging": "Logging"
+    },
+    "range": {
+      "label": "Time range",
+      "1h": "1 hour",
+      "24h": "24 hours",
+      "7d": "7 days",
+      "30d": "30 days"
+    },
+    "updated": "Updated {{time}}",
+    "empty": "No data in this time range.",
+    "errors": {
+      "no_access": "The app has no read access to Application Insights.",
+      "not_configured": "Application Insights is not configured.",
+      "query_failed": "The query failed.",
+      "request": "Could not load the data."
+    },
+    "stats": {
+      "users": "Users",
+      "sessions": "Sessions",
+      "messagesPerUser": "Messages per user",
+      "chats": "Chats with messages",
+      "toolCalls": "Tool calls",
+      "generations": "Generations",
+      "failedGenerations": "Failed generations",
+      "failedToolCalls": "Failed tool calls",
+      "clientErrors": "Client errors",
+      "serverErrors": "Server errors",
+      "failedRequests": "Failed requests",
+      "scannerProbes": "Scanner probes"
+    },
+    "cards": {
+      "summary": "Summary",
+      "activeUsers": "Active users",
+      "messagesAndTools": "Messages and tool calls",
+      "users": "Users",
+      "clients": "Users per client app",
+      "pages": "Page views",
+      "features": "Features used",
+      "models": "Models used",
+      "messageMix": "Message mix",
+      "settings": "Settings changed",
+      "generations": "Generations by model",
+      "tools": "Tool calls by tool",
+      "errorsOverTime": "Errors",
+      "errors": "Errors by source",
+      "failedRequests": "Failed requests",
+      "audit": "Audit events",
+      "clientVersions": "Client versions in use",
+      "volume": "Log volume by source",
+      "events": "Events by name"
+    },
+    "columns": {
+      "user": "User",
+      "users": "Users",
+      "messages": "Messages",
+      "chats": "Chats",
+      "sessions": "Sessions",
+      "toolCalls": "Tool calls",
+      "tokens": "Tokens",
+      "topModel": "Most used model",
+      "clients": "Clients",
+      "lastSeen": "Last seen",
+      "setting": "Setting",
+      "value": "Value",
+      "changes": "Changes",
+      "model": "Model",
+      "generations": "Generations",
+      "failed": "Failed",
+      "firstToken": "First token p50 / p95",
+      "duration": "Duration p50 / p95",
+      "toolRounds": "Avg. tool rounds",
+      "tokensIn": "Tokens in",
+      "tokensOut": "Tokens out",
+      "tokensCached": "Cached",
+      "tool": "Tool",
+      "toolbox": "Toolbox",
+      "calls": "Calls",
+      "source": "Source",
+      "kind": "Kind",
+      "error": "Error",
+      "location": "Location",
+      "records": "Records",
+      "request": "Request",
+      "status": "Status",
+      "requests": "Requests",
+      "event": "Event",
+      "detail": "Detail",
+      "events": "Events",
+      "client": "Client",
+      "version": "Version",
+      "share": "Share",
+      "execution": "Runs on",
+      "level": "Level"
+    },
+    "series": {
+      "users": "Users",
+      "messages": "Messages",
+      "toolCalls": "Tool calls",
+      "client": "Client",
+      "server": "Server"
+    },
+    "mix": {
+      "redChat": "Red data allowed",
+      "classification": "Assistant classification",
+      "reasoningEffort": "Reasoning effort",
+      "attachments": "Attachments",
+      "toolboxes": "Toolboxes"
+    },
+    "mixValues": {
+      "on": "Yes",
+      "off": "No",
+      "unknown": "Not recorded",
+      "none": "None",
+      "with": "With attachments",
+      "without": "Without attachments"
+    },
+    "probes": "Scanner probes (404 on paths no route matches)",
+    "peak": "peak",
+    "total": "total",
+    "usersCount_one": "{{count}} user",
+    "usersCount_other": "{{count}} users",
+    "sessionsCount_one": "{{count}} session",
+    "sessionsCount_other": "{{count}} sessions",
+    "notTagged": "Not tagged",
+    "noUpn": "(no UPN) {{id}}",
+    "core": "Core",
+    "volumeGroups": {
+      "events": "ChatUiT events",
+      "records": "ChatUiT records"
+    },
+    "features": {
+      "message.sent": "Chat messages",
+      "chat.created": "New chats",
+      "tool.call_finished": "Tool calls",
+      "knowledge_file.loaded": "Knowledge files loaded",
+      "knowledge_source.loaded": "Knowledge sources loaded",
+      "client.file_imported": "Files attached",
+      "image.generation_finished": "Image generation",
+      "agent.run_finished": "Agent runs",
+      "client.message_copied": "Answers copied",
+      "chat.red_enabled": "Chats marked red",
+      "chat.deleted": "Chats deleted",
+      "assistant.created": "Assistants created",
+      "assistant.updated": "Assistants edited",
+      "assistant.shared_added": "Assistants shared",
+      "assistant.share_link_created": "Assistant share links",
+      "client.setting_changed": "Settings changed",
+      "profile.updated": "Profile updated"
     }
   }
 }

@@ -12,6 +12,7 @@ using ChatUiT.Server.Services.ApiCatalog;
 using ChatUiT.Server.Services.ResponsesApi;
 using ChatUiT.Server.Services.Directory;
 using ChatUiT.Server.Services.Encryption;
+using ChatUiT.Server.Services.Insights;
 using ChatUiT.Server.Services.Knowledge;
 using ChatUiT.Server.Services.MediaGenerations;
 using ChatUiT.Server.Services.Tools;
@@ -151,6 +152,11 @@ builder.Services.AddSingleton<IApiCatalogService, ApiCatalogService>();
 builder.Services.AddResponsesApi();
 builder.Services.AddScoped<IGroupDirectoryService, GroupDirectoryService>();
 builder.Services.AddSingleton<ITokenCountingService, TokenCountingService>();
+builder.Services.Configure<InsightsOptions>(builder.Configuration.GetSection(InsightsOptions.SectionName));
+builder.Services.AddMemoryCache();
+builder.Services.AddSingleton(TimeProvider.System);
+builder.Services.AddSingleton<IInsightsQueryRunner, LogsQueryRunner>();
+builder.Services.AddSingleton<IInsightsService, InsightsService>();
 
 var app = builder.Build();
 

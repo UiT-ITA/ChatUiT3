@@ -20,12 +20,14 @@ const loadAssistantsPage = () => import('./components/assistants/AssistantsPage'
 const loadSettingsPage = () => import('./components/settings/SettingsPage');
 const loadHelpPage = () => import('./components/help/HelpPage');
 const loadAdminPage = () => import('./components/admin/AdminPage');
+const loadInsightsPage = () => import('./components/insights/InsightsPage');
 const loadGeneratePage = () => import('./components/generate/GeneratePage');
 
 const AssistantsPage = lazy(loadAssistantsPage);
 const SettingsPage = lazy(loadSettingsPage);
 const HelpPage = lazy(loadHelpPage);
 const AdminPage = lazy(loadAdminPage);
+const InsightsPage = lazy(loadInsightsPage);
 const GeneratePage = lazy(loadGeneratePage);
 const StatusPage = lazy(() => import('./components/status/StatusPage'));
 
@@ -54,7 +56,7 @@ const App: React.FC = () => {
   }, [isInitializing, isAuthenticated, login]);
 
   // Once the chat list has loaded, fetch the other pages in the background.
-  // The admin page is only fetched for admins.
+  // The admin and insights pages are only fetched for admins.
   useEffect(() => {
     if (!isAppReady) return;
     let prefetched = false;
@@ -66,7 +68,10 @@ const App: React.FC = () => {
         loadSettingsPage();
         loadHelpPage();
         loadGeneratePage();
-        if (isAdmin) loadAdminPage();
+        if (isAdmin) {
+          loadAdminPage();
+          loadInsightsPage();
+        }
       });
     });
   }, [isAppReady, isAdmin]);
@@ -120,6 +125,22 @@ const App: React.FC = () => {
             element={
               <ProtectedRoute requiredRole="admin">
                 <Page><AdminPage /></Page>
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/insights"
+            element={
+              <ProtectedRoute requiredRole="admin">
+                <Page><InsightsPage /></Page>
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/insights/:tab"
+            element={
+              <ProtectedRoute requiredRole="admin">
+                <Page><InsightsPage /></Page>
               </ProtectedRoute>
             }
           />
