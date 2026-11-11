@@ -112,7 +112,7 @@ module.exports = async (env, options) => {
       taskpane: "./src/office/taskpane/index.tsx",
       sidepanel: "./src/teams/sidepanel/index.tsx",
       config: "./src/teams/config/index.ts",
-      authdialog: "./src/office/authdialog/index.ts",
+      authdialog: "./src/office/authdialog/index.tsx",
     },
     output: {
       // dist/ is what `dotnet publish` copies into wwwroot, so the add-in is served under /office/.

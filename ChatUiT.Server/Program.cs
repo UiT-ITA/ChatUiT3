@@ -15,6 +15,7 @@ using ChatUiT.Server.Services.Encryption;
 using ChatUiT.Server.Services.Insights;
 using ChatUiT.Server.Services.Knowledge;
 using ChatUiT.Server.Services.MediaGenerations;
+using ChatUiT.Server.Services.OfficeSignIn;
 using ChatUiT.Server.Services.Tools;
 using ChatUiT.Server.Services.Training;
 using ChatUiT.Server.Telemetry;
@@ -164,6 +165,7 @@ builder.Services.AddSingleton<IInsightsQueryRunner, LogsQueryRunner>();
 builder.Services.AddSingleton<IInsightsService, InsightsService>();
 builder.Services.AddSingleton<TrainingCourseCatalog>();
 builder.Services.AddSingleton<TrainingService>();
+builder.Services.AddSingleton<OfficeSignInRelay>();
 
 var app = builder.Build();
 

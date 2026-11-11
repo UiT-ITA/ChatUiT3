@@ -2,7 +2,8 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { createResponsesClient, type ResponsesClient } from "../api/client";
-import { forgetDialogTokens, requestScopes } from "../auth/accountManager";
+import { requestScopes } from "../auth/accountManager";
+import { setSignInRelay } from "../auth/browserSignIn";
 import { API_ORIGIN, API_SCOPES, apiBaseUrl, DEV_API_HOSTS } from "../config";
 import { setTelemetryOrigin } from "../telemetry/telemetryService";
 
@@ -23,16 +24,12 @@ export function useApiClient(): ApiClientHandle {
   });
   const origin = DEV_API_HOSTS && host ? DEV_API_HOSTS[host] : API_ORIGIN;
   const client = useMemo(
-    () =>
-      createResponsesClient({
-        baseURL: apiBaseUrl(origin),
-        getToken: () => requestScopes(API_SCOPES),
-        onUnauthorized: forgetDialogTokens,
-      }),
+    () => createResponsesClient({ baseURL: apiBaseUrl(origin), getToken: () => requestScopes(API_SCOPES) }),
     [origin]
   );
 
   useEffect(() => setTelemetryOrigin(origin), [origin]);
+  useEffect(() => setSignInRelay(origin, DEV_API_HOSTS ? host : null), [origin, host]);
 
   const select = (next: string) => {
     setHost(next);
