@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { createResponsesClient, type ResponsesClient } from "../api/client";
-import { requestScopes } from "../auth/accountManager";
+import { forgetDialogTokens, requestScopes } from "../auth/accountManager";
 import { API_ORIGIN, API_SCOPES, apiBaseUrl, DEV_API_HOSTS } from "../config";
 import { setTelemetryOrigin } from "../telemetry/telemetryService";
 
@@ -23,7 +23,12 @@ export function useApiClient(): ApiClientHandle {
   });
   const origin = DEV_API_HOSTS && host ? DEV_API_HOSTS[host] : API_ORIGIN;
   const client = useMemo(
-    () => createResponsesClient({ baseURL: apiBaseUrl(origin), getToken: () => requestScopes(API_SCOPES) }),
+    () =>
+      createResponsesClient({
+        baseURL: apiBaseUrl(origin),
+        getToken: () => requestScopes(API_SCOPES),
+        onUnauthorized: forgetDialogTokens,
+      }),
     [origin]
   );
 
