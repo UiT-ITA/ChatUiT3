@@ -112,6 +112,7 @@ module.exports = async (env, options) => {
       taskpane: "./src/office/taskpane/index.tsx",
       sidepanel: "./src/teams/sidepanel/index.tsx",
       config: "./src/teams/config/index.ts",
+      authdialog: "./src/office/authdialog/index.ts",
     },
     output: {
       // dist/ is what `dotnet publish` copies into wwwroot, so the add-in is served under /office/.
@@ -155,6 +156,11 @@ module.exports = async (env, options) => {
         filename: "config.html",
         template: "./src/teams/config/config.html",
         chunks: ["config"],
+      }),
+      new HtmlWebpackPlugin({
+        filename: "authdialog.html",
+        template: "./src/office/authdialog/authdialog.html",
+        chunks: ["authdialog"],
       }),
       new TeamsPackagePlugin((content) => (dev ? content : toProdManifest(content, environment))),
       new CopyWebpackPlugin({
