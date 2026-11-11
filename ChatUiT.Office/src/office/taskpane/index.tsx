@@ -1,18 +1,16 @@
 /* global document, Office */
 
 import { createRoot } from "react-dom/client";
-import { configureLoginHint, configureSignInDialog } from "../../chat/auth/accountManager";
+import { configureLoginHint } from "../../chat/auth/accountManager";
 import { reportRenderError, startPaneTelemetry } from "../../chat/telemetry/pane";
 import { App } from "../../chat/ui/App";
 import type { PaneTheme } from "../../chat/ui/tokens";
 import { resolveHost } from "../hosts";
 import { getOfficeLoginHint } from "../shared/loginHint";
-import { openOfficeSignInDialog } from "../shared/signInDialog";
 import { readOfficeTheme, watchOfficeTheme } from "../shared/theme";
 
 Office.onReady((info) => {
   configureLoginHint(getOfficeLoginHint);
-  configureSignInDialog(openOfficeSignInDialog);
   const container = document.getElementById("root");
   if (!container) {
     return;

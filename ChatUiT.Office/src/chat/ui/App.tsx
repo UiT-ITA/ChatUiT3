@@ -15,6 +15,7 @@ import { useInteractionDock } from "./useInteractionDock";
 import { useGlobalStyles } from "./globalStyles";
 import { Header, type HeaderProps } from "./Header";
 import { MessageList } from "./MessageList";
+import { SignInCard } from "./SignInCard";
 import { chatuitTheme } from "./theme";
 import { useApiClient } from "./useApiClient";
 import { color, font, paletteVariables, typography, type PaneTheme } from "./tokens";
@@ -131,6 +132,7 @@ function Chat({ adapter, client, dev }: ChatProps) {
         starters={adapter.starters}
         onStarter={(starter) => setDraft((current) => ({ text: starter.prompt, id: (current?.id ?? 0) + 1 }))}
       />
+      <SignInCard />
       {state.error && (
         <MessageBar intent="error" className={styles.error}>
           <MessageBarBody>{state.error}</MessageBarBody>
