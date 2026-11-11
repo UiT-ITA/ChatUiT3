@@ -2,6 +2,7 @@ import React, { Suspense, lazy, useEffect, useRef } from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { BrowserAuthError } from '@azure/msal-browser';
 import { effect } from '@preact/signals-react';
+import { useSignals } from '@preact/signals-react/runtime';
 import './styles/global.css';
 import './styles/theme.css';
 import './styles/typography.css';
@@ -11,6 +12,9 @@ import LoadingIndicator from './components/common/LoadingIndicator';
 import InitErrorScreen from './components/common/InitErrorScreen';
 import ProtectedRoute from './components/layout/ProtectedRoute';
 import RouteTracker from './components/layout/RouteTracker';
+import Toasts from './components/layout/Toasts';
+import TrainingScreen from './components/training/TrainingScreen';
+import { trainingOpenSignal, trainingStatusSignal } from './services/trainingService';
 import { trackError } from './services/telemetryService';
 import { getChats } from './services/chatService';
 import { whenIdle } from './utils/whenIdle';
@@ -39,8 +43,11 @@ const Page: React.FC<{ children: React.ReactNode }> = ({ children }) => (
 
 
 const App: React.FC = () => {
+  useSignals();
   const { isAuthenticated, isInitializing, isAppReady, isAdmin, initError, login, logout, canSignOut, retryInit } = useAuth();
   const loginInitiatedRef = useRef(false);
+  const trainingStatus = trainingStatusSignal.value;
+  const trainingCompleted = trainingStatus?.completed ?? false;
 
   useEffect(() => {
     if (!isInitializing && !isAuthenticated && !loginInitiatedRef.current) {
@@ -58,7 +65,7 @@ const App: React.FC = () => {
   // Once the chat list has loaded, fetch the other pages in the background.
   // The admin and insights pages are only fetched for admins.
   useEffect(() => {
-    if (!isAppReady) return;
+    if (!isAppReady || !trainingCompleted) return;
     let prefetched = false;
     return effect(() => {
       if (prefetched || getChats().value === undefined) return;
@@ -74,17 +81,22 @@ const App: React.FC = () => {
         }
       });
     });
-  }, [isAppReady, isAdmin]);
+  }, [isAppReady, isAdmin, trainingCompleted]);
 
   if (initError) {
     return <InitErrorScreen message={initError} onRetry={retryInit} onSignOut={canSignOut ? logout : undefined} />;
   }
 
-  if (!isAppReady) {
+  if (!isAppReady || !trainingStatus) {
     return <LoadingIndicator />;
   }
 
+  // A user who has not passed the mandatory training gets the training screen and no other part of the app.
   return (
+    <>
+    {(!trainingCompleted || trainingOpenSignal.value) && <TrainingScreen />}
+    {!trainingCompleted ? <Toasts /> : (
+    <div className="training-backdrop" inert={trainingOpenSignal.value}>
     <BrowserRouter>
       <RouteTracker />
       <Routes>
@@ -149,6 +161,9 @@ const App: React.FC = () => {
         </Route>
       </Routes>
     </BrowserRouter>
+    </div>
+    )}
+    </>
   );
 };
 

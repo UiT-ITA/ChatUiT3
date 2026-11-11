@@ -2,6 +2,7 @@ using System.Text.Json;
 using ChatUiT.Server.Telemetry;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using ChatUiT.Server.Services.Training;
 
 namespace ChatUiT.Server.Controllers;
 
@@ -13,6 +14,7 @@ namespace ChatUiT.Server.Controllers;
 /// </summary>
 [ApiController]
 [Route("api/telemetry")]
+[AllowWithoutTraining]
 [Authorize]
 public class TelemetryController : ControllerBase
 {

@@ -10,6 +10,7 @@ public interface IDatabaseService
     Task<bool> UpdateUserInfoAsync(string userId, UserInfo userInfo);
     Task<UserInfo?> GetUserAsync(string userId);
     Task<bool> UpdateUserAsync(UserInfo user);
+    Task SetUserTrainingAsync(string userId, TrainingResult training);
 
     // Chat management
     Task<List<ChatHeader>> GetChatListAsync(string userId);

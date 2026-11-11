@@ -321,6 +321,22 @@ public sealed class AppTelemetry
     public void ProfileUpdated(IReadOnlyList<string> changedFields) =>
         Usage("profile.updated", new() { ["changed"] = TelemetryFields.Join(changedFields) });
 
+    public void TrainingCourseOpened(int courseVersion) =>
+        Usage("training.course_opened", new() { ["course.version"] = courseVersion });
+
+    public void TrainingSubmitted(int courseVersion, int score, int questionCount, bool passed, bool stored) =>
+        Usage("training.submitted", new()
+        {
+            ["course.version"] = courseVersion,
+            ["score"] = score,
+            ["question.count"] = questionCount,
+            ["passed"] = passed,
+            ["stored"] = stored
+        });
+
+    public void TrainingCertificateDownloaded(int courseVersion) =>
+        Usage("training.certificate_downloaded", new() { ["course.version"] = courseVersion });
+
     public void AccessDenied(string? route, string? toolId, string reason) =>
         Audit("auth.access_denied", new() { ["route"] = route, [FieldNames.ToolId] = toolId, ["reason"] = reason });
 

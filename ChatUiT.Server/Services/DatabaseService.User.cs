@@ -1,3 +1,4 @@
+using System.Net;
 using ChatUiT.Server.Models;
 using Microsoft.Azure.Cosmos;
 
@@ -67,10 +68,31 @@ public partial class DatabaseService
     {
         await EnsureInitializedAsync();
 
-        var document = MapUserDocument(userId, userInfo);
-        await _userContainer!.UpsertItemAsync(document, new PartitionKey(userId));
+        try
+        {
+            await _userContainer!.PatchItemAsync<UserDocument>(userId, new PartitionKey(userId), new[]
+            {
+                PatchOperation.Set("/roles", userInfo.Roles),
+                PatchOperation.Set("/preferences", userInfo.Preferences)
+            });
+        }
+        catch (CosmosException ex) when (ex.StatusCode == HttpStatusCode.NotFound)
+        {
+            await _userContainer!.UpsertItemAsync(MapUserDocument(userId, userInfo), new PartitionKey(userId));
+        }
+
         userInfo.Username = userId;
         return true;
+    }
+
+    public async Task SetUserTrainingAsync(string userId, TrainingResult training)
+    {
+        await EnsureInitializedAsync();
+
+        await _userContainer!.PatchItemAsync<UserDocument>(userId, new PartitionKey(userId), new[]
+        {
+            PatchOperation.Set("/training", training)
+        });
     }
 
     private static UserInfo MapUser(UserDocument document)
@@ -79,7 +101,8 @@ public partial class DatabaseService
         {
             Username = document.UserId,
             Roles = document.Roles,
-            Preferences = document.Preferences
+            Preferences = document.Preferences,
+            Training = document.Training
         };
     }
 

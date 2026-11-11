@@ -2,6 +2,7 @@ using ChatUiT.Server.Models;
 using ChatUiT.Server.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using ChatUiT.Server.Services.Training;
 
 namespace ChatUiT.Server.Controllers;
 
@@ -9,6 +10,7 @@ namespace ChatUiT.Server.Controllers;
 // the default model when creating an assistant.
 [ApiController]
 [Route("api/app-settings")]
+[AllowWithoutTraining]
 [Authorize]
 public class AppSettingsController : ControllerBase
 {

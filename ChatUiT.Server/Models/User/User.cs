@@ -7,6 +7,18 @@ public class UserInfo
     public string Username { get; set; } = string.Empty;
     public List<UserRole> Roles { get; set; } = new List<UserRole>();
     public UserPreferences Preferences { get; set; } = new UserPreferences();
+
+    /// <summary>The user's stored result of the mandatory training, or null when they have not passed it.</summary>
+    public TrainingResult? Training { get; set; }
+}
+
+/// <summary>A passed attempt at the mandatory training test.</summary>
+public class TrainingResult
+{
+    public DateTimeOffset CompletedAt { get; set; }
+    public int Score { get; set; }
+    public int QuestionCount { get; set; }
+    public int CourseVersion { get; set; }
 }
 
 public class UserPreferences
