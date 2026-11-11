@@ -16,6 +16,7 @@ using ChatUiT.Server.Services.Insights;
 using ChatUiT.Server.Services.Knowledge;
 using ChatUiT.Server.Services.MediaGenerations;
 using ChatUiT.Server.Services.Tools;
+using ChatUiT.Server.Services.Training;
 using ChatUiT.Server.Telemetry;
 using Microsoft.AspNetCore.SignalR;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
@@ -105,10 +106,14 @@ builder.Services.Configure<JwtBearerOptions>(JwtBearerDefaults.AuthenticationSch
 });
 
 
-builder.Services.AddControllers();
+builder.Services.AddControllers(options => options.Filters.Add<RequireTrainingFilter>());
 builder.Services.AddOpenApi();
 
-builder.Services.AddSignalR(options => options.AddFilter<TelemetryHubFilter>());
+builder.Services.AddSignalR(options =>
+{
+    options.AddFilter<TelemetryHubFilter>();
+    options.AddFilter<RequireTrainingHubFilter>();
+});
 
 // Register services
 // The app's Entra identity: the managed identity in Azure, the developer's az login locally.
@@ -157,12 +162,15 @@ builder.Services.AddMemoryCache();
 builder.Services.AddSingleton(TimeProvider.System);
 builder.Services.AddSingleton<IInsightsQueryRunner, LogsQueryRunner>();
 builder.Services.AddSingleton<IInsightsService, InsightsService>();
+builder.Services.AddSingleton<TrainingCourseCatalog>();
+builder.Services.AddSingleton<TrainingService>();
 
 var app = builder.Build();
 
 // Built now so an invalid agent id or a duplicate id stops startup.
 app.Services.GetRequiredService<IInternalAgentRegistry>();
 app.Services.GetRequiredService<IKnowledgeSourceRegistry>();
+app.Services.GetRequiredService<TrainingCourseCatalog>();
 var telemetry = app.Services.GetRequiredService<AppTelemetry>();
 
 app.UseExceptionHandler();

@@ -606,5 +606,8 @@ public partial class DatabaseService
 
         [JsonProperty("preferences")]
         public UserPreferences Preferences { get; set; } = new();
+
+        [JsonProperty("training")]
+        public TrainingResult? Training { get; set; }
     }
 }

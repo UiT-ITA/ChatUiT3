@@ -13,6 +13,7 @@ import { useAuth } from '../../hooks/useAuth';
 import { useSettings } from '../../hooks/useSettings';
 import { resolveMode } from '../../utils/themeUtils';
 import { NEW_CHAT_PATH, parseRoute, sectionPath } from '../../utils/routes';
+import { downloadTrainingCertificate, trainingOpenSignal, trainingStatusSignal } from '../../services/trainingService';
 
 // The first letters of the first and the last word, split on spaces and commas as in "Lastname, Firstname"
 function getInitials(name: string | undefined | null): string {
@@ -22,7 +23,7 @@ function getInitials(name: string | undefined | null): string {
 
 const IconRail = ({ isMobile }: { isMobile?: boolean }) => {
   useSignals();
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const navigate = useNavigate();
   const { section, newChat } = parseRoute(useLocation().pathname);
   const { isAdmin, isAuthenticated, account, login, logout, canSignOut } = useAuth();
@@ -61,6 +62,19 @@ const IconRail = ({ isMobile }: { isMobile?: boolean }) => {
   const go = (path: string) => {
     navigate(path);
     setUserMenuOpen(false);
+  };
+
+  const training = trainingStatusSignal.value;
+  const trainingHasNewVersion = training?.completedVersion != null && training.completedVersion < training.currentVersion;
+
+  const openTraining = () => {
+    trainingOpenSignal.value = true;
+    setUserMenuOpen(false);
+  };
+
+  const downloadCertificate = () => {
+    setUserMenuOpen(false);
+    downloadTrainingCertificate(i18n.language).catch(() => undefined);
   };
 
   // Rail buttons after the main sections; a compact top bar lists them in the menu instead
@@ -138,6 +152,13 @@ const IconRail = ({ isMobile }: { isMobile?: boolean }) => {
               <MenuItem onClick={() => go(sectionPath('settings'))}>{t('sidebar.settings')}</MenuItem>
               <MenuItem onClick={() => go(sectionPath('help'))}>{t('sidebar.help')}</MenuItem>
             </>
+          )}
+          <MenuDivider />
+          <MenuItem icon={compact ? 'shield' : undefined} onClick={openTraining}>
+            {t(trainingHasNewVersion ? 'training.menu.openNewVersion' : 'training.menu.open')}
+          </MenuItem>
+          {training?.completed && (
+            <MenuItem icon={compact ? 'check' : undefined} onClick={downloadCertificate}>{t('training.menu.certificate')}</MenuItem>
           )}
           {isAuthenticated ? (
             canSignOut && (

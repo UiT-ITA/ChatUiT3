@@ -2,6 +2,8 @@ import React, { useState, useEffect, ReactNode } from 'react';
 import { useMsal, useIsAuthenticated } from '@azure/msal-react';
 import authService from '../services/authService';
 import signalrService from '../services/signalrService';
+import { effect } from '@preact/signals-react';
+import { loadTrainingStatus, trainingStatusSignal } from '../services/trainingService';
 import { AuthContext, type AuthContextType } from '../hooks/useAuth';
 
 interface AuthProviderProps {
@@ -51,19 +53,14 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         role.toLowerCase() === 'administrator'
       );
       setIsAdmin(hasAdminRole);
-      setIsInitializing(false);
 
-      // The app renders without waiting for the hub: data loads over REST,
-      // and streaming waits for the connection itself.
       try {
-        await signalrService.ensureConnection();
-        setIsSignalRConnected(signalrService.isConnected());
-        setInitError(null);
-      } catch (signalrError) {
-        console.warn('Failed to start SignalR connection:', signalrError);
-        setIsSignalRConnected(false);
-        setInitError(signalrError instanceof Error ? signalrError.message : String(signalrError));
+        await loadTrainingStatus();
+      } catch (statusError) {
+        console.warn('Failed to load the training status:', statusError);
+        setInitError(statusError instanceof Error ? statusError.message : String(statusError));
       }
+      setIsInitializing(false);
     };
 
     initializeApp();
@@ -71,6 +68,26 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     // identity can never re-trigger this effect in a loop.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isAuthenticated, account?.homeAccountId, initAttempt]);
+
+  // Connects the hub once the user has passed the mandatory training. The app renders without
+  // waiting for the hub: data loads over REST, and streaming waits for the connection itself.
+  useEffect(() => {
+    if (!isAuthenticated || isInitializing) return;
+    return effect(() => {
+      if (!trainingStatusSignal.value?.completed) return;
+      signalrService.ensureConnection().then(
+        () => {
+          setIsSignalRConnected(signalrService.isConnected());
+          setInitError(null);
+        },
+        (signalrError) => {
+          console.warn('Failed to start SignalR connection:', signalrError);
+          setIsSignalRConnected(false);
+          setInitError(signalrError instanceof Error ? signalrError.message : String(signalrError));
+        },
+      );
+    });
+  }, [isAuthenticated, isInitializing, initAttempt]);
 
   // In Teams a failed sign-in shows the error screen, whose retry signs in again.
   const login = async () => {

@@ -64,3 +64,19 @@
 .choice-option__description {
   color: var(--text-2);
 }
+
+/* A graded option: the right answer and a wrong pick */
+.choice-option--correct {
+  background: var(--success-soft);
+  border-color: var(--success);
+}
+
+.choice-option--wrong {
+  background: var(--danger-soft);
+  border-color: var(--danger);
+}
+
+.choice-option__outcome {
+  flex: none;
+  margin-left: auto;
+}

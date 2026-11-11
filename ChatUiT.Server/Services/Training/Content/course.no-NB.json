@@ -1,0 +1,312 @@
+{
+  "version": 1,
+  "title": "Obligatorisk KI-opplæring ved UiT",
+  "intro": "Dette kurset går gjennom hvordan du bruker ChatUiT og andre KI-tjenester godt og trygt ved UiT. Det har ti korte deler og avsluttes med en test på ti spørsmål. Du må ha 80 prosent riktig for å bestå, og du kan ta testen så mange ganger du trenger.",
+  "sections": [
+    {
+      "id": "model",
+      "title": "Hvordan en språkmodell virker",
+      "body": "En språkmodell er kjernen i ChatUiT og lignende KI-tjenester. Slik virker den.\n\n### Den lager tekst\n\nModellen skriver det mest sannsynlige neste ordet, om og om igjen. Modellen selv slår ikke opp noe og kan ikke kontrollere fakta. Det kan bare en assistent som har verktøy til det. Derfor kan et svar høres sikkert ut og likevel være feil.\n\n### Den er trent til å høres riktig ut\n\nModellen er trent til å gi svar som virker gode og nyttige for den som spør. Den gir derfor heller et svar enn å si at den ikke vet, og den gir deg ofte rett. At et svar er velformulert, betyr ikke at det stemmer.\n\n### Den har en kunnskapsgrense\n\nDet er en dato den ikke vet noe etter. Det som er nyere, eller internt ved UiT, kjenner den bare hvis den får det.\n\n### Den leser hele samtalen for hvert svar\n\nAlt den leser, må få plass i kontekstvinduet, som har en fast størrelse.\n\n### Den husker ikke andre samtaler\n\nEn ny samtale starter uten kjennskap til de forrige.\n\n### Dataene dine brukes ikke til trening\n\nDet du skriver i ChatUiT, blir ikke delt med andre eller brukt til å trene modellen."
+    },
+    {
+      "id": "assistant",
+      "title": "Instruksjoner, kunnskap og verktøy",
+      "body": "En assistent er en språkmodell med noe rundt seg. Hva den kan, avhenger av hva den har fått.\n\n### Instruksjoner\n\nEn fast tekst som forteller modellen hvordan den skal svare. Den er med i hver samtale.\n\n### Kunnskap\n\nDokumenter eller annen informasjon som modellen leser sammen med meldingen din. Modellen har ikke lært det, den leser det der og da.\n\n### Verktøy\n\nMed verktøy kan assistenten hente informasjon eller utføre noe mens den svarer. Resultatet legges inn i samtalen, og svaret bygger på det.\n\n### Du kan se hva verktøyene gjorde\n\nAktivitetslinjen under et svar i ChatUiT viser hvert verktøykall: hva assistenten ba om, og hva som kom tilbake.\n\n### Andres assistenter\n\nFor en assistent du ikke eier, viser ChatUiT navn, beskrivelse, modell, klassifisering og hvem som har laget den. Instruksjonene ser du ikke."
+    },
+    {
+      "id": "context",
+      "title": "Riktig kontekst",
+      "body": "Svaret blir ikke bedre enn det du gir modellen.\n\n### Si hva du vil ende opp med\n\nOppgi mål, målgruppe, lengde og format.\n\n### Gi den stoffet\n\nLim inn teksten eller legg ved filen i stedet for å beskrive den.\n\n### Gi bare det oppgaven trenger\n\nOverflødig tekst fyller kontekstvinduet og trekker svaret i feil retning. Det du ikke sender, kan heller ikke komme på avveie.\n\n### Del store oppgaver opp\n\nBe om en disposisjon først, og ta én del om gangen.\n\n### Opphavsrett\n\nIkke legg inn opphavsrettsbeskyttet materiale med mindre du eier rettighetene eller har fått tillatelse."
+    },
+    {
+      "id": "new-chats",
+      "title": "Nye samtaler",
+      "body": "Én samtale bør handle om én oppgave.\n\n### Nytt tema, ny samtale\n\nModellen leser hele samtalen for hvert svar, så gamle temaer forstyrrer det nye.\n\n### Start på nytt når samtalen blir lang\n\nJo lengre samtalen er, jo dårligere får modellen med seg alt. Når samtalen ikke får plass lenger, kan assistenten ikke svare.\n\n### Ta med et sammendrag\n\nLim inn det som betyr noe fra den gamle samtalen i den nye.\n\n### Start på nytt når modellen har kjørt seg fast\n\nGjentar den samme feil etter flere rettelser, virker en ny samtale med en bedre beskrivelse bedre.\n\n### Sletting er endelig\n\nEn slettet samtale kan ikke hentes tilbake."
+    },
+    {
+      "id": "verify",
+      "title": "Kontroll av svar",
+      "body": "Et svar fra en KI er et utkast. Du må kontrollere det før du bruker det.\n\n### Modellen kan dikte opp fakta og kilder\n\nUiT anbefaler ikke å be ChatUiT om nøyaktige referanser. Slå opp hver kilde selv før du bruker den.\n\n### Kvalitetssikre alltid\n\nJobb videre med og kontroller KI-tekst før du bruker den. Å spørre den samme modellen en gang til er ikke en kontroll.\n\n### Teksten er din\n\nBruk KI til utkast, idémyldring og omarbeiding. Les gjennom og bearbeid teksten før du sender eller publiserer den. Du står for innholdet, uansett hvem som skrev utkastet.\n\n### Eksamen og innleveringer\n\nReglene for bruk av KI står i emnet ditt og på UiTs eksamenssider. Følg dem."
+    },
+    {
+      "id": "classification",
+      "title": "Dataklassifisering",
+      "body": "All informasjon ved UiT har et klassifiseringsnivå. Avgjør nivået før du skriver, limer inn eller legger ved noe.\n\n- **Grønn (åpen)**: lavest krav til beskyttelse. Kan være tilgjengelig for alle.\n- **Gul (intern)**: skal være tilgangsstyrt.\n- **Rød (fortrolig)**: brudd vil få store konsekvenser for UiT, samarbeidspartnere eller enkeltpersoner.\n- **Svart (strengt fortrolig)**: brukes bare under særskilte omstendigheter.\n\n### ChatUiT er godkjent for grønne, gule og røde data\n\nSvarte data skal aldri inn i ChatUiT.\n\n### Ved tvil velger du den sikreste klassen\n\nDet gjelder også når et dokument inneholder flere nivåer.\n\n### Kombinasjoner kan heve nivået\n\nFlere gule opplysninger kan bli røde når de settes sammen.\n\n### Nivået kan endre seg over tid\n\nEksamensoppgaver er røde før eksamen og vanligvis grønne etterpå.\n\n### Røde data krever Tillat rødt\n\nEn samtale i ChatUiT er høyst gul til du har slått på Tillat rødt. Det går bare med en assistent som er godkjent for røde data, og det kan ikke angres. Slå det på før du legger inn dataene."
+    },
+    {
+      "id": "personal-data",
+      "title": "Personopplysninger",
+      "body": "Personopplysninger krever ekstra varsomhet når du bruker KI.\n\n### Hva det er\n\nAlt som kan knyttes til en person: navn, e-postadresse, fødselsdato, IP-adresse, helsedata, eksamenssvar og karakterer. Kombinasjoner teller også, for eksempel en stillingstittel sammen med et institutt.\n\n### Bruk så lite som mulig\n\nFjern navn og detaljer oppgaven ikke trenger. Ofte får du den samme hjelpen uten.\n\n### Særlige kategorier\n\nOpplysninger om blant annet helse, religion, politisk mening og etnisk opprinnelse trenger sterkest vern. Legg dem aldri inn i verktøy UiT ikke har godkjent, og bruk en samtale med Tillat rødt i ChatUiT.\n\n### Avgjørelser om personer\n\nIkke la et KI-svar alene avgjøre noe om en person, som en karakter eller en ansettelse. Et menneske gjør vurderingen og har ansvaret."
+    },
+    {
+      "id": "access",
+      "title": "Assistenter med tilgang til dataene dine",
+      "body": "En assistent kan få verktøy som gir den tilgang til systemene du bruker. Ved UiT skjer det gjennom Microsoft Graph, som er inngangen til Microsoft 365.\n\n### Assistenten handler som deg\n\nDen bruker din konto og når det du selv når, også det andre har delt med deg.\n\n### Tilgang er ikke det samme som lov\n\nAt assistenten finner noe, betyr ikke at du kan bruke det til oppgaven din.\n\n### Det den henter, blir en del av samtalen\n\nKlassifiseringen gjelder som om du hadde limt det inn selv. Slå på Tillat rødt før du ber den lese noe rødt.\n\n### Lesing skjer uten at du blir spurt\n\nVær konkret om hva den skal lete i.\n\n### Handlinger må du godkjenne\n\nFør assistenten sender, endrer eller deler noe, viser den et kort med hva den vil gjøre. Les det før du godkjenner. Det du godkjenner, er gjort av deg.\n\n### Innhold kan inneholde instruksjoner\n\nEn e-post, et dokument eller en nettside kan ha tekst som prøver å styre assistenten. Avslå handlinger du ikke ba om."
+    },
+    {
+      "id": "outside",
+      "title": "Deling utenfor ChatUiT",
+      "body": "Klassifiseringen følger informasjonen når den forlater ChatUiT.\n\n### Et svar har samme nivå som det bygger på\n\nEt sammendrag av et rødt dokument er rødt.\n\n### Bruk tjenester som er godkjent for nivået\n\nUiT har en oversikt over hvilke tjenester som kan brukes til hvilket innhold.\n\n### Del med dem som skal ha det\n\nVelg navngitte personer framfor lenker som virker for alle, og sjekk hvem som har tilgang til mappen eller kanalen du legger noe i.\n\n### Copilot Chat\n\nCopilot Chat er godkjent for grønne og gule data, og bare når du er logget på med UiT-brukeren din.\n\n### Andre KI-tjenester\n\nIkke bruk tjenester som ChatGPT, Claude eller Google NotebookLM til UiT-relatert innhold. DeepSeek er ikke tillatt på UiT-eid utstyr.\n\n### Delte assistenter\n\nDe du deler en assistent med, ser ikke instruksjonene og filene, men assistenten bruker dem og kan gjengi innholdet i svarene. Ikke legg inn noe de ikke kan få."
+    },
+    {
+      "id": "incidents",
+      "title": "Når noe går galt",
+      "body": "Feil kan skje. Da gjelder det å melde fra raskt.\n\n### Du har plikt til å melde fra\n\nAnsatte og studenter skal forhindre og rapportere avvik, også hendelser som kan være et avvik.\n\n### Hva som er et avvik\n\nFor eksempel data lagt inn på feil nivå, noe sendt til feil mottaker, eller en konto du tror er misbrukt.\n\n### Hvor du melder\n\nAvvik på informasjonssikkerhet og personvern meldes til ITA via [uit.no/om/informasjonssikkerhet](https://uit.no/om/informasjonssikkerhet). Du kan også skrive til sikkerhet@uit.no.\n\n### Meld med en gang\n\nUiT kan bare begrense skaden hvis UiT vet om hendelsen.\n\n### Sletting er ikke nok\n\nÅ slette samtalen endrer ikke at dataene ble sendt."
+    }
+  ],
+  "questions": [
+    {
+      "id": "q1",
+      "text": "Du spør en assistent om noe som skjedde forrige uke. Når kan den svare riktig?",
+      "options": [
+        {
+          "id": "a",
+          "text": "Alltid. Modellen oppdateres fortløpende med ny kunnskap."
+        },
+        {
+          "id": "b",
+          "text": "Aldri. Modellen vet ingenting om det som har skjedd etter kunnskapsgrensen."
+        },
+        {
+          "id": "c",
+          "text": "Når den har et verktøy som henter informasjonen, eller du gir den informasjonen selv."
+        },
+        {
+          "id": "d",
+          "text": "Når du ber den om å bruke den nyeste kunnskapen den har."
+        }
+      ],
+      "correctOptionId": "c",
+      "explanation": "Modellen selv vet ingenting etter kunnskapsgrensen. Assistenten kan likevel svare riktig når informasjonen kommer inn i samtalen, enten fra et verktøy eller fra deg."
+    },
+    {
+      "id": "q2",
+      "text": "En kollega har delt en assistent med deg. Den svarer annerledes enn standardassistenten på det samme spørsmålet. Hvorfor?",
+      "options": [
+        {
+          "id": "a",
+          "text": "Den har andre instruksjoner, annen kunnskap, andre verktøy eller en annen modell."
+        },
+        {
+          "id": "b",
+          "text": "Den har lært av samtalene kollegaen din har hatt med den."
+        },
+        {
+          "id": "c",
+          "text": "Den husker hva du har spurt standardassistenten om tidligere."
+        },
+        {
+          "id": "d",
+          "text": "Den bruker en nyere versjon av ChatUiT enn standardassistenten."
+        }
+      ],
+      "correctOptionId": "a",
+      "explanation": "En assistent er en språkmodell med instruksjoner, kunnskap og verktøy rundt seg, og det er disse som skiller assistenter fra hverandre. En assistent lærer ikke av samtaler, og den husker ikke andre samtaler."
+    },
+    {
+      "id": "q3",
+      "text": "Du har lagt ved et notat på ti sider og bedt om et sammendrag til et ledermøte. Sammendraget er riktig, men generelt og lite nyttig for lederne. Hva gjør du?",
+      "options": [
+        {
+          "id": "a",
+          "text": "Legger ved flere dokumenter om saken, slik at modellen får mer bakgrunn."
+        },
+        {
+          "id": "b",
+          "text": "Ber modellen om å skrive mer detaljert og ta med flere av punktene i notatet."
+        },
+        {
+          "id": "c",
+          "text": "Ber om et nytt sammendrag i en ny samtale, slik at modellen starter uten det første forsøket."
+        },
+        {
+          "id": "d",
+          "text": "Forteller hvem som skal lese det, hva de skal beslutte, og hvor langt det skal være."
+        }
+      ],
+      "correctOptionId": "d",
+      "explanation": "Modellen vet ikke hvem teksten er til, før du sier det. Flere dokumenter eller flere detaljer gir mer tekst, ikke riktig fokus."
+    },
+    {
+      "id": "q4",
+      "text": "Du har brukt en samtale til å skrive en søknad om forskningsmidler. Nå skal du planlegge et seminar. Hva gjør du?",
+      "options": [
+        {
+          "id": "a",
+          "text": "Fortsetter i samme samtale, slik at modellen kjenner deg og skrivestilen din."
+        },
+        {
+          "id": "b",
+          "text": "Starter en ny samtale for seminaret."
+        },
+        {
+          "id": "c",
+          "text": "Fortsetter i samme samtale, og ber modellen se bort fra søknaden."
+        },
+        {
+          "id": "d",
+          "text": "Starter en ny samtale, og limer inn hele søknaden som bakgrunn."
+        }
+      ],
+      "correctOptionId": "b",
+      "explanation": "Modellen leser hele samtalen for hvert svar, så søknaden vil påvirke svarene om seminaret. Ber du den se bort fra søknaden, leser den den fortsatt. Seminaret trenger ikke søknaden, så den skal heller ikke limes inn i den nye samtalen."
+    },
+    {
+      "id": "q5",
+      "text": "Hver uke skal du gjøre om referatet fra avdelingsmøtet til en kort oppsummering for de ansatte, med samme form og tone hver gang. Hvordan legger du opp arbeidet?",
+      "options": [
+        {
+          "id": "a",
+          "text": "Oppretter en assistent med instruksjoner om form og tone, og starter en ny samtale med den hver uke."
+        },
+        {
+          "id": "b",
+          "text": "Bruker den samme samtalen hver uke, slik at modellen har de tidligere oppsummeringene å gå ut fra."
+        },
+        {
+          "id": "c",
+          "text": "Starter en ny samtale hver uke og forklarer form og tone på nytt, slik at modellen får en fersk beskrivelse."
+        },
+        {
+          "id": "d",
+          "text": "Ber modellen huske form og tone til neste uke, og starter en ny samtale når neste referat er klart."
+        }
+      ],
+      "correctOptionId": "a",
+      "explanation": "En assistent har instruksjonene med i hver samtale, så form og tone blir like hver uke uten at du forklarer dem på nytt. Bruker du den samme samtalen, vokser den for hver uke, og modellen får dårligere med seg alt. Modellen husker ikke noe fra én samtale til den neste."
+    },
+    {
+      "id": "q6",
+      "text": "ChatUiT har skrevet et utkast til en e-post til alle studentene på et emne om at eksamensdatoen er endret. Hva gjør du før du sender den?",
+      "options": [
+        {
+          "id": "a",
+          "text": "Sender den som den er, siden utkastet bygger på opplysningene du selv ga."
+        },
+        {
+          "id": "b",
+          "text": "Ber ChatUiT lese gjennom utkastet og bekrefte at alt stemmer."
+        },
+        {
+          "id": "c",
+          "text": "Kontrollerer dato, tid og sted mot det som er bestemt, og retter teksten der den er feil eller uklar."
+        },
+        {
+          "id": "d",
+          "text": "Legger til en setning om at e-posten er skrevet av KI, slik at mottakerne kan ta forbehold."
+        }
+      ],
+      "correctOptionId": "c",
+      "explanation": "Du står for innholdet i det du sender, også når en KI skrev utkastet. Modellen kan ha endret, utelatt eller lagt til opplysninger, og den kan ikke bekrefte seg selv. Et forbehold om KI flytter ikke ansvaret over på mottakerne."
+    },
+    {
+      "id": "q7",
+      "text": "Du vil ha hjelp av ChatUiT til å forbedre en rapport. Ett avsnitt er fortrolig, resten er internt. Hvordan behandler du rapporten når du legger den inn?",
+      "options": [
+        {
+          "id": "a",
+          "text": "Som intern, siden det meste av rapporten er internt."
+        },
+        {
+          "id": "b",
+          "text": "Som åpen, når du har byttet ut navnene i rapporten med initialer."
+        },
+        {
+          "id": "c",
+          "text": "Avsnitt for avsnitt, siden assistenten kan bruke de interne delene og hoppe over resten."
+        },
+        {
+          "id": "d",
+          "text": "Som fortrolig, siden det strengeste nivået i rapporten gjelder for hele rapporten."
+        }
+      ],
+      "correctOptionId": "d",
+      "explanation": "Når et dokument inneholder flere nivåer, gjelder det strengeste for hele dokumentet. Assistenten leser alt du legger inn, også det du ber den hoppe over. Vil du bruke rapporten på et lavere nivå, tar du ut det fortrolige avsnittet først."
+    },
+    {
+      "id": "q8",
+      "text": "Du skal svare på en klage fra en student og vil ha hjelp av ChatUiT til å gjøre svaret tydeligere. Hva legger du inn?",
+      "options": [
+        {
+          "id": "a",
+          "text": "Hele saken med navn og studentnummer, slik at assistenten forstår sammenhengen."
+        },
+        {
+          "id": "b",
+          "text": "Utkastet ditt, uten navn og andre opplysninger som peker ut studenten."
+        },
+        {
+          "id": "c",
+          "text": "Hele saken, og en beskjed til assistenten om ikke å bruke navnet i svaret."
+        },
+        {
+          "id": "d",
+          "text": "Ingenting. Tekst som gjelder en klagesak, kan ikke legges inn i KI."
+        }
+      ],
+      "correctOptionId": "b",
+      "explanation": "Bruk så få personopplysninger som oppgaven trenger. Å gjøre en tekst tydeligere krever ikke at assistenten vet hvem saken gjelder. En beskjed om ikke å bruke navnet endrer ikke at du har lagt det inn."
+    },
+    {
+      "id": "q9",
+      "text": "En assistent har tilgang til e-posten din. Du ber den oppsummere en e-post fra en ukjent avsender. Etterpå ber assistenten om godkjenning til å videresende hele tråden til en adresse du ikke kjenner. Hva har skjedd, og hva gjør du?",
+      "options": [
+        {
+          "id": "a",
+          "text": "E-posten kan ha inneholdt tekst som prøver å styre assistenten. Du avslår."
+        },
+        {
+          "id": "b",
+          "text": "Assistenten har funnet en mottaker i tråden som bør ha e-posten. Du godkjenner."
+        },
+        {
+          "id": "c",
+          "text": "Kontoen din er overtatt av noen andre. Du bytter passord og godkjenner ikke."
+        },
+        {
+          "id": "d",
+          "text": "Assistenten foreslår alltid en videresending etter et sammendrag. Du avslår hvis du ikke trenger den."
+        }
+      ],
+      "correctOptionId": "a",
+      "explanation": "Innhold assistenten leser, kan inneholde tekst som er skrevet for å styre den. Modellen skiller ikke sikkert mellom det du ber om, og det den leser. Godkjenn aldri en handling du ikke forstår hvorfor assistenten foreslår. Det kan hende mottakeren bør ha e-posten, men da må du vite hvorfor før du godkjenner."
+    },
+    {
+      "id": "q10",
+      "text": "Du oppdager at du i går la inn fortrolige opplysninger i en KI-tjeneste som ikke er godkjent for dem. Hva gjør du?",
+      "options": [
+        {
+          "id": "a",
+          "text": "Sletter samtalen i tjenesten. Da er opplysningene fjernet."
+        },
+        {
+          "id": "b",
+          "text": "Venter og ser om det får følger, og melder fra hvis det gjør det."
+        },
+        {
+          "id": "c",
+          "text": "Ber tjenesten om ikke å bruke opplysningene til trening."
+        },
+        {
+          "id": "d",
+          "text": "Melder det som et avvik til UiT."
+        }
+      ],
+      "correctOptionId": "d",
+      "explanation": "Opplysninger på feil sted er et avvik, og ansatte og studenter har plikt til å melde avvik. UiT kan bare begrense skaden hvis UiT vet om det. Å slette samtalen endrer ikke at opplysningene ble sendt."
+    }
+  ],
+  "certificate": {
+    "heading": "Kursbevis",
+    "awardedTo": "Dette bekrefter at",
+    "statement": "har fullført og bestått UiTs obligatoriske opplæring i bruk av kunstig intelligens.",
+    "courseName": "Obligatorisk KI-opplæring",
+    "completed": "Fullført",
+    "score": "Resultat",
+    "scoreFormat": "{0} av {1}",
+    "version": "Kursversjon",
+    "issuer": "UiT Norges arktiske universitet",
+    "culture": "nb-NO",
+    "dateFormat": "d. MMMM yyyy"
+  }
+}

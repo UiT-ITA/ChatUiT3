@@ -1,0 +1,312 @@
+{
+  "version": 1,
+  "title": "UiT AI mandatory training",
+  "intro": "This course covers how to use ChatUiT and other AI services well and safely at UiT. It has ten short parts and ends with a test of ten questions. You need 80 percent correct to pass, and you can take the test as many times as you need.",
+  "sections": [
+    {
+      "id": "model",
+      "title": "How a language model works",
+      "body": "A language model is the core of ChatUiT and similar AI services. This is how it works.\n\n### It writes text\n\nThe model writes the most likely next word, over and over. The model itself does not look anything up and cannot check facts. Only an assistant that has tools for it can. That is why an answer can sound certain and still be wrong.\n\n### It is trained to sound right\n\nThe model is trained to give answers that seem good and useful to the person asking. It would therefore rather give an answer than say that it does not know, and it often agrees with you. That an answer is well written does not mean it is true.\n\n### It has a knowledge cutoff\n\nThat is a date after which it knows nothing. Anything newer, or internal to UiT, it only knows if it is given it.\n\n### It reads the whole chat for every answer\n\nEverything it reads must fit in the context window, which has a fixed size.\n\n### It does not remember other chats\n\nA new chat starts without any knowledge of the earlier ones.\n\n### Your data is not used for training\n\nWhat you write in ChatUiT is not shared with others or used to train the model."
+    },
+    {
+      "id": "assistant",
+      "title": "Instructions, knowledge and tools",
+      "body": "An assistant is a language model with something around it. What it can do depends on what it has been given.\n\n### Instructions\n\nA fixed text that tells the model how to answer. It is part of every chat.\n\n### Knowledge\n\nDocuments or other information that the model reads together with your message. The model has not learned it, it reads it there and then.\n\n### Tools\n\nWith tools, the assistant can fetch information or carry something out while it answers. The result is put into the chat, and the answer builds on it.\n\n### You can see what the tools did\n\nThe activity line under an answer in ChatUiT shows every tool call: what the assistant asked for, and what came back.\n\n### Other people's assistants\n\nFor an assistant you do not own, ChatUiT shows the name, description, model, classification and who made it. You do not see the instructions."
+    },
+    {
+      "id": "context",
+      "title": "The right context",
+      "body": "The answer is no better than what you give the model.\n\n### Say what you want to end up with\n\nState the goal, the audience, the length and the format.\n\n### Give it the material\n\nPaste the text or attach the file instead of describing it.\n\n### Give only what the task needs\n\nExtra text fills the context window and pulls the answer in the wrong direction. What you do not send cannot end up in the wrong place.\n\n### Split large tasks\n\nAsk for an outline first, and take one part at a time.\n\n### Copyright\n\nDo not enter copyrighted material unless you own the rights or have permission."
+    },
+    {
+      "id": "new-chats",
+      "title": "New chats",
+      "body": "One chat should be about one task.\n\n### New topic, new chat\n\nThe model reads the whole chat for every answer, so old topics disturb the new one.\n\n### Start again when the chat gets long\n\nThe longer the chat is, the less of it the model takes in. When the chat no longer fits, the assistant cannot answer.\n\n### Bring a summary\n\nPaste what matters from the old chat into the new one.\n\n### Start again when the model is stuck\n\nIf it repeats the same mistake after several corrections, a new chat with a better description works better.\n\n### Deleting is final\n\nA deleted chat cannot be recovered."
+    },
+    {
+      "id": "verify",
+      "title": "Checking the answers",
+      "body": "An answer from an AI is a draft. You must check it before you use it.\n\n### The model can make up facts and sources\n\nUiT does not recommend asking ChatUiT for exact references. Look up every source yourself before you use it.\n\n### Always quality-assure\n\nKeep working on AI text and check it before you use it. Asking the same model again is not a check.\n\n### The text is yours\n\nUse AI for drafts, brainstorming and rewriting. Read through the text and work on it before you send or publish it. You answer for the content, whoever wrote the draft.\n\n### Exams and coursework\n\nThe rules for using AI are in your course and on UiT's exam pages. Follow them."
+    },
+    {
+      "id": "classification",
+      "title": "Data classification",
+      "body": "All information at UiT has a classification level. Decide the level before you type, paste or attach anything.\n\n- **Green (open)**: the lowest protection requirements. Can be available to everyone.\n- **Yellow (internal)**: must be access controlled.\n- **Red (confidential)**: a breach will have large consequences for UiT, partners or individuals.\n- **Black (strictly confidential)**: used only in special circumstances.\n\n### ChatUiT is approved for green, yellow and red data\n\nBlack data must never be entered in ChatUiT.\n\n### When in doubt, choose the safest class\n\nThat also applies when a document contains several levels.\n\n### Combinations can raise the level\n\nSeveral yellow pieces of information can become red when they are put together.\n\n### The level can change over time\n\nExam questions are red before the exam and usually green afterwards.\n\n### Red data requires Allow red\n\nA chat in ChatUiT is at most yellow until you have turned on Allow red. That only works with an assistant approved for red data, and it cannot be undone. Turn it on before you enter the data."
+    },
+    {
+      "id": "personal-data",
+      "title": "Personal data",
+      "body": "Personal data calls for extra care when you use AI.\n\n### What it is\n\nAnything that can be linked to a person: name, email address, date of birth, IP address, health data, exam answers and grades. Combinations count too, for example a job title together with a department.\n\n### Use as little as possible\n\nRemove names and details the task does not need. Often you get the same help without them.\n\n### Special categories\n\nInformation about, among other things, health, religion, political opinion and ethnic origin needs the strongest protection. Never enter it in tools UiT has not approved, and use a chat with Allow red in ChatUiT.\n\n### Decisions about people\n\nDo not let an AI answer decide something about a person on its own, such as a grade or a hiring decision. A human makes the assessment and is responsible."
+    },
+    {
+      "id": "access",
+      "title": "Assistants with access to your data",
+      "body": "An assistant can be given tools that give it access to the systems you use. At UiT that happens through Microsoft Graph, which is the entrance to Microsoft 365.\n\n### The assistant acts as you\n\nIt uses your account and reaches what you can reach, including what others have shared with you.\n\n### Access is not the same as permission\n\nThat the assistant finds something does not mean you can use it for your task.\n\n### What it fetches becomes part of the chat\n\nThe classification applies as if you had pasted it yourself. Turn on Allow red before you ask it to read something red.\n\n### Reading happens without asking you\n\nBe specific about where it should look.\n\n### Actions need your approval\n\nBefore the assistant sends, changes or shares something, it shows a card with what it wants to do. Read it before you approve. What you approve is done by you.\n\n### Content can contain instructions\n\nAn email, a document or a web page can contain text that tries to steer the assistant. Reject actions you did not ask for."
+    },
+    {
+      "id": "outside",
+      "title": "Sharing outside ChatUiT",
+      "body": "The classification follows the information when it leaves ChatUiT.\n\n### An answer has the same level as what it builds on\n\nA summary of a red document is red.\n\n### Use services approved for the level\n\nUiT has an overview of which services can be used for which content.\n\n### Share with those who should have it\n\nChoose named people over links that work for anyone, and check who has access to the folder or channel you put something in.\n\n### Copilot Chat\n\nCopilot Chat is approved for green and yellow data, and only when you are signed in with your UiT account.\n\n### Other AI services\n\nDo not use services such as ChatGPT, Claude or Google NotebookLM for UiT-related content. DeepSeek is not allowed on UiT-owned equipment.\n\n### Shared assistants\n\nThe people you share an assistant with do not see the instructions and files, but the assistant uses them and can reproduce the content in its answers. Do not put in anything they cannot have."
+    },
+    {
+      "id": "incidents",
+      "title": "When something goes wrong",
+      "body": "Mistakes can happen. When they do, report them quickly.\n\n### You have a duty to report\n\nEmployees and students must prevent and report incidents, including events that may be an incident.\n\n### What an incident is\n\nFor example data entered at the wrong level, something sent to the wrong recipient, or an account you think has been misused.\n\n### Where to report\n\nIncidents concerning information security and privacy are reported to ITA via [uit.no/om/informasjonssikkerhet](https://uit.no/om/informasjonssikkerhet). You can also write to sikkerhet@uit.no.\n\n### Report at once\n\nUiT can only limit the harm if UiT knows about the incident.\n\n### Deleting is not enough\n\nDeleting the chat does not change that the data was sent."
+    }
+  ],
+  "questions": [
+    {
+      "id": "q1",
+      "text": "You ask an assistant about something that happened last week. When can it answer correctly?",
+      "options": [
+        {
+          "id": "a",
+          "text": "Always. The model is continuously updated with new knowledge."
+        },
+        {
+          "id": "b",
+          "text": "Never. The model knows nothing about what has happened after its knowledge cutoff."
+        },
+        {
+          "id": "c",
+          "text": "When it has a tool that fetches the information, or you give it the information yourself."
+        },
+        {
+          "id": "d",
+          "text": "When you ask it to use the most recent knowledge it has."
+        }
+      ],
+      "correctOptionId": "c",
+      "explanation": "The model itself knows nothing after its knowledge cutoff. The assistant can still answer correctly when the information comes into the chat, either from a tool or from you."
+    },
+    {
+      "id": "q2",
+      "text": "A colleague has shared an assistant with you. It answers the same question differently from the default assistant. Why?",
+      "options": [
+        {
+          "id": "a",
+          "text": "It has different instructions, different knowledge, different tools or a different model."
+        },
+        {
+          "id": "b",
+          "text": "It has learned from the chats your colleague has had with it."
+        },
+        {
+          "id": "c",
+          "text": "It remembers what you have asked the default assistant earlier."
+        },
+        {
+          "id": "d",
+          "text": "It uses a newer version of ChatUiT than the default assistant."
+        }
+      ],
+      "correctOptionId": "a",
+      "explanation": "An assistant is a language model with instructions, knowledge and tools around it, and these are what set assistants apart. An assistant does not learn from chats, and it does not remember other chats."
+    },
+    {
+      "id": "q3",
+      "text": "You have attached a ten-page memo and asked for a summary for a management meeting. The summary is correct, but general and not very useful for the managers. What do you do?",
+      "options": [
+        {
+          "id": "a",
+          "text": "Attach more documents about the case, so the model gets more background."
+        },
+        {
+          "id": "b",
+          "text": "Ask the model to write in more detail and include more of the points in the memo."
+        },
+        {
+          "id": "c",
+          "text": "Ask for a new summary in a new chat, so the model starts without the first attempt."
+        },
+        {
+          "id": "d",
+          "text": "Say who will read it, what they are to decide, and how long it should be."
+        }
+      ],
+      "correctOptionId": "d",
+      "explanation": "The model does not know who the text is for until you say so. More documents or more detail give more text, not the right focus."
+    },
+    {
+      "id": "q4",
+      "text": "You have used a chat to write an application for research funding. Now you are going to plan a seminar. What do you do?",
+      "options": [
+        {
+          "id": "a",
+          "text": "Continue in the same chat, so the model knows you and your writing style."
+        },
+        {
+          "id": "b",
+          "text": "Start a new chat for the seminar."
+        },
+        {
+          "id": "c",
+          "text": "Continue in the same chat, and ask the model to disregard the application."
+        },
+        {
+          "id": "d",
+          "text": "Start a new chat, and paste in the whole application as background."
+        }
+      ],
+      "correctOptionId": "b",
+      "explanation": "The model reads the whole chat for every answer, so the application will affect the answers about the seminar. If you ask it to disregard the application, it still reads it. The seminar does not need the application, so it should not be pasted into the new chat either."
+    },
+    {
+      "id": "q5",
+      "text": "Every week you turn the minutes from the department meeting into a short summary for the staff, with the same form and tone each time. How do you set up the work?",
+      "options": [
+        {
+          "id": "a",
+          "text": "Create an assistant with instructions on form and tone, and start a new chat with it every week."
+        },
+        {
+          "id": "b",
+          "text": "Use the same chat every week, so the model has the earlier summaries to go by."
+        },
+        {
+          "id": "c",
+          "text": "Start a new chat every week and explain form and tone again, so the model gets a fresh description."
+        },
+        {
+          "id": "d",
+          "text": "Ask the model to remember form and tone until next week, and start a new chat when the next minutes are ready."
+        }
+      ],
+      "correctOptionId": "a",
+      "explanation": "An assistant has the instructions in every chat, so form and tone are the same each week without you explaining them again. If you use the same chat, it grows every week, and the model takes in less of it. The model remembers nothing from one chat to the next."
+    },
+    {
+      "id": "q6",
+      "text": "ChatUiT has drafted an email to all the students on a course saying that the exam date has changed. What do you do before you send it?",
+      "options": [
+        {
+          "id": "a",
+          "text": "Send it as it is, since the draft builds on the information you gave yourself."
+        },
+        {
+          "id": "b",
+          "text": "Ask ChatUiT to read through the draft and confirm that everything is correct."
+        },
+        {
+          "id": "c",
+          "text": "Check date, time and place against what has been decided, and fix the text where it is wrong or unclear."
+        },
+        {
+          "id": "d",
+          "text": "Add a sentence saying the email was written by AI, so the recipients can make allowances."
+        }
+      ],
+      "correctOptionId": "c",
+      "explanation": "You answer for the content of what you send, also when an AI wrote the draft. The model may have changed, left out or added information, and it cannot confirm itself. A caveat about AI does not move the responsibility over to the recipients."
+    },
+    {
+      "id": "q7",
+      "text": "You want help from ChatUiT to improve a report. One paragraph is confidential, the rest is internal. How do you treat the report when you enter it?",
+      "options": [
+        {
+          "id": "a",
+          "text": "As internal, since most of the report is internal."
+        },
+        {
+          "id": "b",
+          "text": "As open, once you have replaced the names in the report with initials."
+        },
+        {
+          "id": "c",
+          "text": "Paragraph by paragraph, since the assistant can use the internal parts and skip the rest."
+        },
+        {
+          "id": "d",
+          "text": "As confidential, since the strictest level in the report applies to the whole report."
+        }
+      ],
+      "correctOptionId": "d",
+      "explanation": "When a document contains several levels, the strictest applies to the whole document. The assistant reads everything you enter, including what you ask it to skip. To use the report at a lower level, take out the confidential paragraph first."
+    },
+    {
+      "id": "q8",
+      "text": "You are replying to a complaint from a student and want help from ChatUiT to make the reply clearer. What do you enter?",
+      "options": [
+        {
+          "id": "a",
+          "text": "The whole case with name and student number, so the assistant understands the context."
+        },
+        {
+          "id": "b",
+          "text": "Your draft, without the name and other details that point to the student."
+        },
+        {
+          "id": "c",
+          "text": "The whole case, and a note to the assistant not to use the name in the reply."
+        },
+        {
+          "id": "d",
+          "text": "Nothing. Text concerning a complaint case cannot be entered in AI."
+        }
+      ],
+      "correctOptionId": "b",
+      "explanation": "Use as little personal data as the task needs. Making a text clearer does not require the assistant to know who the case concerns. A note not to use the name does not change that you have entered it."
+    },
+    {
+      "id": "q9",
+      "text": "An assistant has access to your email. You ask it to summarise an email from an unknown sender. Afterwards the assistant asks for approval to forward the whole thread to an address you do not know. What has happened, and what do you do?",
+      "options": [
+        {
+          "id": "a",
+          "text": "The email may have contained text that tries to steer the assistant. You reject."
+        },
+        {
+          "id": "b",
+          "text": "The assistant has found a recipient in the thread who should have the email. You approve."
+        },
+        {
+          "id": "c",
+          "text": "Your account has been taken over by someone else. You change your password and do not approve."
+        },
+        {
+          "id": "d",
+          "text": "The assistant always suggests forwarding after a summary. You reject if you do not need it."
+        }
+      ],
+      "correctOptionId": "a",
+      "explanation": "Content the assistant reads can contain text written to steer it. The model does not reliably tell apart what you ask for and what it reads. Never approve an action when you do not understand why the assistant suggests it. The recipient may be someone who should have the email, but then you must know why before you approve."
+    },
+    {
+      "id": "q10",
+      "text": "You realise that yesterday you entered confidential information in an AI service that is not approved for it. What do you do?",
+      "options": [
+        {
+          "id": "a",
+          "text": "Delete the chat in the service. Then the information is removed."
+        },
+        {
+          "id": "b",
+          "text": "Wait and see whether it has consequences, and report it if it does."
+        },
+        {
+          "id": "c",
+          "text": "Ask the service not to use the information for training."
+        },
+        {
+          "id": "d",
+          "text": "Report it as an incident to UiT."
+        }
+      ],
+      "correctOptionId": "d",
+      "explanation": "Information in the wrong place is an incident, and employees and students have a duty to report incidents. UiT can only limit the harm if UiT knows about it. Deleting the chat does not change that the information was sent."
+    }
+  ],
+  "certificate": {
+    "heading": "Certificate",
+    "awardedTo": "This certifies that",
+    "statement": "has completed and passed UiT's mandatory training in the use of artificial intelligence.",
+    "courseName": "Mandatory AI training",
+    "completed": "Completed",
+    "score": "Result",
+    "scoreFormat": "{0} of {1}",
+    "version": "Course version",
+    "issuer": "UiT The Arctic University of Norway",
+    "culture": "en-GB",
+    "dateFormat": "d MMMM yyyy"
+  }
+}

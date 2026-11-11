@@ -1,0 +1,29 @@
+/* Covers the whole window, over the app */
+.training-screen {
+  position: fixed;
+  inset: 0;
+  z-index: var(--z-overlay);
+  background: var(--bg);
+}
+
+/* The app behind the training screen. It takes no box of its own */
+.training-backdrop {
+  display: contents;
+}
+
+/* One segment per step, filled up to the current one */
+.training-steps {
+  display: flex;
+  gap: var(--space-xs);
+}
+
+.training-steps__step {
+  flex: 1;
+  height: var(--space-xs);
+  border-radius: var(--radius-pill);
+  background: var(--line);
+}
+
+.training-steps__step--done {
+  background: var(--accent);
+}

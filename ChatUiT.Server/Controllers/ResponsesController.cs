@@ -11,6 +11,7 @@ using ChatUiT.Server.Services.ResponsesApi;
 using ChatUiT.Server.Services.Tools;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using ChatUiT.Server.Services.Training;
 
 namespace ChatUiT.Server.Controllers;
 
@@ -23,6 +24,7 @@ namespace ChatUiT.Server.Controllers;
 /// </summary>
 [ApiController]
 [Route("api/v1")]
+[AllowWithoutTraining]
 [Authorize]
 public class ResponsesController : ControllerBase
 {
