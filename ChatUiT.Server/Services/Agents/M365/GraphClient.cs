@@ -154,6 +154,12 @@ public sealed class GraphClient
     public static string UserPath(string? idOrEmail)
         => string.IsNullOrWhiteSpace(idOrEmail) ? "me" : $"users/{Uri.EscapeDataString(idOrEmail.Trim())}";
 
+    /// <summary>The path of the page after <paramref name="response"/>, for <see cref="GetAsync"/>. Null on the last page.</summary>
+    public static string? NextPage(JsonElement response)
+        => response.Str("@odata.nextLink") is { } link && link.StartsWith(BaseUrl, StringComparison.OrdinalIgnoreCase)
+            ? link[BaseUrl.Length..]
+            : null;
+
     private async Task<HttpResponseMessage> SendAsync(ToolExecutionContext context, HttpRequestMessage request, IReadOnlyList<string> scopes, CancellationToken ct)
     {
         var token = await context.Tokens.GetAccessTokenAsync(scopes, ct);
@@ -162,9 +168,9 @@ public sealed class GraphClient
         var client = _factory.CreateClient(nameof(GraphClient));
         var response = await client.SendAsync(request, HttpCompletionOption.ResponseHeadersRead, ct);
 
-        // A 503 to any method but POST is sent again after Retry-After, or after a pause that grows with each attempt.
+        // A 429 to any method, or a 503 to any method but POST, is sent again after Retry-After, or after a pause that grows with each attempt.
         byte[]? content = null;
-        for (var attempt = 1; response.StatusCode == HttpStatusCode.ServiceUnavailable && request.Method != HttpMethod.Post && attempt < MaxAttempts; attempt++)
+        for (var attempt = 1; ShouldRetry(request, response) && attempt < MaxAttempts; attempt++)
         {
             var delay = RetryDelay(response, attempt);
             response.Dispose();
@@ -190,6 +196,10 @@ public sealed class GraphClient
 
         throw new GraphRequestException(response.StatusCode, ExtractError(body));
     }
+
+    private static bool ShouldRetry(HttpRequestMessage request, HttpResponseMessage response)
+        => response.StatusCode == HttpStatusCode.TooManyRequests
+            || (response.StatusCode == HttpStatusCode.ServiceUnavailable && request.Method != HttpMethod.Post);
 
     private static TimeSpan RetryDelay(HttpResponseMessage response, int attempt)
     {
