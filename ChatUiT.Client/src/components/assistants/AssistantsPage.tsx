@@ -4,12 +4,15 @@ import { useSignals } from '@preact/signals-react/runtime';
 import { useTranslation } from 'react-i18next';
 import { getAssistants, deleteAssistant, toggleFavorite, toggleVisibility, addSharedAssistant, invalidateAssistants, removeSharedAssistant, setDefaultAssistant, clearDefaultAssistant } from '../../services/assistantService';
 import { getModels } from '../../services/modelService';
+import { getTools } from '../../services/toolService';
 import { setUserSelectedAssistantId } from '../../services/chatService';
-import type { AssistantDto, FullAssistantDto, AssistantSummaryDto } from '../../types/assistantModels';
+import type { AssistantDto, FullAssistantDto, AssistantSummaryDto, ChatToolDto } from '../../types/assistantModels';
 import { ASSISTANT_SECTIONS } from './assistantSections';
 import { capabilityKeys, distinctCapabilities } from './assistantCapabilities';
 import AssistantCard, { DefaultBadge } from './AssistantCard';
 import CapabilityTag from './CapabilityTag';
+import ClassificationBadge from '../classification/ClassificationBadge';
+import Badge from '../common/Badge';
 import { CardGrid } from '../common/CardGrid';
 import Scroller from '../common/Scroller';
 import PillButton from '../common/PillButton';
@@ -43,6 +46,7 @@ const AssistantsPage: React.FC = () => {
   const [searchParams, setSearchParams] = useSearchParams();
   const assistantList = getAssistants();
   const models = getModels().value ?? [];
+  const tools = getTools().value ?? [];
   const { settings, updateSetting } = useSettings();
   const [shareModalAssistant, setShareModalAssistant] = useState<FullAssistantDto | null>(null);
   const [pendingRemoval, setPendingRemoval] = useState<{ id: string; shared: boolean } | null>(null);
@@ -88,6 +92,48 @@ const AssistantsPage: React.FC = () => {
     } catch (error) {
       console.error(shared ? 'Failed to remove shared assistant:' : 'Failed to delete assistant:', error);
     }
+  };
+
+  // A selected toolbox shows its selected child toolboxes under it.
+  const renderTool = (tool: ChatToolDto, toolIds: string[]): React.ReactNode => (
+    <React.Fragment key={tool.id}>
+      <span>
+        <Text variant="table-strong">{tool.name}</Text>
+        <ClassificationBadge classification={tool.classification} ml="sm" />
+        <Text tone="muted"> — {tool.description}</Text>
+        {tool.requiresConfirmation && (
+          <Stack as="span" direction="row" gap="sm" wrap mt="xs">
+            <Badge>{t('assistants.form.toolHints.requiresConfirmation')}</Badge>
+          </Stack>
+        )}
+      </span>
+      {tool.children.some(child => toolIds.includes(child.id)) && (
+        <Stack gap="sm" ml="2xl">
+          {tool.children.filter(child => toolIds.includes(child.id)).map(child => renderTool(child, toolIds))}
+        </Stack>
+      )}
+    </React.Fragment>
+  );
+
+  // Lists the toolboxes of a shared assistant, read-only.
+  const renderSharedTools = (toolIds: string[]) => {
+    const withDescendants = (tool: ChatToolDto): ChatToolDto[] => [tool, ...tool.children.flatMap(withDescendants)];
+    const knownIds = new Set(tools.flatMap(withDescendants).map(tool => tool.id));
+    const topLevel = tools.filter(tool => toolIds.includes(tool.id));
+    const unknown = toolIds.filter(id => !knownIds.has(id));
+    return (
+      <Box mb="xl">
+        <Text as="div" variant="overline" block mb="sm">{t('assistants.form.tools')}</Text>
+        {toolIds.length > 0 ? (
+          <Stack gap="sm">
+            {topLevel.map(tool => renderTool(tool, toolIds))}
+            {unknown.map(id => <Text key={id} variant="table-strong">{id}</Text>)}
+          </Stack>
+        ) : (
+          <Text as="div" variant="caption" tone="muted">{t('assistants.noToolsSelected')}</Text>
+        )}
+      </Box>
+    );
   };
 
   if (assistantList.value === undefined) {
@@ -237,6 +283,8 @@ const AssistantsPage: React.FC = () => {
               </Stack>
               {model?.description && <Text as="div" variant="caption" tone="muted" mt="xs">{model.description}</Text>}
             </Box>
+
+            {variant === 'shared' && renderSharedTools((assistant as AssistantSummaryDto).availableToolIds)}
 
             {(assistant as AssistantSummaryDto).createdBy && (
               <Box mb="xl">

@@ -315,6 +315,7 @@
       }
     },
     "createdBy": "Created by",
+    "noToolsSelected": "No toolboxes",
     "addExternal": {
       "title": "Add Shared Assistant",
       "placeholder": "Enter assistant ID",

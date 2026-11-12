@@ -81,6 +81,7 @@ export interface AssistantSummaryDto {
      */
     canBeDefault: boolean;
     createdBy?: string;
+    availableToolIds: string[];
     /** See FullAssistantDto.promptTokenCounts. */
     promptTokenCounts: Record<string, number>;
     /** The part of promptTokenCounts the knowledge-files section adds, per scheme. */

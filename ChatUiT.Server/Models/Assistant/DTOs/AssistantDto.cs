@@ -105,6 +105,8 @@ public class AssistantSummaryDto
 
     public string CreatedBy { get; set; } = string.Empty;
 
+    public List<string> AvailableToolIds { get; set; } = new List<string>();
+
     /// <inheritdoc cref="FullAssistantDto.PromptTokenCounts"/>
     public Dictionary<string, int> PromptTokenCounts { get; set; } = new();
 
