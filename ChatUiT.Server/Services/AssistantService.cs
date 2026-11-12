@@ -999,7 +999,8 @@ namespace ChatUiT.Server.Services
                 IsVisible = !(user?.Preferences.HiddenAssistantIds.Contains(assistant.Id) ?? false),
                 IsFavorite = user?.Preferences.FavoritedAssistantIds.Contains(assistant.Id) ?? false,
                 CanBeDefault = eligibleModelIds?.Contains(assistant.ChatSettings.Model.Id) ?? false,
-                CreatedBy = assistant.OwnerId
+                CreatedBy = assistant.OwnerId,
+                AvailableToolIds = assistant.ChatSettings.AvailableToolIds
             };
         }
     }

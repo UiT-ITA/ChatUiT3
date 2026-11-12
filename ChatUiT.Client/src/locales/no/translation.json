@@ -315,6 +315,7 @@
       }
     },
     "createdBy": "Opprettet av",
+    "noToolsSelected": "Ingen verktøykasser",
     "addExternal": {
       "title": "Legg til delt assistent",
       "placeholder": "Skriv inn assistent-ID",
