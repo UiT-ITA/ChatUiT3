@@ -17,7 +17,9 @@ public sealed class OfficeAgent : InternalAgent
 {
     public OfficeAgent(IServiceProvider services)
     {
-        Functions = M365Toolboxes.ReadFunctionTypes.Select(t => (ITool)services.GetRequiredService(t)).ToList();
+        Functions = M365Toolboxes.ReadFunctionTypes.Select(t => (ITool)services.GetRequiredService(t))
+            .Append(services.GetRequiredService<GetWebsiteTool>())
+            .ToList();
     }
 
     public override string Id => "office";
