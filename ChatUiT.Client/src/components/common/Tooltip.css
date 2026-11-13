@@ -33,5 +33,10 @@
   margin-left: var(--space-sm);
   transform: translateY(-50%);
 }
+/* Left of the anchor, centred on it */
+.tooltip--left {
+  margin-right: var(--space-sm);
+  transform: translateY(-50%);
+}
 .tooltip--small { width: var(--size-2xs); }
 .tooltip--medium { width: var(--size-xs); }
