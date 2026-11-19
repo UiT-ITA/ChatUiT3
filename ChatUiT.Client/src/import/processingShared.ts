@@ -62,8 +62,9 @@ export async function readFileAsArrayBuffer(file: File): Promise<ArrayBuffer> {
     return file.arrayBuffer();
 }
 
+/** A data URL for a JPEG image chunk, which may already be stored as one. */
 export function toJpegDataUrl(base64: string): string {
-    return `data:image/jpeg;base64,${base64}`;
+    return base64.startsWith('data:') ? base64 : `data:image/jpeg;base64,${base64}`;
 }
 
 export function escapeMarkdownTableCell(value: string): string {

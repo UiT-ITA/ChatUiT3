@@ -1,5 +1,6 @@
 import React from 'react';
 import { Icon } from './Icon';
+import { FieldControl } from '@ui-sdk/react/field';
 import { useInputBase, type InputBaseProps } from './inputBase';
 import './Select.css';
 
@@ -29,25 +30,27 @@ export interface SelectProps extends InputBaseProps, NativeSelectProps {
 
 /** The app's dropdown box. */
 const Select: React.FC<SelectProps> = ({ inline = false, ...props }) => {
-  const { id, rest, invalid, describedBy, boxClass, boxStyle, frame } = useInputBase({ ...props, fullWidth: props.fullWidth ?? !inline });
+  const { rest, invalid, boxClass, boxStyle, frame } = useInputBase({ ...props, fullWidth: props.fullWidth ?? !inline });
   const { onChange, options, placeholder, children, ...native } = rest;
 
   return frame(
     <div className={boxClass('select', inline && 'select--inline')} style={boxStyle}>
-      <select
-        id={id}
-        className="input-box__input select__input t-body"
-        aria-invalid={invalid || undefined}
-        aria-describedby={describedBy}
-        onChange={onChange && ((e) => onChange(e.target.value, e))}
-        {...native}
-      >
-        {placeholder && <option value="" disabled>{placeholder}</option>}
-        {options?.map(option => (
-          <option key={option.value} value={option.value} disabled={option.disabled} title={option.title}>{option.label}</option>
-        ))}
-        {children}
-      </select>
+      <FieldControl
+        render={(
+          <select
+            className="input-box__input select__input t-body"
+            aria-invalid={invalid || undefined}
+            onChange={onChange && ((e) => onChange(e.target.value, e))}
+            {...native}
+          >
+            {placeholder && <option value="" disabled>{placeholder}</option>}
+            {options?.map(option => (
+              <option key={option.value} value={option.value} disabled={option.disabled} title={option.title}>{option.label}</option>
+            ))}
+            {children}
+          </select>
+        )}
+      />
       <SelectChevron />
     </div>,
   );

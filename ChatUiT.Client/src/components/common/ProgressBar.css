@@ -1,5 +1,5 @@
 /* A full-width bar that fills with how much of a limit is used */
-.progress-bar {
+.progress-bar__track {
   height: var(--space-sm);
   border-radius: var(--radius-pill);
   background: var(--panel-2);

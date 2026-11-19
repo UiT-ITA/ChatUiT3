@@ -6,7 +6,7 @@ import { getAssistants, deleteAssistant, toggleFavorite, toggleVisibility, addSh
 import { getModels } from '../../services/modelService';
 import { getTools } from '../../services/toolService';
 import { setUserSelectedAssistantId } from '../../services/chatService';
-import type { AssistantDto, FullAssistantDto, AssistantSummaryDto, ChatToolDto } from '../../types/assistantModels';
+import { withDescendants, type AssistantDto, type FullAssistantDto, type AssistantSummaryDto, type ChatToolDto } from '../../types/assistantModels';
 import { ASSISTANT_SECTIONS } from './assistantSections';
 import { capabilityKeys, distinctCapabilities } from './assistantCapabilities';
 import AssistantCard, { DefaultBadge } from './AssistantCard';
@@ -20,7 +20,6 @@ import AssistantForm from './AssistantForm';
 import AssistantDeleteFooter from './AssistantDeleteFooter';
 import AddExternalAssistant from './AddExternalAssistant';
 import ShareModal from './ShareModal';
-import TagField from '../common/TagField';
 import Button from '../common/Button';
 import { FieldDescription } from '../common/Field';
 import { List, ListItem } from '../common/List';
@@ -30,6 +29,7 @@ import SegmentedControl from '../common/SegmentedControl';
 import { useSettings } from '../../hooks/useSettings';
 import PageTitleBar from '../common/PageTitleBar';
 import Page, { PageIntro } from '../common/Page';
+import Chip from '../common/Chip';
 import Stack from '../common/Stack';
 import Box from '../common/Box';
 import Text from '../common/Text';
@@ -117,8 +117,7 @@ const AssistantsPage: React.FC = () => {
 
   // Lists the toolboxes of a shared assistant, read-only.
   const renderSharedTools = (toolIds: string[]) => {
-    const withDescendants = (tool: ChatToolDto): ChatToolDto[] => [tool, ...tool.children.flatMap(withDescendants)];
-    const knownIds = new Set(tools.flatMap(withDescendants).map(tool => tool.id));
+      const knownIds = new Set(tools.flatMap(withDescendants).map(tool => tool.id));
     const topLevel = tools.filter(tool => toolIds.includes(tool.id));
     const unknown = toolIds.filter(id => !knownIds.has(id));
     return (
@@ -269,7 +268,9 @@ const AssistantsPage: React.FC = () => {
             {assistant.tags.length > 0 && (
               <Box mb="xl">
                 <Text as="div" variant="overline" block mb="sm">{t('assistants.form.tags')}</Text>
-                <TagField tags={assistant.tags} readonly={true} />
+                <Stack direction="row" gap="xs" wrap align="center">
+                  {assistant.tags.map(tag => <Chip key={tag} size="small">{tag}</Chip>)}
+                </Stack>
               </Box>
             )}
 
@@ -395,7 +396,7 @@ const AssistantsPage: React.FC = () => {
         </Stack>
       </Stack>
       <PageIntro mb="lg">{t('assistants.intro')}</PageIntro>
-      <Scroller as="nav" axis="x" snap gap="sm" align="center" grow={false} shrink={false} mb="2xl" aria-label={t('assistants.sectionLinks')}>
+      <Scroller as="nav" gap="sm" align="center" grow={false} shrink={false} mb="2xl" aria-label={t('assistants.sectionLinks')}>
         <Text variant="caption" tone="muted" grow={false} shrink={false} aria-hidden="true">{t('assistants.jumpTo')}</Text>
         {ASSISTANT_SECTIONS.map(({ type, titleKey }) => (
           <PillButton

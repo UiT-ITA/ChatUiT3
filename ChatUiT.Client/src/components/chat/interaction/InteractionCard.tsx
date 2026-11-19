@@ -4,6 +4,8 @@ import Button from '../../common/Button';
 import IconButton from '../../common/IconButton';
 import type { IconName } from '../../common/Icon';
 import IconTile from '../../common/IconTile';
+import { CheckboxGroup } from '@ui-sdk/react/checkbox';
+import { RadioGroup } from '@ui-sdk/react/radio';
 import ChoiceOption from '../../common/ChoiceOption';
 import Stack from '../../common/Stack';
 import Text from '../../common/Text';
@@ -112,7 +114,6 @@ function ApprovalBody({ dock }: { dock: InteractionDock }) {
           variant="primary"
           size="small"
           startIcon="check"
-          loading={dock.busy}
           disabled={dock.busy || !editedIsValid}
           onClick={() => dock.approve(changed ? edited : null)}
         >
@@ -151,19 +152,19 @@ function QuestionBody({ dock }: { dock: InteractionDock }) {
     <>
       <Header icon="question" title={question.question} subtitle={subtitle} dock={dock} stepper={stepper} />
       {hasOptions && (
-        <Stack gap="sm" role={question.multiSelect ? 'group' : 'radiogroup'} aria-label={question.question}>
-          {question.options.map(option => (
-            <ChoiceOption
-              key={option.label}
-              mode={question.multiSelect ? 'check' : 'radio'}
-              picked={dock.selected.includes(option.label)}
-              label={option.label}
-              description={option.description}
-              disabled={dock.busy}
-              onClick={() => dock.toggleOption(option.label)}
-            />
-          ))}
-        </Stack>
+        question.multiSelect ? (
+          <CheckboxGroup className="choice-list" aria-label={question.question} value={dock.selected} onValueChange={value => dock.setSelected(value as string[])}>
+            {question.options.map(option => (
+              <ChoiceOption key={option.label} mode="check" value={option.label} label={option.label} description={option.description} disabled={dock.busy} />
+            ))}
+          </CheckboxGroup>
+        ) : (
+          <RadioGroup className="choice-list" aria-label={question.question} value={dock.selected[0] ?? null} onValueChange={value => dock.setSelected(value ? [value as string] : [])}>
+            {question.options.map(option => (
+              <ChoiceOption key={option.label} mode="radio" value={option.label} label={option.label} description={option.description} disabled={dock.busy} />
+            ))}
+          </RadioGroup>
+        )
       )}
       <TextArea
         key={dock.step}
@@ -171,12 +172,7 @@ function QuestionBody({ dock }: { dock: InteractionDock }) {
         placeholder={hasOptions ? t('interaction.ownAnswerPlaceholder') : t('interaction.answerPlaceholder')}
         value={dock.text}
         onChange={value => dock.setText(value)}
-        onKeyDown={event => {
-          if (event.key === 'Enter' && !event.shiftKey && answered && !dock.busy) {
-            event.preventDefault();
-            void dock.next();
-          }
-        }}
+        onEnter={() => { if (answered && !dock.busy) void dock.next(); }}
         autoResize
         minRows={1}
         maxRows={6}
@@ -187,7 +183,7 @@ function QuestionBody({ dock }: { dock: InteractionDock }) {
         <Button variant="ghost" size="small" disabled={dock.busy} onClick={() => dock.skip()}>
           {t('interaction.skip')}
         </Button>
-        <Button variant="primary" size="small" loading={dock.busy} disabled={dock.busy || !answered} onClick={() => dock.next()}>
+        <Button variant="primary" size="small" disabled={dock.busy || !answered} onClick={() => dock.next()}>
           {last ? t('interaction.send') : t('interaction.next')}
         </Button>
       </Stack>

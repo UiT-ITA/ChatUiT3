@@ -142,7 +142,7 @@ const AdminPage: React.FC = () => {
     if (models === undefined) return renderLoading();
     const model = models.find(m => m.id === modelId);
     if (!model) return <EmptyNote>{t('common.notFound')}</EmptyNote>;
-    return model.type === 'Image' ? <ImageModelEditor modelId={modelId} /> : <LanguageModelEditor modelId={modelId} />;
+    return model.type === 'Image' ? <ImageModelEditor key={modelId} modelId={modelId} /> : <LanguageModelEditor key={modelId} modelId={modelId} />;
   };
 
   const renderAssistants = () => renderDomain(
@@ -229,8 +229,8 @@ const AdminPage: React.FC = () => {
     if (id) {
       if (tab === 'endpoints') return <EndpointEditor endpointId={id === 'new' ? undefined : id} />;
       if (tab === 'models') return renderModelEditor(id);
-      if (tab === 'assistants') return <AdminAssistantEditor assistantId={id === 'new' ? undefined : id} />;
-      if (tab === 'tools') return <ToolEditor toolId={id} />;
+      if (tab === 'assistants') return <AdminAssistantEditor key={id} assistantId={id === 'new' ? undefined : id} />;
+      if (tab === 'tools') return <ToolEditor key={id} toolId={id} />;
       if (tab === 'agents') return <InternalAgentEditor key={id} agentId={id} />;
     }
     if (tab === 'endpoints') return renderEndpoints();

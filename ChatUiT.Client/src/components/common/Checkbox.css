@@ -1,3 +1,9 @@
+.checkbox-group {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-md);
+}
+
 .checkbox {
   display: flex;
   flex-direction: column;
@@ -5,9 +11,6 @@
   min-width: 0;
   --checkbox-size: var(--icon-md);
 }
-
-.checkbox--small { --checkbox-size: var(--icon-sm); }
-.checkbox--large { --checkbox-size: var(--control-sm); }
 
 .checkbox__row {
   font-family: var(--font-sans);
@@ -23,14 +26,15 @@
   opacity: var(--opacity-muted);
 }
 
-.checkbox__input {
-  appearance: none;
+/* ui-sdk Checkbox: the box */
+[data-slot="checkbox"] {
   flex: 0 0 auto;
   display: grid;
   place-items: center;
   width: var(--checkbox-size);
   height: var(--checkbox-size);
   margin: 0;
+  padding: 0;
   border: var(--border-md) solid var(--line);
   border-radius: var(--radius-sm);
   background: var(--surface);
@@ -38,18 +42,14 @@
   transition: background var(--dur-base) ease, border-color var(--dur-base) ease;
 }
 
-.checkbox--invalid .checkbox__input {
-  border-color: var(--danger);
+/* Dark: a softer fill for checked boxes */
+[data-slot="checkbox"][data-checked] {
+  border-color: light-dark(var(--brand), color-mix(in srgb, var(--btn-bg) 70%, var(--surface)));
+  background: light-dark(var(--btn-bg), color-mix(in srgb, var(--btn-bg) 70%, var(--surface)));
 }
 
-.checkbox__input:checked,
-.checkbox__input:indeterminate {
-  border-color: var(--brand);
-  background: var(--btn-bg);
-}
-
-.checkbox__input:checked::after {
-  content: '';
+/* The check mark */
+[data-slot="checkbox-indicator"] {
   width: calc(var(--checkbox-size) * 0.27);
   height: calc(var(--checkbox-size) * 0.55);
   border: solid var(--btn-fg);
@@ -57,20 +57,7 @@
   transform: rotate(45deg);
 }
 
-.checkbox__input:indeterminate::after {
-  content: '';
-  width: calc(var(--checkbox-size) * 0.5);
-  border-top: var(--border-md) solid var(--btn-fg);
-}
-
-/* Dark modes: a softer fill for checked boxes */
-[data-mode="dark"] .checkbox__input:checked,
-[data-mode="dark"] .checkbox__input:indeterminate {
-  border-color: color-mix(in srgb, var(--btn-bg) 70%, var(--surface));
-  background: color-mix(in srgb, var(--btn-bg) 70%, var(--surface));
-}
-
-.checkbox__input:focus-visible {
+[data-slot="checkbox"]:focus-visible {
   outline: var(--border-md) solid var(--accent);
   outline-offset: var(--border-md);
 }

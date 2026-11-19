@@ -1,4 +1,5 @@
-.toggle-label {
+/* A switch with its text before it */
+.switch-label {
   font-family: var(--font-sans);
   display: flex;
   align-items: center;
@@ -7,19 +8,15 @@
   color: var(--text);
 }
 
-.toggle-label--end {
-  flex-direction: row-reverse;
-  justify-content: flex-end;
-}
-
-.toggle {
-  --toggle-height: var(--icon-md);
+/* ui-sdk Switch: twice as wide as it is high */
+[data-slot="switch"] {
+  --switch-height: var(--icon-md);
   flex: 0 0 auto;
   display: flex;
   align-items: center;
   justify-content: flex-start;
-  width: calc(var(--toggle-height) * 2);
-  height: var(--toggle-height);
+  width: calc(var(--switch-height) * 2);
+  height: var(--switch-height);
   padding: var(--space-xs);
   border: var(--border-sm) solid var(--line);
   border-radius: var(--radius-pill);
@@ -28,31 +25,32 @@
   transition: background var(--dur-base) ease, border-color var(--dur-base) ease;
 }
 
-/* The switch is twice as wide as it is high */
-.toggle--small { --toggle-height: var(--icon-sm); }
-.toggle--large { --toggle-height: var(--icon-lg); }
-.toggle:disabled {
+[data-slot="switch"][data-disabled] {
   cursor: not-allowed;
   opacity: var(--opacity-muted);
 }
-.toggle:focus-visible {
+
+[data-slot="switch"]:focus-visible {
   outline: var(--border-md) solid var(--accent);
   outline-offset: var(--border-md);
 }
-.toggle--on { justify-content: flex-end; }
-.toggle--accent.toggle--on {
+
+[data-slot="switch"][data-checked] {
+  justify-content: flex-end;
   border-color: var(--accent);
   background: var(--accent);
 }
-.toggle--critical.toggle--on {
+
+/* A switch that allows something risky, such as red data */
+[data-slot="switch"].switch--critical[data-checked] {
   border-color: var(--danger);
   background: var(--danger);
 }
 
-.toggle__knob {
+[data-slot="switch-thumb"] {
   display: block;
-  width: calc(var(--toggle-height) - var(--space-sm));
-  height: calc(var(--toggle-height) - var(--space-sm));
+  width: calc(var(--switch-height) - var(--space-sm));
+  height: calc(var(--switch-height) - var(--space-sm));
   border-radius: 50%;
   background: var(--surface);
 }

@@ -3,32 +3,35 @@ import { useSignals } from '@preact/signals-react/runtime';
 import { useParams } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { useSettings } from '../../hooks/useSettings';
-import type { SettingsCategory } from '../../types/settingsModels';
+import { SettingsService } from '../../services/settingsService';
+import { settingsTab } from '../../types/settingsModels';
 import { getUserProfile, updateUserProfile, type UserProfile } from '../../services/userProfileService';
 import Select from '../common/Select';
 import TextInput from '../common/TextInput';
 import TextArea from '../common/TextArea';
-import Toggle from '../common/Toggle';
+import { Switch, SwitchThumb } from '@ui-sdk/react/switch';
 import Button from '../common/Button';
 import Stack from '../common/Stack';
 import SegmentedControl from '../common/SegmentedControl';
 import { ConfirmDialog } from '../common/Dialog';
-import { resolveMode } from '../../utils/themeUtils';
+import { usePreference } from '@ui-sdk/react/preferences';
+import { colorScheme, textSize, theme as themePreference } from '../../services/appearance';
 import PageTitleBar from '../common/PageTitleBar';
 import Page from '../common/Page';
 import Text from '../common/Text';
 import Grid from '../common/Grid';
 import ChoiceCard from '../common/ChoiceCard';
+import { RadioGroup } from '@ui-sdk/react/radio';
 import SectionLabel from '../common/SectionLabel';
 import SettingRow from '../common/SettingRow';
 import Flag from '../common/Flag';
 import './SettingsPage.css';
 
-/** A miniature of the app in a theme and mode; 'system' shows the light scene and the dark scene side by side. */
-const ThemePreview: React.FC<{ theme: 'blue' | 'grey'; mode: 'light' | 'dark' | 'system' }> = ({ theme, mode }) => (
+/** A miniature of the app in a theme and colour scheme, or the page's scheme without one; 'system' shows the light scene and the dark scene side by side. */
+const ThemePreview: React.FC<{ theme: string; scheme?: string }> = ({ theme, scheme }) => (
   <span className="theme-preview">
-    {(mode === 'system' ? ['light', 'dark'] : [mode]).map((sceneMode) => (
-      <span key={sceneMode} className="theme-preview__scene" data-theme={theme} data-mode={sceneMode}>
+    {(scheme === 'system' ? ['light', 'dark'] : [scheme]).map((sceneScheme) => (
+      <span key={sceneScheme ?? 'page'} className="theme-preview__scene" data-theme={theme} data-color-scheme={sceneScheme}>
         <span className="theme-preview__rail" />
         <span className="theme-preview__content">
           <span className="theme-preview__bar theme-preview__bar--1" />
@@ -70,13 +73,15 @@ const ProfileField: React.FC<ProfileFieldProps> = ({ field, profile, label, plac
 const SettingsPage: React.FC = () => {
   const { t } = useTranslation();
   const { tab } = useParams<{ tab?: string }>();
-  const { settings, updateSetting, exportData, deleteAllData } = useSettings();
+  const { settings, updateSetting } = useSettings();
   const [confirmDeleteAll, setConfirmDeleteAll] = useState(false);
   useSignals();
   const profile = getUserProfile().value;
+  const themeName = usePreference(themePreference).value;
+  const scheme = usePreference(colorScheme).value;
+  const size = usePreference(textSize).value;
 
-  const activeTab: SettingsCategory =
-    tab === 'personalization' || tab === 'dataControl' ? tab : 'appearance';
+  const activeTab = settingsTab(tab);
 
   return (
     <Page fill="grow" flow="block">
@@ -86,40 +91,34 @@ const SettingsPage: React.FC = () => {
       {activeTab === 'appearance' && (
         <>
           <SectionLabel hint={t('settings.theme.description')}>{t('settings.theme.title')}</SectionLabel>
-          <Grid columns={2} gap="md">
-            {(['blue', 'grey'] as const).map((theme) => (
-              <ChoiceCard
-                key={theme}
-                label={t(`settings.theme.${theme}`)}
-                selected={settings.theme === theme}
-                onSelect={() => updateSetting('theme', theme)}
-              >
-                <ThemePreview theme={theme} mode={resolveMode(settings.mode)} />
-              </ChoiceCard>
-            ))}
-          </Grid>
+          <RadioGroup value={themeName} onValueChange={value => themePreference.set(value as typeof themeName)} aria-label={t('settings.theme.title')}>
+            <Grid columns={2} gap="md">
+              {themePreference.values.map((theme) => (
+                <ChoiceCard key={theme} value={theme} label={t(`settings.theme.${theme}`)}>
+                  <ThemePreview theme={theme} />
+                </ChoiceCard>
+              ))}
+            </Grid>
+          </RadioGroup>
 
           <SectionLabel hint={t('settings.mode.description')}>{t('settings.mode.title')}</SectionLabel>
-          <Grid columns={3} narrowColumns={2} gap="md">
-            {(['light', 'dark', 'system'] as const).map((mode) => (
-              <ChoiceCard
-                key={mode}
-                label={t(`settings.mode.${mode}`)}
-                selected={settings.mode === mode}
-                onSelect={() => updateSetting('mode', mode)}
-              >
-                <ThemePreview theme={settings.theme} mode={mode} />
-              </ChoiceCard>
-            ))}
-          </Grid>
+          <RadioGroup value={scheme} onValueChange={value => colorScheme.set(value as typeof scheme)} aria-label={t('settings.mode.title')}>
+            <Grid columns={3} narrowColumns={2} gap="md">
+              {(['light', 'dark', 'system'] as const).map((mode) => (
+                <ChoiceCard key={mode} value={mode} label={t(`settings.mode.${mode}`)}>
+                  <ThemePreview theme={themeName} scheme={mode} />
+                </ChoiceCard>
+              ))}
+            </Grid>
+          </RadioGroup>
 
           <SectionLabel>{t('settings.textScale.title')}</SectionLabel>
           <SegmentedControl
             label={t('settings.textScale.title')}
             stretch
-            value={settings.size}
-            onChange={(size) => updateSetting('size', size)}
-            options={(['small', 'medium', 'large', 'xl'] as const).map((size) => ({
+            value={size}
+            onChange={(value) => textSize.set(value)}
+            options={textSize.values.map((size) => ({
               value: size,
               label: t(`settings.textScale.${size === 'xl' ? 'extraLarge' : size}`),
             }))}
@@ -171,11 +170,13 @@ const SettingsPage: React.FC = () => {
           </SettingRow>
 
           <SettingRow label={t('settings.dataControl.autoDelete.title')}>
-            <Toggle
+            <Switch
               checked={settings.autoDeleteOldChats}
-              onChange={(checked) => updateSetting('autoDeleteOldChats', checked)}
+              onCheckedChange={(checked) => updateSetting('autoDeleteOldChats', checked)}
               aria-label={t('settings.dataControl.autoDelete.title')}
-            />
+            >
+              <SwitchThumb />
+            </Switch>
           </SettingRow>
 
           <SettingRow label={t('settings.dataControl.exportFormat.title')}>
@@ -192,7 +193,7 @@ const SettingsPage: React.FC = () => {
           </SettingRow>
 
           <Stack direction="row" align="center" gap="md" mt="2xl" pt="xl" border borderSide="top">
-            <Button variant="secondary" onClick={() => exportData(settings.exportFormat)}>
+            <Button variant="secondary" onClick={() => SettingsService.exportData(settings.exportFormat)}>
               {t('settings.dataControl.exportData.button')}
             </Button>
             <Button variant="danger" onClick={() => setConfirmDeleteAll(true)}>
@@ -207,7 +208,7 @@ const SettingsPage: React.FC = () => {
         title={t('settings.dataControl.deleteAll.title')}
         message={t('settings.dataControl.deleteAll.confirm')}
         confirmLabel={t('settings.dataControl.deleteAll.button')}
-        onConfirm={deleteAllData}
+        onConfirm={() => SettingsService.deleteAllData()}
         onCancel={() => setConfirmDeleteAll(false)}
       />
     </Page>

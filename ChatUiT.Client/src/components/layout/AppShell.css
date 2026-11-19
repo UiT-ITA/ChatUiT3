@@ -10,9 +10,41 @@
   position: relative;
 }
 
-/* Groups the rail and the side column for hover without adding a box */
+/* Holds the rail for hover without adding a box */
 .app-shell__sidebar {
   display: contents;
+}
+
+/* The side column and the main column, with the resize handle between them */
+.app-shell__panels {
+  flex: 1;
+  min-width: 0;
+  min-height: 0;
+}
+
+.app-shell__side-panel,
+.app-shell__main-panel {
+  display: flex;
+  min-height: 0;
+}
+
+/* A resize handle between two panels: it sits on the edge line and shows the accent while hovered, dragged or focused */
+.resize-handle {
+  width: var(--space-xs);
+  margin-inline: calc(-1 * var(--space-xs)) 0;
+  z-index: 1;
+  cursor: col-resize;
+  outline: none;
+}
+
+.resize-handle:hover,
+.resize-handle[data-dragging],
+.resize-handle:focus-visible {
+  background: var(--accent);
+}
+
+.resize-handle[data-disabled] {
+  display: none;
 }
 
 .app-shell__main {
@@ -28,12 +60,14 @@
   flex-direction: column;
 }
 
-/* Mobile shows one of the pair at a time. Both stay mounted and only their visibility changes */
-.app-shell--mobile.app-shell--list > .app-shell__main {
-  display: none;
+/* Mobile shows one of the pair at a time, at full width. Both stay mounted and only their visibility changes.
+   The panel sizes the group writes inline do not apply here */
+.app-shell--mobile .app-shell__panels > [data-slot="resizable-panel"] {
+  flex: 1 1 auto !important;
 }
 
-.app-shell--mobile.app-shell--detail .side-column {
+.app-shell--mobile.app-shell--list .app-shell__main-panel,
+.app-shell--mobile.app-shell--detail .app-shell__side-panel {
   display: none;
 }
 
@@ -149,15 +183,18 @@
   align-items: center;
   justify-content: center;
   background: var(--accent);
-  color: var(--surface);
+  color: light-dark(var(--surface), var(--bg));
   border-radius: var(--radius-md);
 }
 
-[data-mode="dark"] .app-rail__avatar {
-  color: var(--bg);
+/* The menu's top padding goes above the items, under the header */
+/* The toolbar inside the rail adds no box of its own */
+.app-rail__toolbar {
+  display: contents;
 }
 
 .app-rail__menu-header {
+  margin: calc(-1 * var(--space-sm)) 0 var(--space-sm);
   padding: var(--space-md) var(--space-lg);
   border-bottom: var(--border-sm) solid var(--line-soft);
 }
@@ -172,8 +209,8 @@
 /* ---------- Side column: the list panel between the rail and the main column ---------- */
 
 .side-column {
-  width: var(--context-column-width);
-  flex: 0 0 var(--context-column-width);
+  flex: 1;
+  min-width: 0;
   background: var(--bg);
   border-right: var(--border-sm) solid var(--line);
   display: flex;
@@ -235,6 +272,7 @@
 /* Collapsed: taken out of the row and hidden behind its left edge, next to the icon rail */
 .side-column--collapsed {
   position: absolute;
+  width: var(--context-column-width);
   top: 0;
   bottom: 0;
   left: var(--rail-width);

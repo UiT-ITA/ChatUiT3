@@ -1,55 +1,62 @@
-.listbox {
-  display: flex;
-  flex-direction: column;
-  overflow-y: auto;
-}
-
-.listbox--floating {
-  position: absolute;
-  z-index: var(--z-dropdown);
-  top: calc(100% + var(--space-xs));
-  left: 0;
-  right: 0;
-  padding: var(--space-xs) 0;
-}
-
-.listbox__option {
+/* The options of ui-sdk Select, Combobox, Autocomplete and Listbox, and the create option of a combobox */
+:is([data-slot="select-item"], [data-slot="combobox-item"], [data-slot="combobox-create"], [data-slot="autocomplete-item"], [data-slot="listbox-item"]) {
   font-family: var(--font-sans);
+  position: relative;
   display: flex;
   align-items: center;
   gap: var(--space-md);
   width: 100%;
   padding: var(--space-sm) var(--space-md);
-  border: none;
-  background: transparent;
   color: var(--text);
   text-align: left;
   cursor: pointer;
   outline: none;
 }
 
-.listbox__option:focus-visible, .listbox__option--highlighted { background: var(--tint); }
+:is([data-slot="select-item"], [data-slot="combobox-item"], [data-slot="combobox-create"], [data-slot="autocomplete-item"], [data-slot="listbox-item"])[data-highlighted] { background: var(--tint); }
 
-@media (hover: hover) {
-  .listbox__option:hover:not(.listbox__option--disabled, .listbox__option--selected) { background: var(--tint); }
+:is([data-slot="select-item"], [data-slot="combobox-item"], [data-slot="autocomplete-item"], [data-slot="listbox-item"])[data-selected] { background: var(--sel); }
+
+/* A selected option: an accent bar along its start edge */
+:is([data-slot="select-item"], [data-slot="combobox-item"], [data-slot="autocomplete-item"], [data-slot="listbox-item"])[data-selected]::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 0;
+  width: var(--border-md);
+  background: var(--accent);
 }
 
-.listbox__option--selected { background: var(--sel); }
-.listbox__option--disabled {
+:is([data-slot="select-item"], [data-slot="combobox-item"], [data-slot="autocomplete-item"], [data-slot="listbox-item"])[data-disabled] {
   opacity: var(--opacity-disabled);
   cursor: not-allowed;
 }
 
-.listbox__option-leading,
-.listbox__option-trailing {
+/* The list inside a floating panel scrolls past --list-max-height */
+:is([data-slot="select-content"], [data-slot="combobox-content"], [data-slot="autocomplete-content"]) {
+  max-height: min(var(--list-max-height, var(--size-sm)), var(--available-height));
+  overflow-y: auto;
+  padding: var(--space-xs) 0;
+}
+
+/* The status line of a list, such as "Searching…" or "No results" */
+:is([data-slot="combobox-status"], [data-slot="combobox-empty"], [data-slot="autocomplete-status"], [data-slot="autocomplete-empty"]) {
+  padding: var(--space-sm) var(--space-md);
+  color: var(--text-3);
+}
+
+/* The parts of an option: leading content, the label with its description, and trailing content */
+.option__leading,
+.option__trailing {
   flex: 0 0 auto;
   display: flex;
   align-items: center;
 }
 
-.listbox__option-trailing { color: var(--text-3); }
+.option__trailing { color: var(--text-3); }
 
-.listbox__option-text {
+.option__text {
   display: flex;
   flex-direction: column;
   gap: var(--space-xs);
@@ -57,16 +64,17 @@
   min-width: 0;
 }
 
-.listbox__option-label {
+.option__label {
   display: flex;
   align-items: center;
   gap: var(--space-sm);
   min-width: 0;
 }
 
-.listbox__option-description { color: var(--text-3); }
+.option__description { color: var(--text-3); }
 
-.listbox__heading {
+/* A heading over a group of options */
+.option-group__label {
   margin-top: var(--space-xs);
   padding: var(--space-sm) var(--space-md) var(--space-xs);
   border-top: var(--border-sm) solid var(--line);

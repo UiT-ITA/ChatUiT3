@@ -1,11 +1,11 @@
 /* A framed choice with a radio or check mark, a label and an optional description */
 .choice-option {
+  --checkbox-size: var(--icon-sm);
   display: flex;
   align-items: center;
   gap: var(--space-md);
   min-height: var(--control-lg);
   padding: var(--space-sm) var(--space-md);
-  text-align: left;
   color: var(--text);
   background: var(--surface);
   border: var(--border-sm) solid var(--line);
@@ -13,47 +13,39 @@
   cursor: pointer;
 }
 
-.choice-option:hover:not(:disabled) {
+.choice-option:hover:not(:has([data-disabled])) {
   border-color: var(--accent);
 }
 
-.choice-option:focus-visible {
+.choice-option:has([data-disabled]) {
+  cursor: default;
+}
+
+.choice-option:has(:focus-visible) {
   outline: var(--border-md) solid var(--accent);
   outline-offset: var(--border-sm);
 }
 
-.choice-option--picked {
+.choice-option:has([data-checked]) {
   background: var(--info-soft);
   border-color: var(--accent);
 }
 
-.choice-option__mark {
-  display: flex;
+/* The radio mark: a ring that thickens when chosen */
+.choice-option__radio {
   flex: none;
-  align-items: center;
-  justify-content: center;
   width: var(--icon-sm);
   height: var(--icon-sm);
+  padding: 0;
   box-sizing: border-box;
   border: var(--border-sm) solid var(--text-3);
-  color: var(--btn-fg);
-}
-
-.choice-option__mark--radio {
   border-radius: 50%;
+  background: none;
+  outline: none;
 }
 
-.choice-option__mark--check {
-  border-radius: var(--radius-sm);
-}
-
-.choice-option--picked .choice-option__mark--radio {
+.choice-option__radio[data-checked] {
   border: var(--border-lg) solid var(--btn-bg);
-}
-
-.choice-option--picked .choice-option__mark--check {
-  border-color: var(--btn-bg);
-  background: var(--btn-bg);
 }
 
 .choice-option__text {
@@ -66,12 +58,12 @@
 }
 
 /* A graded option: the right answer and a wrong pick */
-.choice-option--correct {
+.choice-option.choice-option--correct {
   background: var(--success-soft);
   border-color: var(--success);
 }
 
-.choice-option--wrong {
+.choice-option.choice-option--wrong {
   background: var(--danger-soft);
   border-color: var(--danger);
 }
@@ -79,4 +71,11 @@
 .choice-option__outcome {
   flex: none;
   margin-left: auto;
+}
+
+/* The column of options in a radio or checkbox group */
+.choice-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-sm);
 }

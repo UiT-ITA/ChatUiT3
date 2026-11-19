@@ -8,11 +8,11 @@ import Box from '../common/Box';
 import Badge from '../common/Badge';
 import Button from '../common/Button';
 import Card from '../common/Card';
+import { RadioGroup } from '@ui-sdk/react/radio';
 import ChoiceOption from '../common/ChoiceOption';
 import DescriptionList from '../common/DescriptionList';
 import Flag from '../common/Flag';
 import { Icon } from '../common/Icon';
-import IconButton from '../common/IconButton';
 import { List, ListItem } from '../common/List';
 import LoadingIndicator from '../common/LoadingIndicator';
 import Page from '../common/Page';
@@ -20,10 +20,10 @@ import RichText, { RichTextLink } from '../common/RichText';
 import Stack from '../common/Stack';
 import Text from '../common/Text';
 import { MOBILE } from '../common/breakpoints';
-import { AppShell, AppShellMain, AppShellSidebar, Rail, RailButton, RailSeal, RailSpacer } from '../layout/AppShell';
+import { AppShell, AppShellMain, AppShellSidebar, Rail, RailButton, RailIconButton, RailSeal, RailSpacer } from '../layout/AppShell';
 import useMediaQuery from '../../hooks/useMediaQuery';
 import { useSettings } from '../../hooks/useSettings';
-import { resolveMode } from '../../utils/themeUtils';
+import { useDarkMode } from '../../services/appearance';
 import {
   checkTrainingAnswer,
   downloadTrainingCertificate,
@@ -74,7 +74,7 @@ const TrainingScreen = () => {
   const { t, i18n } = useTranslation();
   const language = i18n.language;
   const { settings, updateSetting } = useSettings();
-  const darkNow = resolveMode(settings.mode) === 'dark';
+  const darkMode = useDarkMode();
   const completed = trainingStatusSignal.value?.completed ?? false;
   const scrollRef = useRef<HTMLDivElement>(null);
   const isMobile = useMediaQuery(MOBILE);
@@ -93,8 +93,6 @@ const TrainingScreen = () => {
   const [feedback, setFeedback] = useState<Record<string, TrainingQuestionResult>>({});
   const [checking, setChecking] = useState(false);
   const [result, setResult] = useState<TrainingSubmitResult | null>(null);
-  const [submitting, setSubmitting] = useState(false);
-  const [downloading, setDownloading] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -113,7 +111,7 @@ const TrainingScreen = () => {
 
   // One rail button with the flag of the current language. It switches to the other language
   const languageButton = (
-    <IconButton
+    <RailIconButton
       icon={<Flag src={settings.language === 'no-NB' ? '/no.svg' : '/gb.svg'} />}
       label={t('settings.language.title')}
       tooltipPlacement={isMobile ? 'bottom' : 'right'}
@@ -126,11 +124,11 @@ const TrainingScreen = () => {
     <div className="training-screen">
       <AppShell mobile={isMobile} view="detail">
         <AppShellSidebar>
-          <Rail mobile={isMobile}>
-            <RailSeal src={darkNow ? '/chatuit-logo.svg' : '/chatuit-logo-darkblue.svg'} alt="UiT" title="ChatUiT" />
+          <Rail mobile={isMobile} label={t('navigation.menu')}>
+            <RailSeal src={darkMode.logo} alt="UiT" title="ChatUiT" />
             <RailSpacer />
             {languageButton}
-            <RailButton icon={darkNow ? 'sun' : 'moon'} label={t('sidebar.toggleMode')} active={false} onClick={() => updateSetting('mode', darkNow ? 'light' : 'dark')} />
+            <RailButton icon={darkMode.dark ? 'sun' : 'moon'} label={t('sidebar.toggleMode')} active={false} onClick={darkMode.toggle} />
             {completed && <RailButton icon="close" label={t('common.close')} active={false} onClick={close} />}
           </Rail>
         </AppShellSidebar>
@@ -207,24 +205,18 @@ const TrainingScreen = () => {
   };
 
   const submit = async () => {
-    setSubmitting(true);
     try {
       setResult(await submitTraining(course.version, answers, language));
     } catch {
       // The API service has shown the error.
-    } finally {
-      setSubmitting(false);
     }
   };
 
   const download = async () => {
-    setDownloading(true);
     try {
       await downloadTrainingCertificate(language);
     } catch {
       // The API service has shown the error.
-    } finally {
-      setDownloading(false);
     }
   };
 
@@ -279,7 +271,7 @@ const TrainingScreen = () => {
             <Stack direction="row" gap="md" wrap>
               <Button variant="primary" onClick={() => openStep(1)}>{t('training.start')}</Button>
               {completed && <Button variant="secondary" onClick={startTest}>{t('training.goToTest')}</Button>}
-              {completed && <Button variant="subtle" onClick={download} loading={downloading}>{t('training.menu.certificate')}</Button>}
+              {completed && <Button variant="subtle" onClick={download}>{t('training.menu.certificate')}</Button>}
             </Stack>
           </Card>
 
@@ -332,19 +324,17 @@ const TrainingScreen = () => {
             <Text as="h1" variant="page-title" id="training-question">{question.text}</Text>
           </Box>
 
-          <Stack gap="sm" role="radiogroup" aria-labelledby="training-question">
+          <RadioGroup
+            className="choice-list"
+            aria-labelledby="training-question"
+            value={(questionFeedback ? answers[question.id] : picked) ?? null}
+            onValueChange={value => setPicked(value as string)}
+            disabled={questionFeedback !== undefined || checking}
+          >
             {question.options.map(option => (
-              <ChoiceOption
-                key={option.id}
-                mode="radio"
-                picked={(questionFeedback ? answers[question.id] : picked) === option.id}
-                outcome={optionOutcome(option.id)}
-                label={option.text}
-                disabled={questionFeedback !== undefined || checking}
-                onClick={() => setPicked(option.id)}
-              />
+              <ChoiceOption key={option.id} mode="radio" value={option.id} outcome={optionOutcome(option.id)} label={option.text} />
             ))}
-          </Stack>
+          </RadioGroup>
 
           {questionFeedback?.correct && (
             <Alert tone="tip" icon="check" title={t('training.correct')} mt="xl">{t('training.correctBody')}</Alert>
@@ -363,13 +353,13 @@ const TrainingScreen = () => {
               )}
             </span>
             {!questionFeedback && (
-              <Button variant="primary" onClick={answer} disabled={picked === null} loading={checking}>{t('training.answer')}</Button>
+              <Button variant="primary" onClick={answer} disabled={picked === null}>{t('training.answer')}</Button>
             )}
             {questionFeedback && !lastQuestion && (
               <Button variant="primary" onClick={() => showQuestion(questionIndex + 1)}>{t('training.nextQuestion')}</Button>
             )}
             {questionFeedback && lastQuestion && (
-              <Button variant="primary" onClick={submit} loading={submitting}>{t('training.seeResult')}</Button>
+              <Button variant="primary" onClick={submit}>{t('training.seeResult')}</Button>
             )}
           </Stack>
         </>
@@ -398,7 +388,7 @@ const TrainingScreen = () => {
             {result.passed ? (
               <>
                 <Button variant="primary" onClick={close}>{t('training.continue')}</Button>
-                <Button variant="secondary" onClick={download} loading={downloading}>{t('training.menu.certificate')}</Button>
+                <Button variant="secondary" onClick={download}>{t('training.menu.certificate')}</Button>
                 {wrong.length > 0 && <Button variant="subtle" onClick={startTest}>{t('training.retakeTest')}</Button>}
               </>
             ) : (

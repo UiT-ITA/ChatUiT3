@@ -108,7 +108,17 @@
   animation: caret-blink var(--dur-loop) steps(1) infinite;
 }
 
-/* The place of a code block in a message; contains the block's margins, so its height is the block's full height */
-.chat-code-block {
-  display: flow-root;
+/* A code block in full view: a dialog over the whole window */
+.code-full-view {
+  position: fixed;
+  inset: 0;
+  width: auto;
+  max-width: none;
+  height: auto;
+  max-height: none;
+  margin: 0;
+  padding: var(--space-lg);
+  border: none;
+  background: var(--bg);
+  color: var(--text);
 }

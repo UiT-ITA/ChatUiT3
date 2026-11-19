@@ -4,8 +4,6 @@ import type { AppSettings } from '../types/settingsModels';
 export interface SettingsContextType {
   settings: AppSettings;
   updateSetting: <K extends keyof AppSettings>(key: K, value: AppSettings[K]) => void;
-  exportData: (format: 'json' | 'markdown' | 'txt') => void;
-  deleteAllData: () => void;
 }
 
 export const SettingsContext = createContext<SettingsContextType | undefined>(undefined);

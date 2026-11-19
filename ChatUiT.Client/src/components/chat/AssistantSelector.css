@@ -31,12 +31,23 @@
   text-align: center;
 }
 
+/* The options, with each assistant's favourite and info buttons in a column beside them */
+.assistant-selector__rows {
+  display: flex;
+}
+
+.assistant-selector__options {
+  flex: 1;
+  min-width: 0;
+}
+
 .assistant-selector__row {
   align-items: flex-start;
 }
 
 .assistant-selector__row-leading,
-.assistant-selector__row-line {
+.assistant-selector__row-line,
+.assistant-selector__actions-row > * {
   display: flex;
   align-items: center;
   height: var(--control-sm);
@@ -48,10 +59,20 @@
   min-width: 0;
 }
 
-.assistant-selector__row-end {
+.assistant-selector__actions {
+  flex: 0 0 auto;
+}
+
+/* As tall as an option: its padding and two lines */
+.assistant-selector__actions-row {
+  display: flex;
+  flex-direction: column;
+  padding: var(--space-sm) var(--space-md) var(--space-sm) 0;
+}
+
+.assistant-selector__actions-row > * {
   justify-content: center;
   min-width: var(--control-sm);
-  margin-left: auto;
 }
 
 .assistant-selector__separator {
@@ -74,4 +95,13 @@
 
 [aria-expanded='true'] .assistant-selector__arrow {
   transform: rotate(180deg);
+}
+
+/* The info button that shows an assistant's description */
+.assistant-selector__info {
+  padding: 0;
+  border: none;
+  background: none;
+  color: inherit;
+  cursor: default;
 }

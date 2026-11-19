@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useId, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { deleteModel, testModel } from '../../services/adminService';
@@ -10,8 +10,12 @@ import Checkbox, { CheckboxGroup } from '../common/Checkbox';
 import Field from '../common/Field';
 import Button from '../common/Button';
 import { ConfirmDialog } from '../common/Dialog';
-import ModelCombobox, { type ModelComboboxOption } from './ModelCombobox';
-import { ALL_ROLES } from './modelEditorShared';
+import type { ModelIdOption } from './modelEditorShared';
+import { ALL_ROLES } from '../../types/admin';
+import { Autocomplete, AutocompleteContent, AutocompleteGroup, AutocompleteGroupLabel, AutocompleteInput, AutocompleteItem, AutocompleteLabel, AutocompleteList, AutocompleteTrigger } from '@ui-sdk/react/autocomplete';
+import { OptionContent } from '../common/Listbox';
+import { floatingPanelClass } from '../common/floatingPanel';
+import { spacePx } from '../common/layout';
 import FormFooter from '../common/FormFooter';
 import Text from '../common/Text';
 
@@ -33,19 +37,49 @@ export const EndpointSelect: React.FC<{ value: string; endpoints: EndpointDto[];
   );
 };
 
-export const ModelIdField: React.FC<{ value: string; options: ModelComboboxOption[]; onChange: (value: string) => void }> = ({ value, options, onChange }) => {
+/** A text input for the model id that also offers known ids: ids matching the text first, the rest under "other". */
+export const ModelIdField: React.FC<{ value: string; options: ModelIdOption[]; onChange: (value: string) => void }> = ({ value, options, onChange }) => {
   const { t } = useTranslation();
+  const boxId = useId();
+  const query = value.trim().toLowerCase();
+  const isMatch = (option: ModelIdOption) =>
+    !!query && (option.value.toLowerCase().includes(query) || (option.detail?.toLowerCase().includes(query) ?? false));
+  const matches = options.filter(isMatch);
+  const others = options.filter(option => !isMatch(option));
+  const item = (option: ModelIdOption) => (
+    <AutocompleteItem key={option.value} value={option.value}>
+      <OptionContent trailing={option.detail}>
+        {option.value}
+        {option.added && <Icon name="check" color="accent" label={t('admin.models.fields.modelIdAdded')} />}
+      </OptionContent>
+    </AutocompleteItem>
+  );
+
   return (
-    <Field label={t('admin.models.fields.modelId')}>
-      <ModelCombobox
-        value={value}
-        options={options}
-        placeholder={t('admin.models.fields.modelIdPlaceholder')}
-        addedLabel={t('admin.models.fields.modelIdAdded')}
-        otherLabel={t('admin.models.fields.modelIdOther')}
-        onChange={onChange}
-      />
-    </Field>
+    <Autocomplete value={value} onValueChange={onChange} filter={false} openOnFocus>
+      <div className="field">
+        <AutocompleteLabel className="field__label t-label">{t('admin.models.fields.modelId')}</AutocompleteLabel>
+        <div id={boxId} className="input-box input-box--medium input-box--full-width text-input">
+          <AutocompleteInput className="input-box__input t-body" placeholder={t('admin.models.fields.modelIdPlaceholder')} />
+          {options.length > 0 && (
+            <AutocompleteTrigger className="input-box__adornment input-box__button" aria-label={t('admin.models.fields.modelId')}>
+              <Icon name="arrowDown" size="md" />
+            </AutocompleteTrigger>
+          )}
+        </div>
+      </div>
+      <AutocompleteContent anchor={`#${boxId}`} sideOffset={spacePx('xs')} className={floatingPanelClass()} style={{ width: 'var(--anchor-width)' }}>
+        <AutocompleteList>
+          {matches.map(item)}
+          {others.length > 0 && (
+            <AutocompleteGroup>
+              {matches.length > 0 && <AutocompleteGroupLabel className="option-group__label t-caption">{t('admin.models.fields.modelIdOther')}</AutocompleteGroupLabel>}
+              {others.map(item)}
+            </AutocompleteGroup>
+          )}
+        </AutocompleteList>
+      </AutocompleteContent>
+    </Autocomplete>
   );
 };
 
@@ -80,27 +114,14 @@ export function KnownModelSelect<T extends CatalogModelDto>({ catalog, value, on
 
 export const AllowedRolesField: React.FC<{ value: UserRole[]; onChange: (roles: UserRole[]) => void }> = ({ value, onChange }) => {
   const { t } = useTranslation();
-  const toggleRole = (role: UserRole, checked: boolean) => {
-    const set = new Set(value);
-    if (checked) set.add(role);
-    else set.delete(role);
-    onChange(Array.from(set));
-  };
-
   return (
     <Field
       label={t('admin.models.fields.allowedRoles')}
       description={value.length === 0 ? t('admin.models.fields.allowedRolesRequired') : undefined}
     >
-      <CheckboxGroup>
+      <CheckboxGroup value={value} onChange={roles => onChange(roles as UserRole[])}>
         {ALL_ROLES.map(role => (
-          <Checkbox
-            key={role}
-            checked={value.includes(role)}
-            onChange={(checked) => toggleRole(role, checked)}
-          >
-            {t(`roles.${role}`)}
-          </Checkbox>
+          <Checkbox key={role} value={role}>{t(`roles.${role}`)}</Checkbox>
         ))}
       </CheckboxGroup>
     </Field>
@@ -114,14 +135,6 @@ export const ModelEditorFooter: React.FC<{ modelId: string; dirty: boolean }> = 
   const [testing, setTesting] = useState(false);
   const [testResult, setTestResult] = useState<ModelTestResultDto | null>(null);
   const [confirmDelete, setConfirmDelete] = useState(false);
-  const [deleting, setDeleting] = useState(false);
-
-  const [syncedModelId, setSyncedModelId] = useState(modelId);
-  if (modelId !== syncedModelId) {
-    setSyncedModelId(modelId);
-    setTestResult(null);
-    setConfirmDelete(false);
-  }
 
   const handleTest = async () => {
     if (testing) return;
@@ -137,16 +150,12 @@ export const ModelEditorFooter: React.FC<{ modelId: string; dirty: boolean }> = 
   };
 
   const handleDelete = async () => {
-    if (deleting) return;
-    setDeleting(true);
     try {
       await deleteModel(modelId);
       await loadAdminData(true);
       navigate('/admin/models');
     } catch (error) {
       console.error('Failed to delete model:', error);
-    } finally {
-      setDeleting(false);
     }
   };
 
@@ -177,7 +186,6 @@ export const ModelEditorFooter: React.FC<{ modelId: string; dirty: boolean }> = 
         title={t('admin.models.dialog.delete.title')}
         message={t('admin.models.dialog.delete.confirm')}
         confirmLabel={t('admin.models.actions.delete')}
-        busy={deleting}
         onConfirm={handleDelete}
         onCancel={() => setConfirmDelete(false)}
       />

@@ -1,4 +1,5 @@
 import React from 'react';
+import { Meter, MeterIndicator, MeterTrack } from '@ui-sdk/react/meter';
 import { cx } from './layout';
 import './ProgressBar.css';
 
@@ -10,14 +11,18 @@ interface ProgressBarProps {
   max: number;
   // The fill colour: accent, warning or danger
   state?: MeterState;
+  // The id of the text that names the measurement
+  'aria-labelledby'?: string;
   className?: string;
 }
 
-/** A full-width bar, exposed as a meter, that fills with value out of max. */
-const ProgressBar: React.FC<ProgressBarProps> = ({ value, max, state = 'normal', className }) => (
-  <div className={cx('progress-bar', state !== 'normal' && `progress-bar--${state}`, className)} role="meter" aria-valuemin={0} aria-valuemax={max} aria-valuenow={value}>
-    <div className="progress-bar__fill" style={{ width: `${Math.min(100, max > 0 ? (value / max) * 100 : 100)}%` }} />
-  </div>
+/** A full-width ui-sdk meter bar that fills with value out of max. */
+const ProgressBar: React.FC<ProgressBarProps> = ({ value, max, state = 'normal', className, ...props }) => (
+  <Meter value={value} max={max} className={cx('progress-bar', state !== 'normal' && `progress-bar--${state}`, className)} {...props}>
+    <MeterTrack className="progress-bar__track">
+      <MeterIndicator className="progress-bar__fill" />
+    </MeterTrack>
+  </Meter>
 );
 
 export default ProgressBar;

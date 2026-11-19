@@ -15,7 +15,7 @@ import { getGenerations } from '../../services/mediaGenerationService';
 import { adminEndpointsSignal, adminModelsSignal, adminAssistantsSignal, adminToolsSignal, adminInternalAgentsSignal, loadAdminData } from '../../services/adminDataService';
 import { useAuth } from '../../hooks/useAuth';
 import { toolboxLabel, ADMIN_DOMAINS, ADMIN_DOMAIN_ICONS, ADMIN_SETTINGS_PAGES, type AdminDomain } from '../../types/admin';
-import type { SettingsCategory } from '../../types/settingsModels';
+import { SETTINGS_TABS, settingsTab, type SettingsCategory } from '../../types/settingsModels';
 import { MODEL_TYPES } from '../../types/modelModels';
 import { HELP_SECTIONS, isHelpSection } from '../help/helpSections';
 import HelpSectionNav from '../help/HelpSectionNav';
@@ -29,7 +29,6 @@ interface ContextColumnProps {
   peek?: boolean;
 }
 
-const SETTINGS_TABS: SettingsCategory[] = ['appearance', 'personalization', 'dataControl'];
 
 const SETTINGS_TAB_ICONS: Record<SettingsCategory, IconName> = {
   appearance: 'sun',
@@ -77,7 +76,7 @@ const ContextColumn = ({ isMobile, collapsed, peek }: ContextColumnProps) => {
 
   // The open tab or item of the section, and the open item of an admin tab
   const [activeId, activeAdminId] = params;
-  const activeSettingsTab = SETTINGS_TABS.includes(activeId as SettingsCategory) ? activeId : 'appearance';
+  const activeSettingsTab = settingsTab(activeId);
   const activeHelpSection = isHelpSection(activeId) ? activeId : HELP_SECTIONS[0];
   const activeInsightsTab = isInsightsTab(activeId) ? activeId : INSIGHTS_TABS[0];
 

@@ -1,5 +1,6 @@
-/* Semantic colour tokens per data-theme ("blue" UiT profile, "grey" neutral) and data-mode ("light", "dark").
-   Every selector also matches nested elements, so an element with its own data-theme and data-mode renders in that theme. */
+/* Semantic colour tokens per data-theme ("blue" UiT profile, "grey" neutral). Each colour holds its light and its dark
+   value in light-dark(), and data-color-scheme ("system", "light", "dark") sets which one shows.
+   Every selector also matches nested elements, so an element with its own data-theme and data-color-scheme renders in that theme. */
 
 @import './tokens.css';
 
@@ -77,215 +78,125 @@
   font-size: 125%;
 }
 
-/* LIGHT MODE — status, code, scrim and shadows shared by both themes */
+/* COLOR SCHEME — "system" follows the browser */
 :root,
-[data-mode="light"] {
-  --danger: var(--uit-red);
-  --danger-soft: var(--red-10);
-  --warn: var(--uit-yellow);
-  --warn-soft: var(--yellow-10);
-  --success: var(--green);
-  --success-soft: #e7f2ed;
-
-  --code-text: var(--text);
-  --code-comment: var(--grey-600);
-  --code-punctuation: var(--grey-700);
-  --code-keyword: #8a00c8;
-  --code-string: #00782e;
-  --code-number: #a34700;
-  --code-function: #0b54a8;
-  --code-type: #8a3d00;
-  --code-property: #a8121c;
-
-  --scrim: rgba(0, 27, 40, .6);
-  --shadow-color: var(--uit-dark-blue);
-  --shadow-card: 0 1px 2px color-mix(in srgb, var(--shadow-color) 8%, transparent), 0 2px 8px color-mix(in srgb, var(--shadow-color) 10%, transparent);
-  --shadow-overlay: 0 8px 40px color-mix(in srgb, var(--shadow-color) 22%, transparent);
+[data-color-scheme="system"] {
+  color-scheme: light dark;
 }
 
-/* DARK MODE — status, code, scrim and shadows shared by both themes */
-[data-mode="dark"] {
-  --danger: var(--red-60);
-  --danger-soft: #3a1418;
-  --warn: var(--yellow-60);
-  --warn-soft: #3a2c08;
-  --success: var(--green-60);
-  --success-soft: #0d2b20;
-
-  --code-text: #e4e8ea;
-  --code-comment: #8a9aa1;
-  --code-punctuation: #a3b0b5;
-  --code-keyword: #d09cf0;
-  --code-string: #a8d8a0;
-  --code-number: #f2c27a;
-  --code-function: #8fb8ff;
-  --code-type: #ffcf7a;
-  --code-property: #f29b9b;
-
-  --scrim: rgba(0, 0, 0, .6);
-  --shadow-color: var(--uit-black);
-  --shadow-card: 0 1px 2px color-mix(in srgb, var(--shadow-color) 25%, transparent), 0 2px 8px color-mix(in srgb, var(--shadow-color) 30%, transparent);
-  --shadow-overlay: 0 8px 40px color-mix(in srgb, var(--shadow-color) 50%, transparent);
+[data-color-scheme="light"] {
+  color-scheme: light;
 }
 
-/* BLUE · LIGHT (default) */
+[data-color-scheme="dark"] {
+  color-scheme: dark;
+}
+
+/* Status, code, scrim and shadows shared by both themes */
 :root,
-[data-theme="blue"][data-mode="light"] {
-  --bg: var(--uit-white);
-  --panel: var(--dark-blue-05);
-  --panel-2: var(--dark-blue-10);
-  --surface: var(--uit-white);
-  --surface-raised: var(--uit-white);
-  --tint: var(--blue-05);
+[data-color-scheme] {
+  --danger: light-dark(var(--uit-red), var(--red-60));
+  --danger-soft: light-dark(var(--red-10), #3a1418);
+  --warn: light-dark(var(--uit-yellow), var(--yellow-60));
+  --warn-soft: light-dark(var(--yellow-10), #3a2c08);
+  --success: light-dark(var(--green), var(--green-60));
+  --success-soft: light-dark(#e7f2ed, #0d2b20);
 
-  --text: var(--uit-dark-blue);
-  --text-2: var(--grey-700);
-  --text-3: var(--grey-600);
+  --code-text: light-dark(var(--text), #e4e8ea);
+  --code-comment: light-dark(var(--grey-600), #8a9aa1);
+  --code-punctuation: light-dark(var(--grey-700), #a3b0b5);
+  --code-keyword: light-dark(#8a00c8, #d09cf0);
+  --code-string: light-dark(#00782e, #a8d8a0);
+  --code-number: light-dark(#a34700, #f2c27a);
+  --code-function: light-dark(#0b54a8, #8fb8ff);
+  --code-type: light-dark(#8a3d00, #ffcf7a);
+  --code-property: light-dark(#a8121c, #f29b9b);
 
-  --line: var(--grey-200);
-  --line-soft: var(--grey-100);
-  --line-strong: var(--grey-300);
-  --line-frame: var(--line);
+  --scrim: light-dark(rgba(0, 27, 40, .6), rgba(0, 0, 0, .6));
+  --shadow-card:
+    0 1px 2px light-dark(color-mix(in srgb, var(--uit-dark-blue) 8%, transparent), color-mix(in srgb, var(--uit-black) 25%, transparent)),
+    0 2px 8px light-dark(color-mix(in srgb, var(--uit-dark-blue) 10%, transparent), color-mix(in srgb, var(--uit-black) 30%, transparent));
+  --shadow-overlay: 0 8px 40px light-dark(color-mix(in srgb, var(--uit-dark-blue) 22%, transparent), color-mix(in srgb, var(--uit-black) 50%, transparent));
+}
 
-  --brand: var(--uit-dark-blue);
-  --accent: var(--uit-blue);
+/* BLUE (default) — dark: ton-i-ton, light blue on dark blue */
+:root,
+[data-theme="blue"] {
+  --bg: light-dark(var(--uit-white), #00202e);
+  --panel: light-dark(var(--dark-blue-05), #001926);
+  --panel-2: light-dark(var(--dark-blue-10), #003247);
+  --surface: light-dark(var(--uit-white), var(--night-blue-800));
+  --surface-raised: light-dark(var(--uit-white), var(--night-blue-800));
+  --tint: light-dark(var(--blue-05), var(--night-blue-700));
+
+  --text: light-dark(var(--uit-dark-blue), #e9eef0);
+  --text-2: light-dark(var(--grey-700), #a8bcc4);
+  --text-3: light-dark(var(--grey-600), #92a8b1);
+
+  --line: light-dark(var(--grey-200), #1f5a72);
+  --line-soft: light-dark(var(--grey-100), #134458);
+  --line-strong: light-dark(var(--grey-300), #3f7890);
+  --line-frame: light-dark(var(--line), var(--line-strong));
+
+  --brand: light-dark(var(--uit-dark-blue), var(--uit-light-blue));
+  --accent: light-dark(var(--uit-blue), var(--light-blue-80));
   --accent-2: var(--uit-light-blue);
 
-  --btn-bg: var(--uit-dark-blue);
-  --btn-fg: var(--uit-white);
-  --btn-hover: #002536;
+  --btn-bg: light-dark(var(--uit-dark-blue), var(--uit-light-blue));
+  --btn-fg: light-dark(var(--uit-white), var(--uit-dark-blue));
+  --btn-hover: light-dark(#002536, var(--light-blue-80));
 
-  --sel: var(--blue-10);
+  --sel: light-dark(var(--blue-10), #0b4259);
   --sel-bg: var(--uit-light-blue);
   --sel-fg: var(--uit-dark-blue);
 
-  --info-soft: var(--blue-10);
-  --code-bg: #f1f4f6;
+  --info-soft: light-dark(var(--blue-10), var(--night-blue-700));
+  --code-bg: light-dark(#f1f4f6, #00151f);
 
   /* Categorical colours for charts */
-  --viz-1: var(--uit-dark-blue);
-  --viz-2: var(--uit-blue);
-  --viz-3: var(--uit-light-blue);
-  --viz-4: var(--green);
-  --viz-5: var(--grey-300);
+  --viz-1: light-dark(var(--uit-dark-blue), var(--light-blue-40));
+  --viz-2: light-dark(var(--uit-blue), var(--uit-light-blue));
+  --viz-3: light-dark(var(--uit-light-blue), var(--blue-60));
+  --viz-4: light-dark(var(--green), var(--green-60));
+  --viz-5: light-dark(var(--grey-300), var(--grey-500));
 }
 
-/* BLUE · DARK — ton-i-ton: light blue on dark blue */
-[data-theme="blue"][data-mode="dark"] {
-  --bg: #00202e;
-  --panel: #001926;
-  --panel-2: #003247;
-  --surface: var(--night-blue-800);
-  --surface-raised: var(--night-blue-800);
-  --tint: var(--night-blue-700);
+/* GREY — same structure, greys instead of blues; dark: neutral near-black */
+[data-theme="grey"] {
+  --bg: light-dark(var(--uit-white), var(--night-grey-900));
+  --panel: light-dark(var(--grey-50), #101315);
+  --panel-2: light-dark(var(--grey-100), #262c2f);
+  --surface: light-dark(var(--uit-white), var(--night-grey-800));
+  --surface-raised: light-dark(var(--uit-white), var(--night-grey-800));
+  --tint: light-dark(var(--grey-50), var(--night-grey-700));
 
-  --text: #e9eef0;
-  --text-2: #a8bcc4;
-  --text-3: #92a8b1;
+  --text: light-dark(var(--grey-900), #e8eaec);
+  --text-2: light-dark(var(--grey-700), #b0b8bc);
+  --text-3: light-dark(var(--grey-600), #949fa4);
 
-  --line: #1f5a72;
-  --line-soft: #134458;
-  --line-strong: #3f7890;
-  --line-frame: var(--line-strong);
+  --line: light-dark(var(--grey-200), #4a565d);
+  --line-soft: light-dark(var(--grey-100), #353d42);
+  --line-strong: light-dark(var(--grey-300), #6a777e);
+  --line-frame: light-dark(var(--line), var(--line-strong));
 
-  --brand: var(--uit-light-blue);
-  --accent: var(--light-blue-80);
-  --accent-2: var(--uit-light-blue);
+  --brand: light-dark(var(--grey-900), var(--grey-200));
+  --accent: light-dark(var(--grey-700), var(--grey-300));
+  --accent-2: light-dark(var(--grey-300), var(--grey-400));
 
-  --btn-bg: var(--uit-light-blue);
-  --btn-fg: var(--uit-dark-blue);
-  --btn-hover: var(--light-blue-80);
+  --btn-bg: light-dark(var(--grey-900), var(--grey-200));
+  --btn-fg: light-dark(var(--uit-white), var(--night-grey-900));
+  --btn-hover: light-dark(#0f1418, var(--grey-300));
 
-  --sel: #0b4259;
-  --sel-bg: var(--uit-light-blue);
-  --sel-fg: var(--uit-dark-blue);
-
-  --info-soft: var(--night-blue-700);
-  --code-bg: #00151f;
-
-  --viz-1: var(--light-blue-40);
-  --viz-2: var(--uit-light-blue);
-  --viz-3: var(--blue-60);
-  --viz-4: var(--green-60);
-  --viz-5: var(--grey-500);
-}
-
-/* GREY · LIGHT — same structure, greys instead of blues */
-[data-theme="grey"][data-mode="light"] {
-  --bg: var(--uit-white);
-  --panel: var(--grey-50);
-  --panel-2: var(--grey-100);
-  --surface: var(--uit-white);
-  --surface-raised: var(--uit-white);
-  --tint: var(--grey-50);
-
-  --text: var(--grey-900);
-  --text-2: var(--grey-700);
-  --text-3: var(--grey-600);
-
-  --line: var(--grey-200);
-  --line-soft: var(--grey-100);
-  --line-strong: var(--grey-300);
-  --line-frame: var(--line);
-
-  --brand: var(--grey-900);
-  --accent: var(--grey-700);
-  --accent-2: var(--grey-300);
-
-  --btn-bg: var(--grey-900);
-  --btn-fg: var(--uit-white);
-  --btn-hover: #0f1418;
-
-  --sel: var(--grey-100);
+  --sel: light-dark(var(--grey-100), #323a3f);
   --sel-bg: var(--grey-300);
-  --sel-fg: var(--grey-900);
+  --sel-fg: light-dark(var(--grey-900), var(--night-grey-900));
 
-  --info-soft: var(--grey-100);
-  --code-bg: #f2f3f4;
+  --info-soft: light-dark(var(--grey-100), var(--night-grey-700));
+  --code-bg: light-dark(#f2f3f4, #0d1012);
 
-  --viz-1: var(--grey-900);
-  --viz-2: var(--grey-700);
+  --viz-1: light-dark(var(--grey-900), var(--grey-200));
+  --viz-2: light-dark(var(--grey-700), var(--grey-400));
   --viz-3: var(--grey-500);
-  --viz-4: var(--green);
-  --viz-5: var(--grey-300);
-}
-
-/* GREY · DARK — neutral near-black */
-[data-theme="grey"][data-mode="dark"] {
-  --bg: var(--night-grey-900);
-  --panel: #101315;
-  --panel-2: #262c2f;
-  --surface: var(--night-grey-800);
-  --surface-raised: var(--night-grey-800);
-  --tint: var(--night-grey-700);
-
-  --text: #e8eaec;
-  --text-2: #b0b8bc;
-  --text-3: #949fa4;
-
-  --line: #4a565d;
-  --line-soft: #353d42;
-  --line-strong: #6a777e;
-  --line-frame: var(--line-strong);
-
-  --brand: var(--grey-200);
-  --accent: var(--grey-300);
-  --accent-2: var(--grey-400);
-
-  --btn-bg: var(--grey-200);
-  --btn-fg: var(--night-grey-900);
-  --btn-hover: var(--grey-300);
-
-  --sel: #323a3f;
-  --sel-bg: var(--grey-300);
-  --sel-fg: var(--night-grey-900);
-
-  --info-soft: var(--night-grey-700);
-  --code-bg: #0d1012;
-
-  --viz-1: var(--grey-200);
-  --viz-2: var(--grey-400);
-  --viz-3: var(--grey-500);
-  --viz-4: var(--green-60);
-  --viz-5: #4a5459;
+  --viz-4: light-dark(var(--green), var(--green-60));
+  --viz-5: light-dark(var(--grey-300), #4a5459);
 }

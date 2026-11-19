@@ -199,6 +199,16 @@
   to { transform: rotate(360deg); }
 }
 
+/* A pending button shows the spinner in place of its idle content */
+.button__idle {
+  display: contents;
+}
+
+.button:not([data-pending]) [data-show="pending"],
+.button[data-pending] [data-show="idle"] {
+  display: none;
+}
+
 /* Frame: a hairline in the line colour, the strong line colour in dark modes */
 .button--frame-line,
 .button--frame-line-hover {
@@ -213,25 +223,15 @@
 /* A framed toggle that is on: an accent tint without a frame */
 .button--frame-line.button--active,
 .button--frame-line.button--active:hover:not(:disabled) {
-  background: color-mix(in srgb, var(--accent) 22%, transparent);
+  background: light-dark(color-mix(in srgb, var(--accent) 22%, transparent), color-mix(in srgb, var(--accent) 28%, transparent));
   border-color: transparent;
   color: var(--text);
-}
-
-[data-mode="dark"] .button--frame-line.button--active,
-[data-mode="dark"] .button--frame-line.button--active:hover:not(:disabled) {
-  background: color-mix(in srgb, var(--accent) 28%, transparent);
 }
 
 /* Active fill 'strong': an accent tint in light modes, the selection fill in dark modes */
 .button--active-fill-strong.button--active,
 .button--active-fill-strong.button--active:hover:not(:disabled) {
-  background: color-mix(in srgb, var(--accent) 20%, var(--panel));
-}
-
-[data-mode="dark"] .button--active-fill-strong.button--active,
-[data-mode="dark"] .button--active-fill-strong.button--active:hover:not(:disabled) {
-  background: var(--sel);
+  background: light-dark(color-mix(in srgb, var(--accent) 20%, var(--panel)), var(--sel));
 }
 
 /* Active fill 'none': only the main text colour */

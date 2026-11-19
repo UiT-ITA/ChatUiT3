@@ -1,9 +1,7 @@
 import { useSignals } from '@preact/signals-react/runtime';
-import { Suspense, createContext, lazy, useContext, useEffect, useId, useMemo, useRef, useState, memo, type ComponentProps, type ReactNode } from 'react';
-import { createPortal } from 'react-dom';
+import { Suspense, createContext, lazy, useContext, useMemo, useState, memo, type ComponentProps, type ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
 import { getActivitySignal, getStreamSignal } from '../../services/chatService';
-import { filledCodeBlockSignal } from '../../services/uiService';
 import type { ChatMessageDto } from '../../types/chatModels';
 import ReactMarkdown, { type ExtraProps } from 'react-markdown';
 import remarkGfm from 'remark-gfm';
@@ -21,10 +19,10 @@ import ZoomToggle from '../common/ZoomToggle';
 import type { IconName } from '../common/Icon';
 import FileThumbnail from './FileThumbnail';
 import MessageActivity from './MessageActivity';
-import { FillLayerContext, FilledContext } from './codeBlockFill';
+import { Dialog, DialogClose, DialogContent, DialogTrigger } from '@ui-sdk/react/dialog';
+import { FilledContext } from './codeBlockFill';
 import useMediaQuery from '../../hooks/useMediaQuery';
 import { MOBILE } from '../common/breakpoints';
-import { pxToRem } from '../../utils/units';
 import './Message.css';
 import { track, trackError } from '../../services/telemetryService';
 
@@ -93,67 +91,32 @@ function WrapAction({ wrap, onToggle }: { wrap: boolean; onToggle: () => void })
   );
 }
 
-/**
- * A code block in a message, at most md tall, with a full view action. In full view the block moves into the layer
- * over the chat area, a placeholder of its height keeps its place in the message, and focus moves to its close
- * action. Closing it, or the header's back control, moves it back and returns focus to its full view action.
- */
+/** A code block in a message, at most md tall, with a full view action that shows it in a dialog over the whole window. */
 function ChatCodeBlock({ title, actions, wrap, children }: { title: string; actions: ReactNode; wrap?: boolean; children: ReactNode }) {
-  useSignals();
   const { t } = useTranslation();
-  const id = useId();
-  const fillLayer = useContext(FillLayerContext);
-  const isFilled = filledCodeBlockSignal.value?.id === id && fillLayer !== null;
-  const placeRef = useRef<HTMLDivElement>(null);
-  const openRef = useRef<HTMLButtonElement>(null);
-  const closeRef = useRef<HTMLButtonElement>(null);
-  const wasFilledRef = useRef(false);
-  const [placeholderHeight, setPlaceholderHeight] = useState<string>();
-
-  // Leaves full view when the block goes away
-  useEffect(() => () => {
-    if (filledCodeBlockSignal.peek()?.id === id) filledCodeBlockSignal.value = null;
-  }, [id]);
-
-  useEffect(() => {
-    if (isFilled) closeRef.current?.focus();
-    else if (wasFilledRef.current) openRef.current?.focus();
-    wasFilledRef.current = isFilled;
-  }, [isFilled]);
-
-  const open = () => {
-    setPlaceholderHeight(pxToRem(placeRef.current?.getBoundingClientRect().height ?? 0));
-    filledCodeBlockSignal.value = { id, title };
-  };
-
-  const block = (filled: boolean) => (
-    <FilledContext.Provider value={filled}>
+  return (
+    <Dialog>
       <CodeBlock
         label={title}
         wrap={wrap}
-        limited={!filled}
-        filled={filled}
-        actions={(
-          <>
-            {actions}
-            {filled ? (
-              <CodeAction ref={closeRef} label={t('chat.actions.closeFullView')} startIcon="closeFullView" onClick={() => { filledCodeBlockSignal.value = null; }} />
-            ) : (
-              <CodeAction ref={openRef} label={t('chat.actions.fullView')} startIcon="fullView" onClick={open} />
-            )}
-          </>
-        )}
+        limited
+        actions={<>{actions}<DialogTrigger render={<CodeAction label={t('chat.actions.fullView')} startIcon="fullView" />} /></>}
       >
         {children}
       </CodeBlock>
-    </FilledContext.Provider>
-  );
-
-  return (
-    <div ref={placeRef} className="chat-code-block">
-      {isFilled ? <div style={{ height: placeholderHeight }} /> : block(false)}
-      {isFilled && createPortal(block(true), fillLayer)}
-    </div>
+      <DialogContent className="code-full-view" aria-label={title}>
+        <FilledContext.Provider value={true}>
+          <CodeBlock
+            label={title}
+            wrap={wrap}
+            filled
+            actions={<>{actions}<DialogClose render={<CodeAction label={t('chat.actions.closeFullView')} startIcon="closeFullView" />} /></>}
+          >
+            {children}
+          </CodeBlock>
+        </FilledContext.Provider>
+      </DialogContent>
+    </Dialog>
   );
 }
 

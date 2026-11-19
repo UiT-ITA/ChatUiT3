@@ -1,19 +1,10 @@
-/* Its own stacking context, so the fill layer stays above the chat content without competing with dialogs */
+/* The chat column and the conversation overview, with the resize handle between them */
 .chat-surface {
-  isolation: isolate;
+  flex: 1;
+  min-height: 0;
 }
 
-/* The layer over the whole chat area that shows a code block in full view */
-.chat-fill-layer {
-  position: absolute;
-  inset: 0;
-  z-index: var(--z-overlay);
+.chat-surface__pane {
   display: flex;
-  flex-direction: column;
-  padding: var(--space-lg);
-  background: var(--bg);
-}
-
-.chat-fill-layer[hidden] {
-  display: none;
+  min-height: 0;
 }

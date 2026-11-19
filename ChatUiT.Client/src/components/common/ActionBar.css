@@ -9,18 +9,10 @@
 /* A line under the actions that separates them from what follows */
 .action-bar--divided {
   padding-bottom: var(--space-xl);
-  border-bottom: var(--border-sm) solid var(--line);
+  border-bottom: var(--border-sm) solid light-dark(var(--line), var(--line-strong));
 }
 
-[data-mode="dark"] .action-bar--divided {
-  border-bottom-color: var(--line-strong);
-}
-
-.action-bar__end {
-  margin-left: auto;
-}
-
-/* Narrow screens: the buttons share the row, a primary button takes the full row, and the far-end action joins it */
+/* Narrow screens: the buttons share the row and a primary button takes the full row */
 @media (width <= 50rem) {
   .action-bar--fill-mobile {
     gap: var(--space-sm);
@@ -35,9 +27,5 @@
 
   .action-bar--fill-mobile > .button--primary {
     flex-basis: 100%;
-  }
-
-  .action-bar--fill-mobile > .action-bar__end {
-    margin-left: 0;
   }
 }

@@ -17,9 +17,7 @@ export const SettingsProvider: React.FC<SettingsProviderProps> = ({ children }) 
   useEffect(() => {
     let cancelled = false;
     initializeI18n(initialSettings.language).then(() => {
-      if (cancelled) return;
-      SettingsService.applySettings(initialSettings);
-      setIsI18nReady(true);
+      if (!cancelled) setIsI18nReady(true);
     });
     return () => {
       cancelled = true;
@@ -32,19 +30,9 @@ export const SettingsProvider: React.FC<SettingsProviderProps> = ({ children }) 
     track('client.setting_changed', { setting: key, value: String(value) });
   };
 
-  const exportData = (format: 'json' | 'markdown' | 'txt') => {
-    SettingsService.exportData(format);
-  };
-
-  const deleteAllData = () => {
-    SettingsService.deleteAllData();
-  };
-
   const contextValue: SettingsContextType = {
     settings,
     updateSetting,
-    exportData,
-    deleteAllData,
   };
 
   if (!isI18nReady) {

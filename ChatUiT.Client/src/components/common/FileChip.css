@@ -68,6 +68,7 @@
 }
 
 .file-chip__name {
+  max-width: 20ch;
   color: var(--text);
   white-space: nowrap;
   overflow: hidden;

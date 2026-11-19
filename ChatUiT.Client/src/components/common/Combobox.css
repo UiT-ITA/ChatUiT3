@@ -1,9 +1,0 @@
-.combobox {
-  position: relative;
-  min-width: 0;
-}
-
-.combobox__status {
-  padding: var(--space-md);
-  color: var(--text-3);
-}

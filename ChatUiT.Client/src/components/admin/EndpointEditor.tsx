@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { useSignals } from '@preact/signals-react/runtime';
@@ -6,12 +6,13 @@ import { createEndpoint, updateEndpoint, deleteEndpoint, deleteModel } from '../
 import { adminEndpointsSignal, adminModelsSignal, loadAdminData } from '../../services/adminDataService';
 import type { EndpointAuthMethod, EndpointType } from '../../types/admin';
 import EditorHeader from '../layout/EditorHeader';
-import { Dialog, DialogButton } from '../common/Dialog';
+import { Dialog } from '../common/Dialog';
 import Select from '../common/Select';
 import TextInput from '../common/TextInput';
 import Button from '../common/Button';
 import Stack from '../common/Stack';
-import { hasChanges } from '../../utils/formChanges';
+import { useEditorForm } from '../../hooks/useEditorForm';
+import { useBusy } from '../../hooks/useBusy';
 import PageTitleBar from '../common/PageTitleBar';
 import EmptyNote from '../common/EmptyNote';
 import FormFooter from '../common/FormFooter';
@@ -34,27 +35,17 @@ const EndpointEditor: React.FC<EndpointEditorProps> = ({ endpointId }) => {
   const endpoints = adminEndpointsSignal.value;
   const endpoint = endpointId ? endpoints?.find(e => e.id === endpointId) : undefined;
 
-  const [url, setUrl] = useState(endpoint?.url ?? '');
-  const [apiKey, setApiKey] = useState('');
-  const [endpointType, setEndpointType] = useState<EndpointType>(endpoint?.endpointType ?? 'AzureOpenAI');
-  const [authMethod, setAuthMethod] = useState<EndpointAuthMethod>(endpoint?.authMethod ?? 'ApiKey');
-  const [saving, setSaving] = useState(false);
+  const { form, set, dirty } = useEditorForm(() => ({
+    url: endpoint?.url ?? '',
+    apiKey: '',
+    endpointType: endpoint?.endpointType ?? 'AzureOpenAI' as EndpointType,
+    authMethod: endpoint?.authMethod ?? 'ApiKey' as EndpointAuthMethod,
+  }), [endpoint]);
+  const { url, apiKey, endpointType, authMethod } = form;
+  const [saving, runSave] = useBusy();
+  const [deleting, runDelete] = useBusy();
   const [confirmDelete, setConfirmDelete] = useState(false);
-  const [deleting, setDeleting] = useState(false);
   const connectedModels = endpointId ? (adminModelsSignal.value ?? []).filter(m => m.endpointId === endpointId) : [];
-
-  useEffect(() => {
-    loadAdminData();
-  }, []);
-
-  const [syncedEndpoint, setSyncedEndpoint] = useState(endpoint);
-  if (endpoint !== syncedEndpoint) {
-    setSyncedEndpoint(endpoint);
-    setUrl(endpoint?.url ?? '');
-    setApiKey('');
-    setEndpointType(endpoint?.endpointType ?? 'AzureOpenAI');
-    setAuthMethod(endpoint?.authMethod ?? 'ApiKey');
-  }
 
   if (endpointId && endpoints === undefined) {
     return <EmptyNote>{t('common.loading')}</EmptyNote>;
@@ -64,50 +55,36 @@ const EndpointEditor: React.FC<EndpointEditorProps> = ({ endpointId }) => {
     return <EmptyNote>{t('common.notFound')}</EmptyNote>;
   }
 
-  const handleSave = async () => {
-    if (!url || saving) return;
-    setSaving(true);
-    try {
-      if (endpoint) {
-        await updateEndpoint(endpoint.id, { id: endpoint.id, url, apiKey, endpointType, authMethod });
-      } else {
-        await createEndpoint({ url, apiKey, endpointType, authMethod });
-      }
-      await loadAdminData(true);
-      navigate('/admin/endpoints');
-    } finally {
-      setSaving(false);
-    }
+  const finish = async () => {
+    await loadAdminData(true);
+    navigate('/admin/endpoints');
   };
 
-  const handleDelete = async (withModels: boolean) => {
-    if (!endpoint || deleting) return;
-    setDeleting(true);
-    try {
-      if (withModels) {
-        for (const model of connectedModels) {
-          await deleteModel(model.id);
-        }
-      }
-      await deleteEndpoint(endpoint.id);
-      await loadAdminData(true);
-      navigate('/admin/endpoints');
-    } finally {
-      setDeleting(false);
+  const handleSave = () => runSave(async () => {
+    if (!url) return;
+    if (endpoint) {
+      await updateEndpoint(endpoint.id, { id: endpoint.id, ...form });
+    } else {
+      await createEndpoint(form);
     }
-  };
+    await finish();
+  });
 
-  const dirty = hasChanges(
-    { url, apiKey, endpointType, authMethod },
-    { url: endpoint?.url ?? '', apiKey: '', endpointType: endpoint?.endpointType ?? 'AzureOpenAI', authMethod: endpoint?.authMethod ?? 'ApiKey' },
-  );
+  const handleDelete = (withModels: boolean) => runDelete(async () => {
+    if (!endpoint) return;
+    if (withModels) {
+      for (const model of connectedModels) {
+        await deleteModel(model.id);
+      }
+    }
+    await deleteEndpoint(endpoint.id);
+    await finish();
+  });
   // A key is needed when none is stored: a new endpoint, or one that used managed identity until now.
   const needsApiKey = authMethod === 'ApiKey' && (!endpoint || endpoint.authMethod === 'ManagedIdentity');
 
-  const handleEndpointTypeChange = (value: EndpointType) => {
-    setEndpointType(value);
-    if (!MANAGED_IDENTITY_PROVIDERS.includes(value)) setAuthMethod('ApiKey');
-  };
+  const handleEndpointTypeChange = (value: EndpointType) =>
+    set(MANAGED_IDENTITY_PROVIDERS.includes(value) ? { endpointType: value } : { endpointType: value, authMethod: 'ApiKey' });
 
   return (
     <Box maxWidth="md">
@@ -135,7 +112,7 @@ const EndpointEditor: React.FC<EndpointEditorProps> = ({ endpointId }) => {
                   : undefined
           }
           value={url}
-          onChange={setUrl}
+          onChange={value => set({ url: value })}
           placeholder="https://..."
         />
 
@@ -156,7 +133,7 @@ const EndpointEditor: React.FC<EndpointEditorProps> = ({ endpointId }) => {
             label={t('admin.endpoints.fields.authMethod')}
             description={authMethod === 'ManagedIdentity' ? t('admin.endpoints.fields.authMethodHelpManagedIdentity') : undefined}
             value={authMethod}
-            onChange={(value) => setAuthMethod(value as EndpointAuthMethod)}
+            onChange={(value) => set({ authMethod: value as EndpointAuthMethod })}
           >
             {AUTH_METHODS.map((method) => (
               <option key={method} value={method}>
@@ -171,7 +148,7 @@ const EndpointEditor: React.FC<EndpointEditorProps> = ({ endpointId }) => {
             label={t('admin.endpoints.fields.apiKey')}
             type="password"
             value={apiKey}
-            onChange={setApiKey}
+            onChange={value => set({ apiKey: value })}
             placeholder={needsApiKey ? undefined : '••••••••••••••••••••'}
           />
         )}
@@ -190,6 +167,28 @@ const EndpointEditor: React.FC<EndpointEditorProps> = ({ endpointId }) => {
         onClose={() => setConfirmDelete(false)}
         title={t('admin.endpoints.dialog.delete.title')}
         size="medium"
+        footer={(
+          <>
+            <Button variant="secondary" onClick={() => setConfirmDelete(false)} disabled={deleting}>
+              {t('common.cancel')}
+            </Button>
+            <Button
+              variant="danger"
+              onClick={() => handleDelete(false)}
+              disabled={deleting}
+              autoFocus={connectedModels.length === 0}
+            >
+              {connectedModels.length > 0
+                ? t('admin.endpoints.dialog.delete.endpointOnly')
+                : t('admin.endpoints.dialog.delete.endpoint')}
+            </Button>
+            {connectedModels.length > 0 && (
+              <Button variant="danger" onClick={() => handleDelete(true)} disabled={deleting} autoFocus>
+                {t('admin.endpoints.dialog.delete.endpointAndModels')}
+              </Button>
+            )}
+          </>
+        )}
       >
         <Text as="p" variant="body">{t('admin.endpoints.dialog.delete.confirm')}</Text>
         {connectedModels.length > 0 ? (
@@ -203,24 +202,6 @@ const EndpointEditor: React.FC<EndpointEditorProps> = ({ endpointId }) => {
           </>
         ) : (
           <Text as="p" variant="body">{t('admin.endpoints.dialog.delete.noModels')}</Text>
-        )}
-        <DialogButton variant="secondary" onClick={() => setConfirmDelete(false)} disabled={deleting}>
-          {t('common.cancel')}
-        </DialogButton>
-        <DialogButton
-          variant="danger"
-          onClick={() => handleDelete(false)}
-          disabled={deleting}
-          autoFocus={connectedModels.length === 0}
-        >
-          {connectedModels.length > 0
-            ? t('admin.endpoints.dialog.delete.endpointOnly')
-            : t('admin.endpoints.dialog.delete.endpoint')}
-        </DialogButton>
-        {connectedModels.length > 0 && (
-          <DialogButton variant="danger" onClick={() => handleDelete(true)} disabled={deleting} autoFocus>
-            {t('admin.endpoints.dialog.delete.endpointAndModels')}
-          </DialogButton>
         )}
       </Dialog>
     </Box>

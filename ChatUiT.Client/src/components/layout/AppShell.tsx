@@ -1,4 +1,5 @@
 import React from 'react';
+import { Toolbar, ToolbarButton } from '@ui-sdk/react/toolbar';
 import Button from '../common/Button';
 import IconButton, { type IconButtonProps } from '../common/IconButton';
 import { Icon, type IconName } from '../common/Icon';
@@ -76,16 +77,20 @@ export const AppHeaderStatus: React.FC<AppHeaderStatusProps> = ({ title, childre
 interface RailProps {
   // Shows the rail as a top bar
   mobile: boolean;
+  // Names the rail's toolbar
+  label: string;
   ref?: React.Ref<HTMLElement>;
   children?: React.ReactNode;
 }
 
 const RailContext = React.createContext({ mobile: false });
 
-/** The narrow column of section buttons, a top bar on narrow screens. */
-export const Rail: React.FC<RailProps> = ({ mobile, ref, children }) => (
+/** The narrow column of section buttons, a top bar on narrow screens. Its buttons are one Tab stop, moved between with the arrow keys. */
+export const Rail: React.FC<RailProps> = ({ mobile, label, ref, children }) => (
   <RailContext.Provider value={{ mobile }}>
-    <nav ref={ref} className={cx('app-rail', mobile && 'app-rail--mobile')}>{children}</nav>
+    <nav ref={ref} className={cx('app-rail', mobile && 'app-rail--mobile')}>
+      <Toolbar className="app-rail__toolbar" orientation={mobile ? 'horizontal' : 'vertical'} aria-label={label}>{children}</Toolbar>
+    </nav>
   </RailContext.Provider>
 );
 
@@ -117,13 +122,13 @@ interface RailButtonProps {
 export const RailButton: React.FC<RailButtonProps> = ({ icon, label, active, onClick }) => {
   const { mobile } = React.useContext(RailContext);
   return (
-    <IconButton iconSize="lg" icon={icon} label={label} tooltipPlacement={mobile ? 'bottom' : 'right'} active={active} activeFill="strong" onClick={onClick} />
+    <ToolbarButton render={<IconButton iconSize="lg" icon={icon} label={label} tooltipPlacement={mobile ? 'bottom' : 'right'} active={active} activeFill="strong" onClick={onClick} />} />
   );
 };
 
-/** The rail's menu button: while active it shows the main text colour without a filled tile. */
-export const RailMenuButton: React.FC<Omit<IconButtonProps, 'activeFill'>> = (props) => (
-  <IconButton {...props} activeFill="none" />
+/** A rail button for a menu trigger or other custom button: an IconButton that joins the rail's toolbar. */
+export const RailIconButton: React.FC<IconButtonProps> = (props) => (
+  <ToolbarButton render={<IconButton {...props} />} />
 );
 
 /** The user's initials in a filled square, for the profile button. */

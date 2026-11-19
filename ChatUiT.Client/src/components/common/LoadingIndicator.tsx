@@ -1,27 +1,16 @@
 import React from 'react';
 import { useTranslation } from 'react-i18next';
-import { cx } from './layout';
 import './LoadingIndicator.css';
 
-interface LoadingIndicatorProps {
-  size?: 'small' | 'medium' | 'large';
-  text?: string;
-  showText?: boolean;
-}
-
-const LoadingIndicator: React.FC<LoadingIndicatorProps> = ({
-  size = 'medium',
-  text,
-  showText = true
-}) => {
+/** A spinning ring with a line of text under it, centred in the view. */
+const LoadingIndicator: React.FC<{ text?: string }> = ({ text }) => {
   const { t } = useTranslation();
-  const displayText = text || t('common.loading');
   return (
-    <div className={cx('loading-container', `loading-${size}`)}>
+    <div className="loading-container">
       <div className="loading-spinner">
         <div className="spinner-ring"></div>
       </div>
-      {showText && <div className="t-caption">{displayText}</div>}
+      <div className="t-caption">{text || t('common.loading')}</div>
     </div>
   );
 };

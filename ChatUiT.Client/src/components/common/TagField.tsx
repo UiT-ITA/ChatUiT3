@@ -1,102 +1,69 @@
-import React, { useState, useRef } from 'react';
+import { useId, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import Chip from './Chip';
-import { useInputBase, type InputBaseProps } from './inputBase';
-import Stack from './Stack';
+import { Combobox, ComboboxChip, ComboboxChipRemove, ComboboxChips, ComboboxContent, ComboboxCreate, ComboboxInput, ComboboxList, ComboboxValue } from '@ui-sdk/react/combobox';
+import IconButton from './IconButton';
+import { Icon } from './Icon';
+import { OptionContent } from './Listbox';
+import { floatingPanelClass } from './floatingPanel';
+import { cx, spacePx } from './layout';
+import './InputBox.css';
+import './Chip.css';
 import './TagField.css';
 
-interface TagFieldProps extends InputBaseProps {
+interface TagFieldProps {
   tags: string[];
-  onChange?: (tags: string[]) => void;
-  // Shows the tags as plain chips without the input box
-  readonly?: boolean;
+  onChange: (tags: string[]) => void;
   placeholder?: string;
+  disabled?: boolean;
 }
 
-/** A text input that turns each entry into a removable chip. */
-const TagField: React.FC<TagFieldProps> = (props) => {
-  const { tags, onChange, readonly = false, placeholder, disabled = false } = props;
+/**
+ * A text input that turns text into removable chips. While typing, a list offers to add the text as a tag, which
+ * Enter or a click does; leaving the field adds it too. Backspace in the empty input removes the last chip.
+ */
+const TagField = ({ tags, onChange, placeholder, disabled = false }: TagFieldProps) => {
   const { t } = useTranslation();
-  const [inputValue, setInputValue] = useState('');
-  const inputRef = useRef<HTMLInputElement>(null);
-  const { id, describedBy, invalid, boxClass, boxStyle, frame } = useInputBase(props);
+  const boxId = useId();
+  const [query, setQuery] = useState('');
 
-  const defaultPlaceholder = placeholder || t('common.addTag');
-
-  const addTag = (tag: string) => {
-    const trimmedTag = tag.trim();
-    if (trimmedTag && !tags.includes(trimmedTag) && onChange) {
-      onChange([...tags, trimmedTag]);
-    }
-    setInputValue('');
+  const add = (text: string) => {
+    const tag = text.trim();
+    if (tag && !tags.includes(tag)) onChange([...tags, tag]);
   };
 
-  const removeTag = (tagToRemove: string) => {
-    if (onChange) {
-      onChange(tags.filter(tag => tag !== tagToRemove));
-    }
-  };
-
-  const handleInputKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
-    if (e.key === 'Enter' || e.key === ',') {
-      e.preventDefault();
-      if (inputValue.trim()) {
-        addTag(inputValue);
-      }
-    } else if (e.key === 'Backspace' && !inputValue && tags.length > 0) {
-      removeTag(tags[tags.length - 1]);
-    }
-  };
-
-  const handleInputBlur = () => {
-    if (inputValue.trim()) {
-      addTag(inputValue);
-    }
-  };
-
-  if (readonly) {
-    return frame(
-      <Stack direction="row" gap="xs" wrap align="center" style={boxStyle}>
-        {tags.map((tag, index) => (
-          <Chip key={index} size="small">{tag}</Chip>
-        ))}
-      </Stack>,
-    );
-  }
-
-  return frame(
-    <div
-      className={boxClass('tag-field')}
-      style={boxStyle}
-      onClick={() => { if (!disabled) inputRef.current?.focus(); }}
+  return (
+    <Combobox
+      multiple
+      allowCustomValue
+      value={tags}
+      onValueChange={next => onChange(next as string[])}
+      query={query}
+      onQueryChange={(next, details) => {
+        // Leaving the field with text that was not added adds it
+        if (details.reason === 'focus-out' || details.reason === 'outside-press') add(query);
+        setQuery(next);
+      }}
+      disabled={disabled}
     >
-      {tags.map((tag, index) => (
-        <Chip
-          key={index}
-          variant="solid"
-          size="small"
-          onRemove={disabled ? undefined : () => removeTag(tag)}
-          removeLabel={t('common.removeTag', { tag })}
-        >
-          {tag}
-        </Chip>
-      ))}
-      {!disabled && (
-        <input
-          id={id}
-          ref={inputRef}
-          type="text"
-          value={inputValue}
-          onChange={(e) => setInputValue(e.target.value)}
-          onKeyDown={handleInputKeyDown}
-          onBlur={handleInputBlur}
-          placeholder={tags.length === 0 ? defaultPlaceholder : ''}
-          className="input-box__input tag-field__input t-body"
-          aria-invalid={invalid || undefined}
-          aria-describedby={describedBy}
-        />
-      )}
-    </div>,
+      <ComboboxChips id={boxId} className={cx('input-box input-box--medium input-box--full-width tag-field', disabled && 'input-box--disabled')}>
+        <ComboboxValue>
+          {state => (state.value as string[]).map(tag => (
+            <ComboboxChip key={tag} value={tag} className="chip chip--solid chip--small chip--removable t-caption-strong">
+              <span className="chip__label">{tag}</span>
+              <ComboboxChipRemove render={<IconButton icon="close" label={t('common.removeTag', { tag })} variant="inherit" size="xs" />} />
+            </ComboboxChip>
+          ))}
+        </ComboboxValue>
+        <ComboboxInput placeholder={tags.length === 0 ? placeholder ?? t('common.addTag') : ''} className="input-box__input tag-field__input t-body" />
+      </ComboboxChips>
+      <ComboboxContent anchor={`#${boxId}`} sideOffset={spacePx('xs')} className={floatingPanelClass()} style={{ width: 'var(--anchor-width)' }}>
+        <ComboboxList>
+          <ComboboxCreate onCreate={add}>
+            {state => <OptionContent leading={<Icon name="add" size="sm" />}>{t('common.createTag', { tag: state.query.trim() })}</OptionContent>}
+          </ComboboxCreate>
+        </ComboboxList>
+      </ComboboxContent>
+    </Combobox>
   );
 };
 

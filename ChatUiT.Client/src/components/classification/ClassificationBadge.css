@@ -16,21 +16,6 @@
   color: var(--text);
 }
 
-/* Only the dot */
-.classification-badge--dot-only {
-  position: relative;
-  height: auto;
-  padding: var(--space-xs);
-  border-color: transparent;
-}
-
-.classification-badge__label--hidden {
-  position: absolute;
-  overflow: hidden;
-  clip-path: inset(50%);
-  white-space: nowrap;
-}
-
 .classification-dot {
   width: var(--space-sm);
   height: var(--space-sm);

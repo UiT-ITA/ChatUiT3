@@ -1,11 +1,14 @@
 import React, { Suspense, lazy, useEffect, useRef } from 'react';
-import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
+import { BrowserRouter, Routes, Route, Navigate, Outlet } from 'react-router-dom';
 import { BrowserAuthError } from '@azure/msal-browser';
 import { effect } from '@preact/signals-react';
 import { useSignals } from '@preact/signals-react/runtime';
 import './styles/global.css';
 import './styles/theme.css';
 import './styles/typography.css';
+import './components/common/Menu.css';
+import './components/common/Tooltip.css';
+import './components/common/Switch.css';
 import { useAuth } from './hooks/useAuth';
 import MainLayout from './components/layout/MainLayout';
 import LoadingIndicator from './components/common/LoadingIndicator';
@@ -116,46 +119,13 @@ const App: React.FC = () => {
           <Route path="/settings/:tab" element={<Page><SettingsPage /></Page>} />
           <Route path="/help" element={<Page><HelpPage /></Page>} />
           <Route path="/help/:section" element={<Page><HelpPage /></Page>} />
-          <Route
-            path="/admin"
-            element={
-              <ProtectedRoute requiredRole="admin">
-                <Page><AdminPage /></Page>
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/admin/:tab"
-            element={
-              <ProtectedRoute requiredRole="admin">
-                <Page><AdminPage /></Page>
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/admin/:tab/:id"
-            element={
-              <ProtectedRoute requiredRole="admin">
-                <Page><AdminPage /></Page>
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/insights"
-            element={
-              <ProtectedRoute requiredRole="admin">
-                <Page><InsightsPage /></Page>
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/insights/:tab"
-            element={
-              <ProtectedRoute requiredRole="admin">
-                <Page><InsightsPage /></Page>
-              </ProtectedRoute>
-            }
-          />
+          <Route element={<ProtectedRoute><Outlet /></ProtectedRoute>}>
+            <Route path="/admin" element={<Page><AdminPage /></Page>} />
+            <Route path="/admin/:tab" element={<Page><AdminPage /></Page>} />
+            <Route path="/admin/:tab/:id" element={<Page><AdminPage /></Page>} />
+            <Route path="/insights" element={<Page><InsightsPage /></Page>} />
+            <Route path="/insights/:tab" element={<Page><InsightsPage /></Page>} />
+          </Route>
           {import.meta.env.DEV && <Route path="/status" element={<Page><StatusPage /></Page>} />}
           <Route path="*" element={<Navigate to="/" replace />} />
         </Route>

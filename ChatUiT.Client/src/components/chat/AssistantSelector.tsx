@@ -1,17 +1,21 @@
-import { Fragment, useEffect, useId, useRef, useState } from 'react';
+import { Fragment, useId, useState } from 'react';
 import { useSignals } from '@preact/signals-react/runtime';
 import { useTranslation } from 'react-i18next';
 import Box from '../common/Box';
 import Button from '../common/Button';
 import { Icon, type IconName } from '../common/Icon';
 import IconButton from '../common/IconButton';
-import { ListboxOption } from '../common/Listbox';
-import { Menu, MenuItem } from '../common/Menu';
-import Popover from '../common/Popover';
+import { OptionContent } from '../common/Listbox';
+import { Listbox, ListboxItem } from '@ui-sdk/react/listbox';
+import { Toggle, ToggleGroup } from '@ui-sdk/react/toggle';
+import { Menu, MenuCheckboxItem, MenuContent, MenuGroup, MenuGroupLabel, MenuItemIcon, MenuItemIndicator, MenuTrigger } from '@ui-sdk/react/menu';
+import { Popover, PopoverContent, PopoverTrigger } from '@ui-sdk/react/popover';
+import { floatingPanelClass } from '../common/floatingPanel';
+import { spacePx } from '../common/layout';
 import SearchField from '../common/SearchField';
 import Stack from '../common/Stack';
 import Text from '../common/Text';
-import Tooltip from '../common/Tooltip';
+import { Tooltip, TooltipContent, TooltipTrigger } from '@ui-sdk/react/tooltip';
 import ClassificationBadge from '../classification/ClassificationBadge';
 import { CAPABILITIES, capabilityKeys, type Capability } from '../assistants/assistantCapabilities';
 import { getSelectableAssistants, getCurrentAssistantId, setUserSelectedAssistantId, getRedEnabled } from '../../services/chatService';
@@ -49,31 +53,27 @@ export default function AssistantSelector() {
   const name = selected?.name || t('assistants.defaultAssistant');
 
   return (
-    <Popover
-      open={isOpen}
-      onOpenChange={setIsOpen}
-      openOn="hover"
-      placement="top-start"
-      panelWidth="xl"
-      minWidth="0"
-      className="assistant-selector composer-toolbar__popover"
-      trigger={(
-        <Button
-          variant="subtle"
-          size="small"
-          startIcon="assistants"
-          maxWidth="xs"
-          title={t('welcome.selectAssistant')}
-          aria-label={name}
-        >
-          <span className="assistant-selector__label">
-            {name}
-            <Icon name="arrowUp" size="sm" className="assistant-selector__arrow" />
-          </span>
-        </Button>
-      )}
-    >
-      {close => <AssistantPicker assistants={assistants} selectedId={selected?.id} close={close} pin={() => setIsOpen(true)} focusSearch={isOpen} />}
+    <Popover open={isOpen} onOpenChange={setIsOpen} openOnHover>
+      <PopoverTrigger
+        render={(
+          <Button
+            variant="subtle"
+            size="small"
+            startIcon="assistants"
+            maxWidth="xs"
+            title={t('welcome.selectAssistant')}
+            aria-label={name}
+          />
+        )}
+      >
+        <span className="assistant-selector__label">
+          {name}
+          <Icon name="arrowUp" size="sm" className="assistant-selector__arrow" />
+        </span>
+      </PopoverTrigger>
+      <PopoverContent side="top" align="start" sideOffset={spacePx('sm')} className={floatingPanelClass('xl')} aria-label={t('welcome.selectAssistant')}>
+        <AssistantPicker assistants={assistants} selectedId={selected?.id} close={() => setIsOpen(false)} />
+      </PopoverContent>
     </Popover>
   );
 }
@@ -82,26 +82,18 @@ interface AssistantPickerProps {
   assistants: AssistantDto[];
   selectedId?: string;
   close: () => void;
-  // Keeps the picker open after the pointer leaves
-  pin: () => void;
-  focusSearch: boolean;
 }
 
-/** The picker: search, capability filter, categories and the list. A click or typing inside pins it open. */
-function AssistantPicker({ assistants, selectedId, close, pin, focusSearch }: AssistantPickerProps) {
+/** The picker: search, capability filter, categories and the list. */
+function AssistantPicker({ assistants, selectedId, close }: AssistantPickerProps) {
   useSignals();
   const { t } = useTranslation();
   const [category, setCategory] = useState<Category>('all');
   const [query, setQuery] = useState('');
   const [capabilityFilter, setCapabilityFilter] = useState<Capability[]>([]);
-  const searchRef = useRef<HTMLInputElement>(null);
   const descriptionId = useId();
   const models = getModels().value ?? [];
   const redEnabled = getRedEnabled().value;
-
-  useEffect(() => {
-    if (focusSearch) searchRef.current?.focus();
-  }, [focusSearch]);
 
   const needle = query.trim().toLowerCase();
   const visibleAssistants = assistants.filter(assistant =>
@@ -111,126 +103,147 @@ function AssistantPicker({ assistants, selectedId, close, pin, focusSearch }: As
   );
 
   return (
-    <div onClickCapture={pin}>
+    <div>
       <Stack direction="row" align="center" gap="sm" py="sm" px="lg" border borderSide="bottom" shrink={false}>
         <SearchField
-          ref={searchRef}
           size="medium"
           value={query}
-          onChange={value => {
-            setQuery(value);
-            pin();
-          }}
+          onChange={setQuery}
           placeholder={t('assistants.picker.searchPlaceholder')}
         />
-        <Popover
-          placement="bottom-end"
-          trigger={<IconButton icon="filter" label={t('assistants.picker.filterTitle')} active={capabilityFilter.length > 0} />}
-          title={t('assistants.picker.filterTitle')}
-        >
-          <Menu>
-            {CAPABILITIES.map(({ key, icon }) => (
-              <MenuItem
-                key={key}
-                icon={icon}
-                selected={capabilityFilter.includes(key)}
-                onClick={() => setCapabilityFilter(current => current.includes(key) ? current.filter(c => c !== key) : [...current, key])}
-              >
-                {t(`assistants.capabilities.${key}`)}
-              </MenuItem>
-            ))}
-          </Menu>
-        </Popover>
+        <Menu>
+          <MenuTrigger render={<IconButton icon="filter" label={t('assistants.picker.filterTitle')} active={capabilityFilter.length > 0} />} />
+          <MenuContent side="bottom" align="end" sideOffset={spacePx('sm')} className={floatingPanelClass()}>
+            <MenuGroup>
+              <MenuGroupLabel className="popover__title t-overline">{t('assistants.picker.filterTitle')}</MenuGroupLabel>
+              {CAPABILITIES.map(({ key, icon }) => (
+                <MenuCheckboxItem
+                  key={key}
+                  value={key}
+                  checked={capabilityFilter.includes(key)}
+                  onCheckedChange={checked => setCapabilityFilter(current => checked ? [...current, key] : current.filter(c => c !== key))}
+                >
+                  <MenuItemIcon><Icon name={icon} size="sm" /></MenuItemIcon>
+                  {t(`assistants.capabilities.${key}`)}
+                  <MenuItemIndicator><Icon name="check" size="sm" /></MenuItemIndicator>
+                </MenuCheckboxItem>
+              ))}
+            </MenuGroup>
+          </MenuContent>
+        </Menu>
       </Stack>
 
       <Stack direction="row" gap="sm" p="md">
-        <div className="assistant-selector__rail">
+        <ToggleGroup
+          className="assistant-selector__rail"
+          orientation="vertical"
+          deselectable={false}
+          value={[category]}
+          onValueChange={value => { if (value[0]) setCategory(value[0] as Category); }}
+        >
           {CATEGORIES.map(({ key, icon }, index) => (
             <Fragment key={key}>
               {index === 1 && <Box mx="sm" my="xs" border borderSide="top" />}
-              <IconButton
-                icon={icon}
-                label={t(`assistants.picker.categories.${key}`)}
-                size="large"
-                active={category === key}
-                mx="xs"
-                my="xs"
-                onClick={() => setCategory(key)}
+              <Toggle
+                value={key}
+                render={<IconButton icon={icon} label={t(`assistants.picker.categories.${key}`)} size="large" active={category === key} mx="xs" my="xs" />}
               />
             </Fragment>
           ))}
-        </div>
+        </ToggleGroup>
 
-        <div className="assistant-selector__list" role="listbox" aria-label={t('welcome.selectAssistant')}>
-          {visibleAssistants.length === 0 && (
+        <div className="assistant-selector__list">
+          {visibleAssistants.length === 0 ? (
             <div className="assistant-selector__empty t-ui-plain">{t(needle || capabilityFilter.length > 0 ? EMPTY_KEYS.all : EMPTY_KEYS[category])}</div>
-          )}
-
-          {visibleAssistants.map(assistant => {
-            const modelName = models.find(m => m.id === assistant.modelId)?.modelName;
-            const capabilities = capabilityKeys(assistant, models);
-            const description = assistant.description || t('assistants.noDescriptionAvailable');
-            const disabledReason = redEnabled && assistant.classification !== 'Red' ? t('chat.redToggle.assistantNotRed') : undefined;
-            return (
-              <ListboxOption
-                key={assistant.id}
-                className="assistant-selector__row"
-                selected={selectedId === assistant.id}
-                disabled={disabledReason !== undefined}
-                title={disabledReason}
-                aria-describedby={`${descriptionId}-${assistant.id}`}
-                onClick={() => {
-                  setUserSelectedAssistantId(assistant.id);
+          ) : (
+            <div className="assistant-selector__rows">
+              <Listbox
+                className="assistant-selector__options"
+                aria-label={t('welcome.selectAssistant')}
+                activation="manual"
+                value={selectedId ?? null}
+                onValueChange={id => {
+                  if (!id) return;
+                  setUserSelectedAssistantId(id as string);
                   close();
                 }}
-                leading={(
-                  <span className="assistant-selector__row-leading">
-                    <Icon name={CATEGORIES.find(category => category.key === assistant.type)?.icon ?? 'assistants'} color="muted" />
-                  </span>
-                )}
-                description={(
-                  <span className="assistant-selector__row-line">
-                    {modelName && (
-                      <>
-                        <Text variant="meta" tone="muted" truncate>{modelName}</Text>
-                        <span className="assistant-selector__separator" aria-hidden="true" />
-                      </>
-                    )}
-                    <ClassificationBadge classification={assistant.classification} />
-                    {capabilities.length > 0 && (
-                      <>
-                        <span className="assistant-selector__separator" aria-hidden="true" />
-                        <Stack direction="row" gap="sm" align="center" shrink={false}>
-                          {CAPABILITIES.filter(({ key }) => capabilities.includes(key)).map(({ key, icon }) => (
-                            <Icon key={key} name={icon} color="accent" label={t(`assistants.capabilities.${key}`)} />
-                          ))}
-                        </Stack>
-                      </>
-                    )}
-                    <Tooltip content={description} focusable className="assistant-selector__row-end">
-                      <Icon name="info" color="muted" label={description} />
-                    </Tooltip>
-                    <span id={`${descriptionId}-${assistant.id}`} hidden>{description}</span>
-                  </span>
-                )}
               >
-                <span className="assistant-selector__row-line">
-                  <Text variant="body-strong" truncate grow>{assistant.name}</Text>
-                  <IconButton
-                    className="assistant-selector__row-end"
-                    icon={<Icon name={assistant.isFavorite ? 'star' : 'starOutline'} color={assistant.isFavorite ? 'accent' : 'muted'} />}
-                    label={t(assistant.isFavorite ? 'assistants.actions.removeFavorite' : 'assistants.actions.addFavorite')}
-                    size="small"
-                    aria-pressed={assistant.isFavorite}
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      void toggleFavorite(assistant.id);
-                    }}
-                  />
-                </span>
-              </ListboxOption>
-            );
-          })}
+                {visibleAssistants.map(assistant => {
+                  const modelName = models.find(m => m.id === assistant.modelId)?.modelName;
+                  const capabilities = capabilityKeys(assistant, models);
+                  const disabledReason = redEnabled && assistant.classification !== 'Red' ? t('chat.redToggle.assistantNotRed') : undefined;
+                  return (
+                    <ListboxItem
+                      key={assistant.id}
+                      value={assistant.id}
+                      label={assistant.name}
+                      className="assistant-selector__row"
+                      disabled={disabledReason !== undefined}
+                      title={disabledReason}
+                      aria-describedby={`${descriptionId}-${assistant.id}`}
+                    >
+                      <OptionContent
+                        leading={(
+                          <span className="assistant-selector__row-leading">
+                            <Icon name={CATEGORIES.find(category => category.key === assistant.type)?.icon ?? 'assistants'} color="muted" />
+                          </span>
+                        )}
+                        description={(
+                          <span className="assistant-selector__row-line">
+                            {modelName && (
+                              <>
+                                <Text variant="meta" tone="muted" truncate>{modelName}</Text>
+                                <span className="assistant-selector__separator" aria-hidden="true" />
+                              </>
+                            )}
+                            <ClassificationBadge classification={assistant.classification} />
+                            {capabilities.length > 0 && (
+                              <>
+                                <span className="assistant-selector__separator" aria-hidden="true" />
+                                <Stack direction="row" gap="sm" align="center" shrink={false}>
+                                  {CAPABILITIES.filter(({ key }) => capabilities.includes(key)).map(({ key, icon }) => (
+                                    <Icon key={key} name={icon} color="accent" label={t(`assistants.capabilities.${key}`)} />
+                                  ))}
+                                </Stack>
+                              </>
+                            )}
+                            <span id={`${descriptionId}-${assistant.id}`} hidden>{assistant.description || t('assistants.noDescriptionAvailable')}</span>
+                          </span>
+                        )}
+                      >
+                        <span className="assistant-selector__row-line">
+                          <Text variant="body-strong" truncate grow>{assistant.name}</Text>
+                        </span>
+                      </OptionContent>
+                    </ListboxItem>
+                  );
+                })}
+              </Listbox>
+
+              <div className="assistant-selector__actions">
+                {visibleAssistants.map(assistant => {
+                  const description = assistant.description || t('assistants.noDescriptionAvailable');
+                  return (
+                    <div key={assistant.id} className="assistant-selector__actions-row">
+                      <IconButton
+                        icon={<Icon name={assistant.isFavorite ? 'star' : 'starOutline'} color={assistant.isFavorite ? 'accent' : 'muted'} />}
+                        label={t(assistant.isFavorite ? 'assistants.actions.removeFavorite' : 'assistants.actions.addFavorite')}
+                        size="small"
+                        aria-pressed={assistant.isFavorite}
+                        onClick={() => { void toggleFavorite(assistant.id); }}
+                      />
+                      <Tooltip type="label">
+                        <TooltipTrigger className="assistant-selector__info">
+                          <Icon name="info" color="muted" />
+                        </TooltipTrigger>
+                        <TooltipContent align="end" sideOffset={spacePx('sm')} className="t-caption">{description}</TooltipContent>
+                      </Tooltip>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          )}
         </div>
       </Stack>
     </div>

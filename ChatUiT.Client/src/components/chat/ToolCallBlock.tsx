@@ -6,7 +6,8 @@ import { isAwaitingStatus } from '../../types/chatModels';
 import ToolPreview from './interaction/ToolPreview';
 import Badge from '../common/Badge';
 import Card from '../common/Card';
-import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '../common/Collapsible';
+import { Collapsible, CollapsiblePanel, CollapsibleTrigger } from '@ui-sdk/react/collapsible';
+import { space } from '../common/layout';
 import { ListItem } from '../common/List';
 import Stack from '../common/Stack';
 import Text, { type TextTone } from '../common/Text';
@@ -49,27 +50,29 @@ export default function ToolCallBlock({ entry, durationMs }: { entry: ActivityEn
   if (awaiting) statusTone = "warning";
 
   return (
-    <Collapsible my="md">
+    <Collapsible style={{ marginBlock: space('md') }}>
       <Card padding="none" gap="none" tone={awaiting ? 'warning' : 'default'}>
-        <CollapsibleTrigger>
-          <ListItem
-            density="compact"
-            title={(
-              <>
-                <Text as="strong" variant="overline" tone="muted">{toolName}</Text>
-                {entry.execution === 'client' && <Badge ml="xs">{t('toolCall.execution.client')}</Badge>}
-                <Text variant="meta" tone="secondary"> ({argsPreview})</Text>
-              </>
-            )}
-            trailing={(
-              <Text variant="overline" tone={statusTone}>
-                {t(status === 'rejected' && entry.questions ? 'chat.status.skipped' : STATUS_KEYS[status])}
-                {durationMs !== null && !awaiting && <Text variant="meta" tone="muted" plainCase> · {formatDuration(durationMs)}</Text>}
-              </Text>
-            )}
-          />
-        </CollapsibleTrigger>
-        <CollapsibleContent>
+        <CollapsibleTrigger
+          render={(
+            <ListItem
+              density="compact"
+              title={(
+                <>
+                  <Text as="strong" variant="overline" tone="muted">{toolName}</Text>
+                  {entry.execution === 'client' && <Badge ml="xs">{t('toolCall.execution.client')}</Badge>}
+                  <Text variant="meta" tone="secondary"> ({argsPreview})</Text>
+                </>
+              )}
+              trailing={(
+                <Text variant="overline" tone={statusTone}>
+                  {t(status === 'rejected' && entry.questions ? 'chat.status.skipped' : STATUS_KEYS[status])}
+                  {durationMs !== null && !awaiting && <Text variant="meta" tone="muted" plainCase> · {formatDuration(durationMs)}</Text>}
+                </Text>
+              )}
+            />
+          )}
+        />
+        <CollapsiblePanel>
           <Stack gap="sm" p="md" border borderSide="top">
             {entry.preview && (
               <Stack gap="xs">
@@ -112,7 +115,7 @@ export default function ToolCallBlock({ entry, durationMs }: { entry: ActivityEn
               </Stack>
             )}
           </Stack>
-        </CollapsibleContent>
+        </CollapsiblePanel>
       </Card>
     </Collapsible>
   );

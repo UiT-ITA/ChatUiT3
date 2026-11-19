@@ -177,6 +177,9 @@ export interface KnowledgeSourceDto {
 }
 
 /** A server tool the current user may give to an assistant. */
+/** A tool and every toolbox under it. */
+export const withDescendants = (tool: ChatToolDto): ChatToolDto[] => [tool, ...tool.children.flatMap(withDescendants)];
+
 export interface ChatToolDto {
     id: string;
     name: string;

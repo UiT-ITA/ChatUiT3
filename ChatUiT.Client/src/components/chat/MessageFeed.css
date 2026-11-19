@@ -32,8 +32,15 @@
   padding: calc(var(--space-2xl) + var(--space-sm)) var(--space-2xl) 0;
 }
 
-/* The bottom sentinel: an empty element the small spacing step under the last message */
-.message-feed__sentinel {
+/* The scroll area around the feed takes the free height */
+.message-feed__area {
+  display: flex;
+  flex: 1;
+  min-height: 0;
+}
+
+/* An empty element after the last message that sets the space under it */
+.message-feed__end {
   margin-top: calc(-1 * var(--space-sm));
 }
 
@@ -42,8 +49,8 @@
     padding: var(--space-2xl) var(--space-lg) 0;
   }
 
-  /* Narrow screens: the sentinel sits the large spacing step under the last message */
-  .message-feed__sentinel {
+  /* Narrow screens: the large spacing step under the last message */
+  .message-feed__end {
     margin-top: 0;
   }
 }

@@ -1,8 +1,5 @@
 export interface AppSettings {
-  // Appearance
-  theme: 'blue' | 'grey';
-  mode: 'light' | 'dark' | 'system';
-  size: 'small' | 'medium' | 'large' | 'xl';
+  // Theme, colour scheme and text size are ui-sdk preferences, see services/appearance
   language: 'en-US' | 'no-NB';
   
   // Personalization lives server-side, see userProfileService
@@ -17,10 +14,6 @@ export interface AppSettings {
 }
 
 export const DEFAULT_SETTINGS: AppSettings = {
-  // Appearance
-  theme: 'blue',
-  mode: 'system',
-  size: 'medium',
   language: 'en-US',
   
   // Data Control
@@ -32,3 +25,10 @@ export const DEFAULT_SETTINGS: AppSettings = {
 };
 
 export type SettingsCategory = 'appearance' | 'personalization' | 'dataControl';
+
+/** The settings tabs, in the order the side column lists them. */
+export const SETTINGS_TABS: SettingsCategory[] = ['appearance', 'personalization', 'dataControl'];
+
+/** The settings tab of a route segment, or the first tab. */
+export const settingsTab = (segment: string | undefined): SettingsCategory =>
+  SETTINGS_TABS.includes(segment as SettingsCategory) ? segment as SettingsCategory : 'appearance';

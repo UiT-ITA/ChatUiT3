@@ -3,8 +3,6 @@ import { cx, splitLayoutProps, type LayoutProps } from './layout';
 import './List.css';
 
 interface ListProps extends LayoutProps, Omit<React.HTMLAttributes<HTMLDivElement>, 'color'> {
-  // Draws a line between the items
-  divided?: boolean;
   // Draws a border around the list
   bordered?: boolean;
   // 'tiles' shows each item as a framed tile, two per row on wide screens and one per row on narrow screens
@@ -12,9 +10,9 @@ interface ListProps extends LayoutProps, Omit<React.HTMLAttributes<HTMLDivElemen
 }
 
 /** A vertical list of ListItem rows. */
-export const List: React.FC<ListProps> = ({ divided = true, bordered = false, layout = 'rows', className, ...props }) => {
+export const List: React.FC<ListProps> = ({ bordered = false, layout = 'rows', className, ...props }) => {
   const [style, rest] = splitLayoutProps(props);
-  return <div className={cx('list', divided && 'list--divided', bordered && 'list--bordered', layout === 'tiles' && 'list--tiles', className)} style={style} {...rest} />;
+  return <div className={cx('list', 'list--divided', bordered && 'list--bordered', layout === 'tiles' && 'list--tiles', className)} style={style} {...rest} />;
 };
 
 export interface ListItemProps extends LayoutProps, Omit<React.ComponentProps<'button'>, 'title' | 'width'> {

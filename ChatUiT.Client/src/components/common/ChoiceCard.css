@@ -1,0 +1,40 @@
+/* A choice card: the whole card picks its radio, which shows as the corner check */
+.choice-card {
+  padding: var(--space-sm);
+  gap: var(--space-sm);
+  cursor: pointer;
+}
+
+/* Dark: the strong line colour as the frame, also on hover, until chosen */
+.choice-card {
+  border-color: light-dark(var(--line), var(--line-strong));
+}
+
+.choice-card:hover {
+  border-color: light-dark(var(--accent), var(--line-strong));
+}
+
+.choice-card:has([data-checked]) {
+  border-color: var(--accent);
+}
+
+.choice-card:has([data-checked]) {
+  box-shadow: 0 0 0 1px var(--accent);
+}
+
+.choice-card:has(:focus-visible) {
+  outline: var(--border-md) solid var(--accent);
+  outline-offset: var(--border-md);
+}
+
+/* The radio has no box of its own: its check shows in the corner */
+.choice-card__radio {
+  position: absolute;
+  inset: auto 0 0 auto;
+  width: 0;
+  height: 0;
+  padding: 0;
+  border: none;
+  background: none;
+  outline: none;
+}

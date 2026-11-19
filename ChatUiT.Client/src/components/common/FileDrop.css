@@ -1,10 +1,11 @@
-/* A dashed drop area with an icon and a label around an invisible native file input that takes clicks and dropped files */
+/* The dashed area of a file picker: picks files when pressed and takes dropped ones */
 .file-drop {
-  position: relative;
+  font-family: var(--font-sans);
   display: flex;
   align-items: center;
   justify-content: center;
   gap: var(--space-sm);
+  width: 100%;
   min-height: var(--space-3xl);
   padding: var(--space-md) var(--space-lg);
   border: var(--border-sm) dashed var(--line-strong);
@@ -16,16 +17,21 @@
 }
 
 .file-drop:hover,
-.file-drop:focus-within {
+.file-drop:focus-visible,
+[data-dragging] > .file-drop {
   border-color: var(--accent);
   background: var(--tint);
 }
 
-.file-drop__input {
-  position: absolute;
-  inset: 0;
-  width: 100%;
-  height: 100%;
-  opacity: 0;
-  cursor: pointer;
+/* The chosen files, one per row with its remove button */
+.file-picker__list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-xs);
+}
+
+.file-picker__item {
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
 }

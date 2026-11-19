@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { useSignals } from '@preact/signals-react/runtime';
@@ -23,16 +23,7 @@ const AdminAssistantEditor: React.FC<AdminAssistantEditorProps> = ({ assistantId
   const assistants = adminAssistantsSignal.value;
   const assistant = assistantId ? assistants?.find(a => a.id === assistantId) : undefined;
   const [confirmDelete, setConfirmDelete] = useState(false);
-  const [deleting, setDeleting] = useState(false);
-  const [shownId, setShownId] = useState(assistantId);
-  if (assistantId !== shownId) {
-    setShownId(assistantId);
-    setConfirmDelete(false);
-  }
 
-  useEffect(() => {
-    loadAdminData();
-  }, []);
 
   if (assistantId && assistants === undefined) {
     return <EmptyNote>{t('common.loading')}</EmptyNote>;
@@ -55,16 +46,13 @@ const AdminAssistantEditor: React.FC<AdminAssistantEditorProps> = ({ assistantId
   };
 
   const handleDelete = async () => {
-    if (!assistant || deleting) return;
-    setDeleting(true);
+    if (!assistant) return;
     try {
       await deleteAdminAssistant(assistant.id);
       await loadAdminData(true);
       navigate('/admin/assistants');
     } catch (error) {
       console.error('Failed to delete assistant:', error);
-    } finally {
-      setDeleting(false);
     }
   };
 
@@ -93,7 +81,6 @@ const AdminAssistantEditor: React.FC<AdminAssistantEditorProps> = ({ assistantId
         title={t('assistants.actions.deleteAssistant')}
         message={t('admin.assistants.dialog.delete.confirm')}
         confirmLabel={t('common.delete')}
-        busy={deleting}
         onConfirm={handleDelete}
         onCancel={() => setConfirmDelete(false)}
       />

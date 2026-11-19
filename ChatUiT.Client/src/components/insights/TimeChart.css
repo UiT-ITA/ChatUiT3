@@ -49,22 +49,7 @@
 .time-chart__dot--viz-4 { fill: var(--viz-4); }
 .time-chart__dot--viz-5 { fill: var(--viz-5); }
 
-/* The values of the bucket under the pointer, at the top of the plot and centred on the bucket */
-.time-chart__tooltip {
-  position: absolute;
-  top: 0;
-  transform: translateX(-50%);
-  z-index: var(--z-dropdown);
-  padding: var(--space-sm) var(--space-md);
-  border: var(--border-sm) solid var(--line);
-  border-radius: var(--radius-md);
-  background: var(--surface-raised);
-  box-shadow: var(--shadow-overlay);
-  color: var(--text);
-  white-space: nowrap;
-  pointer-events: none;
-}
-
+/* The date line of the tooltip with the values of the bucket under the pointer */
 .time-chart__tooltip-title {
   color: var(--text-3);
 }

@@ -9,7 +9,7 @@ import { isAwaitingStatus, type ActivityEntryDto, type MessageActivityDto } from
 import { formatDuration } from '../../utils/durationUtils';
 import Box from '../common/Box';
 import Button from '../common/Button';
-import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '../common/Collapsible';
+import { Collapsible, CollapsiblePanel, CollapsibleTrigger } from '@ui-sdk/react/collapsible';
 import RichText from '../common/RichText';
 import Stack from '../common/Stack';
 import Text from '../common/Text';
@@ -44,28 +44,30 @@ export default function MessageActivity({ activity, live, children }: Props) {
   const toolCount = entries.filter(entry => entry.type === "Tool").length;
 
   return (
-    <Collapsible open={open} onOpenChange={setOpen} width="full" minWidth="0">
+    <Collapsible open={open} onOpenChange={setOpen} style={{ width: '100%', minWidth: 0 }}>
       <Stack direction="row" align="center" gap="md" mb={hasActivity && open ? 'xs' : 'sm'}>
         {children}
         {hasActivity && (
-          <CollapsibleTrigger>
-            <Button
-              variant="ghost"
-              size="xs"
-              tone={waitingOn ? 'warning' : 'default'}
-              startIcon={<Icon name={waitingOn ? "info" : isLive ? "refresh" : "branch"} size="sm" spin={isLive} />}
-            >
-              {isLive
-                ? liveHeadline(live, liveElapsedMs, t)
-                : waitingOn
-                  ? t('chat.activity.awaitingUser', { name: waitingOn.toolName ?? "" })
-                  : doneHeadline(summary!, thinkingCount, toolCount, t)}
-            </Button>
-          </CollapsibleTrigger>
+          <CollapsibleTrigger
+            render={(
+              <Button
+                variant="ghost"
+                size="xs"
+                tone={waitingOn ? 'warning' : 'default'}
+                startIcon={<Icon name={waitingOn ? "info" : isLive ? "refresh" : "branch"} size="sm" spin={isLive} />}
+              >
+                {isLive
+                  ? liveHeadline(live, liveElapsedMs, t)
+                  : waitingOn
+                    ? t('chat.activity.awaitingUser', { name: waitingOn.toolName ?? "" })
+                    : doneHeadline(summary!, thinkingCount, toolCount, t)}
+              </Button>
+            )}
+          />
         )}
       </Stack>
       {hasActivity && (
-        <CollapsibleContent>
+        <CollapsiblePanel>
           <Box mb="sm" ml="sm" py="xs" pl="md" border borderWidth="md" borderSide="left">
             {summary && (
               <Stack direction="row" wrap rowGap="xs" columnGap="lg" mb="sm">
@@ -87,7 +89,7 @@ export default function MessageActivity({ activity, live, children }: Props) {
               />
             ))}
           </Box>
-        </CollapsibleContent>
+        </CollapsiblePanel>
       )}
     </Collapsible>
   );

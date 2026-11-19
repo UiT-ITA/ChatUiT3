@@ -6,7 +6,8 @@ import {
     isImageImportFile,
     isTextImportFile
 } from '../utils/fileUtils';
-import { track } from './telemetryService';
+import { track, trackError } from './telemetryService';
+import { addNotification } from './notificationService';
 
 // Rethrows a failed processor chunk load as an app-updated message.
 async function loadProcessor<T>(load: () => Promise<T>): Promise<T> {
@@ -26,6 +27,29 @@ const complexProcessors = new Map<string, (file: File) => Promise<ChatFile>>([
 ]);
 
 export class FileProcessingService {
+    /** Processes the files and returns the ones that worked. Each failure is logged, tracked with this message and shown as an error. */
+    static async importFiles(files: File[], failureMessage: string): Promise<ChatFile[]> {
+        const results = await Promise.allSettled(files.map((file) => this.processFile(file)));
+        results.forEach((result, index) => {
+            if (result.status === 'fulfilled') return;
+            const file = files[index];
+            const reason = result.reason instanceof Error ? result.reason.message : 'File processing failed';
+            console.error(`Failed to process file ${file.name}:`, result.reason);
+            trackError('file_import', {
+                message: failureMessage,
+                error: result.reason,
+                extra: {
+                    'file.name': file.name,
+                    'file.type': getFileExtension(file.name),
+                    'file.bytes': file.size,
+                    processor: this.processorFor(file),
+                },
+            });
+            addNotification({ level: 'Error', message: `${file.name}: ${reason}` });
+        });
+        return results.flatMap((result) => result.status === 'fulfilled' ? [result.value] : []);
+    }
+
     /** The name of the processor that imports the file: image, text, pdf, docx, pptx, xlsx or unsupported. */
     static processorFor(file: File): string {
         const kind = getSupportedImportKind(file);

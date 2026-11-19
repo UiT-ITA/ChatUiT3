@@ -14,10 +14,8 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const { instance, accounts } = useMsal();
   const isAuthenticated = useIsAuthenticated();
   const [isInitializing, setIsInitializing] = useState<boolean>(true);
-  const [isSignalRConnected, setIsSignalRConnected] = useState<boolean>(false);
   const [initError, setInitError] = useState<string | null>(null);
   const [initAttempt, setInitAttempt] = useState<number>(0);
-  const [roles, setRoles] = useState<string[]>([]);
   const [isAdmin, setIsAdmin] = useState<boolean>(false);
 
   // Prefer the active account, but resolve it to the stable object from the
@@ -45,8 +43,6 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
           Array.isArray(account.idTokenClaims.roles)) {
         userRoles.push(...account.idTokenClaims.roles);
       }
-      
-      setRoles(userRoles);
       
       const hasAdminRole = userRoles.some(role => 
         role.toLowerCase() === 'admin' || 
@@ -77,12 +73,10 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       if (!trainingStatusSignal.value?.completed) return;
       signalrService.ensureConnection().then(
         () => {
-          setIsSignalRConnected(signalrService.isConnected());
           setInitError(null);
         },
         (signalrError) => {
           console.warn('Failed to start SignalR connection:', signalrError);
-          setIsSignalRConnected(false);
           setInitError(signalrError instanceof Error ? signalrError.message : String(signalrError));
         },
       );
@@ -115,17 +109,14 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const contextValue: AuthContextType = {
     isAuthenticated,
     isInitializing,
-    isSignalRConnected,
     isAppReady,
     initError,
     account,
-    roles,
     isAdmin,
     login,
     logout: () => authService.logout(),
     canSignOut: authService.canSignOut(),
     retryInit,
-    getAccessToken: () => authService.getAccessToken(),
   };
 
   return (

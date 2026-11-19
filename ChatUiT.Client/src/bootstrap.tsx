@@ -1,6 +1,8 @@
 import { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'
 import { MsalProvider } from '@azure/msal-react'
+import { Preferences } from '@ui-sdk/react/preferences'
+import { APPEARANCE } from './services/appearance'
 import { getMsal } from './msalInstance'
 import App from './App.tsx'
 import { AuthProvider } from './contexts/AuthContext.tsx'
@@ -22,6 +24,7 @@ export function renderApp(): void {
 
   root.render(
     <StrictMode>
+      <Preferences preferences={APPEARANCE} />
       <MsalProvider instance={getMsal()}>
         <SettingsProvider>
           <AuthProvider>

@@ -1,16 +1,15 @@
-import { useRef, useState } from 'react';
+import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { FileInput, FileInputTrigger } from '@ui-sdk/react/file-input';
 import { FileProcessingService } from '../../services/fileProcessingService';
 import type { ChatFile } from '../../types/fileModels';
-import { SUPPORTED_IMPORT_ACCEPT, getFileExtension, isValidFileType } from '../../utils/fileUtils';
+import { SUPPORTED_IMPORT_ACCEPT, isValidFileType } from '../../utils/fileUtils';
 import FilePreviewModal from '../chat/FilePreviewModal';
-import { addNotification } from '../../services/notificationService';
 import Button from '../common/Button';
 import KnowledgeFileItem, { type KnowledgeFileItemData } from './KnowledgeFileItem';
 import PanelSection from '../common/PanelSection';
 import Text from '../common/Text';
 import Badge from '../common/Badge';
-import { trackError } from '../../services/telemetryService';
 
 export type { KnowledgeFileCategory, KnowledgeFileItemData } from './KnowledgeFileItem';
 
@@ -34,6 +33,8 @@ interface KnowledgeFileListProps {
   status?: React.ReactNode;
 }
 
+const NO_FILES: File[] = [];
+
 const KnowledgeFileList = ({
   title,
   description,
@@ -51,40 +52,13 @@ const KnowledgeFileList = ({
   status
 }: KnowledgeFileListProps) => {
   const { t } = useTranslation();
-  const fileInputRef = useRef<HTMLInputElement>(null);
   const [previewFile, setPreviewFile] = useState<ChatFile | null>(null);
 
   const isDisabled = disabled || unavailable;
 
-  const handleFileChange = async (event: React.ChangeEvent<HTMLInputElement>) => {
-    const files = Array.from(event.target.files ?? []);
-
-    if (files.length > 0) {
-      const validFiles = files.filter((file) => isValidFileType(file));
-      const results = await Promise.allSettled(validFiles.map((file) => FileProcessingService.processFile(file)));
-
-      results.forEach((result, index) => {
-        if (result.status === 'fulfilled') return;
-        const file = validFiles[index];
-        const reason = result.reason instanceof Error ? result.reason.message : 'File processing failed';
-        console.error(`Failed to process knowledge file ${file.name}:`, result.reason);
-        trackError('file_import', {
-          message: 'A knowledge file could not be imported',
-          error: result.reason,
-          extra: {
-            'file.name': file.name,
-            'file.type': getFileExtension(file.name),
-            'file.bytes': file.size,
-            processor: FileProcessingService.processorFor(file),
-          },
-        });
-        addNotification({ level: 'Error', message: `${file.name}: ${reason}` });
-      });
-
-      onFilesSelected(results.flatMap((result) => result.status === 'fulfilled' ? [result.value] : []));
-    }
-
-    event.target.value = '';
+  const handleFiles = async (files: File[]) => {
+    const valid = files.filter((file) => isValidFileType(file));
+    if (valid.length > 0) onFilesSelected(await FileProcessingService.importFiles(valid, 'A knowledge file could not be imported'));
   };
 
   const handlePreview = async (item: KnowledgeFileItemData) => {
@@ -107,30 +81,11 @@ const KnowledgeFileList = ({
         )}
         description={description}
         action={(
-          <Button
-            variant="subtle"
-            size="small"
-            onClick={() => fileInputRef.current?.click()}
-            disabled={isDisabled}
-          >
-            {t('assistants.knowledge.addFiles')}
-          </Button>
+          <FileInput multiple accept={SUPPORTED_IMPORT_ACCEPT} value={NO_FILES} onValueChange={(_, details) => { void handleFiles(details.added); }} disabled={isDisabled}>
+            <FileInputTrigger render={<Button variant="subtle" size="small" disabled={isDisabled}>{t('assistants.knowledge.addFiles')}</Button>} />
+          </FileInput>
         )}
-        between={(
-          <>
-            {status}
-
-            <input
-              ref={fileInputRef}
-              type="file"
-              hidden
-              multiple
-              accept={SUPPORTED_IMPORT_ACCEPT}
-              onChange={handleFileChange}
-              disabled={isDisabled}
-            />
-          </>
-        )}
+        between={status}
       >
         {items.length > 0 ? items.map((item) => (
           <KnowledgeFileItem

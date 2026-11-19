@@ -2,8 +2,10 @@ import { useTranslation } from 'react-i18next';
 import { useSignals } from '@preact/signals-react/runtime';
 import ClassificationBadge from '../classification/ClassificationBadge';
 import IconButton from '../common/IconButton';
-import Popover, { PopoverBody } from '../common/Popover';
-import Toggle from '../common/Toggle';
+import { Popover, PopoverContent, PopoverTitle, PopoverTrigger } from '@ui-sdk/react/popover';
+import { floatingPanelClass } from '../common/floatingPanel';
+import { spacePx } from '../common/layout';
+import { Switch, SwitchThumb } from '@ui-sdk/react/switch';
 import { getCurrentAssistantId, getCurrentChatId, getRedEnabled, toggleRed } from '../../services/chatService';
 import { getAssistant } from '../../services/assistantService';
 import { chatClassification, DATA_CLASSIFICATIONS } from '../../types/modelModels';
@@ -30,42 +32,39 @@ export default function ChatClassification() {
   }
 
   return (
-    <Popover
-      openOn="hover"
-      placement="top-start"
-      panelWidth="large"
-      className="composer-toolbar__popover"
-      trigger={(
-        <IconButton
-          icon={<ClassificationBadge classification={classification} showTitle={false} />}
-          label={t('classification.title', { level: t(`classification.${classification}`) })}
-          size="small"
-          tooltip={false}
-        />
-      )}
-      title={t('classification.heading')}
-    >
-      <PopoverBody>
-        <Stack as="ul" gap="xs">
-          {DATA_CLASSIFICATIONS.map(level => (
-            <li key={level} className="classification-levels__level t-hint" aria-current={level === classification ? 'true' : undefined}>
-              <ClassificationBadge classification={level} showTitle={false} strong={level === classification} />
-              <span>{t(`classification.descriptions.${level}`)}</span>
-            </li>
-          ))}
-        </Stack>
-        <Box pt="md" border borderSide="top">
-          <Toggle
-            checked={redEnabled}
-            onChange={() => { void toggleRed(); }}
-            label={t('chat.redToggle.label')}
-            tone="critical"
-            disabled={redLocked}
-            aria-label={t('chat.redToggle.label')}
+    <Popover openOnHover>
+      <PopoverTrigger
+        render={(
+          <IconButton
+            icon={<ClassificationBadge classification={classification} showTitle={false} />}
+            label={t('classification.title', { level: t(`classification.${classification}`) })}
+            size="small"
+            tooltip={false}
           />
-          <Text as="div" variant="hint" tone="muted" mt="sm">{t(redEnabled ? 'chat.redToggle.enabled' : 'chat.redToggle.enable')}</Text>
-        </Box>
-      </PopoverBody>
+        )}
+      />
+      <PopoverContent side="top" align="start" sideOffset={spacePx('sm')} className={floatingPanelClass('large')}>
+        <PopoverTitle render={<div />} className="popover__title t-overline">{t('classification.heading')}</PopoverTitle>
+        <div className="popover__body">
+          <Stack as="ul" gap="xs">
+            {DATA_CLASSIFICATIONS.map(level => (
+              <li key={level} className="classification-levels__level t-hint" aria-current={level === classification ? 'true' : undefined}>
+                <ClassificationBadge classification={level} showTitle={false} strong={level === classification} />
+                <span>{t(`classification.descriptions.${level}`)}</span>
+              </li>
+            ))}
+          </Stack>
+          <Box pt="md" border borderSide="top">
+            <label className="switch-label t-ui">
+              <span>{t('chat.redToggle.label')}</span>
+              <Switch className="switch--critical" checked={redEnabled} onCheckedChange={() => { void toggleRed(); }} disabled={redLocked}>
+                <SwitchThumb />
+              </Switch>
+            </label>
+            <Text as="div" variant="hint" tone="muted" mt="sm">{t(redEnabled ? 'chat.redToggle.enabled' : 'chat.redToggle.enable')}</Text>
+          </Box>
+        </div>
+      </PopoverContent>
     </Popover>
   );
 }

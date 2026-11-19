@@ -83,6 +83,9 @@ export interface UpdateEndpointDto {
 
 export type { UserRole } from './assistantModels';
 
+/** Every user role, in the order lists show them. */
+export const ALL_ROLES: UserRole[] = ['User', 'Admin', 'Beta', 'Super', 'External'];
+
 /** Who may use a tool: enabled, and any listed role or any listed Entra group. Both empty means nobody. */
 export interface ToolAccessPolicyDto {
   enabled: boolean;

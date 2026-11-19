@@ -88,8 +88,8 @@
   line-height: var(--lh-base);
 }
 
-/* Light modes: code one weight heavier, so the token colours read on the light fill */
-[data-mode="light"] .rich-text--message .code-block-wrapper code { font-weight: var(--fw-medium); }
+/* Code one weight heavier, so the token colours read on the fill */
+.rich-text--message .code-block-wrapper code { font-weight: var(--fw-medium); }
 .rich-text--message .code-block-wrapper .token.comment { font-style: italic; }
 
 .rich-text--message blockquote {

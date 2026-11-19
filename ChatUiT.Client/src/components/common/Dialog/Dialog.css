@@ -1,11 +1,6 @@
-.dialog-overlay {
-  position: fixed;
-  inset: 0;
+/* The scrim behind the dialog */
+.dialog-container::backdrop {
   background: var(--scrim);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  z-index: var(--z-overlay);
   animation: dialog-fade-in var(--dur-base) ease-out;
 }
 
@@ -18,7 +13,12 @@
   }
 }
 
+/* Centred in the window */
 .dialog-container {
+  position: fixed;
+  inset: 0;
+  height: fit-content;
+  margin: auto;
   background: var(--surface-raised);
   border: var(--border-sm) solid var(--line);
   border-top: var(--border-lg) solid var(--accent-2);
@@ -39,13 +39,6 @@
 .dialog-size-medium {
   width: calc(100vw - 2 * var(--space-2xl));
   max-width: var(--size-lg);
-  max-height: var(--size-lg);
-}
-
-.dialog-size-large {
-  width: calc(100vw - 2 * var(--space-2xl));
-  max-width: var(--size-xl);
-  height: calc(100vh - 2 * var(--space-3xl));
   max-height: var(--size-lg);
 }
 
@@ -70,22 +63,12 @@
   color: var(--text);
 }
 
-/* The content row: the page sidebar, when there is one, then the main area */
+/* The content area under the title bar */
 .dialog-content {
   display: flex;
   flex: 1;
   min-height: 0;
   overflow: hidden;
-}
-
-.dialog-sidebar {
-  width: var(--size-2xs);
-  flex-shrink: 0;
-  display: flex;
-  flex-direction: column;
-  padding: var(--space-md) 0;
-  background: var(--panel);
-  border-right: var(--border-sm) solid var(--line);
 }
 
 .dialog-main {
@@ -110,14 +93,9 @@
 
 /* Narrow screens: the dialog fills the screen and the footer buttons stack */
 @media (width <= 50rem) {
-  .dialog-overlay {
-    display: block;
-  }
-
   .dialog-container {
     position: fixed;
-    top: 0;
-    left: 0;
+    inset: 0;
     width: 100vw;
     height: 100dvh;
     max-width: none;
@@ -128,19 +106,6 @@
     box-shadow: none;
   }
 
-  .dialog-content--with-sidebar {
-    flex-direction: column;
-  }
-
-  .dialog-sidebar {
-    width: 100%;
-    flex-direction: row;
-    overflow-x: auto;
-    padding: var(--space-sm);
-    border-right: none;
-    border-bottom: var(--border-sm) solid var(--line);
-  }
-
   .dialog-main,
   .dialog-header,
   .dialog-footer {
@@ -149,5 +114,9 @@
 
   .dialog-footer {
     flex-direction: column-reverse;
+  }
+
+  .dialog-footer > * {
+    width: 100%;
   }
 }

@@ -16,12 +16,8 @@
 
 /* Tinted fill with accent text, the same in light and dark modes */
 .chip--solid {
-  background: color-mix(in srgb, var(--accent) 14%, transparent);
+  background: light-dark(color-mix(in srgb, var(--accent) 14%, transparent), color-mix(in srgb, var(--accent) 22%, transparent));
   color: var(--accent);
-}
-
-[data-mode="dark"] .chip--solid {
-  background: color-mix(in srgb, var(--accent) 22%, transparent);
 }
 
 .chip--subtle {

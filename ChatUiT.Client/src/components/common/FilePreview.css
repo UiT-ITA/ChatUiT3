@@ -10,11 +10,6 @@
   overflow: auto;
 }
 
-.file-preview-content--compact {
-  padding: var(--space-sm);
-  gap: var(--space-sm);
-}
-
 .file-preview-image {
   max-width: 100%;
   width: auto;

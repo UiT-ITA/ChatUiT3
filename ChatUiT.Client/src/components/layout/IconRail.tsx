@@ -2,16 +2,15 @@ import { useLayoutEffect, useRef, useState } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { useSignals } from '@preact/signals-react/runtime';
-import type { IconName } from '../common/Icon';
-import IconButton from '../common/IconButton';
-import { Rail, RailAvatar, RailButton, RailGap, RailMenuButton, RailMenuHeader, RailSeal, RailSpacer } from './AppShell';
-import Popover from '../common/Popover';
-import { Menu, MenuItem, MenuDivider } from '../common/Menu';
+import { Icon, type IconName } from '../common/Icon';
+import { Rail, RailAvatar, RailButton, RailGap, RailIconButton, RailMenuHeader, RailSeal, RailSpacer } from './AppShell';
+import { Menu, MenuContent, MenuItem, MenuItemIcon, MenuSeparator, MenuTrigger } from '@ui-sdk/react/menu';
+import { floatingPanelClass } from '../common/floatingPanel';
+import { spacePx } from '../common/layout';
 import { MainHeaderContent } from './MainHeader';
 import { useHeaderBack } from './useHeaderBack';
 import { useAuth } from '../../hooks/useAuth';
-import { useSettings } from '../../hooks/useSettings';
-import { resolveMode } from '../../utils/themeUtils';
+import { useDarkMode } from '../../services/appearance';
 import { NEW_CHAT_PATH, parseRoute, sectionPath } from '../../utils/routes';
 import { downloadTrainingCertificate, trainingOpenSignal, trainingStatusSignal } from '../../services/trainingService';
 
@@ -27,7 +26,6 @@ const IconRail = ({ isMobile }: { isMobile?: boolean }) => {
   const navigate = useNavigate();
   const { section, newChat } = parseRoute(useLocation().pathname);
   const { isAdmin, isAuthenticated, account, login, logout, canSignOut } = useAuth();
-  const { settings, updateSetting } = useSettings();
   const [userMenuOpen, setUserMenuOpen] = useState(false);
   const railRef = useRef<HTMLElement>(null);
   const [compact, setCompact] = useState(false);
@@ -56,24 +54,18 @@ const IconRail = ({ isMobile }: { isMobile?: boolean }) => {
   // Active in the chats section, except on a new chat on mobile, where the new chat button is active
   const chatsActive = section === 'chats' && !(isMobile && newChat);
 
-  const darkNow = resolveMode(settings.mode) === 'dark';
-  const toggleMode = () => updateSetting('mode', darkNow ? 'light' : 'dark');
+  const darkMode = useDarkMode();
 
-  const go = (path: string) => {
-    navigate(path);
-    setUserMenuOpen(false);
-  };
+  const go = (path: string) => navigate(path);
 
   const training = trainingStatusSignal.value;
   const trainingHasNewVersion = training?.completedVersion != null && training.completedVersion < training.currentVersion;
 
   const openTraining = () => {
     trainingOpenSignal.value = true;
-    setUserMenuOpen(false);
   };
 
   const downloadCertificate = () => {
-    setUserMenuOpen(false);
     downloadTrainingCertificate(i18n.language).catch(() => undefined);
   };
 
@@ -83,22 +75,22 @@ const IconRail = ({ isMobile }: { isMobile?: boolean }) => {
       ? [{ key: 'status', icon: 'pulse' as IconName, title: t('sidebar.status'), menuLabel: t('sidebar.status'), active: section === 'status', onClick: () => go(sectionPath('status')) }]
       : []),
     { key: 'help', icon: 'help', title: t('sidebar.help'), menuLabel: t('sidebar.help'), active: section === 'help', onClick: () => go(sectionPath('help')) },
-    { key: 'mode', icon: darkNow ? 'sun' : 'moon', title: t('sidebar.toggleMode'), menuLabel: t(darkNow ? 'sidebar.lightMode' : 'sidebar.darkMode'), active: false, onClick: toggleMode },
+    { key: 'mode', icon: darkMode.dark ? 'sun' : 'moon', title: t('sidebar.toggleMode'), menuLabel: t(darkMode.dark ? 'sidebar.lightMode' : 'sidebar.darkMode'), active: false, onClick: darkMode.toggle },
     { key: 'settings', icon: 'settings', title: t('sidebar.settings'), menuLabel: t('sidebar.settings'), active: section === 'settings', onClick: () => go(sectionPath('settings')) },
   ];
 
   if (header) {
     return (
-      <Rail ref={railRef} mobile>
+      <Rail ref={railRef} mobile label={t('navigation.menu')}>
         <MainHeaderContent isMobile />
       </Rail>
     );
   }
 
   return (
-    <Rail ref={railRef} mobile={!!isMobile}>
+    <Rail ref={railRef} mobile={!!isMobile} label={t('navigation.menu')}>
       <RailSeal
-        src={darkNow ? '/chatuit-logo.svg' : '/chatuit-logo-darkblue.svg'}
+        src={darkMode.logo}
         alt="UiT"
         title="ChatUiT"
       />
@@ -124,57 +116,59 @@ const IconRail = ({ isMobile }: { isMobile?: boolean }) => {
         <RailButton key={item.key} icon={item.icon} label={item.title} active={item.active} onClick={item.onClick} />
       ))}
 
-      <Popover
-        open={userMenuOpen}
-        onOpenChange={setUserMenuOpen}
-        placement={isMobile ? 'bottom-end' : 'right-end'}
-        panelWidth="medium"
-        trigger={compact ? (
-          <RailMenuButton iconSize="lg" icon="menu" label={t('navigation.menu')} tooltipPlacement="bottom" active={userMenuOpen || secondaryItems.some(item => item.active)} />
-        ) : (
-          <IconButton
-            icon={<RailAvatar>{getInitials(account?.name)}</RailAvatar>}
-            label={account?.name || t('sidebar.profile')}
-            tooltipPlacement={isMobile ? 'bottom' : 'right'}
-          />
-        )}
-      >
-        <RailMenuHeader name={account?.name || t('sidebar.profile')} email={account?.username || undefined} />
-        <Menu>
+      <Menu open={userMenuOpen} onOpenChange={setUserMenuOpen}>
+        <MenuTrigger
+          render={compact ? (
+            <RailIconButton iconSize="lg" icon="menu" label={t('navigation.menu')} tooltipPlacement="bottom" activeFill="none" active={userMenuOpen || secondaryItems.some(item => item.active)} />
+          ) : (
+            <RailIconButton
+              icon={<RailAvatar>{getInitials(account?.name)}</RailAvatar>}
+              label={account?.name || t('sidebar.profile')}
+              tooltipPlacement={isMobile ? 'bottom' : 'right'}
+            />
+          )}
+        />
+        <MenuContent side={isMobile ? 'bottom' : 'right'} align="end" sideOffset={spacePx('sm')} className={floatingPanelClass('medium')}>
+          <RailMenuHeader name={account?.name || t('sidebar.profile')} email={account?.username || undefined} />
           {compact ? (
             secondaryItems.map(item => (
-              <MenuItem key={item.key} icon={item.icon} onClick={item.onClick} aria-current={item.active ? 'page' : undefined}>
+              <MenuItem key={item.key} onSelect={item.onClick} aria-current={item.active ? 'page' : undefined}>
+                <MenuItemIcon><Icon name={item.icon} size="sm" /></MenuItemIcon>
                 {item.menuLabel}
               </MenuItem>
             ))
           ) : (
             <>
-              <MenuItem onClick={() => go(sectionPath('settings'))}>{t('sidebar.settings')}</MenuItem>
-              <MenuItem onClick={() => go(sectionPath('help'))}>{t('sidebar.help')}</MenuItem>
+              <MenuItem onSelect={() => go(sectionPath('settings'))}>{t('sidebar.settings')}</MenuItem>
+              <MenuItem onSelect={() => go(sectionPath('help'))}>{t('sidebar.help')}</MenuItem>
             </>
           )}
-          <MenuDivider />
-          <MenuItem icon={compact ? 'shield' : undefined} onClick={openTraining}>
+          <MenuSeparator />
+          <MenuItem onSelect={openTraining}>
+            {compact && <MenuItemIcon><Icon name="shield" size="sm" /></MenuItemIcon>}
             {t(trainingHasNewVersion ? 'training.menu.openNewVersion' : 'training.menu.open')}
           </MenuItem>
           {training?.completed && (
-            <MenuItem icon={compact ? 'check' : undefined} onClick={downloadCertificate}>{t('training.menu.certificate')}</MenuItem>
+            <MenuItem onSelect={downloadCertificate}>
+              {compact && <MenuItemIcon><Icon name="check" size="sm" /></MenuItemIcon>}
+              {t('training.menu.certificate')}
+            </MenuItem>
           )}
           {isAuthenticated ? (
             canSignOut && (
               <>
-                <MenuDivider />
-                <MenuItem danger onClick={logout}>{t('sidebar.logout')}</MenuItem>
+                <MenuSeparator />
+                <MenuItem destructive onSelect={logout}>{t('sidebar.logout')}</MenuItem>
               </>
             )
           ) : (
             <>
-              <MenuDivider />
-              <MenuItem onClick={login}>{t('sidebar.login')}</MenuItem>
+              <MenuSeparator />
+              <MenuItem onSelect={() => { void login(); }}>{t('sidebar.login')}</MenuItem>
             </>
           )}
-        </Menu>
-      </Popover>
+        </MenuContent>
+      </Menu>
     </Rail>
   );
 };

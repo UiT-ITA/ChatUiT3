@@ -1,3 +1,4 @@
+import { useId } from 'react';
 import { useTranslation } from 'react-i18next';
 import { formatTokens } from '../../utils/tokenCounting';
 import Button from '../common/Button';
@@ -30,6 +31,7 @@ interface AlwaysLoadedBudgetProps {
 
 const AlwaysLoadedBudget = ({ used, unavailable, limit, isEstimate, blocked, rejected, onDismissRejected }: AlwaysLoadedBudgetProps) => {
   const { t, i18n } = useTranslation();
+  const usedId = useId();
   const number = (value: number) => formatTokens(value, i18n.language);
   const approx = isEstimate ? '≈ ' : '';
 
@@ -46,8 +48,8 @@ const AlwaysLoadedBudget = ({ used, unavailable, limit, isEstimate, blocked, rej
 
   return (
     <Stack gap="sm">
-      <ProgressBar value={used} max={limit} state={state} />
-      <Text as="div" variant="ui" tone={state === 'danger' ? 'danger' : state === 'warn' ? 'warning' : 'secondary'}>
+      <ProgressBar value={used} max={limit} state={state} aria-labelledby={usedId} />
+      <Text as="div" id={usedId} variant="ui" tone={state === 'danger' ? 'danger' : state === 'warn' ? 'warning' : 'secondary'}>
         {approx}{t('assistants.knowledge.budget.used', { used: number(used), limit: number(limit) })}
       </Text>
       <Text as="p" variant="meta" tone="muted" leading="base">

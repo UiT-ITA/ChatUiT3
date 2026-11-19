@@ -35,7 +35,7 @@
   box-shadow: var(--shadow-card);
 }
 
-.composer-card[data-drop-active] {
+.composer-card[data-dragging] {
   border-color: var(--brand);
 }
 
@@ -81,19 +81,9 @@
   }
 }
 
-/* A narrow toolbar shows the assistant button as its icon, and its panels open from the toolbar edge; the assistant picker spans the toolbar */
+/* A narrow toolbar shows the assistant button as its icon */
 @container composer-toolbar (width < 32rem) {
   .composer-toolbar .assistant-selector__label {
     display: none;
-  }
-
-  .composer-toolbar > .composer-toolbar__popover {
-    position: static;
-  }
-
-  .assistant-selector > .popover__panel {
-    left: 0;
-    right: 0;
-    width: auto;
   }
 }

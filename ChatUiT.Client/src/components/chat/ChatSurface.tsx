@@ -1,4 +1,5 @@
-import React, { useEffect, useState } from 'react'
+import React, { useEffect, useRef, useState } from 'react'
+import { createResizableController, Resizable, ResizableHandle, ResizablePanel } from '@ui-sdk/react/resizable'
 import { useLocation, useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import ChatHistory from './ChatHistory'
@@ -7,22 +8,24 @@ import ConversationPanel from './ConversationPanel'
 import NewChatWelcome from './NewChatWelcome'
 import Stack from '../common/Stack'
 import { setCurrentChatId, getChatNotFound } from '../../services/chatService'
-import { conversationPanelOpenSignal, filledCodeBlockSignal } from '../../services/uiService'
+import { conversationPanelOpenSignal } from '../../services/uiService'
 import { useSignals } from '@preact/signals-react/runtime'
 import { addNotification } from '../../services/notificationService'
 import { useChatCache } from '../../hooks/useChatCache'
 import useMediaQuery from '../../hooks/useMediaQuery'
 import { WIDE } from '../common/breakpoints';
 import { parseRoute } from '../../utils/routes';
-import { FillLayerContext } from './codeBlockFill';
+import { sizeToken } from '../../utils/cssTokens';
+import { layoutStorage } from '../../utils/layoutStorage';
 import './ChatSurface.css';
 
 // A column that fills the remaining space of its parent and clips its content
 const PANE = { gap: 'none', expand: true, minHeight: '0', overflow: 'hidden' } as const
 
+const OVERVIEW_PANEL = 'conversation-panel'
+
 /**
- * The chat area: the opened chats, the new chat welcome, the composer and the conversation panel, and the layer
- * that shows a code block in full view over all of them.
+ * The chat area: the opened chats, the new chat welcome and the composer, and the conversation panel beside them.
  * MainLayout renders it for every route, hidden outside the chat routes. Each opened chat stays mounted,
  * hidden while another chat is shown, until the chat cache evicts it.
  */
@@ -41,13 +44,6 @@ const ChatSurface: React.FC<{ hidden?: boolean }> = ({ hidden = false }) => {
     setCurrentChatId(chatId)
   }, [chatId])
 
-  const [fillLayer, setFillLayer] = useState<HTMLDivElement | null>(null)
-
-  // Leaves full view when another chat opens or the chat area is hidden
-  useEffect(() => {
-    filledCodeBlockSignal.value = null
-  }, [chatId, hidden])
-
   // Goes to "/" when the requested chat does not exist
   useEffect(() => {
     if (chatId && notFound?.value) {
@@ -56,32 +52,50 @@ const ChatSurface: React.FC<{ hidden?: boolean }> = ({ hidden = false }) => {
     }
   }, [chatId, notFound?.value, navigate, t])
 
+  // The conversation overview is a resizable panel: open from the header toggle on a wide screen with a chat open
   const showPanel = chatId !== undefined && conversationPanelOpenSignal.value && isWide
-  // While a code block is in full view, the content under the fill layer takes no focus or input
-  const filled = filledCodeBlockSignal.value !== null
+  const [panel] = useState(createResizableController)
+  const panelOpen = useRef(showPanel)
+  // Saves the layout only while the panel is open, so the saved width is the open width
+  const [storage] = useState(() => layoutStorage(() => !panel.isCollapsed(OVERVIEW_PANEL)))
+  // The panel's sizes, read from their tokens once
+  const [sizes] = useState(() => ({ default: sizeToken('--size-xs'), max: sizeToken('--size-md') }))
+
+  useEffect(() => {
+    panelOpen.current = showPanel
+    if (showPanel) panel.expand(OVERVIEW_PANEL)
+    else panel.collapse(OVERVIEW_PANEL)
+  }, [showPanel, panel])
 
   return (
-    <FillLayerContext.Provider value={fillLayer}>
-      <Stack direction="row" gap="none" height="full" width="full" overflow="hidden" position="relative" hidden={hidden} className="chat-surface">
-        <Stack {...PANE} inert={filled}>
-          {[...cachedIds].sort().map((id) => (
-            <Stack key={id} {...PANE} hidden={id !== chatId}>
-              <ChatHistory chatId={id} />
+    <Stack gap="none" height="full" width="full" overflow="hidden" hidden={hidden}>
+      <Resizable
+        controller={panel}
+        autoSaveId="conversation-panel"
+        storage={storage}
+        className="chat-surface"
+        // Dragging the panel closed, or Enter on its edge, closes it as the header toggle does
+        onLayoutChange={() => { if (panelOpen.current && panel.isCollapsed(OVERVIEW_PANEL)) conversationPanelOpenSignal.value = false }}
+      >
+        <ResizablePanel id="chat-pane" className="chat-surface__pane">
+          <Stack {...PANE}>
+            {[...cachedIds].sort().map((id) => (
+              <Stack key={id} {...PANE} hidden={id !== chatId}>
+                <ChatHistory chatId={id} />
+              </Stack>
+            ))}
+            <Stack {...PANE} hidden={chatId !== undefined}>
+              <NewChatWelcome />
             </Stack>
-          ))}
-          <Stack {...PANE} hidden={chatId !== undefined}>
-            <NewChatWelcome />
+            <ChatInput />
           </Stack>
-          <ChatInput />
-        </Stack>
-        {showPanel && (
-          <Stack direction="row" gap="none" grow={false} shrink={false} inert={filled}>
-            <ConversationPanel chatId={chatId} />
-          </Stack>
-        )}
-        <div ref={setFillLayer} className="chat-fill-layer" hidden={!filled} />
-      </Stack>
-    </FillLayerContext.Provider>
+        </ResizablePanel>
+        <ResizableHandle aria-label={t('chat.panel.resize')} className="resize-handle" disabled={!showPanel} />
+        <ResizablePanel id={OVERVIEW_PANEL} defaultSize={sizes.default} minSize={sizes.default} maxSize={sizes.max} collapsible className="chat-surface__pane">
+          {showPanel && <ConversationPanel chatId={chatId} />}
+        </ResizablePanel>
+      </Resizable>
+    </Stack>
   )
 }
 
