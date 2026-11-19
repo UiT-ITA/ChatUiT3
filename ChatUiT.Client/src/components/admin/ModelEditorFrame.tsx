@@ -10,6 +10,7 @@ import Stack from '../common/Stack';
 import Text from '../common/Text';
 import { EndpointSelect, KnownModelSelect, ModelEditorFooter, ModelIdField } from './ModelEditorParts';
 import { catalogEntryForModelId, modelIdOptions, type BaseModelForm, type useModelEditor } from './modelEditorShared';
+import { ErrorCode, formatError } from '../../errors/errorCodes';
 
 type ModelEditor<M extends ModelDto, F extends BaseModelForm, T extends ModelType> = ReturnType<typeof useModelEditor<M, F, T>>;
 
@@ -29,7 +30,7 @@ function ModelEditorFrame<M extends ModelDto, F extends BaseModelForm, T extends
   const { editId, models, endpoints, model, form, set, presetId, setPresetId, catalog, deployments, applyCatalogEntry, saving, dirty } = editor;
 
   if (editId && models === undefined) return <EmptyNote>{t('common.loading')}</EmptyNote>;
-  if (editId && !model) return <EmptyNote>{t('common.notFound')}</EmptyNote>;
+  if (editId && !model) return <EmptyNote>{formatError(t('common.notFound'), ErrorCode.AdminItemNotFound)}</EmptyNote>;
 
   const endpointType = endpoints.find(ep => ep.id === form.endpointId)?.endpointType;
   const modelOptions = modelIdOptions(deployments, catalog, endpointType, models, form.endpointId);

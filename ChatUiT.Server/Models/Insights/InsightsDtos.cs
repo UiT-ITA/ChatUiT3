@@ -1,3 +1,5 @@
+using ChatUiT.Server.Errors;
+
 namespace ChatUiT.Server.Models.Insights;
 
 /// <summary>The results of every query of one Insights page for one time range.</summary>
@@ -16,7 +18,17 @@ public sealed class InsightsTableDto
     public IReadOnlyList<IReadOnlyList<object?>> Rows { get; init; } = [];
     public string? Error { get; init; }
 
-    public static InsightsTableDto Failed(string error) => new() { Error = error };
+    /// <summary>The error code of <see cref="Error"/>, such as E4212.</summary>
+    public string? ErrorCode { get; init; }
+
+    /// <summary>The formatted text of <see cref="Error"/>, with its code and reference.</summary>
+    public string? Message { get; init; }
+
+    public static InsightsTableDto Failed(string error)
+    {
+        var code = InsightsErrors.CodeOf(error);
+        return new() { Error = error, ErrorCode = code.Code, Message = code.Format() };
+    }
 }
 
 /// <summary>A column name and its Kusto type, such as string, long, real or datetime.</summary>
@@ -28,4 +40,11 @@ public static class InsightsErrors
     public const string NotConfigured = "not_configured";
     public const string NoAccess = "no_access";
     public const string QueryFailed = "query_failed";
+
+    public static ErrorCode CodeOf(string error) => error switch
+    {
+        NotConfigured => ErrorCodes.InsightsNotConfigured,
+        NoAccess => ErrorCodes.InsightsNoAccess,
+        _ => ErrorCodes.InsightsQueryFailed
+    };
 }

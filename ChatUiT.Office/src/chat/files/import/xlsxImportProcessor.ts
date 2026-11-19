@@ -2,6 +2,7 @@
 /* eslint-disable office-addins/load-object-before-read, office-addins/call-sync-before-read -- these are ExcelJS objects, not Office.js proxies. */
 
 import ExcelJS from "exceljs";
+import { ErrorCodes, userError } from "../../../errors/errorCodes";
 import type { ChatFile, ChatFileChunk } from "../fileModels";
 import {
   createChatFile,
@@ -26,11 +27,11 @@ export async function processXlsxImport(file: File): Promise<ChatFile> {
   for (const worksheet of workbook.worksheets) {
     const worksheetImages = getWorksheetImages(worksheet);
     if (worksheetImages.length > 0 && typeof workbook.getImage !== "function") {
-      throw new Error("XLSX image extraction is unsupported for this workbook");
+      throw userError(ErrorCodes.XlsxImagesUnsupported);
     }
 
     if (worksheetImages.length === 0 && workbookImages.length > 0 && typeof worksheet.getImages !== "function") {
-      throw new Error("XLSX image extraction is unsupported for this workbook");
+      throw userError(ErrorCodes.XlsxImagesUnsupported);
     }
 
     const rowBlocks = buildWorksheetRowBlocks(worksheet);
@@ -54,7 +55,7 @@ export async function processXlsxImport(file: File): Promise<ChatFile> {
       const bytes = toUint8Array(workbookImage?.buffer);
       const extension = workbookImage?.extension;
       if (!bytes || !extension) {
-        throw new Error("XLSX image extraction is unsupported for this workbook");
+        throw userError(ErrorCodes.XlsxImagesUnsupported);
       }
 
       const chunk = await normalizeImageBytesToChunk(bytes, `image/${extension}`);

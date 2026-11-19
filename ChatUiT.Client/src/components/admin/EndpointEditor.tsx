@@ -18,6 +18,7 @@ import EmptyNote from '../common/EmptyNote';
 import FormFooter from '../common/FormFooter';
 import Box from '../common/Box';
 import Text from '../common/Text';
+import { ErrorCode, formatError } from '../../errors/errorCodes';
 
 const PROVIDERS: EndpointType[] = ['AzureOpenAI', 'MicrosoftFoundry', 'Anthropic', 'OpenAI', 'LlamaCpp', 'Other'];
 /** The endpoint types that accept the app's Entra identity. */
@@ -52,7 +53,7 @@ const EndpointEditor: React.FC<EndpointEditorProps> = ({ endpointId }) => {
   }
 
   if (endpointId && endpoints !== undefined && !endpoint) {
-    return <EmptyNote>{t('common.notFound')}</EmptyNote>;
+    return <EmptyNote>{formatError(t('common.notFound'), ErrorCode.AdminItemNotFound)}</EmptyNote>;
   }
 
   const finish = async () => {

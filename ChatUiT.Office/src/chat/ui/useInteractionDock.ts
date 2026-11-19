@@ -1,7 +1,7 @@
 import { useState } from "react";
 import type { ApprovalAnswer, ApprovalPreview, ApprovalQuestion } from "../api/types";
+import { ErrorCodes, userErrorText } from "../../errors/errorCodes";
 import {
-  describeError,
   openFunctionCalls,
   pendingApprovalRequests,
   type ApprovalDecision,
@@ -147,7 +147,7 @@ export function useInteractionDock(
       await answer(current.id, decision);
       setAnsweredCount((count) => count + 1);
     } catch (reason) {
-      setError(describeError(reason));
+      setError(userErrorText(reason, ErrorCodes.AnswerFailed));
     } finally {
       setBusy(false);
     }

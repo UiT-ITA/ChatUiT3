@@ -1,3 +1,4 @@
+using ChatUiT.Server.Errors;
 using System.Text.Json;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http.Features;
@@ -91,13 +92,13 @@ public class MediaGenerationsController : ControllerBase
     {
         if (string.IsNullOrWhiteSpace(dto.Prompt))
         {
-            return BadRequest("A prompt is required.");
+            return ApiErrors.BadRequest(ErrorCodes.ImagePromptRequired);
         }
 
         var model = await _modelService.GetModelForUserAsync<ImageModel>(modelId, _userService.GetUserRoles(User));
         if (model == null)
         {
-            return NotFound("The image model does not exist or is not available to you.");
+            return ApiErrors.NotFound(ErrorCodes.ImageModelNotFound);
         }
 
         try
@@ -107,7 +108,7 @@ public class MediaGenerationsController : ControllerBase
         }
         catch (ImagePromptRefinementException ex)
         {
-            return UnprocessableEntity(ex.Message);
+            return ApiErrors.Result(StatusCodes.Status422UnprocessableEntity, ex.Error);
         }
     }
 
@@ -124,19 +125,19 @@ public class MediaGenerationsController : ControllerBase
     {
         if (await _modelService.GetModelForUserAsync<ImageModel>(modelId, _userService.GetUserRoles(User)) == null)
         {
-            return NotFound("The image model does not exist or is not available to you.");
+            return ApiErrors.NotFound(ErrorCodes.ImageModelNotFound);
         }
 
         var resolved = await _modelService.GetModelWithEndpointAsync<ImageModel>(modelId);
         if (resolved is not var (endpoint, model) || !_providers.Supports(endpoint.EndpointType))
         {
-            return BadRequest("The image model's endpoint is missing or not supported.");
+            return ApiErrors.BadRequest(ErrorCodes.ImageEndpointMissing);
         }
 
         var form = await ReadFormAsync(model.Capabilities, cancellationToken);
         if (form == null)
         {
-            return StatusCode(StatusCodes.Status413PayloadTooLarge, "The images are larger than the model accepts.");
+            return ApiErrors.Result(StatusCodes.Status413PayloadTooLarge, ErrorCodes.ImagesTooLarge);
         }
 
         ImageGenerationRequestDto? dto;
@@ -146,12 +147,12 @@ public class MediaGenerationsController : ControllerBase
         }
         catch (JsonException)
         {
-            return BadRequest("The request is not valid JSON.");
+            return ApiErrors.BadRequest(ErrorCodes.ImageRequestNotJson);
         }
 
         if (dto == null)
         {
-            return BadRequest("The request is empty.");
+            return ApiErrors.BadRequest(ErrorCodes.ImageRequestEmpty);
         }
 
         var inputImages = form.Files.GetFiles("inputImages");
@@ -163,7 +164,7 @@ public class MediaGenerationsController : ControllerBase
         {
             if (await ReadImageAsync(file) is not { } image)
             {
-                return BadRequest($"{file.FileName} is not a PNG, JPEG or WebP image.");
+                return ApiErrors.BadRequest(ErrorCodes.NotAnImage, $"{file.FileName} is not a PNG, JPEG or WebP image.");
             }
 
             images.Add(image);
@@ -172,13 +173,13 @@ public class MediaGenerationsController : ControllerBase
         ImageInput? maskImage = null;
         if (mask != null && (maskImage = await ReadImageAsync(mask)) == null)
         {
-            return BadRequest($"{mask.FileName} is not a PNG, JPEG or WebP image.");
+            return ApiErrors.BadRequest(ErrorCodes.NotAnImage, $"{mask.FileName} is not a PNG, JPEG or WebP image.");
         }
 
         ImageInput? markupImage = null;
         if (markup != null && (markupImage = await ReadImageAsync(markup)) == null)
         {
-            return BadRequest($"{markup.FileName} is not a PNG, JPEG or WebP image.");
+            return ApiErrors.BadRequest(ErrorCodes.NotAnImage, $"{markup.FileName} is not a PNG, JPEG or WebP image.");
         }
 
         var parameters = new ImageGenerationParameters
@@ -202,7 +203,7 @@ public class MediaGenerationsController : ControllerBase
         var problems = ImageParameterValidator.Validate(model.Capabilities, parameters);
         if (problems.Count > 0)
         {
-            return BadRequest(string.Join(" ", problems));
+            return ApiErrors.BadRequest(problems);
         }
 
         var generation = _generations.StartImageGeneration(

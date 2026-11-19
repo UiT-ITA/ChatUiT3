@@ -1,3 +1,4 @@
+using ChatUiT.Server.Errors;
 using ChatUiT.Server.Models;
 using ChatUiT.Server.Services;
 using ChatUiT.Server.Services.Agents;
@@ -54,23 +55,23 @@ public class AdminInternalAgentsController : ControllerBase
         var agent = _agents.Find(id);
         if (agent == null)
         {
-            return NotFound($"Internal agent {id} not found");
+            return ApiErrors.NotFound(ErrorCodes.InternalAgentNotFound, $"Internal agent {id} not found.");
         }
 
         var model = string.IsNullOrWhiteSpace(dto.ModelId) ? null : await _models.GetModelAsync<LanguageModel>(dto.ModelId);
         if (model == null)
         {
-            return BadRequest(new { error = "unknown_model", message = "Choose the model the agent runs on." });
+            return ApiErrors.BadRequest(ErrorCodes.AgentModelUnknown, fields: new { error = "unknown_model" });
         }
 
         if (!model.Capabilities.SupportsFunctionCalling)
         {
-            return BadRequest(new { error = "model_cannot_call_functions", message = $"'{model.ModelName}' does not support function calling, which an agent needs." });
+            return ApiErrors.BadRequest(ErrorCodes.AgentModelCannotCallFunctions, $"'{model.ModelName}' does not support function calling, which an agent needs.", new { error = "model_cannot_call_functions" });
         }
 
         if (dto.ExposedInApi && ApiCatalogService.ExposureProblem(agent) is { } problem)
         {
-            return BadRequest(new { error = "agent_not_exposable", message = problem });
+            return ApiErrors.BadRequest(problem, fields: new { error = "agent_not_exposable" });
         }
 
         // Stored as the model can honour it, the same reconciliation as assistant settings.

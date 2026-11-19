@@ -7,6 +7,8 @@ import {
     createTextChunk,
     normalizeImageDataToChunk
 } from './processingShared';
+import i18n from 'i18next';
+import { CodedError, ErrorCode } from '../errors/errorCodes';
 
 pdfjs.GlobalWorkerOptions.workerSrc = new URL('pdfjs-dist/build/pdf.worker.min.mjs', import.meta.url).toString();
 
@@ -40,7 +42,7 @@ type PageScan = {
 export async function processPdfImport(file: File): Promise<ChatFile> {
     const loadingTask = pdfjs.getDocument({ data: await file.arrayBuffer() });
     try {
-        const pdfDocument = await loadingTask.promise;
+        const pdfDocument = await openPdf(loadingTask);
         const pageCount = pdfDocument.numPages;
         const scans: PageScan[] = [];
 
@@ -187,6 +189,22 @@ function pageNeedsRender(scan: PageScan, repeatedKeys: Set<string>): boolean {
     return contentPathCount >= MIN_CONTENT_PATH_COUNT;
 }
 
+// Rethrows a password or invalid-file error from pdf.js with its code.
+async function openPdf(loadingTask: pdfjs.PDFDocumentLoadingTask): Promise<pdfjs.PDFDocumentProxy> {
+    try {
+        return await loadingTask.promise;
+    } catch (error) {
+        const name = (error as { name?: unknown } | null)?.name;
+        if (name === 'PasswordException') {
+            throw new CodedError(ErrorCode.PdfPasswordProtected, i18n.t('files.errors.pdfPasswordProtected'), undefined, { cause: error });
+        }
+        if (name === 'InvalidPDFException') {
+            throw new CodedError(ErrorCode.PdfInvalid, i18n.t('files.errors.pdfInvalid'), undefined, { cause: error });
+        }
+        throw error;
+    }
+}
+
 async function renderPageToChunk(page: PDFPageProxy): Promise<ChatFileChunk | null> {
     const baseViewport = page.getViewport({ scale: 1 });
     const shortSide = Math.min(baseViewport.width, baseViewport.height);
@@ -199,7 +217,7 @@ async function renderPageToChunk(page: PDFPageProxy): Promise<ChatFileChunk | nu
     canvas.height = Math.round(viewport.height);
     const context = canvas.getContext('2d');
     if (!context) {
-        throw new Error('Failed to get canvas context');
+        throw new CodedError(ErrorCode.CanvasUnavailable, i18n.t('files.errors.canvasUnavailable'));
     }
 
     await page.render({ canvas, viewport, intent: RENDER_INTENT }).promise;

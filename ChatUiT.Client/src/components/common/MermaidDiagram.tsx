@@ -9,6 +9,7 @@ import { cx } from './layout';
 import { scrollFadeClass } from './scrollFade';
 import './MermaidDiagram.css';
 import { trackError } from '../../services/telemetryService';
+import { ErrorCode, formatError } from '../../errors/errorCodes';
 
 // Mermaid theme variables and the app tokens they take their colour from. Mermaid derives the other variables from these.
 const THEME_TOKENS: Record<string, string> = {
@@ -138,7 +139,7 @@ function MermaidDiagram({ chart, fullSize = false, showScrollbar = false }: Merm
       <div className="mermaid-diagram mermaid-diagram--error" title={error}>
         <div className="mermaid-error-message">
           <Icon name="error" size="sm" color="danger" />
-          <span className="t-body-strong">{t('chat.mermaid.renderError')}</span>
+          <span className="t-body-strong">{formatError(t('chat.mermaid.renderError'), ErrorCode.DiagramRenderFailed)}</span>
           <span className="mermaid-error-reason t-caption">{error.split('\n')[0]}</span>
         </div>
         <details className="mermaid-error-source">

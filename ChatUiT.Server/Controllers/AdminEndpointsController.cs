@@ -1,3 +1,4 @@
+using ChatUiT.Server.Errors;
 using System.Net.Http.Headers;
 using System.Text.Json;
 using Azure.Core;
@@ -55,17 +56,17 @@ public class AdminEndpointsController : ControllerBase
     };
 
     /// <summary>Parses the auth method; blank means <paramref name="blankMeans"/>. Returns an error message when it is invalid or the endpoint type does not accept it.</summary>
-    private static string? TryParseAuthMethod(string value, EndpointType endpointType, EndpointAuthMethod blankMeans, out EndpointAuthMethod authMethod)
+    private static ErrorCode? TryParseAuthMethod(string value, EndpointType endpointType, EndpointAuthMethod blankMeans, out EndpointAuthMethod authMethod)
     {
         authMethod = blankMeans;
         if (!string.IsNullOrWhiteSpace(value) && !Enum.TryParse(value, out authMethod))
         {
-            return $"Invalid auth method: {value}";
+            return ErrorCodes.EndpointAuthMethodInvalid with { Message = $"Invalid auth method: {value}" };
         }
 
         if (authMethod == EndpointAuthMethod.ManagedIdentity && !ModelEndpoint.SupportsManagedIdentity(endpointType))
         {
-            return $"A {endpointType} endpoint does not accept managed identity. Use an API key.";
+            return ErrorCodes.EndpointManagedIdentityNotSupported with { Message = $"A {endpointType} endpoint does not accept managed identity. Use an API key." };
         }
 
         return null;
@@ -86,7 +87,7 @@ public class AdminEndpointsController : ControllerBase
         var endpoint = await _modelService.GetEndpointByIdAsync(id);
         if (endpoint == null)
         {
-            return NotFound($"Endpoint with id {id} not found");
+            return ApiErrors.NotFound(ErrorCodes.EndpointNotFound, $"Endpoint with id {id} not found.");
         }
 
         return Ok(ToDto(endpoint));
@@ -102,7 +103,7 @@ public class AdminEndpointsController : ControllerBase
         var endpoint = await _modelService.GetEndpointByIdAsync(id);
         if (endpoint == null)
         {
-            return NotFound($"Endpoint with id {id} not found");
+            return ApiErrors.NotFound(ErrorCodes.EndpointNotFound, $"Endpoint with id {id} not found.");
         }
 
         if (endpoint.EndpointType != EndpointType.MicrosoftFoundry
@@ -163,18 +164,18 @@ public class AdminEndpointsController : ControllerBase
     {
         if (!Enum.TryParse<EndpointType>(createDto.EndpointType, out var endpointType))
         {
-            return BadRequest($"Invalid endpoint type: {createDto.EndpointType}");
+            return ApiErrors.BadRequest(ErrorCodes.EndpointTypeInvalid, $"Invalid endpoint type: {createDto.EndpointType}");
         }
 
         var authError = TryParseAuthMethod(createDto.AuthMethod, endpointType, EndpointAuthMethod.ApiKey, out var authMethod);
         if (authError != null)
         {
-            return BadRequest(authError);
+            return ApiErrors.BadRequest(authError);
         }
 
         if (authMethod == EndpointAuthMethod.ApiKey && string.IsNullOrWhiteSpace(createDto.ApiKey))
         {
-            return BadRequest("An API key is required.");
+            return ApiErrors.BadRequest(ErrorCodes.EndpointApiKeyRequired);
         }
 
         var endpoint = new ModelEndpoint
@@ -197,24 +198,24 @@ public class AdminEndpointsController : ControllerBase
     {
         if (id != updateDto.Id)
         {
-            return BadRequest("Route id does not match request body id");
+            return ApiErrors.BadRequest(ErrorCodes.RouteIdMismatch);
         }
 
         if (!Enum.TryParse<EndpointType>(updateDto.EndpointType, out var endpointType))
         {
-            return BadRequest($"Invalid endpoint type: {updateDto.EndpointType}");
+            return ApiErrors.BadRequest(ErrorCodes.EndpointTypeInvalid, $"Invalid endpoint type: {updateDto.EndpointType}");
         }
 
         var existing = await _modelService.GetEndpointByIdAsync(updateDto.Id);
         if (existing == null)
         {
-            return NotFound($"Endpoint with id {id} not found");
+            return ApiErrors.NotFound(ErrorCodes.EndpointNotFound, $"Endpoint with id {id} not found.");
         }
 
         var authError = TryParseAuthMethod(updateDto.AuthMethod, endpointType, existing.AuthMethod, out var authMethod);
         if (authError != null)
         {
-            return BadRequest(authError);
+            return ApiErrors.BadRequest(authError);
         }
 
         // An empty api key means "leave the existing key alone". Managed identity stores no key.
@@ -223,7 +224,7 @@ public class AdminEndpointsController : ControllerBase
             : string.IsNullOrWhiteSpace(updateDto.ApiKey) ? existing.ApiKey : updateDto.ApiKey;
         if (authMethod == EndpointAuthMethod.ApiKey && string.IsNullOrWhiteSpace(apiKey))
         {
-            return BadRequest("An API key is required.");
+            return ApiErrors.BadRequest(ErrorCodes.EndpointApiKeyRequired);
         }
 
         var endpoint = new ModelEndpoint
@@ -238,7 +239,7 @@ public class AdminEndpointsController : ControllerBase
         var updated = await _modelService.UpdateEndpointAsync(endpoint);
         if (!updated)
         {
-            return NotFound($"Endpoint with id {id} not found");
+            return ApiErrors.NotFound(ErrorCodes.EndpointNotFound, $"Endpoint with id {id} not found.");
         }
 
         RecordChange("updated", id, existing, endpoint);
@@ -253,7 +254,7 @@ public class AdminEndpointsController : ControllerBase
         var deleted = await _modelService.DeleteEndpointAsync(id);
         if (!deleted)
         {
-            return NotFound($"Endpoint with id {id} not found");
+            return ApiErrors.NotFound(ErrorCodes.EndpointNotFound, $"Endpoint with id {id} not found.");
         }
 
         RecordChange("deleted", id, existing, null);

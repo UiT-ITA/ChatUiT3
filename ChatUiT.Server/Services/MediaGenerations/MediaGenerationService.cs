@@ -9,6 +9,7 @@ using ChatUiT.Server.Models;
 using ChatUiT.Server.Services.AiProviders;
 using ChatUiT.Server.Services.AiProviders.Images;
 using ChatUiT.Server.Services.Streaming;
+using ChatUiT.Server.Errors;
 
 /// <summary>
 /// Runs generations in the background, the way chat replies run: each run has a deadline and
@@ -22,8 +23,6 @@ public sealed class MediaGenerationService
 
     /// <summary>How long a finished run's events stay readable for late clients.</summary>
     private static readonly TimeSpan StreamRetention = TimeSpan.FromMinutes(5);
-
-    private const string GenerationFailedText = "The generation failed because of an error.";
 
     private readonly IAiProviderRegistry _providers;
     private readonly IMediaGenerationStore _store;
@@ -154,18 +153,20 @@ public sealed class MediaGenerationService
             }
             catch (OperationCanceledException)
             {
-                Finish(generation, stream, stopwatch, MediaGenerationStatus.Failed, $"The model did not finish within {timeout.TotalMinutes:0} minutes.");
-                Record(Telemetry.Outcomes.Failed, Telemetry.ErrorCategories.Timeout, null);
+                var error = ErrorCodes.ImageGenerationTimedOut with { Message = $"The model did not finish within {timeout.TotalMinutes:0} minutes." };
+                Finish(generation, stream, stopwatch, MediaGenerationStatus.Failed, error.Format());
+                Record(Telemetry.Outcomes.Failed, Telemetry.ErrorCategories.Timeout, null, error);
             }
             catch (ImageGenerationFailedException ex)
             {
-                Finish(generation, stream, stopwatch, MediaGenerationStatus.Failed, ex.Message);
-                Record(Telemetry.Outcomes.Failed, null, ex);
+                Finish(generation, stream, stopwatch, MediaGenerationStatus.Failed, ex.Error.Format());
+                Record(Telemetry.Outcomes.Failed, null, ex, ex.Error);
             }
             catch (Exception ex)
             {
-                Finish(generation, stream, stopwatch, MediaGenerationStatus.Failed, GenerationFailedText);
-                Record(Telemetry.Outcomes.Failed, null, ex);
+                var error = ProviderErrors.Classify(ex) ?? ErrorCodes.ImageGenerationFailed;
+                Finish(generation, stream, stopwatch, MediaGenerationStatus.Failed, error.Format());
+                Record(Telemetry.Outcomes.Failed, null, ex, error);
             }
             finally
             {
@@ -178,8 +179,8 @@ public sealed class MediaGenerationService
                 }
             }
 
-            void Record(string outcome, string? errorCategory, Exception? exception) =>
-                _telemetry.ImageGenerationFinished(info, outcome, stopwatch.ElapsedMilliseconds, generation.InputTokens, generation.OutputTokens, errorCategory, exception);
+            void Record(string outcome, string? errorCategory, Exception? exception, ErrorCode? error = null) =>
+                _telemetry.ImageGenerationFinished(info, outcome, stopwatch.ElapsedMilliseconds, generation.InputTokens, generation.OutputTokens, errorCategory, exception, error?.Code);
         });
     }
 

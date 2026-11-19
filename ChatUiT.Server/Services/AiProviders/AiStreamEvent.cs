@@ -43,16 +43,29 @@ public abstract record AiStreamEvent
 
 /// <summary>
 /// The provider ended a turn early: the stream reported the response as incomplete or failed,
-/// or sent an error. The message carries the service's reason and is shown to the user. The
-/// message is never logged: <see cref="Category"/> and <see cref="Code"/> are.
+/// or sent an error. <see cref="Error"/> is the error code shown to the user. The message is
+/// never logged: <see cref="Category"/> and <see cref="Code"/> are.
 /// </summary>
 public sealed class AiTurnFailedException : Exception, Telemetry.IContentCarryingException
 {
-    public AiTurnFailedException(string message, string category, string? code = null) : base(message)
+    /// <summary>A failure with <paramref name="error"/>; the message is the code's message.</summary>
+    public AiTurnFailedException(Errors.ErrorCode error, string category, string? code = null) : base(error.Message)
     {
+        Error = error;
         Category = category;
         Code = code;
     }
+
+    /// <summary>A failure with <paramref name="message"/> and <see cref="Errors.ErrorCodes.ProviderFailed"/>.</summary>
+    public AiTurnFailedException(string message, string category, string? code = null) : base(message)
+    {
+        Error = Errors.ErrorCodes.ProviderFailed;
+        Category = category;
+        Code = code;
+    }
+
+    /// <summary>The error code shown to the user.</summary>
+    public Errors.ErrorCode Error { get; }
 
     /// <summary>The error category, one of <see cref="Telemetry.ErrorCategories"/>.</summary>
     public string Category { get; }

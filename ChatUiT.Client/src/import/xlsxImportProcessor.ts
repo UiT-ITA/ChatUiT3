@@ -6,6 +6,8 @@ import {
     escapeMarkdownTableCell,
     normalizeImageBytesToChunk
 } from './processingShared';
+import i18n from 'i18next';
+import { CodedError, ErrorCode } from '../errors/errorCodes';
 
 type WorksheetImage = {
     imageId: number;
@@ -15,7 +17,9 @@ type WorksheetImage = {
 
 export async function processXlsxImport(file: File): Promise<ChatFile> {
     const workbook = new ExcelJS.Workbook();
-    await workbook.xlsx.load(await file.arrayBuffer());
+    await workbook.xlsx.load(await file.arrayBuffer()).catch((error: unknown) => {
+        throw new CodedError(ErrorCode.XlsxOpenFailed, i18n.t('files.errors.xlsxOpenFailed'), undefined, { cause: error });
+    });
 
     const chunks: ChatFileChunk[] = [];
     const workbookImages = workbook.model?.media ?? [];
@@ -23,11 +27,11 @@ export async function processXlsxImport(file: File): Promise<ChatFile> {
     for (const worksheet of workbook.worksheets) {
         const worksheetImages = getWorksheetImages(worksheet);
         if (worksheetImages.length > 0 && typeof workbook.getImage !== 'function') {
-            throw new Error('XLSX image extraction is unsupported for this workbook');
+            throw new CodedError(ErrorCode.XlsxImagesUnsupported, i18n.t('files.errors.xlsxImagesUnsupported'));
         }
 
         if (worksheetImages.length === 0 && workbookImages.length > 0 && typeof worksheet.getImages !== 'function') {
-            throw new Error('XLSX image extraction is unsupported for this workbook');
+            throw new CodedError(ErrorCode.XlsxImagesUnsupported, i18n.t('files.errors.xlsxImagesUnsupported'));
         }
 
         const rowBlocks = buildWorksheetRowBlocks(worksheet);
@@ -51,7 +55,7 @@ export async function processXlsxImport(file: File): Promise<ChatFile> {
             const bytes = toUint8Array(workbookImage?.buffer);
             const extension = workbookImage?.extension;
             if (!bytes || !extension) {
-                throw new Error('XLSX image extraction is unsupported for this workbook');
+                throw new CodedError(ErrorCode.XlsxImagesUnsupported, i18n.t('files.errors.xlsxImagesUnsupported'));
             }
 
             const chunk = await normalizeImageBytesToChunk(bytes, `image/${extension}`);

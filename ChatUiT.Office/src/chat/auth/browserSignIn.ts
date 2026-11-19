@@ -1,5 +1,6 @@
 /* global clearTimeout, console, Date, fetch, localStorage, Response, setTimeout, URL, URLSearchParams, window */
 
+import { ErrorCodes, userError } from "../../errors/errorCodes";
 import { msalAuth } from "./msalAuth";
 import { base64Url, makeState, matchCode, randomId, relayUrl, sha256, type SignInRelayResult } from "./signInRelay";
 
@@ -149,7 +150,7 @@ function waitForCode(url: string, id: string, code: string, relay: string): Prom
     };
     const deadline = setTimeout(() => {
       finish();
-      reject(new Error("The browser sign-in did not finish in time"));
+      reject(userError(ErrorCodes.SignInTimedOut));
     }, SIGN_IN_TIMEOUT_MS);
     const poll = async () => {
       let result: SignInRelayResult | null = null;
@@ -166,7 +167,7 @@ function waitForCode(url: string, id: string, code: string, relay: string): Prom
         if (result.code) {
           resolve(result.code);
         } else {
-          reject(new Error(`The browser sign-in failed: ${result.error}`));
+          reject(userError(ErrorCodes.SignInRejected, { detail: result.error }));
         }
         return;
       }
@@ -178,7 +179,7 @@ function waitForCode(url: string, id: string, code: string, relay: string): Prom
       cancel: () => {
         if (!done) {
           finish();
-          reject(new Error("The sign-in was cancelled"));
+          reject(userError(ErrorCodes.SignInCancelled));
         }
       },
     });
@@ -212,7 +213,9 @@ async function redeem(scopes: string[], grant: Record<string, string>): Promise<
   });
   const body = (await response.json()) as TokenResponse;
   if (!response.ok || !body.access_token || !body.expires_in) {
-    throw new Error(body.error_description || body.error || `The token endpoint answered ${response.status}`);
+    throw userError(ErrorCodes.SignInTokenFailed, {
+      detail: body.error_description || body.error || `The token endpoint answered ${response.status}`,
+    });
   }
   tokens.set(scopeKey(scopes), {
     accessToken: body.access_token,

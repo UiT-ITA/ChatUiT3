@@ -22,6 +22,7 @@ import type { ChatFile } from '../../types/fileModels';
 import { SUPPORTED_IMPORT_ACCEPT, isValidFileType } from '../../utils/fileUtils';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { addNotification } from '../../services/notificationService';
+import { ErrorCode, formatError } from '../../errors/errorCodes';
 import { getContextUsage, setDraft } from '../../services/contextUsageService';
 import { formatTokens, formatTokensCompact } from '../../utils/tokenCounting';
 import TextArea from '../common/TextArea';
@@ -167,7 +168,7 @@ export default function ChatInput() {
     const valid = files.filter(file => isValidFileType(file));
     files.filter(file => !isValidFileType(file)).forEach(file => addNotification({
       level: 'Warning',
-      message: `${file.name}: ${t('files.typeNotSupported')}`
+      message: `${file.name}: ${formatError(t('files.typeNotSupported'), ErrorCode.FileTypeNotSupported)}`
     }));
     if (valid.length === 0) return;
 
@@ -186,7 +187,7 @@ export default function ChatInput() {
             void addFiles(details.added);
             if (details.reason === 'drop') textareaRef.current?.focus();
           }}
-          onReject={rejected => rejected.forEach(({ file }) => addNotification({ level: 'Warning', message: `${file.name}: ${t('files.typeNotSupported')}` }))}
+          onReject={rejected => rejected.forEach(({ file }) => addNotification({ level: 'Warning', message: `${file.name}: ${formatError(t('files.typeNotSupported'), ErrorCode.FileTypeNotSupported)}` }))}
         >
           <FileInputDropzone render={<form className="composer-card" onSubmit={handleSendMessage} />} pasteTarget={() => textareaRef.current}>
             <InteractionCard dock={dock} />

@@ -8,6 +8,7 @@ using Microsoft.AspNetCore.SignalR;
 using Microsoft.Extensions.Options;
 
 using ChatUiT.Server.Telemetry;
+using ChatUiT.Server.Errors;
 
 namespace ChatUiT.Server.Services
 {
@@ -238,7 +239,7 @@ namespace ChatUiT.Server.Services
                 }
 
                 await RemoveSharedAssistantAsync(shared.Id, userId);
-                await _hubContext.Clients.Group(userId).Notify(NotifyLevel.Warning, SharedAssistantRemovedMessage(shared, disallowed));
+                await _hubContext.Clients.Group(userId).Notify(NotifyLevel.Warning, SharedAssistantRemovedMessage(shared, disallowed).Format());
             }
 
             foreach (var assistant in ownedAssistants.Concat(systemAssistants).Concat(kept))
@@ -264,8 +265,8 @@ namespace ChatUiT.Server.Services
                 => _toolboxes.ParentOf(toolbox.Id) is { } parent ? $"{Label(parent)} › {toolbox.DisplayName}" : toolbox.DisplayName;
         }
 
-        public static string SharedAssistantRemovedMessage(Assistant assistant, IReadOnlyList<string> disallowedToolNames)
-            => $"The shared assistant \"{assistant.Name}\" was removed from your list: it uses tools you are not allowed to use ({string.Join(", ", disallowedToolNames)}).";
+        public static ErrorCode SharedAssistantRemovedMessage(Assistant assistant, IReadOnlyList<string> disallowedToolNames)
+            => ErrorCodes.SharedAssistantRemoved with { Message = $"The shared assistant \"{assistant.Name}\" was removed from your list: it uses tools you are not allowed to use ({string.Join(", ", disallowedToolNames)})." };
 
         public async Task<Assistant?> GetAssistantByIdAsync(string assistantId, bool includeFileContent = false)
         {
@@ -823,7 +824,7 @@ namespace ChatUiT.Server.Services
                 return;
             }
 
-            throw new AssistantValidationException(
+            throw new AssistantValidationException(ErrorCodes.AlwaysLoadedFilesTooLarge,
                 $"The always loaded files use {total:N0} tokens, more than the {limit:N0} this model allows. Add the largest files as selective loaded files instead.");
         }
 
@@ -941,7 +942,7 @@ namespace ChatUiT.Server.Services
             {
                 if (dto.Category == AssistantFileCategories.SelectiveLoaded && string.IsNullOrWhiteSpace(dto.Description))
                 {
-                    throw new AssistantValidationException($"On-demand file '{dto.SourceFilename}' needs a description.");
+                    throw new AssistantValidationException(ErrorCodes.OnDemandFileNeedsDescription, $"On-demand file '{dto.SourceFilename}' needs a description.");
                 }
             }
 
@@ -1009,9 +1010,13 @@ namespace ChatUiT.Server.Services
 /// <summary>Thrown when an assistant create or update request fails validation. The message is safe to show the caller.</summary>
 public sealed class AssistantValidationException : Exception
 {
-    public AssistantValidationException(string message) : base(message)
+    public AssistantValidationException(ErrorCode error, string message) : base(message)
     {
+        Error = error;
     }
+
+    /// <summary>The kind of validation error.</summary>
+    public ErrorCode Error { get; }
 }
 
 /// <summary>Thrown when a user tries to add a shared assistant whose tools they may not use.</summary>

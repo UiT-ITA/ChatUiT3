@@ -6,6 +6,7 @@ using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
 using ChatUiT.Server.Services.Agents;
+using ChatUiT.Server.Errors;
 using ChatUiT.Server.Services.AiProviders;
 using ChatUiT.Server.Services.AiProviders.Protocols;
 using ChatUiT.Server.Services.ApiCatalog;
@@ -72,14 +73,15 @@ public sealed class ResponsesRunner
         }
         catch (AiTurnFailedException ex)
         {
-            // The provider's reason is safe to show and tells the client why the turn stopped.
-            _logger.LogWarning("Response {ResponseId} on {Model} failed: the provider ended the turn early", writer.Response.Id, target.PublicId);
-            writer.Failed(ex.Message);
+            var error = ProviderErrors.Classify(ex) ?? ErrorCodes.ResponsesRunFailed;
+            _logger.LogWarning("Response {ResponseId} on {Model} failed: the provider ended the turn early ({ErrorCode})", writer.Response.Id, target.PublicId, error.Code);
+            writer.Failed(error);
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Response {ResponseId} on {Model} failed", writer.Response.Id, target.PublicId);
-            writer.Failed("The response could not be completed because an error occurred while generating it.");
+            var error = ProviderErrors.Classify(ex) ?? ErrorCodes.ResponsesRunFailed;
+            _logger.LogError(ex, "Response {ResponseId} on {Model} failed ({ErrorCode})", writer.Response.Id, target.PublicId, error.Code);
+            writer.Failed(error);
         }
     }
 

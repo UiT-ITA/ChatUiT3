@@ -1,4 +1,6 @@
 import type { ImageChunk, ChatFile, ChatFileChunk, TextChunk } from '../types/fileModels';
+import i18n from 'i18next';
+import { CodedError, ErrorCode } from '../errors/errorCodes';
 
 const MAX_LONG_SIDE = 2048;
 const MAX_SHORT_SIDE = 1024;
@@ -46,7 +48,7 @@ export async function normalizeImageDataToChunk(imageData: ImageData): Promise<I
 
     const context = canvas.getContext('2d');
     if (!context) {
-        throw new Error('Failed to get canvas context');
+        throw new CodedError(ErrorCode.CanvasUnavailable, i18n.t('files.errors.canvasUnavailable'));
     }
 
     context.putImageData(imageData, 0, 0);
@@ -190,7 +192,7 @@ async function normalizeImageDataUrlToChunk(dataUrl: string): Promise<ImageChunk
 
     const context = canvas.getContext('2d');
     if (!context) {
-        throw new Error('Failed to get canvas context');
+        throw new CodedError(ErrorCode.CanvasUnavailable, i18n.t('files.errors.canvasUnavailable'));
     }
 
     context.drawImage(image, 0, 0, width, height);
@@ -246,7 +248,7 @@ function loadImage(src: string): Promise<HTMLImageElement> {
     return new Promise((resolve, reject) => {
         const image = new Image();
         image.onload = () => resolve(image);
-        image.onerror = () => reject(new Error('Failed to load image'));
+        image.onerror = () => reject(new CodedError(ErrorCode.ImageLoadFailed, i18n.t('files.errors.imageLoadFailed')));
         image.src = src;
     });
 }
@@ -255,7 +257,7 @@ function blobToDataUrl(blob: Blob): Promise<string> {
     return new Promise((resolve, reject) => {
         const reader = new FileReader();
         reader.onload = () => resolve(reader.result as string);
-        reader.onerror = () => reject(reader.error ?? new Error('Failed to read blob'));
+        reader.onerror = () => reject(new CodedError(ErrorCode.FileReadFailed, i18n.t('files.errors.fileReadFailed'), undefined, { cause: reader.error }));
         reader.readAsDataURL(blob);
     });
 }
@@ -264,7 +266,7 @@ function canvasToBlob(canvas: HTMLCanvasElement, type: string): Promise<Blob> {
     return new Promise((resolve, reject) => {
         canvas.toBlob((blob) => {
             if (!blob) {
-                reject(new Error('Failed to create blob from canvas'));
+                reject(new CodedError(ErrorCode.ImageEncodeFailed, i18n.t('files.errors.imageEncodeFailed')));
                 return;
             }
 

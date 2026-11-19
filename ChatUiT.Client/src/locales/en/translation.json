@@ -428,7 +428,29 @@
     "unknownFile": "Unknown file",
     "removeFile": "Remove file",
     "typeNotSupported": "File type not supported",
-    "appUpdated": "A new version of ChatUiT is available. Reload the page and try again."
+    "appUpdated": "A new version of ChatUiT is available. Reload the page and try again.",
+    "errors": {
+      "importFailed": "The file could not be imported.",
+      "noProcessor": "This file type cannot be imported.",
+      "imageLoadFailed": "An image could not be read. It may be damaged or in a format the browser does not support.",
+      "fileReadFailed": "The file data could not be read.",
+      "canvasUnavailable": "The browser could not process images. Try another browser.",
+      "imageEncodeFailed": "An image could not be converted.",
+      "pdfFailed": "The PDF could not be read.",
+      "pdfPasswordProtected": "The PDF is password-protected. Remove the password and try again.",
+      "pdfInvalid": "The file is not a valid PDF or is damaged.",
+      "docxFailed": "The Word document could not be read.",
+      "docxContentMissing": "The Word document has no document content.",
+      "docxBodyMissing": "The Word document has no document body.",
+      "docxOpenFailed": "The Word document could not be opened. It may be damaged or password-protected.",
+      "pptxFailed": "The PowerPoint presentation could not be read.",
+      "pptxOpenFailed": "The PowerPoint presentation could not be opened. It may be damaged or password-protected.",
+      "xlsxFailed": "The Excel workbook could not be read.",
+      "xlsxOpenFailed": "The Excel workbook could not be opened. It may be damaged or password-protected.",
+      "xlsxImagesUnsupported": "The images in this Excel workbook cannot be read.",
+      "imageFailed": "The image could not be imported.",
+      "textFailed": "The text file could not be read."
+    }
   },
   "contextColumn": {
     "chats": "Chats",
@@ -611,7 +633,8 @@
       "test": {
         "button": "Test",
         "running": "Testing...",
-        "saveFirst": "Save your changes before testing."
+        "saveFirst": "Save your changes before testing.",
+        "failed": "The test could not be run."
       },
       "actions": {
         "delete": "Delete"
@@ -1210,5 +1233,19 @@
       "openNewVersion": "Mandatory training (new version)",
       "certificate": "Download certificate"
     }
+  },
+  "errors": {
+    "notSignedIn": "You are not signed in. Reload the page to sign in.",
+    "tooLarge": "The request is too large to send.",
+    "toolsNotAllowed": "One or more of the selected tools are not available to you.",
+    "knowledgeSourcesNotAllowed": "One or more of the selected knowledge sources are not available to you.",
+    "invalidTools": "One or more of the selected tools do not exist.",
+    "invalidGroupIds": "One or more group ids are not valid object ids.",
+    "unknownKnowledgeSources": "One or more of the selected knowledge sources do not exist.",
+    "courseVersionChanged": "The course has a new version. Reload the course and take the test again.",
+    "realtimeNoToken": "Could not connect to the server because you are not signed in.",
+    "realtimeConnectionFailed": "Could not open the live connection to the server.",
+    "signInFailed": "Sign-in failed.",
+    "trainingStatusFailed": "Your training status could not be loaded."
   }
 }

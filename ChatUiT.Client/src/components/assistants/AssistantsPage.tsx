@@ -35,6 +35,7 @@ import Box from '../common/Box';
 import Text from '../common/Text';
 import ActionBar from '../common/ActionBar';
 import EmptyNote from '../common/EmptyNote';
+import { ErrorCode, formatError } from '../../errors/errorCodes';
 
 type AssistantVariant = AssistantDto['type'];
 
@@ -170,7 +171,7 @@ const AssistantsPage: React.FC = () => {
         <Page>
           <Text as="h1" variant="page-title">{t('assistants.title')}</Text>
           <PageTitleBar />
-          <PageIntro>{t('assistants.notFound')}</PageIntro>
+          <PageIntro>{formatError(t('assistants.notFound'), ErrorCode.AssistantNotFound)}</PageIntro>
         </Page>
       );
     }

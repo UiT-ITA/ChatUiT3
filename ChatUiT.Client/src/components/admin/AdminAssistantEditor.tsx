@@ -11,6 +11,7 @@ import { ConfirmDialog } from '../common/Dialog';
 import PageTitleBar from '../common/PageTitleBar';
 import EmptyNote from '../common/EmptyNote';
 import Text from '../common/Text';
+import { ErrorCode, formatError } from '../../errors/errorCodes';
 
 interface AdminAssistantEditorProps {
   assistantId?: string;
@@ -30,7 +31,7 @@ const AdminAssistantEditor: React.FC<AdminAssistantEditorProps> = ({ assistantId
   }
 
   if (assistantId && assistants !== undefined && !assistant) {
-    return <EmptyNote>{t('common.notFound')}</EmptyNote>;
+    return <EmptyNote>{formatError(t('common.notFound'), ErrorCode.AdminItemNotFound)}</EmptyNote>;
   }
 
   const handleCreate = async (payload: CreateAdminAssistantDto) => {

@@ -5,7 +5,15 @@ import Text from '../common/Text';
 import EmptyNote from '../common/EmptyNote';
 import { cx } from '../common/layout';
 import type { InsightsTable } from '../../types/insights';
+import { ErrorCode, formatError } from '../../errors/errorCodes';
 import './InsightsCard.css';
+
+const INSIGHTS_ERROR_CODES: Record<NonNullable<InsightsTable['error']>, ErrorCode> = {
+  not_configured: ErrorCode.InsightsNotConfigured,
+  no_access: ErrorCode.InsightsNoAccess,
+  query_failed: ErrorCode.InsightsQueryFailed,
+  request: ErrorCode.InsightsRequestFailed,
+};
 
 interface InsightsCardProps {
   title: string;
@@ -28,7 +36,7 @@ const InsightsCard: React.FC<InsightsCardProps> = ({ title, tables, wide = false
     <Card as="section" padding="lg" gap="md" className={cx('insights-card', wide && 'insights-card--wide')}>
       <Text as="h2" variant="overline" tone="muted">{title}</Text>
       {error ? (
-        <Text as="p" variant="body" tone="danger">{t(`insights.errors.${error}`)}</Text>
+        <Text as="p" variant="body" tone="danger">{formatError(t(`insights.errors.${error}`), INSIGHTS_ERROR_CODES[error])}</Text>
       ) : loading ? (
         <EmptyNote variant="row">{t('common.loading')}</EmptyNote>
       ) : empty ? (

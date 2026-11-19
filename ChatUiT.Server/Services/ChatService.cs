@@ -11,12 +11,12 @@ using System.Text.Json;
 using System.Security.Claims;
 using Microsoft.Extensions.Options;
 using ChatUiT.Server.Telemetry;
+using ChatUiT.Server.Errors;
 
 namespace ChatUiT.Server.Services;
 
 public class ChatService : IChatService
 {
-    private const string GenerationFailedText = "*The response could not be completed because an error occurred while generating it.*";
     private static readonly TimeSpan StaleGenerationThreshold = TimeSpan.FromMinutes(5);
 
     /// <summary>
@@ -108,9 +108,10 @@ public class ChatService : IChatService
             }
 
             message.Status = AiChatStatus.Error;
+            var staleText = $"*{ErrorCodes.GenerationStale.FormatWithoutReference()}*";
             message.Content = string.IsNullOrWhiteSpace(message.Content)
-                ? GenerationFailedText
-                : $"{message.Content}\n\n{GenerationFailedText}";
+                ? staleText
+                : $"{message.Content}\n\n{staleText}";
             // The content changed, so any stored counts are stale. Assistant messages carry
             // no files, so counting the copy below is counting the message.
             message.TokenCounts = new Dictionary<string, int>();
@@ -299,7 +300,7 @@ public class ChatService : IChatService
             : await _assistantService.GetAssistantByIdAsync(targetAssistantId);
         if (chatHeader is { RedEnabled: true } && targetAssistant != null && _assistantService.ClassificationOf(targetAssistant) != DataClassification.Red)
         {
-            await _hubContext.Clients.Group(userId).Notify(NotifyLevel.Error, $"This chat allows red data, so it can only use red assistants. \"{targetAssistant.Name}\" is not red.");
+            await NotifyErrorAsync(userId, ErrorCodes.ChatNeedsRedAssistant with { Message = $"This chat allows red data, so it can only use red assistants. \"{targetAssistant.Name}\" is not red." });
             throw new InvalidOperationException($"Chat {chatId} allows red data but assistant {targetAssistantId} is not red");
         }
 
@@ -357,7 +358,7 @@ public class ChatService : IChatService
             }
             if (string.IsNullOrWhiteSpace(effectiveAssistantId))
             {
-                await _hubContext.Clients.Group(userId).Notify(NotifyLevel.Error, "Assistant is required.");
+                await NotifyErrorAsync(userId, ErrorCodes.AssistantRequired);
                 throw new InvalidOperationException("AssistantId is required for chat operations");
             }
             // Pin order is kept: pinned files are placed in the request in the order they were loaded.
@@ -368,7 +369,7 @@ public class ChatService : IChatService
             var modelWithEndpoint = await _modelService.GetModelWithEndpointAsync<LanguageModel>(modelId);
             if (modelWithEndpoint == null)
             {
-                await _hubContext.Clients.Group(userId).Notify(NotifyLevel.Error, "Selected model is unavailable or misconfigured.");
+                await NotifyErrorAsync(userId, ErrorCodes.ModelUnavailable);
                 throw new InvalidOperationException($"Model {modelId} not found or has no endpoint configured");
             }
 
@@ -376,7 +377,7 @@ public class ChatService : IChatService
 
             if (!_providers.Supports(endpoint.EndpointType))
             {
-                await _hubContext.Clients.Group(userId).Notify(NotifyLevel.Error, "The selected provider is not supported.");
+                await NotifyErrorAsync(userId, ErrorCodes.ProviderNotSupported);
                 throw new NotSupportedException($"No AI provider is registered for endpoint type {endpoint.EndpointType}.");
             }
 
@@ -423,10 +424,10 @@ public class ChatService : IChatService
                 facts.ClientToolNames,
                 TokenCountingSchemes.IdFor(model.Capabilities) is { } scheme && userMessage.TokenCounts.TryGetValue(scheme, out var promptTokens) ? promptTokens : null));
         }
-        catch
+        catch (Exception ex)
         {
             // Marks the reply placeholder as failed when the send fails before the run starts.
-            await FailBeforeRunAsync(userId, chatId, assistantMessage);
+            await FailBeforeRunAsync(userId, chatId, assistantMessage, ProviderErrors.Classify(ex) ?? ErrorCodes.GenerationFailedBeforeRun);
             throw;
         }
 
@@ -560,21 +561,16 @@ public class ChatService : IChatService
                     return;
                 }
 
-                // A turn the provider ended early carries its reason, which the protocol has
-                // already logged as status, reason and code; it is shown in place of the generic text.
-                var failedText = GenerationFailedText;
+                // A provider failure, including a turn the provider ended early, gets its own code.
+                var error = ProviderErrors.Classify(ex) ?? ErrorCodes.GenerationFailed;
+                var failedText = FailedText(error);
                 if (cancelledByUser)
                 {
                     RecordFinished(Outcomes.Cancelled, null);
                 }
                 else
                 {
-                    if (ex is AiTurnFailedException turnFailed)
-                    {
-                        failedText = $"*{turnFailed.Message}*";
-                    }
-
-                    RecordFinished(Outcomes.Failed, ex);
+                    RecordFinished(Outcomes.Failed, ex, userErrorCode: error.Code);
                 }
 
                 _streamingService.CompleteMessage(userId, message.Id);
@@ -592,7 +588,7 @@ public class ChatService : IChatService
                 NotifyChatUpdated(userId, chatId);
                 if (!cancelledByUser)
                 {
-                    await _hubContext.Clients.Group(userId).Notify(NotifyLevel.Error, "The model failed to complete your request. Please try again.");
+                    await _hubContext.Clients.Group(userId).Notify(NotifyLevel.Error, error.Format());
                 }
             }
             finally
@@ -607,7 +603,7 @@ public class ChatService : IChatService
                 await plan.UndoOnCancelAsync!();
             }
 
-            void RecordFinished(string outcome, Exception? exception, bool awaitingUser = false) =>
+            void RecordFinished(string outcome, Exception? exception, bool awaitingUser = false, string? userErrorCode = null) =>
                 _telemetry.GenerationFinished(new GenerationFinishedInfo(
                     chatId,
                     message.Id,
@@ -624,16 +620,23 @@ public class ChatService : IChatService
                     stats.CachedTokens,
                     stats.CacheWriteTokens,
                     stats.StopReason,
-                    awaitingUser), exception);
+                    awaitingUser), exception, userErrorCode);
         });
     }
 
+    /// <summary>The stored text of a failed reply: the formatted error, in italics.</summary>
+    private static string FailedText(ErrorCode error) => $"*{error.Format()}*";
+
+    /// <summary>Shows the user an error toast with the formatted error.</summary>
+    private Task NotifyErrorAsync(string userId, ErrorCode error)
+        => _hubContext.Clients.Group(userId).Notify(NotifyLevel.Error, error.Format());
+
     // Ends the reply's stream and stores the reply as failed.
-    private async Task FailBeforeRunAsync(string userId, string chatId, Models.ChatMessage assistantMessage)
+    private async Task FailBeforeRunAsync(string userId, string chatId, Models.ChatMessage assistantMessage, ErrorCode error)
     {
         _streamingService.CompleteMessage(userId, assistantMessage.Id);
 
-        assistantMessage.Content = GenerationFailedText;
+        assistantMessage.Content = FailedText(error);
         assistantMessage.Status = AiChatStatus.Error;
         try
         {
@@ -734,20 +737,20 @@ public class ChatService : IChatService
     {
         if (string.IsNullOrWhiteSpace(assistantId))
         {
-            await _hubContext.Clients.Group(userId).Notify(NotifyLevel.Error, "Assistant is required.");
+            await NotifyErrorAsync(userId, ErrorCodes.AssistantRequired);
             throw new InvalidOperationException("AssistantId is required");
         }
 
         var assistant = await _assistantService.GetAssistantByIdAsync(assistantId, includeFileContent: true);
         if (assistant == null)
         {
-            await _hubContext.Clients.Group(userId).Notify(NotifyLevel.Error, "Selected assistant is invalid.");
+            await NotifyErrorAsync(userId, ErrorCodes.AssistantInvalid);
             throw new InvalidOperationException($"Assistant {assistantId} not found for user {userId}");
         }
 
         if (assistant.ChatSettings?.Model == null)
         {
-            await _hubContext.Clients.Group(userId).Notify(NotifyLevel.Error, "Selected assistant has no model configured.");
+            await NotifyErrorAsync(userId, ErrorCodes.AssistantHasNoModel);
             throw new InvalidOperationException($"Assistant {assistantId} has no model configured");
         }
 
@@ -755,7 +758,7 @@ public class ChatService : IChatService
         {
             if (assistant.Access != null && !assistant.Access.Allows(access))
             {
-                await _hubContext.Clients.Group(userId).Notify(NotifyLevel.Error, $"You do not have access to the assistant \"{assistant.Name}\".");
+                await NotifyErrorAsync(userId, ErrorCodes.AssistantAccessDenied with { Message = $"You do not have access to the assistant \"{assistant.Name}\"." });
                 throw new InvalidOperationException($"User {userId} may not use system assistant {assistantId}");
             }
         }
@@ -765,7 +768,7 @@ public class ChatService : IChatService
             if (disallowed.Count > 0)
             {
                 await _assistantService.RemoveSharedAssistantAsync(assistantId, userId);
-                await _hubContext.Clients.Group(userId).Notify(NotifyLevel.Warning, AssistantService.SharedAssistantRemovedMessage(assistant, disallowed));
+                await _hubContext.Clients.Group(userId).Notify(NotifyLevel.Warning, AssistantService.SharedAssistantRemovedMessage(assistant, disallowed).Format());
                 throw new InvalidOperationException($"User {userId} may not use the tools on shared assistant {assistantId}");
             }
         }

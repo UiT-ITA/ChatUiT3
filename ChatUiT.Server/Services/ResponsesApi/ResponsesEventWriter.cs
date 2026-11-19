@@ -2,6 +2,7 @@ using System;
 using System.Net.ServerSentEvents;
 using System.Text.Json;
 using System.Threading.Channels;
+using ChatUiT.Server.Errors;
 
 namespace ChatUiT.Server.Services.ResponsesApi;
 
@@ -117,15 +118,22 @@ public sealed class ResponsesEventWriter
 
     public void McpCallFailed(int index) => SendMcpCall("response.mcp_call.failed", index);
 
+    /// <summary>True once <see cref="Completed"/> or <see cref="Failed"/> has ended the response.</summary>
+    public bool Ended => Response.Status is "completed" or "failed";
+
     public void Completed()
     {
         Response.Status = "completed";
         Send("response.completed", sequence => new { type = "response.completed", sequence_number = sequence, response = Response });
     }
 
-    /// <summary>Ends the response as failed: an <c>error</c> event, then <c>response.failed</c>.</summary>
-    public void Failed(string message)
+    /// <summary>
+    /// Ends the response as failed: an <c>error</c> event, then <c>response.failed</c>. The message
+    /// is the formatted text of <paramref name="error"/>.
+    /// </summary>
+    public void Failed(ErrorCode error)
     {
+        var message = error.Format();
         Response.Status = "failed";
         Response.Error = new ResponseError { Code = "server_error", Message = message };
         Send("error", sequence => new { type = "error", sequence_number = sequence, code = "server_error", message, param = (string?)null });

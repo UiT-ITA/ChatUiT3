@@ -1,3 +1,4 @@
+using ChatUiT.Server.Errors;
 using ChatUiT.Server.Models;
 using ChatUiT.Server.Services.Tools;
 using ChatUiT.Server.Hubs;
@@ -56,7 +57,7 @@ public class AdminToolsController : ControllerBase
         }
 
         var toolbox = _registry.Find(id);
-        return toolbox == null ? NotFound($"Tool {id} not found") : Ok(await ToAdminDtoAsync(toolbox));
+        return toolbox == null ? ApiErrors.NotFound(ErrorCodes.ToolNotFound, $"Tool {id} not found.") : Ok(await ToAdminDtoAsync(toolbox));
     }
 
     [HttpPut("{id}/policy")]
@@ -64,13 +65,13 @@ public class AdminToolsController : ControllerBase
     {
         if (!IsKnown(id))
         {
-            return NotFound($"Tool {id} not found");
+            return ApiErrors.NotFound(ErrorCodes.ToolNotFound, $"Tool {id} not found.");
         }
 
         var invalidGroups = (policyDto.AllowedGroupIds ?? []).Where(g => !Guid.TryParse(g?.Trim(), out _)).ToList();
         if (invalidGroups.Count > 0)
         {
-            return BadRequest(new { error = "invalid_group_ids", groupIds = invalidGroups });
+            return ApiErrors.BadRequest(ErrorCodes.GroupIdsInvalid, fields: new { error = "invalid_group_ids", groupIds = invalidGroups });
         }
 
         var before = await GetDtoAsync(id);
@@ -87,7 +88,7 @@ public class AdminToolsController : ControllerBase
     {
         if (!IsKnown(id))
         {
-            return NotFound($"Tool {id} not found");
+            return ApiErrors.NotFound(ErrorCodes.ToolNotFound, $"Tool {id} not found.");
         }
 
         var before = await GetDtoAsync(id);

@@ -1,3 +1,4 @@
+using ChatUiT.Server.Errors;
 using ChatUiT.Server.Models;
 using ChatUiT.Server.Services;
 using Microsoft.AspNetCore.Authorization;
@@ -52,17 +53,17 @@ public class AdminAssistantsController : ControllerBase
         {
             if (_toolboxes.Invalid(createDto.AvailableToolIds ?? []) is { Count: > 0 } invalid)
             {
-                return BadRequest(new { error = "invalid_tools", invalidToolIds = invalid });
+                return ApiErrors.BadRequest(ErrorCodes.AdminToolsInvalid, fields: new { error = "invalid_tools", invalidToolIds = invalid });
             }
 
             if (UnknownKnowledgeSourceIds(createDto.KnowledgeSourceIds) is { Count: > 0 } unknownSources)
             {
-                return BadRequest(new { error = "unknown_knowledge_sources", unknownKnowledgeSourceIds = unknownSources });
+                return ApiErrors.BadRequest(ErrorCodes.AdminKnowledgeSourcesUnknown, fields: new { error = "unknown_knowledge_sources", unknownKnowledgeSourceIds = unknownSources });
             }
 
             if (InvalidGroupIds(createDto.Access) is { Count: > 0 } invalidGroups)
             {
-                return BadRequest(new { error = "invalid_group_ids", groupIds = invalidGroups });
+                return ApiErrors.BadRequest(ErrorCodes.GroupIdsInvalid, fields: new { error = "invalid_group_ids", groupIds = invalidGroups });
             }
 
             var assistant = await _assistantService.CreateSystemAssistantAsync(createDto);
@@ -70,11 +71,11 @@ public class AdminAssistantsController : ControllerBase
         }
         catch (AssistantValidationException ex)
         {
-            return BadRequest(ex.Message);
+            return ApiErrors.BadRequest(ex.Error, ex.Message);
         }
         catch (ArgumentException ex)
         {
-            return BadRequest(ex.Message);
+            return ApiErrors.BadRequest(ErrorCodes.AdminAssistantModelInvalid, ex.Message);
         }
     }
 
@@ -85,22 +86,22 @@ public class AdminAssistantsController : ControllerBase
         {
             if (id != updateDto.Id)
             {
-                return BadRequest("Route id does not match request body id");
+                return ApiErrors.BadRequest(ErrorCodes.RouteIdMismatch);
             }
 
             if (_toolboxes.Invalid(updateDto.AvailableToolIds ?? []) is { Count: > 0 } invalid)
             {
-                return BadRequest(new { error = "invalid_tools", invalidToolIds = invalid });
+                return ApiErrors.BadRequest(ErrorCodes.AdminToolsInvalid, fields: new { error = "invalid_tools", invalidToolIds = invalid });
             }
 
             if (UnknownKnowledgeSourceIds(updateDto.KnowledgeSourceIds) is { Count: > 0 } unknownSources)
             {
-                return BadRequest(new { error = "unknown_knowledge_sources", unknownKnowledgeSourceIds = unknownSources });
+                return ApiErrors.BadRequest(ErrorCodes.AdminKnowledgeSourcesUnknown, fields: new { error = "unknown_knowledge_sources", unknownKnowledgeSourceIds = unknownSources });
             }
 
             if (InvalidGroupIds(updateDto.Access) is { Count: > 0 } invalidGroups)
             {
-                return BadRequest(new { error = "invalid_group_ids", groupIds = invalidGroups });
+                return ApiErrors.BadRequest(ErrorCodes.GroupIdsInvalid, fields: new { error = "invalid_group_ids", groupIds = invalidGroups });
             }
 
             var assistant = await _assistantService.UpdateSystemAssistantAsync(id, updateDto);
@@ -113,7 +114,7 @@ public class AdminAssistantsController : ControllerBase
         }
         catch (AssistantValidationException ex)
         {
-            return BadRequest(ex.Message);
+            return ApiErrors.BadRequest(ex.Error, ex.Message);
         }
     }
 

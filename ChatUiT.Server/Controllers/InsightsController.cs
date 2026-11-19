@@ -1,3 +1,4 @@
+using ChatUiT.Server.Errors;
 using ChatUiT.Server.Models.Insights;
 using ChatUiT.Server.Services.Insights;
 using Microsoft.AspNetCore.Authorization;
@@ -30,7 +31,7 @@ public class InsightsController : ControllerBase
         var timeRange = InsightsRange.Find(range);
         if (timeRange == null)
         {
-            return BadRequest($"Unknown range. Use one of {string.Join(", ", InsightsRange.All.Select(item => item.Key))}.");
+            return ApiErrors.BadRequest(ErrorCodes.InsightsRangeUnknown, $"Unknown range. Use one of {string.Join(", ", InsightsRange.All.Select(item => item.Key))}.");
         }
 
         return Ok(await _insights.GetPageAsync(page, timeRange, cancellationToken));

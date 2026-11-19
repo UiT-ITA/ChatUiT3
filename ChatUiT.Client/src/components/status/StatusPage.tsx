@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { getDevStatus, type DevStatusDto } from '../../services/devStatusService';
+import { ErrorCode, errorText } from '../../errors/errorCodes';
 import PageTitleBar from '../common/PageTitleBar';
 import Page from '../common/Page';
 import Box from '../common/Box';
@@ -18,7 +19,7 @@ const StatusPage: React.FC = () => {
     let cancelled = false;
     getDevStatus()
       .then(result => { if (!cancelled) setStatus(result); })
-      .catch((err: unknown) => { if (!cancelled) setError(err instanceof Error ? err.message : String(err)); });
+      .catch((err: unknown) => { if (!cancelled) setError(errorText(err, ErrorCode.DevStatusFailed, err instanceof Error ? err.message : String(err))); });
     return () => { cancelled = true; };
   }, []);
 

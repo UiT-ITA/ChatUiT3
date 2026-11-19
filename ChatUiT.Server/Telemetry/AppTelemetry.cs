@@ -107,7 +107,7 @@ public sealed class AppTelemetry
             ["endpoint.type"] = endpointType
         });
 
-    public void GenerationFinished(GenerationFinishedInfo info, Exception? exception = null) =>
+    public void GenerationFinished(GenerationFinishedInfo info, Exception? exception = null, string? userErrorCode = null) =>
         Usage("generation.finished", new()
         {
             [FieldNames.ChatId] = info.ChatId,
@@ -127,7 +127,8 @@ public sealed class AppTelemetry
             ["stop_reason"] = info.StopReason,
             ["awaiting_user"] = info.AwaitingUser ? true : null,
             [FieldNames.ErrorCategory] = exception == null ? null : ErrorClassification.Category(exception),
-            [FieldNames.ErrorCode] = exception == null ? null : ErrorClassification.Code(exception)
+            [FieldNames.ErrorCode] = exception == null ? null : ErrorClassification.Code(exception),
+            [FieldNames.UserErrorCode] = userErrorCode
         }, exception);
 
     public void MessageStatusSaveFailed(string messageId, Exception exception) =>
@@ -273,20 +274,21 @@ public sealed class AppTelemetry
 
     #region Images
 
-    public void ImagePromptRefined(string modelId, long durationMs, string outcome, Exception? exception = null) =>
+    public void ImagePromptRefined(string modelId, long durationMs, string outcome, Exception? exception = null, string? userErrorCode = null) =>
         Usage("image.prompt_refined", new()
         {
             [FieldNames.ModelId] = modelId,
             [FieldNames.DurationMs] = durationMs,
             [FieldNames.Outcome] = outcome,
             [FieldNames.ErrorCategory] = exception == null ? null : ErrorClassification.Category(exception),
-            [FieldNames.ErrorCode] = exception == null ? null : ErrorClassification.Code(exception)
+            [FieldNames.ErrorCode] = exception == null ? null : ErrorClassification.Code(exception),
+            [FieldNames.UserErrorCode] = userErrorCode
         }, exception, LogLevel.Warning);
 
     public void ImageGenerationStarted(ImageGenerationInfo info) =>
         Usage("image.generation_started", ImageFields(info));
 
-    public void ImageGenerationFinished(ImageGenerationInfo info, string outcome, long durationMs, int? inputTokens, int? outputTokens, string? errorCategory, Exception? exception = null)
+    public void ImageGenerationFinished(ImageGenerationInfo info, string outcome, long durationMs, int? inputTokens, int? outputTokens, string? errorCategory, Exception? exception = null, string? userErrorCode = null)
     {
         var fields = ImageFields(info);
         fields[FieldNames.Outcome] = outcome;
@@ -295,6 +297,7 @@ public sealed class AppTelemetry
         fields[FieldNames.TokensOutput] = outputTokens;
         fields[FieldNames.ErrorCategory] = errorCategory ?? (exception == null ? null : ErrorClassification.Category(exception));
         fields[FieldNames.ErrorCode] = exception == null ? null : ErrorClassification.Code(exception);
+        fields[FieldNames.UserErrorCode] = userErrorCode;
         Usage("image.generation_finished", fields, exception);
     }
 
@@ -375,13 +378,14 @@ public sealed class AppTelemetry
 
     #region Requests and streams
 
-    public void RequestFailed(string method, string? route, Exception exception) =>
+    public void RequestFailed(string method, string? route, Exception exception, string? userErrorCode = null) =>
         Error("request.failed", new()
         {
             ["http.method"] = method,
             ["route"] = route,
             [FieldNames.ErrorCategory] = ErrorClassification.Category(exception),
-            [FieldNames.ErrorCode] = ErrorClassification.Code(exception)
+            [FieldNames.ErrorCode] = ErrorClassification.Code(exception),
+            [FieldNames.UserErrorCode] = userErrorCode
         }, exception);
 
     public void StreamChunkDropped(string streamKey) =>

@@ -12,6 +12,7 @@ import {
   type AccountInfo,
   type IPublicClientApplication,
 } from "@azure/msal-browser";
+import { errorDetail, ErrorCodes, findUserError, userError } from "../../errors/errorCodes";
 import { trackError } from "../telemetry/telemetryService";
 import { browserSignInToken, browserSilentToken, hasBrowserSession } from "./browserSignIn";
 import { msalAuth } from "./msalAuth";
@@ -82,7 +83,9 @@ class AccountManager {
     } catch (error) {
       console.log(`Unable to acquire token through the browser sign-in: ${error}`);
       trackError("auth", { message: "An access token could not be acquired through the browser sign-in", error });
-      throw new Error(`Unable to acquire access token: ${error}`, { cause: error });
+      throw (
+        findUserError(error) ?? userError(ErrorCodes.BrowserSignInFailed, { detail: errorDetail(error), cause: error })
+      );
     }
   }
 
@@ -137,7 +140,9 @@ class AccountManager {
       if (!isPopupBlocked(popupError)) {
         trackError("auth", { message: "An access token could not be acquired", error: popupError });
       }
-      throw new Error(`Unable to acquire access token: ${popupError}`, { cause: popupError });
+      throw isUserCancelled(popupError)
+        ? userError(ErrorCodes.SignInCancelled, { cause: popupError })
+        : userError(ErrorCodes.PopupSignInFailed, { detail: errorDetail(popupError), cause: popupError });
     }
   }
 
@@ -176,6 +181,11 @@ function scopeKey(scopes: string[]): string {
   return [...scopes].sort().join(" ");
 }
 
+/** True for the MSAL error of a popup sign-in that the user closed. */
+function isUserCancelled(error: unknown): boolean {
+  return error instanceof BrowserAuthError && error.errorCode === BrowserAuthErrorCodes.userCancelled;
+}
+
 /** True for the MSAL error of a popup sign-in that could not open a window. */
 function isPopupBlocked(error: unknown): boolean {
   return error instanceof BrowserAuthError && error.errorCode === BrowserAuthErrorCodes.popupWindowError;
@@ -208,7 +218,7 @@ function initialize(): Promise<void> {
   initialization ??= accountManager.initialize().catch((error: unknown) => {
     initialization = undefined;
     trackError("auth", { message: "Sign-in could not start", error });
-    throw error;
+    throw userError(ErrorCodes.SignInStartFailed, { detail: errorDetail(error), cause: error });
   });
   return initialization;
 }

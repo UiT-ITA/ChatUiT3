@@ -5,6 +5,8 @@ import signalrService from '../services/signalrService';
 import { effect } from '@preact/signals-react';
 import { loadTrainingStatus, trainingStatusSignal } from '../services/trainingService';
 import { AuthContext, type AuthContextType } from '../hooks/useAuth';
+import i18n from 'i18next';
+import { ErrorCode, errorText } from '../errors/errorCodes';
 
 interface AuthProviderProps {
   children: ReactNode;
@@ -54,7 +56,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         await loadTrainingStatus();
       } catch (statusError) {
         console.warn('Failed to load the training status:', statusError);
-        setInitError(statusError instanceof Error ? statusError.message : String(statusError));
+        setInitError(errorText(statusError, ErrorCode.TrainingStatusFailed, i18n.t('errors.trainingStatusFailed')));
       }
       setIsInitializing(false);
     };
@@ -77,7 +79,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         },
         (signalrError) => {
           console.warn('Failed to start SignalR connection:', signalrError);
-          setInitError(signalrError instanceof Error ? signalrError.message : String(signalrError));
+          setInitError(errorText(signalrError, ErrorCode.RealtimeConnectionFailed, i18n.t('errors.realtimeConnectionFailed')));
         },
       );
     });
@@ -89,7 +91,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       await authService.login();
     } catch (error) {
       if (authService.isTeams()) {
-        setInitError(error instanceof Error ? error.message : String(error));
+        setInitError(errorText(error, ErrorCode.SignInFailed, i18n.t('errors.signInFailed')));
       }
       throw error;
     }

@@ -13,6 +13,7 @@ import {
   MenuTrigger,
 } from "@fluentui/react-components";
 import { useEffect, useState, type ComponentType } from "react";
+import { ErrorCodes, formatError } from "../../errors/errorCodes";
 import type { ChatList } from "../history/useChatHistory";
 import { trackError } from "../telemetry/telemetryService";
 import { ToolbarButton } from "./ToolbarButton";
@@ -101,7 +102,7 @@ export function Header({
             {chats === undefined ? (
               <div className={styles.note}>Loading…</div>
             ) : chats === "failed" ? (
-              <div className={styles.note}>The saved chats could not be read.</div>
+              <div className={styles.note}>{formatError(ErrorCodes.SavedChatsUnreadable)}</div>
             ) : chats === null ? (
               <div className={styles.note}>{noDocumentMessage}</div>
             ) : chats.length === 0 ? (

@@ -1,5 +1,6 @@
 using System.Collections.Generic;
 using System.Linq;
+using ChatUiT.Server.Errors;
 
 namespace ChatUiT.Server.Services.AiProviders.Images;
 
@@ -13,18 +14,18 @@ public static class ImageParameterValidator
 {
     private const int MaxCompression = 100;
 
-    /// <summary>The problems with the request. Empty when the model can run it.</summary>
-    public static IReadOnlyList<string> Validate(ImageModelCapabilities capabilities, ImageGenerationParameters parameters)
+    /// <summary>The problems with the request, each with its error code. Empty when the model can run it.</summary>
+    public static IReadOnlyList<ErrorCode> Validate(ImageModelCapabilities capabilities, ImageGenerationParameters parameters)
     {
-        var problems = new List<string>();
+        var problems = new List<ErrorCode>();
 
         if (string.IsNullOrWhiteSpace(parameters.Prompt))
         {
-            problems.Add("A prompt is required.");
+            problems.Add(ErrorCodes.ImagePromptRequired);
         }
         else if (capabilities.MaxPromptCharacters is { } maxPrompt && parameters.Prompt.Length > maxPrompt)
         {
-            problems.Add($"The prompt is {parameters.Prompt.Length} characters; the model accepts at most {maxPrompt}.");
+            problems.Add(ErrorCodes.ImagePromptTooLong with { Message = $"The prompt is {parameters.Prompt.Length} characters; the model accepts at most {maxPrompt}." });
         }
 
         if (parameters.IsEdit)
@@ -35,7 +36,7 @@ public static class ImageParameterValidator
         {
             if (parameters.Mask != null || parameters.Markup != null)
             {
-                problems.Add("A mask or markup needs an input image.");
+                problems.Add(ErrorCodes.ImageOverlayNeedsInput);
             }
 
             ValidateGenerationSettings(capabilities, parameters, problems);
@@ -44,58 +45,58 @@ public static class ImageParameterValidator
         return problems;
     }
 
-    private static void ValidateEdit(ImageModelCapabilities capabilities, ImageGenerationParameters parameters, List<string> problems)
+    private static void ValidateEdit(ImageModelCapabilities capabilities, ImageGenerationParameters parameters, List<ErrorCode> problems)
     {
         if (capabilities.Editing is not { } editing)
         {
-            problems.Add("The model cannot edit images.");
+            problems.Add(ErrorCodes.ImageModelCannotEdit);
             return;
         }
 
         if (parameters.InputImages.Count > editing.MaxInputImages)
         {
-            problems.Add($"The model accepts at most {editing.MaxInputImages} input images.");
+            problems.Add(ErrorCodes.TooManyInputImages with { Message = $"The model accepts at most {editing.MaxInputImages} input images." });
         }
 
         foreach (var image in parameters.InputImages)
         {
             if (!editing.InputFormats.Contains(image.Format))
             {
-                problems.Add($"{image.FileName}: the model does not accept {image.Format} input images.");
+                problems.Add(ErrorCodes.ImageInputFormatNotAccepted with { Message = $"{image.FileName}: the model does not accept {image.Format} input images." });
             }
 
             if (editing.MaxInputImageBytes is { } maxBytes && image.Content.LongLength > maxBytes)
             {
-                problems.Add($"{image.FileName}: the model accepts input images of at most {maxBytes / (1024 * 1024)} MB.");
+                problems.Add(ErrorCodes.ImageInputTooLarge with { Message = $"{image.FileName}: the model accepts input images of at most {maxBytes / (1024 * 1024)} MB." });
             }
         }
 
         if (parameters.Mask != null && !editing.SupportsMask)
         {
-            problems.Add("The model does not accept a mask.");
+            problems.Add(ErrorCodes.ImageMaskNotSupported);
         }
 
         if (parameters.Markup != null && !editing.SupportsMarkup)
         {
-            problems.Add("The model does not accept markup.");
+            problems.Add(ErrorCodes.ImageMarkupNotSupported);
         }
 
         if (parameters.Mask != null && parameters.Markup != null)
         {
-            problems.Add("A mask and markup cannot be used together.");
+            problems.Add(ErrorCodes.ImageMaskAndMarkup);
         }
 
         foreach (var overlay in new[] { parameters.Mask, parameters.Markup }.OfType<ImageInput>())
         {
             if (overlay.Format != ImageFormat.Png)
             {
-                problems.Add($"{overlay.FileName}: a mask or markup must be a PNG.");
+                problems.Add(ErrorCodes.ImageOverlayNotPng with { Message = $"{overlay.FileName}: a mask or markup must be a PNG." });
             }
         }
 
         if (parameters.Moderation != null)
         {
-            problems.Add("A moderation level applies to generations only.");
+            problems.Add(ErrorCodes.ImageModerationOnlyForGeneration);
         }
 
         if (editing.AcceptsGenerationSettings)
@@ -108,11 +109,11 @@ public static class ImageParameterValidator
             || parameters.OutputFormat != null || parameters.Compression != null || parameters.Background != null
             || parameters.PartialImages > 0 || parameters.WebGrounding)
         {
-            problems.Add("The model takes only the prompt and the images when editing.");
+            problems.Add(ErrorCodes.ImageEditTakesOnlyPrompt);
         }
     }
 
-    private static void ValidateGenerationSettings(ImageModelCapabilities capabilities, ImageGenerationParameters parameters, List<string> problems, bool sizeRequired = true)
+    private static void ValidateGenerationSettings(ImageModelCapabilities capabilities, ImageGenerationParameters parameters, List<ErrorCode> problems, bool sizeRequired = true)
     {
         if (parameters.Size is { } size)
         {
@@ -120,7 +121,7 @@ public static class ImageParameterValidator
             {
                 if (!capabilities.SupportsCustomSize)
                 {
-                    problems.Add($"The model does not offer {size.Width}x{size.Height}.");
+                    problems.Add(ErrorCodes.ImageSizeNotOffered with { Message = $"The model does not offer {size.Width}x{size.Height}." });
                 }
                 else
                 {
@@ -130,43 +131,43 @@ public static class ImageParameterValidator
         }
         else if (sizeRequired && !capabilities.SupportsAutoSize)
         {
-            problems.Add("The model needs a size.");
+            problems.Add(ErrorCodes.ImageSizeRequired);
         }
 
         if (parameters.AutoAspectRatio && !capabilities.SupportsAutoAspectRatio)
         {
-            problems.Add("The model cannot pick the aspect ratio.");
+            problems.Add(ErrorCodes.ImageAutoAspectNotSupported);
         }
 
         if (parameters.Quality is { } quality && !capabilities.Qualities.Contains(quality))
         {
-            problems.Add($"The model does not offer {quality} quality.");
+            problems.Add(ErrorCodes.ImageQualityNotOffered with { Message = $"The model does not offer {quality} quality." });
         }
 
         if (parameters.Count < 1 || parameters.Count > capabilities.MaxImagesPerRequest)
         {
-            problems.Add($"The model makes 1 to {capabilities.MaxImagesPerRequest} images per request.");
+            problems.Add(ErrorCodes.ImageCountOutOfRange with { Message = $"The model makes 1 to {capabilities.MaxImagesPerRequest} images per request." });
         }
 
         var format = parameters.OutputFormat ?? capabilities.OutputFormats.FirstOrDefault();
         if (parameters.OutputFormat is { } requestedFormat && !capabilities.OutputFormats.Contains(requestedFormat))
         {
-            problems.Add($"The model does not return {requestedFormat} images.");
+            problems.Add(ErrorCodes.ImageOutputFormatNotOffered with { Message = $"The model does not return {requestedFormat} images." });
         }
 
         if (parameters.Compression is { } compression)
         {
             if (!capabilities.SupportsCompression)
             {
-                problems.Add("The model does not take a compression level.");
+                problems.Add(ErrorCodes.ImageCompressionNotSupported);
             }
             else if (format is not (ImageFormat.Jpeg or ImageFormat.Webp))
             {
-                problems.Add("A compression level applies to JPEG and WebP only.");
+                problems.Add(ErrorCodes.ImageCompressionNeedsJpegOrWebp);
             }
             else if (compression < 0 || compression > MaxCompression)
             {
-                problems.Add($"Compression must be 0 to {MaxCompression}.");
+                problems.Add(ErrorCodes.ImageCompressionOutOfRange with { Message = $"Compression must be 0 to {MaxCompression}." });
             }
         }
 
@@ -174,74 +175,74 @@ public static class ImageParameterValidator
         {
             if (!capabilities.Backgrounds.Contains(background))
             {
-                problems.Add($"The model does not offer a {background} background.");
+                problems.Add(ErrorCodes.ImageBackgroundNotOffered with { Message = $"The model does not offer a {background} background." });
             }
             else if (background == ImageBackground.Transparent && format is not (ImageFormat.Png or ImageFormat.Webp))
             {
-                problems.Add("A transparent background needs PNG or WebP.");
+                problems.Add(ErrorCodes.ImageTransparentNeedsPngOrWebp);
             }
         }
 
         if (parameters.Moderation is { } moderation && !capabilities.ModerationLevels.Contains(moderation))
         {
-            problems.Add($"The model does not offer {moderation} moderation.");
+            problems.Add(ErrorCodes.ImageModerationNotOffered with { Message = $"The model does not offer {moderation} moderation." });
         }
 
         if (parameters.PartialImages < 0 || parameters.PartialImages > capabilities.MaxPartialImages)
         {
             problems.Add(capabilities.MaxPartialImages == 0
-                ? "The model does not stream partial images."
-                : $"The model streams 0 to {capabilities.MaxPartialImages} partial images.");
+                ? ErrorCodes.ImagePartialNotSupported
+                : ErrorCodes.ImagePartialOutOfRange with { Message = $"The model streams 0 to {capabilities.MaxPartialImages} partial images." });
         }
         else if (parameters.PartialImages > 0 && parameters.Count > 1)
         {
-            problems.Add("Partial images are streamed for one image only; ask for 1 image or no partial images.");
+            problems.Add(ErrorCodes.ImagePartialNeedsOneImage);
         }
 
         if (parameters.WebGrounding && !capabilities.SupportsWebGrounding)
         {
-            problems.Add("The model cannot use web search.");
+            problems.Add(ErrorCodes.ImageWebSearchNotSupported);
         }
     }
 
-    private static void ValidateCustomSize(ImageModelCapabilities capabilities, ImageSize size, List<string> problems)
+    private static void ValidateCustomSize(ImageModelCapabilities capabilities, ImageSize size, List<ErrorCode> problems)
     {
         var label = $"{size.Width}x{size.Height}";
         if (size.Width <= 0 || size.Height <= 0)
         {
-            problems.Add($"{label} is not a size.");
+            problems.Add(ErrorCodes.ImageSizeInvalid with { Message = $"{label} is not a size." });
             return;
         }
 
         if (capabilities.SizeMultiple is { } multiple && (size.Width % multiple != 0 || size.Height % multiple != 0))
         {
-            problems.Add($"{label}: both sides must be a multiple of {multiple}.");
+            problems.Add(ErrorCodes.ImageSizeNotMultiple with { Message = $"{label}: both sides must be a multiple of {multiple}." });
         }
 
         if (capabilities.MinSide is { } minSide && Math.Min(size.Width, size.Height) < minSide)
         {
-            problems.Add($"{label}: each side must be at least {minSide}.");
+            problems.Add(ErrorCodes.ImageSideTooShort with { Message = $"{label}: each side must be at least {minSide}." });
         }
 
         if (capabilities.MaxSide is { } maxSide && Math.Max(size.Width, size.Height) > maxSide)
         {
-            problems.Add($"{label}: each side must be at most {maxSide}.");
+            problems.Add(ErrorCodes.ImageSideTooLong with { Message = $"{label}: each side must be at most {maxSide}." });
         }
 
         var pixels = (long)size.Width * size.Height;
         if (capabilities.MinPixels is { } minPixels && pixels < minPixels)
         {
-            problems.Add($"{label}: the image must have at least {minPixels:N0} pixels.");
+            problems.Add(ErrorCodes.ImageTooFewPixels with { Message = $"{label}: the image must have at least {minPixels:N0} pixels." });
         }
 
         if (capabilities.MaxPixels is { } maxPixels && pixels > maxPixels)
         {
-            problems.Add($"{label}: the image must have at most {maxPixels:N0} pixels.");
+            problems.Add(ErrorCodes.ImageTooManyPixels with { Message = $"{label}: the image must have at most {maxPixels:N0} pixels." });
         }
 
         if (capabilities.MaxAspectRatio is { } maxRatio && (double)Math.Max(size.Width, size.Height) / Math.Min(size.Width, size.Height) > maxRatio)
         {
-            problems.Add($"{label}: the long side may be at most {maxRatio} times the short side.");
+            problems.Add(ErrorCodes.ImageAspectRatioTooWide with { Message = $"{label}: the long side may be at most {maxRatio} times the short side." });
         }
     }
 }

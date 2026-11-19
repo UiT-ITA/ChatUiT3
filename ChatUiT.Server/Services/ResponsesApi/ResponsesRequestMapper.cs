@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text.Json;
 using System.Text.Json.Nodes;
+using ChatUiT.Server.Errors;
 using ChatUiT.Server.Models;
 using ChatUiT.Server.Services.Agents;
 using ChatUiT.Server.Services.AiProviders;
@@ -84,13 +85,13 @@ public sealed class ResponsesRequestMapper
 
         if (request.Store == true)
         {
-            throw ResponsesApiException.BadRequest("store must be false or omitted: nothing is stored.", "store", "unsupported_value");
+            throw ResponsesApiException.BadRequest(ErrorCodes.ResponsesStoreNotSupported, "store must be false or omitted: nothing is stored.", "store", "unsupported_value");
         }
 
         if (request.ToolChoice is { } toolChoice && toolChoice.ValueKind != JsonValueKind.Null
             && !(toolChoice.ValueKind == JsonValueKind.String && toolChoice.GetString() == "auto"))
         {
-            throw ResponsesApiException.BadRequest("tool_choice must be \"auto\".", "tool_choice", "unsupported_value");
+            throw ResponsesApiException.BadRequest(ErrorCodes.ResponsesToolChoiceNotSupported, "tool_choice must be \"auto\".", "tool_choice", "unsupported_value");
         }
 
         RejectUnsupported(request.Reasoning?.Unsupported, "reasoning");
@@ -118,7 +119,7 @@ public sealed class ResponsesRequestMapper
         if (name != null)
         {
             var param = parent == null ? name : $"{parent}.{name}";
-            throw ResponsesApiException.BadRequest($"Unsupported parameter: '{param}'.", param, "unsupported_parameter");
+            throw ResponsesApiException.BadRequest(ErrorCodes.ResponsesUnsupportedParameter, $"Unsupported parameter: '{param}'.", param, "unsupported_parameter");
         }
     }
 
@@ -147,7 +148,7 @@ public sealed class ResponsesRequestMapper
             if (request.Temperature != null || request.MaxOutputTokens != null || request.Reasoning?.Effort != null)
             {
                 var param = request.Temperature != null ? "temperature" : request.MaxOutputTokens != null ? "max_output_tokens" : "reasoning.effort";
-                throw ResponsesApiException.BadRequest($"{param} is only accepted for raw models; an agent uses its own settings.", param, "unsupported_parameter");
+                throw ResponsesApiException.BadRequest(ErrorCodes.ResponsesParameterOnlyForModels, $"{param} is only accepted for raw models; an agent uses its own settings.", param, "unsupported_parameter");
             }
 
             return setup.Parameters;
@@ -155,12 +156,12 @@ public sealed class ResponsesRequestMapper
 
         if (request.Temperature is { } temperature && (temperature < 0 || temperature > 2))
         {
-            throw ResponsesApiException.BadRequest("temperature must be between 0 and 2.", "temperature", "invalid_value");
+            throw ResponsesApiException.BadRequest(ErrorCodes.ResponsesTemperatureOutOfRange, "temperature must be between 0 and 2.", "temperature", "invalid_value");
         }
 
         if (request.MaxOutputTokens is <= 0)
         {
-            throw ResponsesApiException.BadRequest("max_output_tokens must be positive.", "max_output_tokens", "invalid_value");
+            throw ResponsesApiException.BadRequest(ErrorCodes.ResponsesMaxOutputTokensInvalid, "max_output_tokens must be positive.", "max_output_tokens", "invalid_value");
         }
 
         var settings = new ChatSettings
@@ -186,7 +187,7 @@ public sealed class ResponsesRequestMapper
         "high" => ReasoningEffort.High,
         "xhigh" => ReasoningEffort.XHigh,
         "max" => ReasoningEffort.Max,
-        _ => throw ResponsesApiException.BadRequest($"Unsupported reasoning.effort '{effort}'.", "reasoning.effort", "unsupported_value")
+        _ => throw ResponsesApiException.BadRequest(ErrorCodes.ResponsesEffortNotSupported, $"Unsupported reasoning.effort '{effort}'.", "reasoning.effort", "unsupported_value")
     };
 
     private IReadOnlyList<ITool> BuildClientTools(CreateResponseRequest request, ApiTarget target, IReadOnlyList<ITool> serverTools)
@@ -199,7 +200,7 @@ public sealed class ResponsesRequestMapper
 
         if (!target.Model.Capabilities.SupportsFunctionCalling)
         {
-            throw ResponsesApiException.BadRequest("This model cannot call functions.", "tools", "unsupported_parameter");
+            throw ResponsesApiException.BadRequest(ErrorCodes.ResponsesModelCannotCallFunctions, "This model cannot call functions.", "tools", "unsupported_parameter");
         }
 
         var declarations = new List<ClientToolDeclaration>(declared.Count);
@@ -211,12 +212,12 @@ public sealed class ResponsesRequestMapper
 
             if (tool.Type != "function")
             {
-                throw ResponsesApiException.BadRequest($"{param}: only tools of type \"function\" are supported.", $"{param}.type", "unsupported_value");
+                throw ResponsesApiException.BadRequest(ErrorCodes.ResponsesToolTypeNotSupported, $"{param}: only tools of type \"function\" are supported.", $"{param}.type", "unsupported_value");
             }
 
             if (tool.Strict == true)
             {
-                throw ResponsesApiException.BadRequest($"{param}: strict function tools are not supported.", $"{param}.strict", "unsupported_value");
+                throw ResponsesApiException.BadRequest(ErrorCodes.ResponsesStrictToolsNotSupported, $"{param}: strict function tools are not supported.", $"{param}.strict", "unsupported_value");
             }
 
             declarations.Add(new ClientToolDeclaration(
@@ -233,11 +234,11 @@ public sealed class ResponsesRequestMapper
         {
             if (ex.Index is not { } index)
             {
-                throw ResponsesApiException.BadRequest(ex.Message, "tools", "too_many_tools");
+                throw ResponsesApiException.BadRequest(ErrorCodes.ResponsesTooManyTools, ex.Message, "tools", "too_many_tools");
             }
 
             var param = $"tools[{index}]";
-            throw ResponsesApiException.BadRequest($"{param}: {ex.Message}", $"{param}.{ex.Field}", "invalid_value");
+            throw ResponsesApiException.BadRequest(ErrorCodes.ResponsesToolInvalid, $"{param}: {ex.Message}", $"{param}.{ex.Field}", "invalid_value");
         }
     }
 
@@ -250,7 +251,7 @@ public sealed class ResponsesRequestMapper
 
         if (input.ValueKind != JsonValueKind.Array)
         {
-            throw ResponsesApiException.BadRequest("input must be a string or an array of items.", "input", "invalid_value");
+            throw ResponsesApiException.BadRequest(ErrorCodes.ResponsesInputInvalid, "input must be a string or an array of items.", "input", "invalid_value");
         }
 
         var items = new List<ResponseItem>();
@@ -260,7 +261,7 @@ public sealed class ResponsesRequestMapper
             var param = $"input[{index++}]";
             if (element.ValueKind != JsonValueKind.Object)
             {
-                throw ResponsesApiException.BadRequest($"{param} must be an object.", param, "invalid_value");
+                throw ResponsesApiException.BadRequest(ErrorCodes.ResponsesInputItemNotObject, $"{param} must be an object.", param, "invalid_value");
             }
 
             var type = element.TryGetProperty("type", out var typeElement) && typeElement.ValueKind == JsonValueKind.String
@@ -268,7 +269,7 @@ public sealed class ResponsesRequestMapper
                 : element.TryGetProperty("role", out _) ? "message" : null;
             if (type == null || !ItemTypes.Contains(type))
             {
-                throw ResponsesApiException.BadRequest($"{param}: items of type '{type}' are not supported.", $"{param}.type", "unsupported_value");
+                throw ResponsesApiException.BadRequest(ErrorCodes.ResponsesInputItemTypeNotSupported, $"{param}: items of type '{type}' are not supported.", $"{param}.type", "unsupported_value");
             }
 
             try
@@ -286,7 +287,7 @@ public sealed class ResponsesRequestMapper
             }
             catch (JsonException ex)
             {
-                throw ResponsesApiException.BadRequest($"{param}: {ex.Message}", param, "invalid_value");
+                throw ResponsesApiException.BadRequest(ErrorCodes.ResponsesInputItemInvalid, $"{param}: {ex.Message}", param, "invalid_value");
             }
         }
 
@@ -321,18 +322,18 @@ public sealed class ResponsesRequestMapper
                 case FunctionCallItem call:
                     if (string.IsNullOrEmpty(call.CallId) || string.IsNullOrEmpty(call.Name))
                     {
-                        throw ResponsesApiException.BadRequest($"{param}: function_call needs call_id and name.", param, "invalid_value");
+                        throw ResponsesApiException.BadRequest(ErrorCodes.ResponsesFunctionCallIncomplete, $"{param}: function_call needs call_id and name.", param, "invalid_value");
                     }
 
                     if (!functionCalls.TryAdd(call.CallId, i))
                     {
-                        throw ResponsesApiException.BadRequest($"{param}: call_id '{call.CallId}' appears twice.", $"{param}.call_id", "invalid_value");
+                        throw ResponsesApiException.BadRequest(ErrorCodes.ResponsesCallIdRepeated, $"{param}: call_id '{call.CallId}' appears twice.", $"{param}.call_id", "invalid_value");
                     }
                     break;
                 case FunctionCallOutputItem output:
                     if (string.IsNullOrEmpty(output.CallId) || !functionCalls.ContainsKey(output.CallId))
                     {
-                        throw ResponsesApiException.BadRequest($"{param}: no function_call with call_id '{output.CallId}' precedes this output.", $"{param}.call_id", "invalid_value");
+                        throw ResponsesApiException.BadRequest(ErrorCodes.ResponsesOutputWithoutCall, $"{param}: no function_call with call_id '{output.CallId}' precedes this output.", $"{param}.call_id", "invalid_value");
                     }
 
                     // Parsed here so a malformed output is refused before anything runs.
@@ -340,15 +341,15 @@ public sealed class ResponsesRequestMapper
 
                     if (!outputs.TryAdd(output.CallId, i))
                     {
-                        throw ResponsesApiException.BadRequest($"{param}: call_id '{output.CallId}' has two outputs.", $"{param}.call_id", "invalid_value");
+                        throw ResponsesApiException.BadRequest(ErrorCodes.ResponsesCallHasTwoOutputs, $"{param}: call_id '{output.CallId}' has two outputs.", $"{param}.call_id", "invalid_value");
                     }
                     break;
                 case McpApprovalRequestItem request:
                     var state = _sealer.UnsealApproval(request.Id)
-                        ?? throw ResponsesApiException.BadRequest($"{param}: the approval request id is not valid.", $"{param}.id", "invalid_approval");
+                        ?? throw ResponsesApiException.BadRequest(ErrorCodes.ResponsesApprovalIdInvalid, $"{param}: the approval request id is not valid.", $"{param}.id", "invalid_approval");
                     if (state.CatalogId != catalogId)
                     {
-                        throw ResponsesApiException.BadRequest($"{param}: the approval request belongs to another model.", $"{param}.id", "invalid_approval");
+                        throw ResponsesApiException.BadRequest(ErrorCodes.ResponsesApprovalOtherModel, $"{param}: the approval request belongs to another model.", $"{param}.id", "invalid_approval");
                     }
 
                     approvals[i] = state;
@@ -358,18 +359,18 @@ public sealed class ResponsesRequestMapper
                 case McpApprovalResponseItem answer:
                     if (answer.ApprovalRequestId == null || !approvalIds.Contains(answer.ApprovalRequestId))
                     {
-                        throw ResponsesApiException.BadRequest($"{param}: no mcp_approval_request with this id precedes the response.", $"{param}.approval_request_id", "invalid_approval");
+                        throw ResponsesApiException.BadRequest(ErrorCodes.ResponsesApprovalResponseWithoutRequest, $"{param}: no mcp_approval_request with this id precedes the response.", $"{param}.approval_request_id", "invalid_approval");
                     }
 
                     if (!answers.TryAdd(answer.ApprovalRequestId, answer))
                     {
-                        throw ResponsesApiException.BadRequest($"{param}: the approval request has two responses.", $"{param}.approval_request_id", "invalid_approval");
+                        throw ResponsesApiException.BadRequest(ErrorCodes.ResponsesApprovalAnsweredTwice, $"{param}: the approval request has two responses.", $"{param}.approval_request_id", "invalid_approval");
                     }
                     break;
                 case McpCallItem mcpCall:
                     if (string.IsNullOrEmpty(mcpCall.Id) || string.IsNullOrEmpty(mcpCall.Name))
                     {
-                        throw ResponsesApiException.BadRequest($"{param}: mcp_call needs id and name.", param, "invalid_value");
+                        throw ResponsesApiException.BadRequest(ErrorCodes.ResponsesMcpCallIncomplete, $"{param}: mcp_call needs id and name.", param, "invalid_value");
                     }
 
                     ChainOf(chains, mcpCall.Id).Add(i);
@@ -381,7 +382,7 @@ public sealed class ResponsesRequestMapper
         {
             if (!outputs.ContainsKey(callId))
             {
-                throw ResponsesApiException.BadRequest($"input[{index}]: no function_call_output with call_id '{callId}' follows this call.", $"input[{index}].call_id", "missing_function_call_output");
+                throw ResponsesApiException.BadRequest(ErrorCodes.ResponsesCallWithoutOutput, $"input[{index}]: no function_call_output with call_id '{callId}' follows this call.", $"input[{index}].call_id", "missing_function_call_output");
             }
         }
 
@@ -504,7 +505,7 @@ public sealed class ResponsesRequestMapper
         {
             if (turnOfResume != lastTurn)
             {
-                throw ResponsesApiException.BadRequest($"input[{index}]: this call was answered in an earlier response, but its result is missing from the input.", $"input[{index}]", "missing_call_result");
+                throw ResponsesApiException.BadRequest(ErrorCodes.ResponsesCallResultMissing, $"input[{index}]: this call was answered in an earlier response, but its result is missing from the input.", $"input[{index}]", "missing_call_result");
             }
         }
 
@@ -555,7 +556,7 @@ public sealed class ResponsesRequestMapper
                 return new TurnResult(new AiInputItem.ToolResult(callId, AiConversationRunner.NotRespondedText, true), null, chain[0]);
             }
 
-            throw ResponsesApiException.BadRequest($"{param}: no mcp_approval_response answers this approval request.", param, "missing_approval_response");
+            throw ResponsesApiException.BadRequest(ErrorCodes.ResponsesApprovalWithoutResponse, $"{param}: no mcp_approval_response answers this approval request.", param, "missing_approval_response");
         }
 
         return new TurnResult(null, new PendingResume(-1, state, ToResumeInput(state, answer, param), request.Id!), lastIndex);
@@ -570,13 +571,13 @@ public sealed class ResponsesRequestMapper
 
         if (answer.ChatuitAnswers != null)
         {
-            throw ResponsesApiException.BadRequest($"{param}: chatuit_answers only answers questions.", "chatuit_answers", "invalid_value");
+            throw ResponsesApiException.BadRequest(ErrorCodes.ResponsesAnswersNotForQuestions, $"{param}: chatuit_answers only answers questions.", "chatuit_answers", "invalid_value");
         }
 
         var edited = answer.ChatuitEditedArguments;
         if (edited != null && !state.AllowEdit)
         {
-            throw ResponsesApiException.BadRequest($"{param}: chatuit_edited_arguments is only accepted when the preview allows editing.", "chatuit_edited_arguments", "invalid_value");
+            throw ResponsesApiException.BadRequest(ErrorCodes.ResponsesEditNotAllowed, $"{param}: chatuit_edited_arguments is only accepted when the preview allows editing.", "chatuit_edited_arguments", "invalid_value");
         }
 
         if (!answer.Approve)
@@ -596,12 +597,12 @@ public sealed class ResponsesRequestMapper
         }
         catch (JsonException ex)
         {
-            throw ResponsesApiException.BadRequest($"{param}: chatuit_edited_arguments is not valid JSON: {ex.Message}", "chatuit_edited_arguments", "invalid_value");
+            throw ResponsesApiException.BadRequest(ErrorCodes.ResponsesEditedArgumentsNotJson, $"{param}: chatuit_edited_arguments is not valid JSON: {ex.Message}", "chatuit_edited_arguments", "invalid_value");
         }
 
         if (editedArguments.ValueKind != JsonValueKind.Object)
         {
-            throw ResponsesApiException.BadRequest($"{param}: chatuit_edited_arguments must be a JSON object.", "chatuit_edited_arguments", "invalid_value");
+            throw ResponsesApiException.BadRequest(ErrorCodes.ResponsesEditedArgumentsNotObject, $"{param}: chatuit_edited_arguments must be a JSON object.", "chatuit_edited_arguments", "invalid_value");
         }
 
         return new ResumeInput.Commit(editedArguments);
@@ -611,7 +612,7 @@ public sealed class ResponsesRequestMapper
     {
         if (answer.ChatuitEditedArguments != null)
         {
-            throw ResponsesApiException.BadRequest($"{param}: chatuit_edited_arguments does not answer questions.", "chatuit_edited_arguments", "invalid_value");
+            throw ResponsesApiException.BadRequest(ErrorCodes.ResponsesEditedArgumentsForQuestion, $"{param}: chatuit_edited_arguments does not answer questions.", "chatuit_edited_arguments", "invalid_value");
         }
 
         if (!answer.Approve)
@@ -621,13 +622,13 @@ public sealed class ResponsesRequestMapper
 
         if (answer.ChatuitAnswers is not { } given)
         {
-            throw ResponsesApiException.BadRequest($"{param}: questions are answered with chatuit_answers.", "chatuit_answers", "missing_required_parameter");
+            throw ResponsesApiException.BadRequest(ErrorCodes.ResponsesAnswersMissing, $"{param}: questions are answered with chatuit_answers.", "chatuit_answers", "missing_required_parameter");
         }
 
         var answers = given.Select(a => a == null ? null : new UserAnswer(a.Selected ?? [], a.Text)).ToList();
         if (AskUserTool.Validate(questions, answers) is { } problem)
         {
-            throw ResponsesApiException.BadRequest($"{param}: {problem}", "chatuit_answers", "invalid_value");
+            throw ResponsesApiException.BadRequest(ErrorCodes.ResponsesAnswersInvalid, $"{param}: {problem}", "chatuit_answers", "invalid_value");
         }
 
         return new ResumeInput.Answers(answers);
@@ -644,7 +645,7 @@ public sealed class ResponsesRequestMapper
         "user" => AiChatRole.User,
         "assistant" => AiChatRole.Assistant,
         "system" or "developer" => AiChatRole.System,
-        _ => throw ResponsesApiException.BadRequest($"{param}: role '{role}' is not supported.", $"{param}.role", "unsupported_value")
+        _ => throw ResponsesApiException.BadRequest(ErrorCodes.ResponsesRoleNotSupported, $"{param}: role '{role}' is not supported.", $"{param}.role", "unsupported_value")
     };
 
     /// <summary>At most this many images in one function_call_output.</summary>
@@ -673,7 +674,7 @@ public sealed class ResponsesRequestMapper
 
         if (output.ValueKind != JsonValueKind.Array)
         {
-            throw ResponsesApiException.BadRequest($"{param}: output must be a string or an array of input_text and input_image parts.", param, "invalid_value");
+            throw ResponsesApiException.BadRequest(ErrorCodes.ResponsesToolOutputInvalid, $"{param}: output must be a string or an array of input_text and input_image parts.", param, "invalid_value");
         }
 
         var texts = new List<string>();
@@ -692,11 +693,11 @@ public sealed class ResponsesRequestMapper
                     images.Add(ParseImage(part, partParam));
                     if (images.Count > MaxToolOutputImages)
                     {
-                        throw ResponsesApiException.BadRequest($"{param}: at most {MaxToolOutputImages} images per output.", param, "invalid_value");
+                        throw ResponsesApiException.BadRequest(ErrorCodes.ResponsesTooManyOutputImages, $"{param}: at most {MaxToolOutputImages} images per output.", param, "invalid_value");
                     }
                     break;
                 default:
-                    throw ResponsesApiException.BadRequest($"{partParam}: output part of type '{type}' is not supported.", $"{partParam}.type", "unsupported_value");
+                    throw ResponsesApiException.BadRequest(ErrorCodes.ResponsesOutputPartNotSupported, $"{partParam}: output part of type '{type}' is not supported.", $"{partParam}.type", "unsupported_value");
             }
         }
 
@@ -710,12 +711,12 @@ public sealed class ResponsesRequestMapper
         var match = ImageDataUrl.Match(url);
         if (!match.Success)
         {
-            throw ResponsesApiException.BadRequest($"{partParam}: image_url must be a base64 data URL of a png, jpeg, gif or webp image.", $"{partParam}.image_url", "invalid_value");
+            throw ResponsesApiException.BadRequest(ErrorCodes.ResponsesImageUrlInvalid, $"{partParam}: image_url must be a base64 data URL of a png, jpeg, gif or webp image.", $"{partParam}.image_url", "invalid_value");
         }
 
         if (match.Groups[2].Value.Length / 4 * 3 > MaxImageBytes)
         {
-            throw ResponsesApiException.BadRequest($"{partParam}: the image is larger than {MaxImageBytes / (1024 * 1024)} MB.", $"{partParam}.image_url", "invalid_value");
+            throw ResponsesApiException.BadRequest(ErrorCodes.ResponsesImageTooLarge, $"{partParam}: the image is larger than {MaxImageBytes / (1024 * 1024)} MB.", $"{partParam}.image_url", "invalid_value");
         }
 
         return new ImagePart(match.Groups[2].Value, match.Groups[1].Value);
@@ -734,7 +735,7 @@ public sealed class ResponsesRequestMapper
 
         if (content.ValueKind != JsonValueKind.Array)
         {
-            throw ResponsesApiException.BadRequest($"{param}: content must be a string or an array of parts.", $"{param}.content", "invalid_value");
+            throw ResponsesApiException.BadRequest(ErrorCodes.ResponsesContentInvalid, $"{param}: content must be a string or an array of parts.", $"{param}.content", "invalid_value");
         }
 
         var texts = new List<string>();
@@ -753,11 +754,11 @@ public sealed class ResponsesRequestMapper
                     files.Add(ParseFile(part, partParam));
                     if (files.Count > MaxMessageFiles)
                     {
-                        throw ResponsesApiException.BadRequest($"{param}: at most {MaxMessageFiles} files per message.", $"{param}.content", "invalid_value");
+                        throw ResponsesApiException.BadRequest(ErrorCodes.ResponsesTooManyFiles, $"{param}: at most {MaxMessageFiles} files per message.", $"{param}.content", "invalid_value");
                     }
                     break;
                 default:
-                    throw ResponsesApiException.BadRequest($"{partParam}: content of type '{type}' is not supported.", $"{partParam}.type", "unsupported_value");
+                    throw ResponsesApiException.BadRequest(ErrorCodes.ResponsesContentTypeNotSupported, $"{partParam}: content of type '{type}' is not supported.", $"{partParam}.type", "unsupported_value");
             }
         }
 
@@ -773,12 +774,12 @@ public sealed class ResponsesRequestMapper
         var filename = part.TryGetProperty("filename", out var name) && name.ValueKind == JsonValueKind.String ? name.GetString()! : string.Empty;
         if (string.IsNullOrWhiteSpace(filename))
         {
-            throw ResponsesApiException.BadRequest($"{partParam}: input_file needs a filename.", $"{partParam}.filename", "invalid_value");
+            throw ResponsesApiException.BadRequest(ErrorCodes.ResponsesFileNameMissing, $"{partParam}: input_file needs a filename.", $"{partParam}.filename", "invalid_value");
         }
 
         if (!part.TryGetProperty("chunks", out var chunks) || chunks.ValueKind != JsonValueKind.Array)
         {
-            throw ResponsesApiException.BadRequest($"{partParam}: input_file needs chunks: an array of input_text and input_image parts.", $"{partParam}.chunks", "invalid_value");
+            throw ResponsesApiException.BadRequest(ErrorCodes.ResponsesFileChunksMissing, $"{partParam}: input_file needs chunks: an array of input_text and input_image parts.", $"{partParam}.chunks", "invalid_value");
         }
 
         var file = new ChatFile { SourceFilename = filename };
@@ -798,7 +799,7 @@ public sealed class ResponsesRequestMapper
                     file.Chunks.Add(new ChatFileChunk { Type = "image", Base64 = image.Base64, Format = image.MediaType });
                     break;
                 default:
-                    throw ResponsesApiException.BadRequest($"{chunkParam}: chunk of type '{type}' is not supported.", $"{chunkParam}.type", "unsupported_value");
+                    throw ResponsesApiException.BadRequest(ErrorCodes.ResponsesChunkTypeNotSupported, $"{chunkParam}: chunk of type '{type}' is not supported.", $"{chunkParam}.type", "unsupported_value");
             }
         }
 

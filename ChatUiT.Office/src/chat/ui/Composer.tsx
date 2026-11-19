@@ -12,6 +12,7 @@ import {
   type KeyboardEvent,
   type ReactNode,
 } from "react";
+import { ErrorCodes, formatError, userErrorText } from "../../errors/errorCodes";
 import type { ChatFile } from "../files/fileModels";
 import { MAX_FILES } from "../files/filePart";
 import { getFileExtension, getSupportedImportKind, SUPPORTED_IMPORT_ACCEPT } from "../files/kinds";
@@ -163,7 +164,7 @@ export function Composer({ draft, busy, dock, onSend, onStop }: ComposerProps) {
     }
     const problems = added
       .filter((file) => getSupportedImportKind(file) === null)
-      .map((file) => `${file.name}: this file type is not supported.`);
+      .map((file) => `${file.name}: ${formatError(ErrorCodes.FileTypeUnsupported)}`);
     const supported = added.filter((file) => getSupportedImportKind(file) !== null);
     setNotice(null);
     setReading((count) => count + supported.length);
@@ -181,13 +182,14 @@ export function Composer({ draft, busy, dock, onSend, onStop }: ComposerProps) {
             processor: processorFor(supported[index]),
           },
         });
-        const reason = result.reason instanceof Error ? result.reason.message : "it could not be read";
-        problems.push(`${supported[index].name}: ${reason}`);
+        problems.push(`${supported[index].name}: ${userErrorText(result.reason, ErrorCodes.FileUnreadable)}`);
       }
     });
     const read = results.flatMap((result) => (result.status === "fulfilled" ? [result.value] : []));
     if (files.length + read.length > MAX_FILES) {
-      problems.push(`At most ${MAX_FILES} files can go with one message.`);
+      problems.push(
+        formatError({ ...ErrorCodes.TooManyFiles, message: `At most ${MAX_FILES} files can go with one message.` })
+      );
     }
     setFiles((current) => [...current, ...read].slice(0, MAX_FILES));
     setNotice(problems.length > 0 ? problems.join(" ") : null);

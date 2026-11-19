@@ -3,6 +3,7 @@ using System.Runtime.CompilerServices;
 using System.Text.Json;
 using System.Threading.Channels;
 using ChatUiT.Server.Authentication;
+using ChatUiT.Server.Errors;
 using ChatUiT.Server.Services;
 using ChatUiT.Server.Services.Agents;
 using ChatUiT.Server.Services.AiProviders;
@@ -64,8 +65,8 @@ public class ResponsesController : ControllerBase
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error listing API models");
-            return ServerError();
+            _logger.LogError(ex, "Error listing API models ({ErrorCode})", ErrorCodes.ResponsesListModelsFailed.Code);
+            return ServerError(ErrorCodes.ResponsesListModelsFailed);
         }
     }
 
@@ -79,8 +80,8 @@ public class ResponsesController : ControllerBase
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error getting API model {Model}", id);
-            return ServerError();
+            _logger.LogError(ex, "Error getting API model {Model} ({ErrorCode})", id, ErrorCodes.ResponsesGetModelFailed.Code);
+            return ServerError(ErrorCodes.ResponsesGetModelFailed);
         }
     }
 
@@ -96,17 +97,17 @@ public class ResponsesController : ControllerBase
         }
         catch (JsonException ex)
         {
-            return Error(ResponsesApiException.BadRequest($"The request body is not valid JSON: {ex.Message}", code: "invalid_json"));
+            return Error(ResponsesApiException.BadRequest(ErrorCodes.ResponsesInvalidJson, $"The request body is not valid JSON: {ex.Message}", code: "invalid_json"));
         }
 
         if (request == null)
         {
-            return Error(ResponsesApiException.BadRequest("The request body must be a JSON object.", code: "invalid_json"));
+            return Error(ResponsesApiException.BadRequest(ErrorCodes.ResponsesBodyNotObject, "The request body must be a JSON object.", code: "invalid_json"));
         }
 
         if (string.IsNullOrWhiteSpace(request.Model))
         {
-            return Error(ResponsesApiException.BadRequest("model is required.", "model", "missing_required_parameter"));
+            return Error(ResponsesApiException.BadRequest(ErrorCodes.ResponsesModelRequired, "model is required.", "model", "missing_required_parameter"));
         }
 
         ApiTarget? target;
@@ -166,8 +167,8 @@ public class ResponsesController : ControllerBase
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error preparing a response on {Model}", request.Model);
-            return ServerError();
+            _logger.LogError(ex, "Error preparing a response on {Model} ({ErrorCode})", request.Model, ErrorCodes.ResponsesPrepareFailed.Code);
+            return ServerError(ErrorCodes.ResponsesPrepareFailed);
         }
 
         if (mapped.Stream)
@@ -205,7 +206,19 @@ public class ResponsesController : ControllerBase
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Streaming response {ResponseId} failed", response.Id);
+                var error = ErrorCodes.ResponsesStreamFailed;
+                _logger.LogError(ex, "Streaming response {ResponseId} failed ({ErrorCode})", response.Id, error.Code);
+                try
+                {
+                    if (!writer.Ended)
+                    {
+                        writer.Failed(error);
+                    }
+                }
+                catch (Exception sendFailure)
+                {
+                    _logger.LogError(sendFailure, "The failure of streaming response {ResponseId} could not be sent", response.Id);
+                }
             }
             finally
             {
@@ -232,7 +245,7 @@ public class ResponsesController : ControllerBase
 
     private static IResult Error(ResponsesApiException ex) => Json(ex.ToBody(), ex.Status);
 
-    private static IResult ServerError() => Json(
-        new ResponsesApiException(500, "The server could not handle the request.", type: "server_error").ToBody(),
+    private static IResult ServerError(ErrorCode error) => Json(
+        new ResponsesApiException(500, error, type: "server_error").ToBody(),
         StatusCodes.Status500InternalServerError);
 }

@@ -10,14 +10,18 @@ import {
     parseXmlDocument,
     resolveZipPath
 } from './processingShared';
+import i18n from 'i18next';
+import { CodedError, ErrorCode } from '../errors/errorCodes';
 
 export async function processDocxImport(file: File): Promise<ChatFile> {
-    const zip = await JSZip.loadAsync(await file.arrayBuffer());
+    const zip = await JSZip.loadAsync(await file.arrayBuffer()).catch((error: unknown) => {
+        throw new CodedError(ErrorCode.DocxOpenFailed, i18n.t('files.errors.docxOpenFailed'), undefined, { cause: error });
+    });
     const documentXml = await zip.file('word/document.xml')?.async('text');
     const relsXml = await zip.file('word/_rels/document.xml.rels')?.async('text');
 
     if (!documentXml || !relsXml) {
-        throw new Error('DOCX document content is missing');
+        throw new CodedError(ErrorCode.DocxContentMissing, i18n.t('files.errors.docxContentMissing'));
     }
 
     const relationshipTargets = getRelationshipTargets(relsXml, 'word/_rels/document.xml.rels');
@@ -25,7 +29,7 @@ export async function processDocxImport(file: File): Promise<ChatFile> {
     const body = Array.from(documentNode.getElementsByTagName('*')).find((element) => element.localName === 'body');
 
     if (!body) {
-        throw new Error('DOCX body is missing');
+        throw new CodedError(ErrorCode.DocxBodyMissing, i18n.t('files.errors.docxBodyMissing'));
     }
 
     const chunks: ChatFileChunk[] = [];

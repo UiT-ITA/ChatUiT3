@@ -22,6 +22,7 @@ import Text from '../common/Text';
 import TextBlock from '../common/TextBlock';
 import EmptyNote from '../common/EmptyNote';
 import FormFooter from '../common/FormFooter';
+import { ErrorCode, formatError } from '../../errors/errorCodes';
 
 interface ToolEditorProps {
   toolId: string;
@@ -68,7 +69,7 @@ const ToolEditor: React.FC<ToolEditorProps> = ({ toolId }) => {
   }
 
   if (!tool) {
-    return <EmptyNote>{t('common.notFound')}</EmptyNote>;
+    return <EmptyNote>{formatError(t('common.notFound'), ErrorCode.AdminItemNotFound)}</EmptyNote>;
   }
 
   const nobody = enabled && allowedRoles.length === 0 && allowedGroupIds.length === 0;

@@ -3,6 +3,7 @@
 import { makeStyles, MenuItem, mergeClasses } from "@fluentui/react-components";
 import { useCallback, useEffect, useState } from "react";
 import { color, radius } from "../../chat/ui/tokens";
+import { errorDetail, ErrorCodes, formatError } from "../../errors/errorCodes";
 import { getTrackChangesMode, setTrackChanges, type TrackChangesMode } from "./trackChanges";
 
 const useStyles = makeStyles({
@@ -41,7 +42,7 @@ export function TrackChangesMenuItem() {
         setMode(current);
         setError(null);
       },
-      (reason: unknown) => setError(String(reason))
+      (reason: unknown) => setError(formatError(ErrorCodes.TrackChangesUnreadable, { detail: errorDetail(reason) }))
     );
   }, []);
 
@@ -56,7 +57,7 @@ export function TrackChangesMenuItem() {
     try {
       await setTrackChanges(checked);
     } catch (reason) {
-      setError(String(reason));
+      setError(formatError(ErrorCodes.TrackChangesUnchanged, { detail: errorDetail(reason) }));
     }
     refresh();
   };

@@ -11,6 +11,7 @@ import { setCurrentChatId, getChatNotFound } from '../../services/chatService'
 import { conversationPanelOpenSignal } from '../../services/uiService'
 import { useSignals } from '@preact/signals-react/runtime'
 import { addNotification } from '../../services/notificationService'
+import { ErrorCode, formatError } from '../../errors/errorCodes'
 import { useChatCache } from '../../hooks/useChatCache'
 import useMediaQuery from '../../hooks/useMediaQuery'
 import { WIDE } from '../common/breakpoints';
@@ -47,7 +48,7 @@ const ChatSurface: React.FC<{ hidden?: boolean }> = ({ hidden = false }) => {
   // Goes to "/" when the requested chat does not exist
   useEffect(() => {
     if (chatId && notFound?.value) {
-      addNotification({ level: 'Warning', message: t('chat.chatNotFound') })
+      addNotification({ level: 'Warning', message: formatError(t('chat.chatNotFound'), ErrorCode.ChatNotFound) })
       navigate('/')
     }
   }, [chatId, notFound?.value, navigate, t])
