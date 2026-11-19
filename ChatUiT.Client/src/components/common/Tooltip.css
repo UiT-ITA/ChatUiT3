@@ -1,15 +1,6 @@
-.tooltip-anchor {
-  display: inline-flex;
-  align-items: center;
-}
-.tooltip-anchor--block {
-  display: block;
-  min-width: 0;
-}
-
-.tooltip {
-  position: fixed;
-  z-index: var(--z-dropdown);
+/* ui-sdk Tooltip: a short text near its trigger */
+[data-slot="tooltip-content"] {
+  width: var(--size-xs);
   padding: var(--space-sm) var(--space-md);
   border: var(--border-sm) solid var(--line);
   border-radius: var(--radius-md);
@@ -22,21 +13,8 @@
   animation: fade-in var(--dur-fast) ease;
 }
 
-.tooltip--auto { white-space: nowrap; }
-
-/* The small spacing step between the anchor and the tooltip */
-.tooltip--top { margin-bottom: var(--space-sm); }
-.tooltip--bottom { margin-top: var(--space-sm); }
-
-/* Right of the anchor, centred on it */
-.tooltip--right {
-  margin-left: var(--space-sm);
-  transform: translateY(-50%);
+/* A tooltip that names a button: one line, as wide as its text */
+.tooltip--label {
+  width: auto;
+  white-space: nowrap;
 }
-/* Left of the anchor, centred on it */
-.tooltip--left {
-  margin-right: var(--space-sm);
-  transform: translateY(-50%);
-}
-.tooltip--small { width: var(--size-2xs); }
-.tooltip--medium { width: var(--size-xs); }

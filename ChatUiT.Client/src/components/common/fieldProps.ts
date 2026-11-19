@@ -1,5 +1,4 @@
 import type React from 'react';
-import { cx } from './layout';
 
 /** The label and notes a form input can show. Every input takes these. */
 export interface FieldProps {
@@ -13,7 +12,3 @@ export interface FieldProps {
 
 export const hasFieldProps = ({ label, labelAside, description, error }: FieldProps): boolean =>
   Boolean(label || labelAside || description || error);
-
-/** The aria-describedby value that links a control to its notes. */
-export const fieldDescribedBy = (id: string, { description, error }: FieldProps): string | undefined =>
-  cx(description && `${id}-description`, error && `${id}-error`) || undefined;

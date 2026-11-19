@@ -1,6 +1,5 @@
 import React from 'react';
-import { cx, splitBoxProps, splitLayoutProps, type BoxProps as BoxStyleProps, type LayoutProps } from './layout';
-import './Box.css';
+import { splitBoxProps, splitLayoutProps, type BoxProps as BoxStyleProps, type LayoutProps } from './layout';
 
 export interface BoxProps extends LayoutProps, BoxStyleProps, Omit<React.HTMLAttributes<HTMLElement>, 'color'> {
   // The element to render
@@ -8,11 +7,11 @@ export interface BoxProps extends LayoutProps, BoxStyleProps, Omit<React.HTMLAtt
   ref?: React.Ref<HTMLElement>;
 }
 
-/** A plain container with padding, fill, frame and clipping set through props. */
+/** A plain container with padding, frame and clipping set through props. */
 const Box: React.FC<BoxProps> = ({ as: Element = 'div', className, ...props }) => {
-  const [box, hideClass, boxRest] = splitBoxProps(props);
+  const [box, boxRest] = splitBoxProps(props);
   const [layout, rest] = splitLayoutProps(boxRest);
-  return <Element className={cx(hideClass, className) || undefined} style={{ ...box, ...layout }} {...rest} />;
+  return <Element className={className} style={{ ...box, ...layout }} {...rest} />;
 };
 
 export default Box;

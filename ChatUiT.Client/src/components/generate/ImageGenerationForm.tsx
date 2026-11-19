@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { FileInput, FileInputDropzone, FileInputItem, FileInputItemRemove, FileInputList, FileInputTrigger } from '@ui-sdk/react/file-input';
 import type {
   ImageBackground,
   ImageFormat,
@@ -10,17 +11,17 @@ import type {
 import type { ImageGenerationRequest } from '../../types/mediaGenerationModels';
 import { refineImagePrompt, startImageGeneration } from '../../services/mediaGenerationService';
 import Select from '../common/Select';
-import TextInput from '../common/TextInput';
+import NumberField from '../common/NumberField';
 import TextArea from '../common/TextArea';
 import Checkbox from '../common/Checkbox';
 import Field from '../common/Field';
 import Button from '../common/Button';
-import IconButton from '../common/IconButton';
+import { Icon } from '../common/Icon';
 import Stack from '../common/Stack';
 import Grid from '../common/Grid';
 import Text from '../common/Text';
 import StickyActionBar from '../common/StickyActionBar';
-import FileDrop from '../common/FileDrop';
+import '../common/FileDrop.css';
 import { allowsTransparency, customSizeProblems, fileProblem, sideRange, type RuleProblem } from './imageFormRules';
 
 const AUTO_SIZE = 'auto';
@@ -38,7 +39,7 @@ function initialSize(model: UserImageModelDto): string {
   return CUSTOM_SIZE;
 }
 
-/** A file picker that lists the chosen files with a remove button each. */
+/** A file picker: the chosen files with a remove button each, and a dashed area to pick or drop more. */
 const FilePicker: React.FC<{
   label: string;
   description: string;
@@ -51,24 +52,28 @@ const FilePicker: React.FC<{
   const { t } = useTranslation();
   return (
     <Field label={label} description={description} error={error}>
-      <Stack gap="xs">
-        {files.map((file, index) => (
-          <Stack key={`${file.name}-${index}`} direction="row" gap="sm" align="center">
-            <Text variant="body" breakWord>{file.name}</Text>
-            <IconButton icon="close" size="small" label={t('generate.remove')} onClick={() => onChange(files.filter((_, i) => i !== index))} />
-          </Stack>
-        ))}
-        <FileDrop
-          label={multiple ? t('generate.image.addFiles') : t('generate.image.attachFile')}
-          accept={accept}
-          multiple={multiple}
-          onChange={(event) => {
-            const picked = Array.from(event.target.files ?? []);
-            onChange(multiple ? [...files, ...picked] : picked.slice(0, 1));
-            event.target.value = '';
-          }}
-        />
-      </Stack>
+      <FileInput multiple={multiple} accept={accept} value={files} onValueChange={next => onChange(next)}>
+        <Stack gap="xs">
+          <FileInputList className="file-picker__list">
+            <FileInputItem className="file-picker__item">
+              {({ file }) => (
+                <>
+                  <Text variant="body" breakWord>{file.name}</Text>
+                  <FileInputItemRemove className="button button--ghost button--small button--icon-only">
+                    <Icon name="close" size="sm" />
+                  </FileInputItemRemove>
+                </>
+              )}
+            </FileInputItem>
+          </FileInputList>
+          <FileInputDropzone>
+            <FileInputTrigger className="file-drop">
+              <Icon name="upload" size="md" color="accent" />
+              <span className="t-ui">{multiple ? t('generate.image.addFiles') : t('generate.image.attachFile')}</span>
+            </FileInputTrigger>
+          </FileInputDropzone>
+        </Stack>
+      </FileInput>
     </Field>
   );
 };
@@ -92,7 +97,7 @@ const ImageGenerationForm: React.FC<ImageGenerationFormProps> = ({ models }) => 
   const [quality, setQuality] = useState<ImageQuality | ''>('');
   const [count, setCount] = useState(1);
   const [outputFormat, setOutputFormat] = useState<ImageFormat | ''>('');
-  const [compression, setCompression] = useState<number | ''>('');
+  const [compression, setCompression] = useState<number | null>(null);
   const [background, setBackground] = useState<ImageBackground | ''>('');
   const [moderation, setModeration] = useState<ImageModeration | ''>('');
   const [partialImages, setPartialImages] = useState(0);
@@ -114,7 +119,7 @@ const ImageGenerationForm: React.FC<ImageGenerationFormProps> = ({ models }) => 
     setQuality('');
     setCount(1);
     setOutputFormat('');
-    setCompression('');
+    setCompression(null);
     setBackground('');
     setModeration('');
     setPartialImages(0);
@@ -186,7 +191,7 @@ const ImageGenerationForm: React.FC<ImageGenerationFormProps> = ({ models }) => 
         quality: showSettings && quality ? quality : null,
         count: showSettings ? count : 1,
         outputFormat: showSettings && outputFormat ? outputFormat : null,
-        compression: showSettings && showCompression && compression !== '' ? compression : null,
+        compression: showSettings && showCompression && compression !== null ? compression : null,
         background: showSettings && background ? background : null,
         moderation: !isEdit && moderation ? moderation : null,
         partialImages: showSettings ? partialImages : 0,
@@ -220,7 +225,7 @@ const ImageGenerationForm: React.FC<ImageGenerationFormProps> = ({ models }) => 
             {caps.maxPromptCharacters !== null && (
               <Text variant="caption" tone="muted" mr="xs">{t('generate.promptCount', { count: prompt.length, max: caps.maxPromptCharacters })}</Text>
             )}
-            <Button variant="ghost" size="small" startIcon="edit" onClick={handleRefine} disabled={!prompt.trim() || submitting} loading={refining}>
+            <Button variant="ghost" size="small" startIcon="edit" onClick={handleRefine} disabled={!prompt.trim() || submitting}>
               {t('generate.refinePrompt')}
             </Button>
             {unrefinedPrompt !== null && (
@@ -293,26 +298,24 @@ const ImageGenerationForm: React.FC<ImageGenerationFormProps> = ({ models }) => 
 
             {size === CUSTOM_SIZE && (
               <>
-                <TextInput
+                <NumberField
                   label={t('generate.image.width')}
-                  type="number"
                   min={sides.min}
                   max={sides.max}
                   step={sides.step}
                   invalid={sizeProblems.length > 0}
                   error={sizeProblems.length > 0 ? sizeProblems.map(ruleText).join(' ') : undefined}
                   value={customWidth}
-                  onChange={(value) => setCustomWidth(parseInt(value || '0', 10))}
+                  onChange={(value) => setCustomWidth((value ?? 0))}
                 />
-                <TextInput
+                <NumberField
                   label={t('generate.image.height')}
-                  type="number"
                   min={sides.min}
                   max={sides.max}
                   step={sides.step}
                   invalid={sizeProblems.length > 0}
                   value={customHeight}
-                  onChange={(value) => setCustomHeight(parseInt(value || '0', 10))}
+                  onChange={(value) => setCustomHeight((value ?? 0))}
                 />
               </>
             )}
@@ -327,15 +330,14 @@ const ImageGenerationForm: React.FC<ImageGenerationFormProps> = ({ models }) => 
             )}
 
             {caps.maxImagesPerRequest > 1 && (
-              <TextInput
+              <NumberField
                 label={t('generate.image.count')}
                 description={partialImages > 0 ? t('generate.image.rules.countNeedsNoPreviews') : undefined}
-                type="number"
                 min={1}
                 max={caps.maxImagesPerRequest}
                 disabled={partialImages > 0}
                 value={count}
-                onChange={(value) => setCount(Math.min(caps.maxImagesPerRequest, Math.max(1, parseInt(value || '1', 10))))}
+                onChange={(value) => setCount(value ?? 1)}
               />
             )}
 
@@ -354,14 +356,13 @@ const ImageGenerationForm: React.FC<ImageGenerationFormProps> = ({ models }) => 
             )}
 
             {showCompression && (
-              <TextInput
+              <NumberField
                 label={t('generate.image.compression')}
-                type="number"
                 min={0}
                 max={MAX_COMPRESSION}
                 placeholder={t('generate.modelDefault')}
                 value={compression}
-                onChange={(value) => setCompression(value === '' ? '' : Math.min(MAX_COMPRESSION, Math.max(0, parseInt(value, 10))))}
+                onChange={setCompression}
               />
             )}
 
@@ -389,15 +390,14 @@ const ImageGenerationForm: React.FC<ImageGenerationFormProps> = ({ models }) => 
             )}
 
             {caps.maxPartialImages > 0 && (
-              <TextInput
+              <NumberField
                 label={t('generate.image.partialImages')}
                 description={count > 1 ? t('generate.image.rules.previewsNeedOneImage') : t('generate.image.partialImagesHint')}
-                type="number"
                 min={0}
                 max={caps.maxPartialImages}
                 disabled={count > 1}
                 value={partialImages}
-                onChange={(value) => setPartialImages(Math.min(caps.maxPartialImages, Math.max(0, parseInt(value || '0', 10))))}
+                onChange={(value) => setPartialImages(value ?? 0)}
               />
             )}
           </Grid>
@@ -418,7 +418,7 @@ const ImageGenerationForm: React.FC<ImageGenerationFormProps> = ({ models }) => 
 
       <StickyActionBar>
         {!prompt.trim() && !submitting && <Text variant="caption" tone="secondary" minWidth="0">{t('generate.image.promptRequired')}</Text>}
-        <Button variant="primary" startIcon="image" onClick={handleSubmit} disabled={!canSubmit} loading={submitting}>
+        <Button variant="primary" startIcon="image" onClick={handleSubmit} disabled={!canSubmit}>
           {isEdit ? t('generate.image.edit') : t('generate.image.generate')}
         </Button>
       </StickyActionBar>

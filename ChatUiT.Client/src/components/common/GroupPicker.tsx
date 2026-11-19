@@ -1,10 +1,14 @@
 import React, { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { useAsyncOptions } from '@ui-sdk/react/async-options';
+import { Combobox, ComboboxContent, ComboboxEmpty, ComboboxInput, ComboboxItem, ComboboxList, ComboboxStatus } from '@ui-sdk/react/combobox';
 import type { DirectoryGroupDto } from '../../types/admin';
-import Combobox from './Combobox';
 import { Icon } from './Icon';
 import Chip from './Chip';
 import Stack from './Stack';
+import { OptionContent } from './Listbox';
+import { floatingPanelClass } from './floatingPanel';
+import { spacePx } from './layout';
 import './GroupPicker.css';
 
 interface GroupPickerProps {
@@ -25,10 +29,13 @@ const nameCache = new Map<string, DirectoryGroupDto>();
 const GroupPicker: React.FC<GroupPickerProps> = ({ value, onChange, search, resolve, disabled = false }) => {
   const { t } = useTranslation();
   const [query, setQuery] = useState('');
-  // The latest results and the text they answer
-  const [results, setResults] = useState<{ text: string; groups: DirectoryGroupDto[] }>({ text: '', groups: [] });
-  const [error, setError] = useState<string | null>(null);
   const [, setResolvedTick] = useState(0);
+  const groups = useAsyncOptions(async (text: string) => {
+    if (text.trim().length < 2) return [];
+    const found = await search(text.trim());
+    found.forEach(group => nameCache.set(group.id, group));
+    return found;
+  }, { debounce: 300 });
 
   // Looks up the names of the ids that are not in the cache
   useEffect(() => {
@@ -36,45 +43,17 @@ const GroupPicker: React.FC<GroupPickerProps> = ({ value, onChange, search, reso
     if (unknown.length === 0) return;
     let cancelled = false;
     resolve(unknown)
-      .then(groups => {
+      .then(found => {
         if (cancelled) return;
-        groups.forEach(group => nameCache.set(group.id, group));
+        found.forEach(group => nameCache.set(group.id, group));
         setResolvedTick(tick => tick + 1);
       })
       .catch(() => {});
     return () => { cancelled = true; };
   }, [value, resolve]);
 
-  useEffect(() => {
-    const text = query.trim();
-    if (text.length < 2) return;
-    let cancelled = false;
-    const timer = window.setTimeout(() => {
-      search(text)
-        .then(groups => {
-          if (cancelled) return;
-          groups.forEach(group => nameCache.set(group.id, group));
-          setResults({ text, groups });
-          setError(null);
-        })
-        .catch(() => { if (!cancelled) setError(t('groupPicker.error')); });
-    }, 300);
-    return () => { cancelled = true; window.clearTimeout(timer); };
-  }, [query, search, t]);
-
-  const add = (group: DirectoryGroupDto) => {
-    nameCache.set(group.id, group);
-    if (!value.includes(group.id)) onChange([...value, group.id]);
-    setQuery('');
-  };
-
-  const remove = (id: string) => onChange(value.filter(candidate => candidate !== id));
-
   const labelFor = (id: string) => nameCache.get(id)?.displayName ?? null;
-  const text = query.trim();
-  const current = results.text === text ? results.groups : null;
-  const searching = text.length >= 2 && current === null && error === null;
-  const candidates = (current ?? []).filter(group => !value.includes(group.id));
+  const searching = query.trim().length >= 2;
 
   return (
     <div className="group-picker">
@@ -83,7 +62,7 @@ const GroupPicker: React.FC<GroupPickerProps> = ({ value, onChange, search, reso
           {value.map(id => {
             const name = labelFor(id);
             return (
-              <Chip key={id} title={id} onRemove={() => remove(id)} removeLabel={t('groupPicker.remove')} disabled={disabled}>
+              <Chip key={id} title={id} onRemove={() => onChange(value.filter(candidate => candidate !== id))} removeLabel={t('groupPicker.remove')} disabled={disabled}>
                 <span className={name === null ? 'group-picker-chip-unknown' : undefined}>{name ?? id}</span>
                 {name === null && nameCache.has(id) && <span className="group-picker-chip-note t-meta">{t('groupPicker.unknownGroup')}</span>}
               </Chip>
@@ -92,26 +71,40 @@ const GroupPicker: React.FC<GroupPickerProps> = ({ value, onChange, search, reso
         </Stack>
       )}
       <Combobox
-        inputValue={query}
-        onInputChange={next => { setQuery(next); setError(null); }}
-        placeholder={t('groupPicker.placeholder')}
-        leading={<Icon name="search" size="sm" />}
+        multiple
+        value={value}
+        onValueChange={ids => onChange(ids as string[])}
+        itemToLabel={id => labelFor(id as string) ?? (id as string)}
+        status={groups.status}
+        filter={false}
+        query={query}
+        onQueryChange={next => { setQuery(next); groups.setQuery(next); }}
         disabled={disabled}
-        openWhen={text.length >= 2}
-        items={searching || error ? [] : candidates}
-        status={
-          searching ? t('groupPicker.searching')
-            : error ? <span className="group-picker-error">{error}</span>
-              : candidates.length === 0 ? t('groupPicker.noResults')
-                : undefined
-        }
-        getKey={group => group.id}
-        renderItem={group => ({
-          label: group.displayName ?? group.id,
-          description: [group.mail, group.description].filter(Boolean).join(' · ') || group.id,
-        })}
-        onSelect={add}
-      />
+      >
+        <div className="input-box input-box--medium input-box--full-width text-input">
+          <span className="input-box__adornment"><Icon name="search" size="sm" /></span>
+          <ComboboxInput className="input-box__input t-body" placeholder={t('groupPicker.placeholder')} />
+        </div>
+        {searching && (
+          <ComboboxContent sideOffset={spacePx('xs')} className={floatingPanelClass()} style={{ width: 'var(--anchor-width)' }}>
+            <ComboboxStatus className="t-caption">
+              {state => state.status === 'error' ? <span className="group-picker-error">{t('groupPicker.error')}</span> : state.loading ? t('groupPicker.searching') : null}
+            </ComboboxStatus>
+            <ComboboxEmpty className="t-caption">
+              {state => state.empty && !state.loading && groups.status !== 'error' ? t('groupPicker.noResults') : null}
+            </ComboboxEmpty>
+            <ComboboxList>
+              {groups.items.map(group => (
+                <ComboboxItem key={group.id} value={group.id} label={group.displayName ?? group.id}>
+                  <OptionContent description={[group.mail, group.description].filter(Boolean).join(' · ') || group.id}>
+                    {group.displayName ?? group.id}
+                  </OptionContent>
+                </ComboboxItem>
+              ))}
+            </ComboboxList>
+          </ComboboxContent>
+        )}
+      </Combobox>
     </div>
   );
 };

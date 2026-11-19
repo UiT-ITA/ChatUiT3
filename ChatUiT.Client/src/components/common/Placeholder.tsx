@@ -17,11 +17,11 @@ interface PlaceholderProps extends LayoutProps, Omit<BoxProps, 'border' | 'borde
 
 /** A dashed frame for an empty state or an invitation to add something. */
 const Placeholder: React.FC<PlaceholderProps> = ({ tone = 'default', interactive = false, centered = false, textVariant, as: Element = 'div', className, ...props }) => {
-  const [box, hideClass, boxRest] = splitBoxProps(props);
+  const [box, boxRest] = splitBoxProps(props);
   const [layout, rest] = splitLayoutProps(boxRest);
   return (
     <Element
-      className={cx('placeholder', tone === 'muted' && 'placeholder--muted', interactive && 'placeholder--interactive', centered && 'placeholder--centered', textVariant && `t-${textVariant}`, hideClass, className)}
+      className={cx('placeholder', tone === 'muted' && 'placeholder--muted', interactive && 'placeholder--interactive', centered && 'placeholder--centered', textVariant && `t-${textVariant}`, className)}
       style={{ ...box, ...layout }}
       {...rest}
     />

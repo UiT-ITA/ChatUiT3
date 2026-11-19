@@ -7,6 +7,7 @@ import { getFileExtension } from '../../utils/fileUtils';
 import type { ChatFile } from '../../types/fileModels';
 import { fetchChatFile } from '../../services/chatService';
 import FilePreviewModal from './FilePreviewModal';
+import { toJpegDataUrl } from '../../import/processingShared';
 
 type AnyChatFile = ChatFile | ChatFileDto | CreateChatFileDto;
 
@@ -17,6 +18,13 @@ interface FileThumbnailProps {
   // Shows a remove button that calls this
   onRemove?: () => void;
 }
+
+/** A stored file with its content, or undefined when it could not be fetched. */
+const loadStoredFile = (chatId: string, fileId: string): Promise<ChatFileDto | undefined> =>
+  fetchChatFile(chatId, fileId).catch((error) => {
+    console.error(`Failed to load file ${fileId}:`, error);
+    return undefined;
+  });
 
 const hasFullContent = (file: AnyChatFile) => file.chunks.every((chunk) => chunk.type === 'image' ? chunk.base64 != null : chunk.text != null);
 
@@ -32,44 +40,29 @@ const FileThumbnail = ({ file, chatId, onRemove }: FileThumbnailProps) => {
 
   // Opens the preview, with the content of a stored file fetched first
   const handleFileClick = async () => {
-    let shown = effectiveFile;
-    if (needsFetch && storedFileId && chatId) {
-      try {
-        const fetched = await fetchChatFile(chatId, storedFileId);
-        setLoadedFile(fetched);
-        shown = fetched;
-      } catch (error) {
-        console.error(`Failed to load file ${storedFileId}:`, error);
-      }
-    }
-    setSelectedFile(shown);
+    const fetched = needsFetch && chatId && storedFileId ? await loadStoredFile(chatId, storedFileId) : undefined;
+    if (fetched) setLoadedFile(fetched);
+    setSelectedFile(fetched ?? effectiveFile);
   };
 
   const filename = effectiveFile.sourceFilename ?? t('files.unknownFile');
   const extension = getFileExtension(filename).toUpperCase() || 'FILE';
-  // The name without its extension, cut after 20 characters
+  // The name without its extension
   const baseName = filename.includes('.') ? filename.substring(0, filename.lastIndexOf('.')) : filename;
-  const shortName = baseName.length <= 20 ? baseName : `${baseName.substring(0, 20)}...`;
 
   // An image thumbnail for a file of exactly one chunk that is an image
   const singleChunk = effectiveFile.chunks.length === 1 ? effectiveFile.chunks[0] : undefined;
   const isImage = singleChunk?.type === 'image';
   const imageBase64 = isImage ? singleChunk.base64 : undefined;
-  const imageSource = imageBase64
-    ? (imageBase64.startsWith('data:') ? imageBase64 : `data:image/jpeg;base64,${imageBase64}`)
-    : '';
+  const imageSource = imageBase64 ? toJpegDataUrl(imageBase64) : '';
 
+  // An image thumbnail of a stored file fetches its content to show it
   useEffect(() => {
     if (!isImage || imageBase64 || !needsFetch || !chatId || !storedFileId) return;
-
     let cancelled = false;
-    fetchChatFile(chatId, storedFileId)
-      .then((fetched) => {
-        if (!cancelled) setLoadedFile(fetched);
-      })
-      .catch((error) => {
-        console.error(`Failed to load file ${storedFileId}:`, error);
-      });
+    void loadStoredFile(chatId, storedFileId).then((fetched) => {
+      if (fetched && !cancelled) setLoadedFile(fetched);
+    });
     return () => {
       cancelled = true;
     };
@@ -79,7 +72,7 @@ const FileThumbnail = ({ file, chatId, onRemove }: FileThumbnailProps) => {
     <>
       <FileChip
         image={isImage && imageSource ? { src: imageSource, alt: filename } : undefined}
-        name={shortName}
+        name={baseName}
         title={filename}
         extension={extension}
         onClick={() => void handleFileClick()}

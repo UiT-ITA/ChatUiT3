@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef } from 'react';
 import type { ReactNode } from 'react';
-import { useLocation, useNavigate, useParams } from 'react-router-dom';
+import { Link, useLocation, useNavigate, useParams } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import ReactMarkdown from 'react-markdown';
 import type { Components } from 'react-markdown';
@@ -151,17 +151,7 @@ const HelpPage = () => {
         const url = href ?? '';
         const isInternal = url.startsWith('/') || url.startsWith('#');
         if (isInternal) {
-          return (
-            <a
-              href={url}
-              onClick={(e) => {
-                e.preventDefault();
-                navigate(url.startsWith('#') ? { hash: url } : url);
-              }}
-            >
-              {children}
-            </a>
-          );
+          return <Link to={url.startsWith('#') ? { hash: url } : url}>{children}</Link>;
         }
         return <RichTextLink href={url} target="_blank" rel="noopener noreferrer">{children}</RichTextLink>;
       },
@@ -223,7 +213,7 @@ const HelpPage = () => {
         );
       },
     };
-  }, [headingIds, navigate, t]);
+  }, [headingIds, t]);
 
   return (
     <Page fill="grow" flow="block" mobileEndSpace="large" ref={containerRef}>

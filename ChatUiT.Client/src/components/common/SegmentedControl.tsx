@@ -1,4 +1,5 @@
 import React from 'react';
+import { SegmentedControl as UiSegmentedControl, SegmentedControlItem } from '@ui-sdk/react/segmented-control';
 import { cx, splitLayoutProps, type LayoutProps, type Size } from './layout';
 import './SegmentedControl.css';
 
@@ -17,7 +18,6 @@ interface SegmentedControlProps<V extends string> extends LayoutProps {
   size?: Size;
   // Accessible name of the group
   label: string;
-  disabled?: boolean;
   // Spans the width of its container, with options of equal width
   stretch?: boolean;
   className?: string;
@@ -25,25 +25,28 @@ interface SegmentedControlProps<V extends string> extends LayoutProps {
 }
 
 /** A row of mutually exclusive options. */
-function SegmentedControl<V extends string>({ value, onChange, options, size = 'medium', label, disabled = false, stretch = false, className, ...props }: SegmentedControlProps<V>) {
+function SegmentedControl<V extends string>({ value, onChange, options, size = 'medium', label, stretch = false, className, ...props }: SegmentedControlProps<V>) {
   const [style] = splitLayoutProps(props);
   return (
-    <div role="radiogroup" aria-label={label} className={cx('segmented-control', stretch && 'segmented-control--stretch', className)} style={style}>
+    <UiSegmentedControl
+      aria-label={label}
+      value={value}
+      onValueChange={next => { if (next !== null) onChange(next as V); }}
+      className={cx('segmented-control', stretch && 'segmented-control--stretch', className)}
+      style={style}
+    >
       {options.map(option => (
-        <button
+        <SegmentedControlItem
           key={option.value}
-          type="button"
-          role="radio"
-          aria-checked={option.value === value}
-          className={cx('segmented-control__option', `segmented-control__option--${size}`, option.value === value && 'segmented-control__option--selected', 't-ui')}
-          disabled={disabled || option.disabled}
-          onClick={() => onChange(option.value)}
+          value={option.value}
+          disabled={option.disabled}
+          className={cx('segmented-control__option', `segmented-control__option--${size}`, 't-ui')}
         >
           {option.leading && <span className="segmented-control__leading">{option.leading}</span>}
           {option.label}
-        </button>
+        </SegmentedControlItem>
       ))}
-    </div>
+    </UiSegmentedControl>
   );
 }
 

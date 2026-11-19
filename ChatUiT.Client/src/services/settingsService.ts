@@ -1,5 +1,5 @@
 import { AppSettings, DEFAULT_SETTINGS } from '../types/settingsModels';
-import { setTheme, setMode, setSize } from '../utils/themeUtils';
+import { colorScheme, textSize, theme } from './appearance';
 import { initializeI18n } from '../i18n';
 import { trackError } from './telemetryService';
 
@@ -19,7 +19,7 @@ export class SettingsService {
         return initialSettings;
       }
 
-      const parsed = this.migrateSettings(JSON.parse(stored));
+      const parsed = JSON.parse(stored);
 
       const settings: AppSettings = {
         ...DEFAULT_SETTINGS,
@@ -53,39 +53,6 @@ export class SettingsService {
     }
   }
 
-  // Stored settings whose theme is light/dim/dark are read as the theme + mode pair
-  private static migrateSettings(parsed: Record<string, unknown>): Record<string, unknown> {
-    if (parsed.theme === 'light' || parsed.theme === 'dim' || parsed.theme === 'dark') {
-      parsed.mode = parsed.theme === 'light' ? 'light' : 'dark';
-      parsed.theme = 'blue';
-    }
-    return parsed;
-  }
-
-  static applySettings(settings: AppSettings): void {
-    setTheme(settings.theme);
-    setMode(settings.mode);
-    setSize(settings.size);
-    this.watchSystemMode(settings);
-  }
-
-  private static systemModeQuery: MediaQueryList | null = null;
-  private static systemModeListener: (() => void) | null = null;
-
-  // Re-resolve data-mode when the OS scheme changes and mode is "system"
-  private static watchSystemMode(settings: AppSettings): void {
-    if (this.systemModeQuery && this.systemModeListener) {
-      this.systemModeQuery.removeEventListener('change', this.systemModeListener);
-      this.systemModeQuery = null;
-      this.systemModeListener = null;
-    }
-    if (settings.mode === 'system' && window.matchMedia) {
-      this.systemModeQuery = window.matchMedia('(prefers-color-scheme: dark)');
-      this.systemModeListener = () => setMode('system');
-      this.systemModeQuery.addEventListener('change', this.systemModeListener);
-    }
-  }
-
   static async updateSetting<K extends keyof AppSettings>(
     key: K,
     value: AppSettings[K],
@@ -97,7 +64,6 @@ export class SettingsService {
     };
 
     this.saveSettings(newSettings);
-    this.applySettings(newSettings);
     
     if (key === 'language') {
       await initializeI18n(value as string);
@@ -109,7 +75,7 @@ export class SettingsService {
   static exportData(format: 'json' | 'markdown' | 'txt'): void {
     // Exports the settings only. `format` picks the file extension; the payload is always JSON.
     const data = {
-      settings: this.loadSettings(),
+      settings: { ...this.loadSettings(), theme: theme.get().value, mode: colorScheme.get().value, size: textSize.get().value },
       exportDate: new Date().toISOString(),
       format: format,
     };

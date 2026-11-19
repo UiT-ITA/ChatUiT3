@@ -27,6 +27,7 @@
     "darkMode": "Mørk modus",
     "lightMode": "Lys modus",
     "collapseSidebar": "Skjul sidepanel",
+    "resizeSidebar": "Endre bredden på sidepanelet",
     "expandSidebar": "Vis sidepanel",
     "generate": "Generer",
     "insights": "Innsikt"
@@ -74,6 +75,7 @@
       "confirm": "Slett «{{name}}»? Dette kan ikke angres."
     },
     "panel": {
+      "resize": "Endre bredden på samtaleoversikten",
       "title": "I denne samtalen",
       "files": "Filer i samtalen",
       "noFiles": "Ingen filer ennå.",
@@ -454,7 +456,8 @@
     "yes": "Ja",
     "no": "Nei",
     "removeTag": "Fjern taggen {{tag}}",
-    "addTag": "Legg til tagg..."
+    "addTag": "Legg til tagg...",
+    "createTag": "Legg til «{{tag}}»"
   },
   "toolCall": {
     "arguments": "Argumenter",

@@ -1,4 +1,5 @@
 import React from 'react';
+import { Button as UiButton } from '@ui-sdk/react/button';
 import { Icon, type IconName } from './Icon';
 import { BUTTON_ICON_SIZE, type ButtonSize } from './buttonIconSize';
 import { cx, splitLayoutProps, type LayoutProps } from './layout';
@@ -9,37 +10,29 @@ import './Button.css';
 // 'outline' is a hairline frame in the strong line colour with muted text, such as the send button of an empty message box.
 export type ButtonVariant = 'primary' | 'secondary' | 'danger' | 'subtle' | 'ghost' | 'inherit' | 'dashed' | 'outline';
 
-/** Parameters Button and IconButton share. */
-export interface ButtonBaseProps extends LayoutProps, Omit<React.ComponentProps<'button'>, 'type' | 'width'> {
+/** Parameters Button and IconButton share. An onClick that returns a promise keeps the button pending, with a spinner, until it settles. */
+export interface ButtonBaseProps extends LayoutProps, Omit<React.ComponentProps<'button'>, 'type' | 'width' | 'onClick'> {
   variant?: ButtonVariant;
   size?: ButtonSize;
-  // Disables the button and shows a spinner
-  loading?: boolean;
   type?: 'button' | 'submit' | 'reset';
-  // Renders a link that looks like the button
-  href?: string;
-  target?: string;
+  onClick?: (event: React.MouseEvent<HTMLElement>) => unknown;
 }
 
-/** Renders a button, or a link when href is set, with the shared button classes. */
-export const ButtonRoot: React.FC<ButtonBaseProps & { classes: string }> = ({ classes, href, target, type = 'button', loading = false, disabled, children, ...props }) => {
+/** Renders a ui-sdk button with the shared button classes. */
+export const ButtonRoot: React.FC<ButtonBaseProps & { classes: string }> = ({ classes, type = 'button', children, ...props }) => {
   const [style, rest] = splitLayoutProps(props);
-  if (href) {
-    const anchorProps = rest as React.AnchorHTMLAttributes<HTMLAnchorElement>;
-    return (
-      <a className={classes} style={style} href={disabled ? undefined : href} target={target} aria-disabled={disabled || undefined} {...anchorProps}>
-        {children}
-      </a>
-    );
-  }
   return (
-    <button type={type} className={classes} style={style} disabled={disabled || loading} aria-busy={loading || undefined} {...rest}>
+    <UiButton type={type} className={classes} style={style} {...rest}>
       {children}
-    </button>
+    </UiButton>
   );
 };
 
-export const ButtonSpinner: React.FC = () => <span className="button__spinner" aria-hidden="true" />;
+/** The spinner a pending button shows in place of its idle content. */
+export const ButtonSpinner: React.FC = () => <span className="button__spinner" data-show="pending" aria-hidden="true" />;
+
+/** Content shown while the button is not pending. */
+export const IdleOnly: React.FC<{ children: React.ReactNode }> = ({ children }) => <span className="button__idle" data-show="idle">{children}</span>;
 
 export interface ButtonProps extends ButtonBaseProps {
   // An icon name, or a custom icon element such as a spinning Icon
@@ -63,13 +56,13 @@ const renderIcon = (icon: IconName | React.ReactElement | undefined, size: Butto
   typeof icon === 'string' ? <Icon name={icon} size={BUTTON_ICON_SIZE[size]} /> : icon;
 
 /** The app's text button. */
-const Button: React.FC<ButtonProps> = ({ variant = 'secondary', size = 'medium', startIcon, endIcon, fullWidth = false, justify = 'center', tone = 'default', active = false, loading = false, frame = 'none', compactOnMobile = false, className, children, ...rest }) => (
+const Button: React.FC<ButtonProps> = ({ variant = 'secondary', size = 'medium', startIcon, endIcon, fullWidth = false, justify = 'center', tone = 'default', active = false, frame = 'none', compactOnMobile = false, className, children, ...rest }) => (
   <ButtonRoot
     classes={cx('button', `button--${variant}`, `button--${size}`, fullWidth && 'button--full-width', justify === 'start' && 'button--justify-start', active && 'button--active', tone !== 'default' && `button--tone-${tone}`, frame !== 'none' && `button--frame-${frame}`, compactOnMobile && 'button--compact-mobile', 't-ui', className)}
-    loading={loading}
     {...rest}
   >
-    {loading ? <ButtonSpinner /> : renderIcon(startIcon, size)}
+    <ButtonSpinner />
+    {startIcon && <IdleOnly>{renderIcon(startIcon, size)}</IdleOnly>}
     <span className="button__label">{children}</span>
     {renderIcon(endIcon, size)}
   </ButtonRoot>

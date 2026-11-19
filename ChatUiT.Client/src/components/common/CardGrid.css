@@ -18,57 +18,56 @@
   grid-row: span var(--card-grid-rows);
 }
 
-@media (width <= 50rem) {
-  /* Narrow screens: the cards stack in one column */
-  .card-grid--stack-mobile {
-    grid-template-columns: minmax(0, 1fr);
-  }
-
-  /* Narrow screens: one row that scrolls sideways without a scrollbar; each card snaps to the centre, the cards on both sides showing at the edges */
-  .card-grid--carousel-mobile {
-    --scroll-fade-size: var(--space-3xl);
-    grid-template-columns: none;
-    grid-auto-flow: column;
-    grid-auto-columns: 100%;
-    padding-inline: var(--space-xl);
-    overflow-x: auto;
-    scrollbar-width: none;
-    scroll-snap-type: x mandatory;
-    overscroll-behavior-x: contain;
-  }
-
-  .card-grid--carousel-mobile::-webkit-scrollbar {
-    display: none;
-  }
-
-  .card-grid--carousel-mobile > * {
-    scroll-snap-align: center;
-  }
+/* A sideways row of cards on narrow screens: each card snaps to the centre, the cards on both sides showing at the edges.
+   The fade covers only the space beside the centred card, where the neighbours show. The cards take their width from the visible area */
+.card-carousel [data-slot="carousel-viewport"] {
+  --scroll-fade-size: var(--space-xl);
+  container-type: inline-size;
+  scrollbar-width: none;
 }
 
-/* Dots under a carousel: one per item, the current item filled */
-.carousel-dots {
+/* As wide as its cards, so the space at both ends lies before the first and after the last card, and they centre like the others */
+.card-carousel [data-slot="carousel-content"] {
+  width: max-content;
+  gap: var(--space-sm);
+  padding-inline: var(--space-xl);
+}
+
+/* The visible width less the space at both ends */
+.card-carousel [data-slot="carousel-item"] {
+  display: flex;
+  flex-basis: calc(100cqi - 2 * var(--space-xl));
+}
+
+.card-carousel [data-slot="carousel-item"] > * {
+  flex: 1;
+}
+
+/* A dot per page, the current one filled and wider */
+.card-carousel [data-slot="carousel-indicator-group"] {
   display: flex;
   justify-content: center;
   gap: var(--space-sm);
+  margin-top: var(--space-md);
 }
 
-.carousel-dots__dot {
+.card-carousel [data-slot="carousel-indicator"] {
   width: var(--space-sm);
   height: var(--space-sm);
-  border-radius: 50%;
+  padding: 0;
+  border: none;
+  border-radius: var(--radius-pill);
   background: var(--line-strong);
+  cursor: pointer;
   transition: background var(--dur-fast) ease, width var(--dur-fast) ease;
 }
 
-.carousel-dots__dot--active {
+.card-carousel [data-slot="carousel-indicator"][data-selected] {
   width: var(--space-lg);
-  border-radius: var(--radius-pill);
   background: var(--accent);
 }
 
-@media (width > 50rem) {
-  .carousel-dots--mobile-only {
-    display: none;
-  }
+.card-carousel [data-slot="carousel-indicator"]:focus-visible {
+  outline: var(--border-md) solid var(--accent);
+  outline-offset: var(--border-sm);
 }

@@ -3,7 +3,8 @@
   display: flex;
   flex-direction: column;
   min-width: 0;
-  --card-frame: var(--line);
+  /* Dark: a stronger frame against the page */
+  --card-frame: light-dark(var(--line), color-mix(in srgb, var(--line) 50%, var(--line-strong)));
   border: var(--border-sm) solid var(--card-frame);
   border-radius: var(--radius-md);
   background: var(--surface);
@@ -12,10 +13,6 @@
   transition: border-color var(--dur-fast) ease;
 }
 
-/* Dark modes: a stronger frame against the page */
-[data-mode="dark"] .card {
-  --card-frame: color-mix(in srgb, var(--line) 50%, var(--line-strong));
-}
 
 .card--elevated {
   box-shadow: var(--shadow-card);
@@ -43,17 +40,8 @@
   border-left: var(--border-lg) solid var(--accent-2);
 }
 
-.card--accent-top {
-  border-top: var(--border-lg) solid var(--accent-2);
-}
-
 .card--tone-warning { border-color: var(--warn); }
-.card--tone-danger { border-color: var(--danger); }
 
-/* Dark modes: the strong line colour as the frame, also on hover, until selected */
-[data-mode="dark"] .card--strong-frame:not(.card--selected) {
-  border-color: var(--line-strong);
-}
 
 .card--anchor {
   position: relative;

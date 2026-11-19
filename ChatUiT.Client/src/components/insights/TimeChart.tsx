@@ -1,5 +1,6 @@
 import React, { useLayoutEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { Tooltip, TooltipContent } from '@ui-sdk/react/tooltip';
 import { Legend, LegendItem } from '../common/Legend';
 import type { DataTone } from '../common/dataTone';
 import { formatBucket, formatNumber, num } from './insightsFormat';
@@ -75,12 +76,6 @@ const TimeChart: React.FC<TimeChartProps> = ({ rows, x, series, range }) => {
   const svgRef = useRef<SVGSVGElement>(null);
   const [size, setSize] = useState<Metrics>(NO_METRICS);
   const [hover, setHover] = useState<number | null>(null);
-  const tooltipRef = useRef<HTMLDivElement>(null);
-  const [tooltipWidth, setTooltipWidth] = useState(0);
-
-  useLayoutEffect(() => {
-    if (tooltipRef.current) setTooltipWidth(tooltipRef.current.offsetWidth);
-  }, [hover]);
 
   useLayoutEffect(() => {
     const svg = svgRef.current;
@@ -113,8 +108,13 @@ const TimeChart: React.FC<TimeChartProps> = ({ rows, x, series, range }) => {
   };
 
   const hovered = hover === null ? undefined : rows[hover];
-  // The bucket's x, kept far enough from the plot edges that the centred tooltip stays inside them
-  const tooltipLeft = hover === null ? 0 : Math.min(Math.max(xAt(hover), tooltipWidth / 2), size.width - tooltipWidth / 2);
+  // The top of the cursor line, where the tooltip hangs from
+  const tooltipAnchor = hover === null ? null : {
+    getBoundingClientRect: () => {
+      const box = svgRef.current!.getBoundingClientRect();
+      return new DOMRect(box.left + xAt(hover), box.top, 0, 0);
+    },
+  };
 
   return (
     <div className="time-chart">
@@ -149,14 +149,18 @@ const TimeChart: React.FC<TimeChartProps> = ({ rows, x, series, range }) => {
             </g>
           )}
         </svg>
-        {hovered && (
-          <div ref={tooltipRef} className="time-chart__tooltip t-caption" style={{ left: tooltipLeft }}>
-            <div className="time-chart__tooltip-title">{formatBucket(hovered[x], range, i18n.language)}</div>
-            {series.map(item => (
-              <div key={item.key}>{item.label}: {formatNumber(hovered[item.key], i18n.language)}</div>
-            ))}
-          </div>
-        )}
+        <Tooltip open={hovered !== undefined}>
+          <TooltipContent anchor={tooltipAnchor} side="bottom" sideOffset={0} className="tooltip--label t-caption">
+            {hovered && (
+              <>
+                <div className="time-chart__tooltip-title">{formatBucket(hovered[x], range, i18n.language)}</div>
+                {series.map(item => (
+                  <div key={item.key}>{item.label}: {formatNumber(hovered[item.key], i18n.language)}</div>
+                ))}
+              </>
+            )}
+          </TooltipContent>
+        </Tooltip>
       </div>
       <Legend mt="md">
         {series.map(item => (

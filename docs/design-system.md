@@ -31,4 +31,4 @@ Everything in the app is defined in rem, except borders and shadows.
 ## Behaviour
 
 - The same kind of control behaves the same way everywhere.
-- Popovers in a toolbar open on hover. A click keeps a popover open, and while one is open from a click, hovering the others does not open them. Only one is open at a time.
+- Popovers in a toolbar open on hover, and a click keeps one open.

@@ -159,17 +159,7 @@ export function useInteractionDock(chatId: string | undefined) {
     step,
     selected,
     text,
-    toggleOption: (label: string) => {
-      if (current?.kind !== 'question' || busy) return;
-      if (!current.questions[step].multiSelect) {
-        const picked = [...drafts];
-        picked[step] = { selected: [label], text };
-        setDrafts(picked);
-        void advance(picked);
-        return;
-      }
-      updateDraft({ selected: selected.includes(label) ? selected.filter(l => l !== label) : [...selected, label], text });
-    },
+    setSelected: (labels: string[]) => updateDraft({ selected: labels, text }),
     setText: (value: string) => updateDraft({ selected, text: value }),
     busy,
     error,

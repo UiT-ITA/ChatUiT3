@@ -4,7 +4,8 @@
   align-items: center;
   gap: var(--space-sm);
   min-width: 0;
-  --input-frame: var(--line);
+  /* Dark: a neutral frame at rest; the accent frame marks focus only */
+  --input-frame: light-dark(var(--line), color-mix(in srgb, var(--text) 36%, var(--surface-raised)));
   border: var(--border-sm) solid var(--input-frame);
   border-radius: var(--radius-md);
   background: var(--surface-raised);
@@ -12,10 +13,6 @@
   transition: border-color var(--dur-fast) ease;
 }
 
-/* Dark modes: a neutral frame at rest; the accent frame marks focus only */
-[data-mode="dark"] .input-box {
-  --input-frame: color-mix(in srgb, var(--text) 36%, var(--surface-raised));
-}
 
 .input-box--full-width {
   width: 100%;
@@ -83,6 +80,14 @@
   color: var(--text-3);
 }
 
+/* A button inside the box, such as the one that opens a list */
+.input-box__button {
+  padding: 0;
+  border: none;
+  background: none;
+  cursor: pointer;
+}
+
 /* A textarea is the box itself */
 .input-box--textarea {
   display: block;
@@ -102,10 +107,6 @@
 }
 
 /* A textarea that grows with its content */
-.input-box--auto-resize {
-  field-sizing: content;
-}
-
 /* No box: for an input inside another frame */
 .input-box--unstyled,
 .input-box--unstyled:focus,

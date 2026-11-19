@@ -1,6 +1,9 @@
-.toast-container {
+/* ui-sdk toasts: a column in the top-right corner, newest first */
+.toast-region {
   position: fixed;
   z-index: var(--z-toast);
+  top: var(--space-lg);
+  right: var(--space-lg);
   display: flex;
   flex-direction: column;
   gap: var(--space-sm);
@@ -8,34 +11,29 @@
   pointer-events: none;
 }
 
-.toast-container.top-right {
-  top: var(--space-lg);
-  right: var(--space-lg);
-}
-
 .toast {
   display: flex;
   align-items: flex-start;
   gap: var(--space-md);
-  padding: var(--space-md) var(--space-md);
+  padding: var(--space-md);
   color: var(--text);
   background: var(--surface);
   border: var(--border-sm) solid var(--line);
-  border-top: var(--border-lg) solid var(--accent-2);
+  border-top: var(--border-lg) solid var(--accent);
   box-shadow: var(--shadow-overlay);
   pointer-events: auto;
   animation: fade-in var(--dur-fast) ease;
 }
 
-.toast .toast-message {
+.toast-message {
   flex: 1;
+  margin: 0;
   white-space: pre-wrap;
   word-break: break-word;
   line-height: var(--lh-tight);
 }
 
-/* Level variants — accent bar carries the status colour */
-.toast-info { border-top-color: var(--accent); }
-.toast-success { border-top-color: var(--success); }
-.toast-warning { border-top-color: var(--warn); }
-.toast-error { border-top-color: var(--danger); }
+/* The status colour on the top edge */
+.toast[data-type="success"] { border-top-color: var(--success); }
+.toast[data-type="warning"] { border-top-color: var(--warn); }
+.toast[data-type="error"] { border-top-color: var(--danger); }

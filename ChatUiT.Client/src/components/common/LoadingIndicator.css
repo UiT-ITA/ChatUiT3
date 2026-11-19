@@ -11,8 +11,6 @@
   color: var(--text-3);
 }
 
-.loading-small { gap: var(--space-sm); }
-.loading-large { gap: var(--space-lg); }
 .loading-spinner {
   display: flex;
   align-items: center;
@@ -23,23 +21,9 @@
   border: var(--border-lg) solid var(--line);
   border-left-color: var(--accent);
   border-radius: 50%;
-  animation: spin var(--dur-loop) linear infinite;
-}
-
-.loading-small .spinner-ring {
-  width: var(--icon-md);
-  height: var(--icon-md);
-  border-width: var(--border-md);
-}
-
-.loading-medium .spinner-ring {
   width: var(--space-2xl);
   height: var(--space-2xl);
-}
-
-.loading-large .spinner-ring {
-  width: calc(var(--space-2xl) + var(--space-lg));
-  height: calc(var(--space-2xl) + var(--space-lg));
+  animation: spin var(--dur-loop) linear infinite;
 }
 
 @keyframes spin {

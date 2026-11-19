@@ -1,7 +1,9 @@
-import { useEffect, useState, useSyncExternalStore, type CSSProperties } from 'react';
+import { useEffect, useState, type CSSProperties } from 'react';
 import mermaid from 'mermaid';
 import { useTranslation } from 'react-i18next';
-import { tokenValue as token } from '../../utils/cssTokens';
+import { usePreference } from '@ui-sdk/react/preferences';
+import { tokenColors, tokenValue } from '../../utils/cssTokens';
+import { colorScheme, textSize, theme } from '../../services/appearance';
 import { Icon } from './Icon';
 import { cx } from './layout';
 import { scrollFadeClass } from './scrollFade';
@@ -52,14 +54,15 @@ const diagramCss = (dark: boolean) => `
 `;
 
 /** Sets Mermaid's theme and sizes from the current tokens. */
-function initializeMermaid() {
-  const darkMode = document.documentElement.dataset.mode === 'dark';
-  const fontFamily = token('--font-sans');
-  const themeVariables = Object.fromEntries(Object.entries(THEME_TOKENS).map(([name, tokenName]) => [name, token(tokenName)]));
+function initializeMermaid(darkMode: boolean) {
+  const fontFamily = tokenValue('--font-sans');
+  const entries = Object.entries(THEME_TOKENS);
+  const [signalColor, ...colors] = tokenColors([darkMode ? '--text' : '--text-2', ...entries.map(([, tokenName]) => tokenName)]);
+  const themeVariables = Object.fromEntries(entries.map(([name], index) => [name, colors[index]]));
   mermaid.initialize({
     startOnLoad: false,
     theme: 'base',
-    themeVariables: { ...themeVariables, darkMode, fontFamily, signalColor: token(darkMode ? '--text' : '--text-2') },
+    themeVariables: { ...themeVariables, darkMode, fontFamily, signalColor },
     themeCSS: diagramCss(darkMode),
     fontFamily,
     htmlLabels: false,
@@ -77,16 +80,6 @@ function escapeSequenceSemicolons(chart: string): string {
   return chart.split('\n').map(line => line.replace(/(:.*)/, text => text.replace(/;/g, '#59;'))).join('\n');
 }
 
-const APPEARANCE_ATTRIBUTES = ['data-mode', 'data-theme', 'data-size'];
-
-function subscribeAppearance(onChange: () => void) {
-  const observer = new MutationObserver(onChange);
-  observer.observe(document.documentElement, { attributes: true, attributeFilter: APPEARANCE_ATTRIBUTES });
-  return () => observer.disconnect();
-}
-
-const appearanceSnapshot = () => APPEARANCE_ATTRIBUTES.map(name => document.documentElement.getAttribute(name) ?? '').join('|');
-
 interface MermaidDiagramProps {
   chart: string;
   // Shows the diagram at its natural width, scrolling sideways when wider than the block; otherwise it is scaled down to the block width
@@ -99,8 +92,9 @@ function MermaidDiagram({ chart, fullSize = false, showScrollbar = false }: Merm
   const [svg, setSvg] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(true);
-  // The resolved mode, theme and text size on the page root
-  const appearance = useSyncExternalStore(subscribeAppearance, appearanceSnapshot);
+  const darkMode = usePreference(colorScheme).resolved === 'dark';
+  const themeName = usePreference(theme).value;
+  const size = usePreference(textSize).value;
   const { t } = useTranslation();
 
   // Render the diagram when the chart, the resolved theme or mode, or the text size changes
@@ -112,7 +106,7 @@ function MermaidDiagram({ chart, fullSize = false, showScrollbar = false }: Merm
       if (!source) return;
       setLoading(true);
       setError('');
-      initializeMermaid();
+      initializeMermaid(darkMode);
       container.setAttribute('aria-hidden', 'true');
       container.style.cssText = 'position:fixed;left:0;top:0;width:0;height:0;overflow:hidden;opacity:0;pointer-events:none;';
       document.body.appendChild(container);
@@ -135,7 +129,7 @@ function MermaidDiagram({ chart, fullSize = false, showScrollbar = false }: Merm
     return () => {
       cancelled = true;
     };
-  }, [chart, appearance, t]);
+  }, [chart, darkMode, themeName, size, t]);
 
   if (loading) return <div className="mermaid-diagram mermaid-diagram--loading">{t('chat.mermaid.rendering')}</div>;
 

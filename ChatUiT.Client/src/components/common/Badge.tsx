@@ -6,7 +6,7 @@ import './Badge.css';
 interface BadgeProps extends LayoutProps, Omit<React.HTMLAttributes<HTMLSpanElement>, 'color'> {
   // 'outline' draws a frame, 'solid' fills with the tone's color
   variant?: 'outline' | 'solid';
-  tone?: 'neutral' | 'accent' | 'warning' | 'danger';
+  tone?: 'neutral' | 'accent' | 'warning';
   size?: 'small' | 'medium';
   icon?: IconName;
   // A count next to a title: centred tabular numbers

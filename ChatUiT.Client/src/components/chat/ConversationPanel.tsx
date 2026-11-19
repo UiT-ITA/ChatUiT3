@@ -23,7 +23,7 @@ function ConversationPanel({ chatId }: { chatId: string }) {
   const formatDate = (value: string) => new Date(value).toLocaleDateString(i18n.language, { day: '2-digit', month: '2-digit', year: 'numeric' });
 
   return (
-    <Box as="aside" width="xs" grow={false} shrink={false} pt="xl" pb="xl" px="lg" overflow="y-auto" border borderSide="left">
+    <Box as="aside" grow pt="xl" pb="xl" px="lg" overflow="y-auto" border borderSide="left">
       <Text as="div" variant="overline" pb="sm" mb="md" border="accent-2" borderWidth="lg" borderSide="bottom">{t('chat.panel.title')}</Text>
 
       <Text as="div" variant="overline" mt="xl" pb="sm" mb="md" border borderSide="bottom">{t('chat.panel.files')}</Text>

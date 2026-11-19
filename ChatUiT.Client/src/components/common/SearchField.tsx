@@ -1,41 +1,26 @@
 import React from 'react';
 import { useTranslation } from 'react-i18next';
+import { Input, InputClear, InputGroup } from '@ui-sdk/react/input';
 import { Icon } from './Icon';
 import IconButton from './IconButton';
-import TextInput, { type TextInputProps } from './TextInput';
+import './InputBox.css';
 
-export interface SearchFieldProps extends Omit<TextInputProps, 'type' | 'leading' | 'value' | 'onChange'> {
+interface SearchFieldProps {
   value: string;
   onChange: (value: string) => void;
-  // Shows a button that empties the field while it has text
-  clearable?: boolean;
-  onClear?: () => void;
+  placeholder?: string;
+  size?: 'small' | 'medium';
 }
 
-/** The app's search box: a TextInput with a search icon and a clear button. */
-const SearchField: React.FC<SearchFieldProps> = ({ value, onChange, clearable = true, onClear, trailing, disabled, size = 'medium', ...rest }) => {
+/** The app's search box: a search icon, the text, and a clear button while it has text. */
+const SearchField: React.FC<SearchFieldProps> = ({ value, onChange, placeholder, size = 'medium' }) => {
   const { t } = useTranslation();
-  const showClear = clearable && value.length > 0 && !disabled;
-
   return (
-    <TextInput
-      type="search"
-      value={value}
-      onChange={(next) => onChange(next)}
-      disabled={disabled}
-      size={size}
-      leading={<Icon name="search" size="sm" />}
-      trailing={showClear ? (
-        <IconButton
-          icon="close"
-          label={t('common.clear')}
-          size="small"
-          variant="ghost"
-          onClick={() => { onChange(''); onClear?.(); }}
-        />
-      ) : trailing}
-      {...rest}
-    />
+    <InputGroup className={`input-box input-box--${size} input-box--full-width text-input`}>
+      <span className="input-box__adornment"><Icon name="search" size="sm" /></span>
+      <Input type="search" className="input-box__input t-body" value={value} onValueChange={next => onChange(next)} placeholder={placeholder} />
+      <InputClear render={<IconButton icon="close" label={t('common.clear')} size="small" variant="ghost" />} />
+    </InputGroup>
   );
 };
 

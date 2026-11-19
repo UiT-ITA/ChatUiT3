@@ -7,7 +7,10 @@ import { FileProcessingService } from '../../services/fileProcessingService';
 import AssistantSelector from './AssistantSelector';
 import { parseRoute } from '../../utils/routes';
 import ChatClassification from './ChatClassification';
-import Popover, { PopoverBody, PopoverGroup } from '../common/Popover';
+import { Popover, PopoverContent, PopoverTitle, PopoverTrigger } from '@ui-sdk/react/popover';
+import { FileInput, FileInputDropzone, FileInputTrigger } from '@ui-sdk/react/file-input';
+import { floatingPanelClass } from '../common/floatingPanel';
+import { spacePx } from '../common/layout';
 import IconButton from '../common/IconButton';
 import ProgressRing from '../common/ProgressRing';
 import Box from '../common/Box';
@@ -16,7 +19,7 @@ import Text from '../common/Text';
 import ContextUsageDetails from './ContextUsageDetails';
 import FileThumbnail from './FileThumbnail';
 import type { ChatFile } from '../../types/fileModels';
-import { SUPPORTED_IMPORT_ACCEPT, getFileExtension, isValidFileType } from '../../utils/fileUtils';
+import { SUPPORTED_IMPORT_ACCEPT, isValidFileType } from '../../utils/fileUtils';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { addNotification } from '../../services/notificationService';
 import { getContextUsage, setDraft } from '../../services/contextUsageService';
@@ -25,10 +28,11 @@ import TextArea from '../common/TextArea';
 import InteractionCard from './interaction/InteractionCard';
 import { useInteractionDock } from '../../hooks/useInteractionDock';
 import './Composer.css';
-import { trackError } from '../../services/telemetryService';
 
 const DRAFT_COUNT_DEBOUNCE_MS = 150;
 const DISCLAIMER_KEY = 'chatuit-disclaimer-dismissed';
+
+const NO_FILES: File[] = [];
 
 export default function ChatInput() {
   useSignals();
@@ -39,7 +43,6 @@ export default function ChatInput() {
   const [selectedFiles, setSelectedFiles] = useState<ChatFile[]>([]);
   const [charCount, setCharCount] = useState(0);
   const [isCancelling, setIsCancelling] = useState(false);
-  const [isDragOver, setIsDragOver] = useState(false);
   // The disclaimer stays dismissed in this browser. Shown when the storage cannot be read.
   const [disclaimerDismissed, setDisclaimerDismissed] = useState(() => {
     try {
@@ -48,7 +51,6 @@ export default function ChatInput() {
       return false;
     }
   });
-  const fileInputRef = useRef<HTMLInputElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const draftDebounceRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
 
@@ -169,125 +171,80 @@ export default function ChatInput() {
     }));
     if (valid.length === 0) return;
 
-    const results = await Promise.allSettled(valid.map(file => FileProcessingService.processFile(file)));
-    results.forEach((result, index) => {
-      if (result.status !== 'rejected') return;
-      const reason = result.reason instanceof Error ? result.reason.message : 'File processing failed';
-      console.error(`Failed to process file ${valid[index].name}:`, result.reason);
-      trackError('file_import', {
-        message: 'A file attached to a message could not be imported',
-        error: result.reason,
-        extra: {
-          'file.name': valid[index].name,
-          'file.type': getFileExtension(valid[index].name),
-          'file.bytes': valid[index].size,
-          processor: FileProcessingService.processorFor(valid[index]),
-        },
-      });
-      addNotification({ level: 'Error', message: `${valid[index].name}: ${reason}` });
-    });
-    setSelectedFiles(prev => [...prev, ...results.flatMap(result => result.status === 'fulfilled' ? [result.value] : [])].slice(0, 10));
-  };
-
-  const handleDragOver = (e: React.DragEvent) => {
-    if (!e.dataTransfer.types.includes('Files')) return;
-    e.preventDefault();
-    e.dataTransfer.dropEffect = 'copy';
-    setIsDragOver(true);
-  };
-
-  const handleDrop = (e: React.DragEvent) => {
-    setIsDragOver(false);
-    if (!e.dataTransfer.types.includes('Files')) return;
-    e.preventDefault();
-    void addFiles(Array.from(e.dataTransfer.files));
-    textareaRef.current?.focus();
+    const imported = await FileProcessingService.importFiles(valid, 'A file attached to a message could not be imported');
+    setSelectedFiles(prev => [...prev, ...imported].slice(0, 10));
   };
 
   return (
     <div className="composer-dock">
       <div className="composer">
-        <form
-          className="composer-card"
-          data-drop-active={isDragOver || undefined}
-          onSubmit={handleSendMessage}
-          onDragEnter={handleDragOver}
-          onDragOver={handleDragOver}
-          onDragLeave={e => {
-            if (!e.currentTarget.contains(e.relatedTarget as Node | null)) setIsDragOver(false);
+        <FileInput
+          multiple
+          accept={SUPPORTED_IMPORT_ACCEPT}
+          value={NO_FILES}
+          onValueChange={(_, details) => {
+            void addFiles(details.added);
+            if (details.reason === 'drop') textareaRef.current?.focus();
           }}
-          onDrop={handleDrop}
+          onReject={rejected => rejected.forEach(({ file }) => addNotification({ level: 'Warning', message: `${file.name}: ${t('files.typeNotSupported')}` }))}
         >
-          <InteractionCard dock={dock} />
+          <FileInputDropzone render={<form className="composer-card" onSubmit={handleSendMessage} />} pasteTarget={() => textareaRef.current}>
+            <InteractionCard dock={dock} />
 
-          {selectedFiles.length > 0 && (
-            <Stack direction="row" wrap gap="sm" pt="md" px="md">
-              {selectedFiles.map((file, index) => (
-                <FileThumbnail
-                  key={`${file.id}-${index}`}
-                  file={file}
-                  onRemove={() => setSelectedFiles(prev => prev.filter((_, i) => i !== index))}
-                />
-              ))}
-            </Stack>
-          )}
+            {selectedFiles.length > 0 && (
+              <Stack direction="row" wrap gap="sm" pt="md" px="md">
+                {selectedFiles.map((file, index) => (
+                  <FileThumbnail
+                    key={`${file.id}-${index}`}
+                    file={file}
+                    onRemove={() => setSelectedFiles(prev => prev.filter((_, i) => i !== index))}
+                  />
+                ))}
+              </Stack>
+            )}
 
-          <TextArea
-            ref={textareaRef}
-            variant="unstyled"
-            size="large"
-            autoResize
-            minRows={1}
-            maxRows={6}
-            placeholder={t('chat.messagePlaceholder')}
-            onKeyDown={e => {
-              if (e.key === 'Enter' && !e.shiftKey) {
-                e.preventDefault();
-                handleSendMessage(e);
-              }
-            }}
-            onPaste={e => {
-              const files = Array.from(e.clipboardData.files);
-              if (files.length === 0) return;
-              e.preventDefault();
-              void addFiles(files);
-            }}
-            onChange={(value) => {
-              setCharCount(value.length);
-              clearTimeout(draftDebounceRef.current);
-              draftDebounceRef.current = setTimeout(() => setDraft(value, selectedFiles), DRAFT_COUNT_DEBOUNCE_MS);
-            }}
-          />
+            <TextArea
+              ref={textareaRef}
+              variant="unstyled"
+              size="large"
+              autoResize
+              minRows={1}
+              maxRows={6}
+              placeholder={t('chat.messagePlaceholder')}
+              submitOnEnter
+              onChange={(value) => {
+                setCharCount(value.length);
+                clearTimeout(draftDebounceRef.current);
+                draftDebounceRef.current = setTimeout(() => setDraft(value, selectedFiles), DRAFT_COUNT_DEBOUNCE_MS);
+              }}
+            />
 
-          {/* The toolbar's popovers open one at a time */}
-          <div className="composer-toolbar">
-            <PopoverGroup>
-              <IconButton icon="attach" label={t('chat.attachFile')} variant="subtle" size="small" onClick={() => fileInputRef.current?.click()} />
+            <div className="composer-toolbar">
+              <FileInputTrigger render={<IconButton icon="attach" label={t('chat.attachFile')} variant="subtle" size="small" />} />
               <AssistantSelector />
               <ChatClassification />
               <Box grow />
               {usage.available ? (
-                <Popover
-                  openOn="hover"
-                  placement="top-end"
-                  panelWidth="large"
-                  className="composer-toolbar__popover"
-                  trigger={(
-                    <IconButton
-                      icon={<ProgressRing fraction={contextFraction} state={usage.level} />}
-                      label={t('chat.contextHint', {
-                        used: formatTokens(usage.total, i18n.language),
-                        limit: formatTokensCompact(usage.contextSize, i18n.language),
-                      })}
-                      size="small"
-                      tooltip={false}
-                    />
-                  )}
-                  title={t('chat.panel.context')}
-                >
-                  <PopoverBody>
-                    <ContextUsageDetails usage={usage} />
-                  </PopoverBody>
+                <Popover openOnHover>
+                  <PopoverTrigger
+                    render={(
+                      <IconButton
+                        icon={<ProgressRing fraction={contextFraction} state={usage.level} />}
+                        label={t('chat.contextHint', {
+                          used: formatTokens(usage.total, i18n.language),
+                          limit: formatTokensCompact(usage.contextSize, i18n.language),
+                        })}
+                        size="small"
+                        tooltip={false}
+                      />
+                    )}
+                  />
+                  <PopoverContent side="top" align="end" sideOffset={spacePx('sm')} className={floatingPanelClass('large')}>
+                    <PopoverTitle render={<div />} className="popover__title t-overline">{t('chat.panel.context')}</PopoverTitle>
+                    <div className="popover__body">
+                      <ContextUsageDetails usage={usage} />
+                    </div>
+                  </PopoverContent>
                 </Popover>
               ) : charCount > 0 && (
                 <Text as="div" variant="hint" tone="muted" wrap="nowrap" mr="sm">{t('chat.charCount', { count: charCount })}</Text>
@@ -310,21 +267,9 @@ export default function ChatInput() {
                   size="small"
                 />
               )}
-            </PopoverGroup>
-          </div>
-
-          <input
-            type="file"
-            ref={fileInputRef}
-            onChange={async e => {
-              await addFiles(Array.from(e.target.files ?? []));
-              e.target.value = '';
-            }}
-            hidden
-            multiple
-            accept={SUPPORTED_IMPORT_ACCEPT}
-          />
-        </form>
+            </div>
+          </FileInputDropzone>
+        </FileInput>
         {!disclaimerDismissed && (
           <div className="composer-disclaimer t-hint">
             <span>{t('chat.disclaimer')}</span>

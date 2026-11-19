@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { useSignals } from '@preact/signals-react/runtime';
@@ -29,9 +29,6 @@ const SettingsEditor: React.FC = () => {
   const [defaultAssistantId, setDefaultAssistantId] = useState(settings?.defaultAssistantId ?? '');
   const [saving, setSaving] = useState(false);
 
-  useEffect(() => {
-    loadAdminData();
-  }, []);
 
   const [syncedSettings, setSyncedSettings] = useState(settings);
   if (settings !== syncedSettings) {

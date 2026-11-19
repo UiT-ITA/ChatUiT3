@@ -2,7 +2,8 @@
 .code-block-wrapper {
   container: code-block / inline-size;
   background: var(--code-bg);
-  border: var(--border-sm) solid var(--line-strong);
+  /* Dark: a plain frame */
+  border: var(--border-sm) solid light-dark(var(--line-strong), var(--line));
   border-radius: var(--radius-md);
   margin: var(--space-md) 0;
   overflow: clip;
@@ -17,7 +18,8 @@
   display: flex;
   justify-content: space-between;
   align-items: center;
-  background: var(--panel);
+  /* Dark: a header one step lighter than the code */
+  background: light-dark(var(--panel), var(--surface-raised));
   padding: var(--space-sm) var(--space-xs) var(--space-sm) var(--space-lg);
   border-bottom: var(--border-sm) solid var(--line-strong);
 }
@@ -33,14 +35,6 @@
   background: inherit;
 }
 
-/* Dark modes: a header one step lighter than the code, and a plain frame */
-[data-mode="dark"] .code-block-header {
-  background: var(--surface-raised);
-}
-
-[data-mode="dark"] .code-block-wrapper {
-  border-color: var(--line);
-}
 
 .language-name {
   display: inline-block;

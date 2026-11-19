@@ -1,16 +1,9 @@
 import React from 'react';
-import { cx } from './layout';
 import './FilePreview.css';
 
-interface FilePreviewProps {
-  // Tighter padding and gaps
-  compact?: boolean;
-  children: React.ReactNode;
-}
-
 /** A scrolling column with the parts of a file, one under the other. */
-export const FilePreview: React.FC<FilePreviewProps> = ({ compact = false, children }) => (
-  <div className={cx('file-preview-content', compact && 'file-preview-content--compact')}>{children}</div>
+export const FilePreview: React.FC<{ children: React.ReactNode }> = ({ children }) => (
+  <div className="file-preview-content">{children}</div>
 );
 
 /** An image part of a file preview. */

@@ -27,6 +27,7 @@
     "darkMode": "Dark mode",
     "lightMode": "Light mode",
     "collapseSidebar": "Collapse sidebar",
+    "resizeSidebar": "Resize sidebar",
     "expandSidebar": "Expand sidebar",
     "generate": "Generate",
     "insights": "Insights"
@@ -74,6 +75,7 @@
       "confirm": "Delete \"{{name}}\"? This cannot be undone."
     },
     "panel": {
+      "resize": "Resize the conversation overview",
       "title": "In this conversation",
       "files": "Files in the conversation",
       "noFiles": "No files yet.",
@@ -454,7 +456,8 @@
     "yes": "Yes",
     "no": "No",
     "removeTag": "Remove the tag {{tag}}",
-    "addTag": "Add tag..."
+    "addTag": "Add tag...",
+    "createTag": "Add “{{tag}}”"
   },
   "toolCall": {
     "arguments": "Arguments",

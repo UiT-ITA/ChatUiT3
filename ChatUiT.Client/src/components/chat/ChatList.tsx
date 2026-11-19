@@ -8,9 +8,11 @@ import type { ChatHeaderDto } from "../../types/chatModels";
 import { Icon } from "../common/Icon";
 import NavItem from "../common/NavItem";
 import { SideColumnGroupLabel } from "../layout/AppShell";
-import { Dialog, DialogButton } from "../common/Dialog";
+import { Dialog } from "../common/Dialog";
+import Button from "../common/Button";
 import IconButton from "../common/IconButton";
-import { Menu, MenuItem } from "../common/Menu";
+import { Menu, MenuContent, MenuItem, MenuItemIcon, MenuTrigger } from "@ui-sdk/react/menu";
+import { floatingPanelClass } from "../common/floatingPanel";
 import Box from "../common/Box";
 import Stack from "../common/Stack";
 import Text from "../common/Text";
@@ -105,11 +107,9 @@ export function ChatList({ filter }: { filter?: string }) {
 function ChatItem({ chat }: { chat: ChatHeaderDto }) {
   useSignals();
   const { t } = useTranslation();
-  const [menu, setMenu] = useState<{ x: number; y: number } | null>(null);
   const [isRenaming, setIsRenaming] = useState(false);
   const [draftName, setDraftName] = useState(chat.name);
   const [confirmDelete, setConfirmDelete] = useState(false);
-  const [isDeleting, setIsDeleting] = useState(false);
   const renameCommittedRef = useRef(false);
   const navigate = useNavigate();
   const currentChatId = getCurrentChatId();
@@ -124,7 +124,6 @@ function ChatItem({ chat }: { chat: ChatHeaderDto }) {
   };
 
   const handleConfirmDelete = async () => {
-    setIsDeleting(true);
     try {
       await deleteChat(chat.id);
       removeCachedChat(chat.id);
@@ -132,22 +131,7 @@ function ChatItem({ chat }: { chat: ChatHeaderDto }) {
       if (currentChatId.value === chat.id) navigate('/');
     } catch {
       // Keeps the dialog open. apiService shows the error.
-    } finally {
-      setIsDeleting(false);
     }
-  };
-
-  // Opens the menu under the more button
-  const handleMoreClick = (e: React.MouseEvent<HTMLElement>) => {
-    e.stopPropagation();
-    const rect = e.currentTarget.getBoundingClientRect();
-    setMenu({ x: rect.left, y: rect.bottom });
-  };
-
-  const pick = (e: React.MouseEvent, run: () => void) => {
-    e.stopPropagation();
-    setMenu(null);
-    run();
   };
 
   return (
@@ -166,7 +150,27 @@ function ChatItem({ chat }: { chat: ChatHeaderDto }) {
           </>
         )}
         actions={!isRenaming && (
-          <IconButton icon="moreVert" label={t('sidebar.moreOptions')} size="small" onClick={handleMoreClick} />
+          <Menu>
+            <MenuTrigger render={<IconButton icon="moreVert" label={t('sidebar.moreOptions')} size="small" />} />
+            <MenuContent align="start" sideOffset={0} className={floatingPanelClass('small')}>
+              <MenuItem onSelect={() => { setChatFavorite(chat.id, !chat.isFavorite).catch(() => {}); }}>
+                <MenuItemIcon><Icon name="star" size="sm" /></MenuItemIcon>
+                {chat.isFavorite ? t('sidebar.unfavorite') : t('sidebar.favorite')}
+              </MenuItem>
+              <MenuItem onSelect={() => {
+                setDraftName(chat.name);
+                renameCommittedRef.current = false;
+                setIsRenaming(true);
+              }}>
+                <MenuItemIcon><Icon name="edit" size="sm" /></MenuItemIcon>
+                {t('sidebar.rename')}
+              </MenuItem>
+              <MenuItem onSelect={() => setConfirmDelete(true)}>
+                <MenuItemIcon><Icon name="trash" size="sm" /></MenuItemIcon>
+                {t('sidebar.delete')}
+              </MenuItem>
+            </MenuContent>
+          </Menu>
         )}
         editor={isRenaming ? (
           <TextInput
@@ -190,34 +194,23 @@ function ChatItem({ chat }: { chat: ChatHeaderDto }) {
       >
         {chat.name}
       </NavItem>
-      {menu && (
-        <Menu floating anchorPoint={menu} onClose={() => setMenu(null)}>
-          <MenuItem icon="star" onClick={e => pick(e, () => setChatFavorite(chat.id, !chat.isFavorite).catch(() => {}))}>
-            {chat.isFavorite ? t('sidebar.unfavorite') : t('sidebar.favorite')}
-          </MenuItem>
-          <MenuItem icon="edit" onClick={e => pick(e, () => {
-            setDraftName(chat.name);
-            renameCommittedRef.current = false;
-            setIsRenaming(true);
-          })}>
-            {t('sidebar.rename')}
-          </MenuItem>
-          <MenuItem icon="trash" onClick={e => pick(e, () => setConfirmDelete(true))}>{t('sidebar.delete')}</MenuItem>
-        </Menu>
-      )}
       <Dialog
         isOpen={confirmDelete}
         onClose={() => setConfirmDelete(false)}
         title={t('chat.deleteDialog.title')}
         size="small"
+        footer={(
+          <>
+            <Button variant="secondary" onClick={() => setConfirmDelete(false)}>
+              {t('common.cancel')}
+            </Button>
+            <Button variant="danger" onClick={handleConfirmDelete}>
+              {t('common.delete')}
+            </Button>
+          </>
+        )}
       >
         <Text as="p" variant="body">{t('chat.deleteDialog.confirm', { name: chat.name })}</Text>
-        <DialogButton variant="secondary" onClick={() => setConfirmDelete(false)}>
-          {t('common.cancel')}
-        </DialogButton>
-        <DialogButton variant="danger" onClick={handleConfirmDelete} loading={isDeleting}>
-          {t('common.delete')}
-        </DialogButton>
       </Dialog>
     </>
   );

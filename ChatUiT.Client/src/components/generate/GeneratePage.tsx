@@ -9,6 +9,7 @@ import { Icon } from '../common/Icon';
 import Button from '../common/Button';
 import Stack from '../common/Stack';
 import Text from '../common/Text';
+import EmptyNote from '../common/EmptyNote';
 import ImageGenerationForm from './ImageGenerationForm';
 import GenerationCard from './GenerationCard';
 import PageTitleBar from '../common/PageTitleBar';
@@ -40,10 +41,10 @@ const GeneratePage: React.FC = () => {
             {t('generate.newGeneration')}
           </Button>
           {generations === undefined
-            ? <Text as="p" variant="caption">{t('common.loading')}</Text>
+            ? <EmptyNote>{t('common.loading')}</EmptyNote>
             : selected
               ? <GenerationCard generation={selected} />
-              : <Text as="p" variant="body">{t('generate.notFound')}</Text>}
+              : <EmptyNote>{t('generate.notFound')}</EmptyNote>}
         </Stack>
       </Page>
     );
@@ -71,7 +72,7 @@ const GeneratePage: React.FC = () => {
         />
 
         {imageModels === undefined
-          ? <Text as="p" variant="caption">{t('common.loading')}</Text>
+          ? <EmptyNote>{t('common.loading')}</EmptyNote>
           : imageModels.length === 0
             ? <Text as="p" variant="body">{t('generate.noModels')}</Text>
             : <ImageGenerationForm models={imageModels} />}

@@ -1,6 +1,12 @@
-.assistant-card:focus-visible {
+.assistant-card:has(.assistant-card-select:focus-visible) {
   border-color: var(--accent);
   box-shadow: 0 0 0 1px var(--accent);
+}
+
+/* The name is the card's button: the card's frame shows its focus */
+.assistant-card-select {
+  all: unset;
+  cursor: inherit;
 }
 
 .assistant-card--disabled {

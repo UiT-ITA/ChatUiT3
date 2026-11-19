@@ -1,26 +1,22 @@
-.menu {
+/* ui-sdk Menu: the list of items inside the floating panel */
+[data-slot="menu-content"] {
   display: flex;
   flex-direction: column;
   padding: var(--space-sm) 0;
 }
 
-/* A menu opened at the viewport point --menu-x, --menu-y, moved inside the viewport with a small step from its edges */
-.menu--at-point {
-  position: fixed;
-  z-index: var(--z-overlay);
-  left: max(var(--space-sm), var(--menu-x));
-  top: max(var(--space-sm), var(--menu-y));
-  translate: min(0rem, 100vw - var(--space-sm) - var(--menu-x) - 100%) min(0rem, 100dvh - var(--space-sm) - var(--menu-y) - 100%);
-}
-
-.menu__item {
+[data-slot="menu-item"],
+[data-slot="menu-checkbox-item"] {
   font-family: var(--font-sans);
+  font-size: var(--fs-sm);
+  font-weight: var(--fw-regular);
   display: flex;
   align-items: center;
   gap: var(--space-md);
   width: 100%;
   padding: var(--space-sm) var(--space-lg);
   border: none;
+  outline: none;
   background: transparent;
   color: var(--text);
   text-align: left;
@@ -28,40 +24,53 @@
   transition: background var(--dur-fast) ease;
 }
 
-.menu__item:hover:not(:disabled), .menu__item--selected { background: var(--sel); }
+[data-slot="menu-item"][data-highlighted],
+[data-slot="menu-checkbox-item"][data-highlighted],
+[data-slot="menu-checkbox-item"][data-checked],
+[data-slot="menu-item"][aria-current="page"] { background: var(--sel); }
 
-/* The item of the page that is open: the selected fill, with the accent bar of SELECTED_MARK_CLASS */
-.menu__item[aria-current="page"] { background: var(--sel); }
-.menu__item[aria-current="page"] .menu__item-icon { color: var(--accent); }
-.menu__item:disabled {
+[data-slot="menu-item"][data-disabled] {
   opacity: var(--opacity-disabled);
   cursor: not-allowed;
 }
-.menu__item-icon {
+
+[data-slot="menu-item-icon"] {
+  display: inline-flex;
   flex: 0 0 auto;
   color: var(--text-3);
 }
-.menu__item:hover .menu__item-icon, .menu__item--selected .menu__item-icon { color: var(--accent); }
 
-.menu__item-label {
-  flex: 1;
-  min-width: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+[data-highlighted] > [data-slot="menu-item-icon"],
+[data-checked] > [data-slot="menu-item-icon"],
+[aria-current="page"] > [data-slot="menu-item-icon"] { color: var(--accent); }
+
+[data-slot="menu-item-indicator"] {
+  display: inline-flex;
+  margin-left: auto;
 }
 
-.menu__item-check, .menu__item-shortcut { flex: 0 0 auto; }
-.menu__item-shortcut {
-  color: var(--text-3);
-  font-family: inherit;
-}
-.menu__item--danger, .menu__item--danger .menu__item-icon { color: var(--danger); }
-.menu__divider {
+[data-slot="menu-item"][data-destructive],
+[data-slot="menu-item"][data-destructive] > [data-slot="menu-item-icon"] { color: var(--danger); }
+
+[data-slot="menu-separator"] {
   margin: var(--space-sm) 0;
   border-top: var(--border-sm) solid var(--line-soft);
 }
-.menu__heading {
-  padding: var(--space-xs) var(--space-lg) var(--space-sm);
-  color: var(--text-3);
+
+/* The item of the page that is open: an accent bar along its start edge */
+[data-slot="menu-item"][aria-current="page"] { position: relative; }
+
+[data-slot="menu-item"][aria-current="page"]::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 0;
+  width: var(--border-md);
+  background: var(--accent);
+}
+
+/* A title at the top of a menu: the menu's top padding goes under it */
+[data-slot="menu-content"] > :first-child > .popover__title:first-child {
+  margin: calc(-1 * var(--space-sm)) 0 var(--space-sm);
 }

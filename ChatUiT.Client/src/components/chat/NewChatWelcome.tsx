@@ -13,6 +13,10 @@ import { Tip, TipList } from '../common/TipList';
 import BrandHero from './BrandHero';
 import CenteredColumn from '../common/CenteredColumn';
 import { CardGrid } from '../common/CardGrid';
+import { scrollFadeClass } from '../common/scrollFade';
+import { Carousel, CarouselContent, CarouselIndicator, CarouselIndicatorGroup, CarouselItem, CarouselViewport } from '@ui-sdk/react/carousel';
+import useMediaQuery from '../../hooks/useMediaQuery';
+import { MOBILE } from '../common/breakpoints';
 
 const TIPS: { key: 'selectAssistant' | 'uploadFiles' | 'askQuestions'; icon: IconName }[] = [
   { key: 'selectAssistant', icon: 'assistants' },
@@ -29,6 +33,21 @@ export default function NewChatWelcome() {
   const currentAssistantId = getCurrentAssistantId().value;
   const redEnabled = getRedEnabled().value;
   const models = getModels().value ?? [];
+  const isNarrow = useMediaQuery(MOBILE);
+
+  const cards = recentAssistants.map(assistant => (
+    <AssistantCard
+      key={assistant.id}
+      assistant={assistant}
+      selected={assistant.id === currentAssistantId}
+      disabledReason={redEnabled && assistant.classification !== 'Red' ? t('chat.redToggle.assistantNotRed') : undefined}
+      onSelect={a => setUserSelectedAssistantId(a.id)}
+      onToggleFavorite={a => void toggleFavorite(a.id)}
+      modelName={models.find(m => m.id === assistant.modelId)?.modelName}
+      compact
+      showAction
+    />
+  ));
 
   const nameParts = (profileName || account?.name || '')
     .split(/[\s,]+/)
@@ -60,31 +79,20 @@ export default function NewChatWelcome() {
             {recentAssistants.length > 0 && (
               <Stack gap="md" mobileGap="sm">
                 <Text as="div" variant="overline">{t('welcome.recentAssistants')}</Text>
-                <div>
-                  <CardGrid
-                    role="listbox"
-                    aria-label={t('welcome.recentAssistants')}
-                    cardRows={3}
-                    columns={recentAssistants.length}
-                    mobileLayout="carousel"
-                    fadeX
-                    pageDots
-                  >
-                    {recentAssistants.map(assistant => (
-                      <AssistantCard
-                        key={assistant.id}
-                        assistant={assistant}
-                        selected={assistant.id === currentAssistantId}
-                        disabledReason={redEnabled && assistant.classification !== 'Red' ? t('chat.redToggle.assistantNotRed') : undefined}
-                        onSelect={a => setUserSelectedAssistantId(a.id)}
-                        onToggleFavorite={a => void toggleFavorite(a.id)}
-                        modelName={models.find(m => m.id === assistant.modelId)?.modelName}
-                        compact
-                        showAction
-                      />
-                    ))}
-                  </CardGrid>
-                </div>
+                {isNarrow ? (
+                  <Carousel aria-label={t('welcome.recentAssistants')} align="center" className="card-carousel">
+                    <CarouselViewport className={scrollFadeClass('x')}>
+                      <CarouselContent>
+                        {cards.map(card => <CarouselItem key={card.key}>{card}</CarouselItem>)}
+                      </CarouselContent>
+                    </CarouselViewport>
+                    <CarouselIndicatorGroup aria-label={t('welcome.recentAssistants')}>
+                      {recentAssistants.map((assistant, index) => <CarouselIndicator key={assistant.id} page={index + 1} aria-label={assistant.name} />)}
+                    </CarouselIndicatorGroup>
+                  </Carousel>
+                ) : (
+                  <CardGrid cardRows={3} columns={recentAssistants.length}>{cards}</CardGrid>
+                )}
               </Stack>
             )}
           </Stack>

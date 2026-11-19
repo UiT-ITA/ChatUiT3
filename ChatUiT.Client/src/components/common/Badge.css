@@ -29,10 +29,6 @@
   border-color: var(--warn);
   color: var(--warn);
 }
-.badge--outline.badge--danger {
-  border-color: var(--danger);
-  color: var(--danger);
-}
 
 .badge--solid.badge--neutral {
   background: var(--panel-2);
@@ -44,11 +40,7 @@
 }
 .badge--solid.badge--warning {
   background: var(--warn);
-  color: var(--text);
-}
-.badge--solid.badge--danger {
-  background: var(--danger);
-  color: var(--btn-fg);
+  color: light-dark(var(--text), var(--bg));
 }
 
 /* A count next to a title: a pill with centred tabular numbers */
@@ -58,10 +50,6 @@
   font-variant-numeric: tabular-nums;
 }
 
-[data-mode="dark"] .badge--solid.badge--warning {
-  color: var(--bg);
-}
-
-[data-mode="dark"] .badge--count.badge--outline.badge--accent {
-  color: var(--text);
+.badge--count.badge--outline.badge--accent {
+  color: light-dark(var(--brand), var(--text));
 }

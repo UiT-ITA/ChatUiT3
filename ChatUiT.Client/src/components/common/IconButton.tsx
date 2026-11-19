@@ -1,9 +1,10 @@
 import React from 'react';
 import { Icon, type IconName, type IconSize } from './Icon';
-import { ButtonRoot, ButtonSpinner, type ButtonBaseProps } from './Button';
+import { ButtonRoot, ButtonSpinner, IdleOnly, type ButtonBaseProps } from './Button';
 import { BUTTON_ICON_SIZE } from './buttonIconSize';
 import { cx } from './layout';
-import Tooltip from './Tooltip';
+import { Tooltip, TooltipContent, TooltipTrigger } from '@ui-sdk/react/tooltip';
+import { spacePx } from './layout';
 
 export interface IconButtonProps extends Omit<ButtonBaseProps, 'children'> {
   // An icon name, or a custom graphic such as a progress ring or badge
@@ -27,23 +28,32 @@ export interface IconButtonProps extends Omit<ButtonBaseProps, 'children'> {
 }
 
 /** The app's icon-only button. */
-const IconButton: React.FC<IconButtonProps> = ({ icon, iconSize, label, variant = 'ghost', size = 'medium', active = false, activeFill = 'soft', shape = 'square', tooltip = true, tooltipPlacement, tooltipAlign, loading = false, className, children, ...rest }) => {
+const IconButton: React.FC<IconButtonProps> = ({ icon, iconSize, label, variant = 'ghost', size = 'medium', active = false, activeFill = 'soft', shape = 'square', tooltip = true, tooltipPlacement, tooltipAlign, className, children, ...rest }) => {
   const button = (
     <ButtonRoot
       classes={cx('button', `button--${variant}`, `button--${size}`, 'button--icon-only', shape === 'round' && 'button--round', active && 'button--active', activeFill !== 'soft' && `button--active-fill-${activeFill}`, className)}
       aria-label={label}
-      loading={loading}
       {...rest}
     >
-      {loading ? <ButtonSpinner /> : typeof icon === 'string' ? <Icon name={icon} size={iconSize ?? BUTTON_ICON_SIZE[size]} /> : icon}
+      <ButtonSpinner />
+      <IdleOnly>{typeof icon === 'string' ? <Icon name={icon} size={iconSize ?? BUTTON_ICON_SIZE[size]} /> : icon}</IdleOnly>
       {children}
     </ButtonRoot>
   );
-  return tooltip && label ? (
-    <Tooltip content={label} placement={tooltipPlacement} align={tooltipAlign} width="auto">
-      {button}
+  if (!tooltip || !label) return button;
+  return (
+    <Tooltip type="label">
+      <TooltipTrigger render={button} />
+      <TooltipContent
+        side={tooltipPlacement ?? 'top'}
+        align={tooltipPlacement === 'right' ? 'center' : tooltipAlign ?? 'end'}
+        sideOffset={spacePx('sm')}
+        className="tooltip--label t-caption"
+      >
+        {label}
+      </TooltipContent>
     </Tooltip>
-  ) : button;
+  );
 };
 
 export default IconButton;

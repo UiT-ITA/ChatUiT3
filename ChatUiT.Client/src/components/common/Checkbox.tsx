@@ -1,68 +1,63 @@
-import React, { useEffect, useId, useImperativeHandle, useRef } from 'react';
+import React, { useId } from 'react';
+import { Checkbox as UiCheckbox, CheckboxGroup as UiCheckboxGroup, CheckboxIndicator } from '@ui-sdk/react/checkbox';
 import { FieldDescription } from './Field';
-import { fieldDescribedBy } from './fieldProps';
-import { cx, splitLayoutProps, type LayoutProps, type Size, type Space } from './layout';
-import Stack from './Stack';
+import { cx, splitLayoutProps, type LayoutProps } from './layout';
 import './Checkbox.css';
 
-type NativeCheckboxProps = Omit<React.ComponentProps<'input'>, 'type' | 'checked' | 'defaultChecked' | 'onChange' | 'size' | 'width'>;
-
-export interface CheckboxProps extends LayoutProps, NativeCheckboxProps {
+export interface CheckboxProps extends LayoutProps {
+  // Inside a CheckboxGroup: the value it adds to the group's list. Leave checked and onChange off then.
+  value?: string;
   checked?: boolean;
-  defaultChecked?: boolean;
-  onChange?: (checked: boolean, event: React.ChangeEvent<HTMLInputElement>) => void;
-  // Shows a dash: some but not all of a group is checked
-  indeterminate?: boolean;
-  size?: Size;
-  invalid?: boolean;
+  onChange?: (checked: boolean) => void;
   description?: React.ReactNode;
-  error?: React.ReactNode;
+  disabled?: boolean;
+  className?: string;
+  children?: React.ReactNode;
 }
 
 /** The app's checkbox. The children are its label. */
-const Checkbox: React.FC<CheckboxProps> = ({ checked, defaultChecked, onChange, indeterminate = false, size = 'medium', invalid = false, description, error, disabled, id: givenId, ref, className, children, ...props }) => {
-  const [style, rest] = splitLayoutProps(props);
-  const generatedId = useId();
-  const id = givenId ?? generatedId;
-  const inputRef = useRef<HTMLInputElement>(null);
-  useImperativeHandle(ref, () => inputRef.current as HTMLInputElement);
-
-  useEffect(() => {
-    if (inputRef.current) inputRef.current.indeterminate = indeterminate;
-  }, [indeterminate]);
-
+const Checkbox: React.FC<CheckboxProps> = ({ value, checked, onChange, description, disabled, className, children, ...props }) => {
+  const [style] = splitLayoutProps(props);
+  const descriptionId = useId();
   return (
-    <div className={cx('checkbox', `checkbox--${size}`, disabled && 'checkbox--disabled', (invalid || error) && 'checkbox--invalid', className)} style={style}>
-      <label className="checkbox__row t-table" htmlFor={id}>
-        <input
-          ref={inputRef}
-          id={id}
-          type="checkbox"
-          className="checkbox__input"
+    <div className={cx('checkbox', disabled && 'checkbox--disabled', className)} style={style}>
+      <label className="checkbox__row t-table">
+        <UiCheckbox
+          value={value}
           checked={checked}
-          defaultChecked={defaultChecked}
-          onChange={onChange && ((e) => onChange(e.target.checked, e))}
+          onCheckedChange={onChange && (next => onChange(next === true))}
           disabled={disabled}
-          aria-invalid={invalid || Boolean(error) || undefined}
-          aria-describedby={fieldDescribedBy(id, { description, error })}
-          {...rest}
-        />
+          aria-describedby={description ? descriptionId : undefined}
+        >
+          <CheckboxIndicator />
+        </UiCheckbox>
         {children && <span className="checkbox__label">{children}</span>}
       </label>
-      {description && <FieldDescription id={`${id}-description`} className="checkbox__note">{description}</FieldDescription>}
-      {error && <FieldDescription id={`${id}-error`} tone="danger" role="alert" className="checkbox__note">{error}</FieldDescription>}
+      {description && <FieldDescription id={descriptionId} className="checkbox__note">{description}</FieldDescription>}
     </div>
   );
 };
 
-interface CheckboxGroupProps extends LayoutProps, Omit<React.HTMLAttributes<HTMLDivElement>, 'color'> {
-  direction?: 'row' | 'column';
-  gap?: Space;
+interface CheckboxGroupProps extends LayoutProps {
+  // The values of the checked boxes inside, in the order the boxes appear. Leave off when each box has its own checked and onChange.
+  value?: string[];
+  onChange?: (value: string[]) => void;
+  'aria-label'?: string;
+  'aria-labelledby'?: string;
+  children?: React.ReactNode;
 }
 
-/** A row or column of checkboxes. */
-export const CheckboxGroup: React.FC<CheckboxGroupProps> = ({ direction = 'column', gap = 'md', ...rest }) => (
-  <Stack role="group" direction={direction} gap={gap} wrap={direction === 'row'} {...rest} />
-);
+/** A column of checkboxes. With value, a ui-sdk checkbox group that owns the list of checked values; without, a group for layout only, whose boxes each have their own checked and onChange. */
+export const CheckboxGroup: React.FC<CheckboxGroupProps> = ({ value, onChange, children, ...props }) => {
+  const [style, rest] = splitLayoutProps(props);
+  if (value === undefined) {
+    return <div role="group" className="checkbox-group" style={style} {...rest}>{children}</div>;
+  }
+  return (
+    <UiCheckboxGroup className="checkbox-group" style={style} value={value} onValueChange={next => onChange?.(next as string[])} {...rest}>
+      {children}
+    </UiCheckboxGroup>
+  );
+};
 
 export default Checkbox;

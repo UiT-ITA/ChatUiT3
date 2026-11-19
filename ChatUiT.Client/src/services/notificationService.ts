@@ -1,18 +1,11 @@
-import { signal } from "@preact/signals-react";
-import type { Notification, NotifyLevel } from "../types/notification";
+import { toast } from "@ui-sdk/react/toast";
+import type { NotifyLevel } from "../types/notification";
 
-export const notifications = signal<Notification[]>([]);
+const TYPES = { Info: "info", Success: "success", Warning: "warning", Error: "error" } as const;
+// Errors stay until closed
+const DURATIONS: Record<NotifyLevel, number> = { Info: 4000, Success: 4000, Warning: 6000, Error: Infinity };
 
+/** Shows a toast. */
 export function addNotification(input: { level: NotifyLevel; message: string }) {
-  const id = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
-  const item: Notification = { id, level: input.level, message: input.message };
-  notifications.value = [item, ...notifications.value].slice(0, 5);
-  const autoMs = item.level === "Success" || item.level === "Info" ? 4000 : item.level === "Warning" ? 6000 : 0;
-  if (autoMs > 0) {
-    setTimeout(() => removeNotification(id), autoMs);
-  }
-}
-
-export function removeNotification(id: string) {
-  notifications.value = notifications.value.filter(n => n.id !== id);
+  toast[TYPES[input.level]](input.message, { duration: DURATIONS[input.level] });
 }

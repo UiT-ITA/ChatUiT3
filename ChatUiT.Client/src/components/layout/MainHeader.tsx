@@ -6,7 +6,7 @@ import IconButton from '../common/IconButton';
 import { Icon } from '../common/Icon';
 import { getChat } from '../../services/chatService';
 import { getAssistants } from '../../services/assistantService';
-import { conversationPanelOpenSignal, editorHeaderSignal, filledCodeBlockSignal } from '../../services/uiService';
+import { conversationPanelOpenSignal, editorHeaderSignal } from '../../services/uiService';
 import useMediaQuery from '../../hooks/useMediaQuery';
 import { isHelpSection } from '../help/helpSections';
 import Badge from '../common/Badge';
@@ -38,8 +38,7 @@ export const MainHeaderContent = ({ isMobile, sidebarCollapsed, onToggleSidebar 
   let chip = '';
 
   if (section === 'chats') {
-    const filled = filledCodeBlockSignal.value;
-    title = filled && chatId ? filled.title : chatId ? (chat?.name || '…') : t('chat.newChat');
+    title = chatId ? (chat?.name || '…') : t('chat.newChat');
   } else if (section === 'assistants' && params[0] && params[0] !== 'new') {
     const list = getAssistants().value;
     title = [...(list?.owned ?? []), ...(list?.system ?? []), ...(list?.shared ?? [])].find(a => a.id === params[0])?.name ?? title;

@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useRef } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Icon, type IconName } from '../common/Icon';
 import IconButton from '../common/IconButton';
@@ -6,9 +6,9 @@ import Badge from '../common/Badge';
 import Card from '../common/Card';
 import ClassificationBadge from '../classification/ClassificationBadge';
 import CapabilityTag from './CapabilityTag';
-import Tooltip from '../common/Tooltip';
+import { Tooltip, TooltipContent, TooltipTrigger } from '@ui-sdk/react/tooltip';
 import type { Capability } from './assistantCapabilities';
-import { cx } from '../common/layout';
+import { cx, spacePx } from '../common/layout';
 import type { AssistantDto } from '../../types/assistantModels';
 import './AssistantCard.css';
 
@@ -62,25 +62,10 @@ export default function AssistantCard({ assistant, selected, disabledReason, onS
   const { t } = useTranslation();
   const description = assistant.description?.trim();
   const disabled = disabledReason !== undefined;
-  const [descriptionElement, setDescriptionElement] = useState<HTMLParagraphElement | null>(null);
-  const [clamped, setClamped] = useState(false);
-
-  // Tracks whether the line clamp cuts the description off
-  useEffect(() => {
-    if (!descriptionElement) return;
-    const observer = new ResizeObserver(() => setClamped(descriptionElement.scrollHeight > descriptionElement.clientHeight));
-    observer.observe(descriptionElement);
-    return () => observer.disconnect();
-  }, [descriptionElement]);
-
-  const descriptionText = <p ref={setDescriptionElement} className="assistant-card-description">{description}</p>;
+  const descriptionRef = useRef<HTMLParagraphElement>(null);
 
   return (
     <Card
-      role="option"
-      tabIndex={disabled ? -1 : 0}
-      aria-selected={selected}
-      aria-disabled={disabled || undefined}
       title={disabledReason}
       padding={compact ? 'md' : 'lg'}
       gap={compact ? 'sm' : 'md'}
@@ -88,16 +73,10 @@ export default function AssistantCard({ assistant, selected, disabledReason, onS
       selected={selected}
       className={cx('assistant-card', compact && 'assistant-card--compact', disabled && 'assistant-card--disabled')}
       onClick={() => { if (!disabled) onSelect(assistant); }}
-      onKeyDown={(e) => {
-        if (!disabled && e.target === e.currentTarget && (e.key === 'Enter' || e.key === ' ')) {
-          e.preventDefault();
-          onSelect(assistant);
-        }
-      }}
     >
       <div className="assistant-card-top">
         <div className="assistant-card-heading">
-          <span className="assistant-card-title"><span title={assistant.name}>{assistant.name}</span></span>
+          <button type="button" className="assistant-card-select assistant-card-title" title={assistant.name} aria-current={selected || undefined} disabled={disabled}>{assistant.name}</button>
           {showType && (
             <span className="assistant-card-type">
               <Icon name={TYPE_ICON[assistant.type] ?? 'assistants'} size="sm" color="secondary" />
@@ -121,11 +100,19 @@ export default function AssistantCard({ assistant, selected, disabledReason, onS
         />
       </div>
 
-      {description && clamped && (
-        <Tooltip content={description} align="start" block>{descriptionText}</Tooltip>
-      )}
-      {description && !clamped && descriptionText}
-      {!description && (
+      {description ? (
+        // The tooltip shows the whole description only while the line clamp cuts it off
+        <Tooltip
+          type="label"
+          onOpenChange={(open, details) => {
+            const element = descriptionRef.current;
+            if (open && element && element.scrollHeight <= element.clientHeight) details.cancel();
+          }}
+        >
+          <TooltipTrigger render={<p ref={descriptionRef} className="assistant-card-description" />}>{description}</TooltipTrigger>
+          <TooltipContent align="start" sideOffset={spacePx('sm')} className="t-caption">{description}</TooltipContent>
+        </Tooltip>
+      ) : (
         <p className="assistant-card-description assistant-card-description--empty">{t('assistants.noDescription')}</p>
       )}
 

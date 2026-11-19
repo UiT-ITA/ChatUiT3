@@ -2,16 +2,13 @@ import React from 'react';
 import { cx, splitLayoutProps, type LayoutProps } from './layout';
 import './Icon.css';
 import { PiSidebarSimple } from "react-icons/pi";
-import { VscLayoutSidebarLeft, VscLayoutSidebarLeftOff } from "react-icons/vsc";
 import { RiSettings3Line, RiChat1Line, RiChatAiLine, RiUserLine, RiRobot2Line, RiMenuLine, RiServerLine, RiCpuLine, RiToolsLine, RiCodeBoxLine, RiPulseLine } from 'react-icons/ri';
 import { GrHelpBook } from "react-icons/gr";
-import { MdOutlineVpnKey, MdContentCopy, MdCheck, MdRefresh, MdOutlineEdit, MdKeyboardArrowDown, MdMoreHoriz, MdAttachFile, MdSend, MdKeyboardArrowUp, MdInfoOutline, MdOutlineRemoveRedEye, MdPublic, MdOutlinePsychology, MdMoreVert, MdClose, MdOutlineInsertDriveFile, MdOutlineLightMode, MdOutlineDarkMode, MdSearch, MdAdd, MdArrowBack, MdStop, MdOutlineGridView, MdOutlineVerifiedUser, MdOutlinePeopleAlt, MdLockOutline, MdCheckCircle, MdOutlineCheckCircle, MdVisibility, MdVisibilityOff, MdOutlineImage, MdDeleteOutline, MdOutlineMail, MdOutlineEvent, MdHelpOutline, MdChevronLeft, MdChevronRight, MdOutlineSchedule, MdOutlineFilterAlt, MdOutlineShield, MdOutlineFileUpload, MdErrorOutline, MdOutlineVolumeUp, MdZoomIn, MdZoomOut, MdWrapText, MdArrowOutward, MdOpenInFull, MdCloseFullscreen } from "react-icons/md";
+import { MdOutlineVpnKey, MdContentCopy, MdCheck, MdRefresh, MdOutlineEdit, MdKeyboardArrowDown, MdAttachFile, MdSend, MdKeyboardArrowUp, MdInfoOutline, MdOutlineRemoveRedEye, MdPublic, MdOutlinePsychology, MdMoreVert, MdClose, MdOutlineInsertDriveFile, MdOutlineLightMode, MdOutlineDarkMode, MdSearch, MdAdd, MdArrowBack, MdStop, MdOutlineGridView, MdOutlineVerifiedUser, MdOutlinePeopleAlt, MdLockOutline, MdCheckCircle, MdVisibility, MdVisibilityOff, MdOutlineImage, MdDeleteOutline, MdOutlineMail, MdOutlineEvent, MdHelpOutline, MdChevronLeft, MdChevronRight, MdOutlineSchedule, MdOutlineFilterAlt, MdOutlineShield, MdOutlineFileUpload, MdErrorOutline, MdOutlineVolumeUp, MdZoomIn, MdZoomOut, MdWrapText, MdArrowOutward, MdOpenInFull, MdCloseFullscreen } from "react-icons/md";
 import { FaStar } from "react-icons/fa";
 import { LuGitBranch, LuStar } from "react-icons/lu";
 
 const iconMap = {
-  sidebar: VscLayoutSidebarLeftOff,
-  sidebarOpen: VscLayoutSidebarLeft,
   sidebarToggle: PiSidebarSimple,
   settings: RiSettings3Line,
   chat: RiChat1Line,
@@ -27,7 +24,6 @@ const iconMap = {
   edit: MdOutlineEdit,
   branch: LuGitBranch,
   arrowDown: MdKeyboardArrowDown,
-  more: MdMoreHoriz,
   attach: MdAttachFile,
   send: MdSend,
   stop: MdStop,
@@ -53,7 +49,6 @@ const iconMap = {
   filter: MdOutlineFilterAlt,
   lock: MdLockOutline,
   checkCircle: MdCheckCircle,
-  checkCircleOutline: MdOutlineCheckCircle,
   visible: MdVisibility,
   hidden: MdVisibilityOff,
   image: MdOutlineImage,

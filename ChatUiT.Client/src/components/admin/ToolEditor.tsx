@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { useSignals } from '@preact/signals-react/runtime';
@@ -12,7 +12,8 @@ import { ConfirmDialog } from '../common/Dialog';
 import { hasChanges } from '../../utils/formChanges';
 import AgentFunctionRows from './AgentFunctionRows';
 import ClassificationBadge from '../classification/ClassificationBadge';
-import Checkbox, { CheckboxGroup } from '../common/Checkbox';
+import Checkbox from '../common/Checkbox';
+import { AllowedRolesField } from './ModelEditorParts';
 import Field, { FieldDescription } from '../common/Field';
 import Stack from '../common/Stack';
 import Button from '../common/Button';
@@ -21,8 +22,6 @@ import Text from '../common/Text';
 import TextBlock from '../common/TextBlock';
 import EmptyNote from '../common/EmptyNote';
 import FormFooter from '../common/FormFooter';
-
-const ALL_ROLES: UserRole[] = ['User', 'Admin', 'Beta', 'Super', 'External'];
 
 interface ToolEditorProps {
   toolId: string;
@@ -53,15 +52,7 @@ const ToolEditor: React.FC<ToolEditorProps> = ({ toolId }) => {
   const [allowedGroupIds, setAllowedGroupIds] = useState<string[]>(initial.allowedGroupIds);
   const [saving, setSaving] = useState(false);
   const [confirmReset, setConfirmReset] = useState(false);
-  const [shownToolId, setShownToolId] = useState(toolId);
-  if (toolId !== shownToolId) {
-    setShownToolId(toolId);
-    setConfirmReset(false);
-  }
 
-  useEffect(() => {
-    loadAdminData();
-  }, []);
 
   const [synced, setSynced] = useState(tool);
   if (tool !== synced) {
@@ -79,15 +70,6 @@ const ToolEditor: React.FC<ToolEditorProps> = ({ toolId }) => {
   if (!tool) {
     return <EmptyNote>{t('common.notFound')}</EmptyNote>;
   }
-
-  const toggleRole = (role: UserRole, checked: boolean) => {
-    setAllowedRoles(prev => {
-      const set = new Set(prev);
-      if (checked) set.add(role);
-      else set.delete(role);
-      return ALL_ROLES.filter(candidate => set.has(candidate));
-    });
-  };
 
   const nobody = enabled && allowedRoles.length === 0 && allowedGroupIds.length === 0;
 
@@ -159,7 +141,7 @@ const ToolEditor: React.FC<ToolEditorProps> = ({ toolId }) => {
         </Field>
 
         <Field label={t('admin.tools.fields.requiresConfirmation')}>
-          <Text as="div" variant="body">{tool.requiresConfirmation ? t('common.yes', { defaultValue: 'Yes' }) : t('common.no', { defaultValue: 'No' })}</Text>
+          <Text as="div" variant="body">{tool.requiresConfirmation ? t('common.yes') : t('common.no')}</Text>
         </Field>
 
         {tool.requiredScopes.length > 0 && (
@@ -193,19 +175,7 @@ const ToolEditor: React.FC<ToolEditorProps> = ({ toolId }) => {
           {t('admin.tools.fields.enabled')}
         </Checkbox>
 
-        <Field label={t('admin.tools.fields.allowedRoles')}>
-          <CheckboxGroup>
-            {ALL_ROLES.map(role => (
-              <Checkbox
-                key={role}
-                checked={allowedRoles.includes(role)}
-                onChange={checked => toggleRole(role, checked)}
-              >
-                {t(`roles.${role}`)}
-              </Checkbox>
-            ))}
-          </CheckboxGroup>
-        </Field>
+        <AllowedRolesField value={allowedRoles} onChange={setAllowedRoles} />
 
         <Field label={t('admin.tools.fields.allowedGroups')} description={t('admin.tools.fields.allowedGroupsHelp')}>
           <GroupPicker value={allowedGroupIds} onChange={setAllowedGroupIds} search={searchAdminGroups} resolve={resolveAdminGroups} disabled={saving} />
@@ -229,7 +199,6 @@ const ToolEditor: React.FC<ToolEditorProps> = ({ toolId }) => {
         title={t('admin.tools.actions.reset')}
         message={t('admin.tools.actions.resetConfirm')}
         confirmLabel={t('admin.tools.actions.reset')}
-        busy={saving}
         onConfirm={handleReset}
         onCancel={() => setConfirmReset(false)}
       />

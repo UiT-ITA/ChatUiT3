@@ -35,13 +35,13 @@
   height: var(--control-lg);
   padding: 0 var(--space-lg);
 }
-.segmented-control__option:hover:not(:disabled) {
+.segmented-control__option:hover:not([data-disabled]) {
   background: var(--sel);
   color: var(--text);
 }
 
-.segmented-control__option--selected,
-.segmented-control__option--selected:hover:not(:disabled) {
+.segmented-control__option[data-checked],
+.segmented-control__option[data-checked]:hover:not([data-disabled]) {
   background: var(--btn-bg);
   color: var(--btn-fg);
 }
@@ -51,7 +51,7 @@
   outline-offset: var(--border-sm);
 }
 
-.segmented-control__option:disabled {
+.segmented-control__option[data-disabled] {
   color: var(--text-3);
   cursor: not-allowed;
 }

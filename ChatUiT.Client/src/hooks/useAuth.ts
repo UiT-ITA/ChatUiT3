@@ -4,18 +4,15 @@ import type { AccountInfo } from '@azure/msal-browser';
 export interface AuthContextType {
   isAuthenticated: boolean;
   isInitializing: boolean;
-  isSignalRConnected: boolean;
   isAppReady: boolean;
   initError: string | null;
   account: AccountInfo | null;
-  roles: string[];
   isAdmin: boolean;
   login: () => Promise<void>;
   logout: () => void;
   /** False in Teams, where Teams owns the sign-in. */
   canSignOut: boolean;
   retryInit: () => void;
-  getAccessToken: () => Promise<string | null>;
 }
 
 export const AuthContext = createContext<AuthContextType | undefined>(undefined);
