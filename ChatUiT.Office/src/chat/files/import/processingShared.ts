@@ -1,5 +1,6 @@
 /* global Blob, crypto, document, Document, DOMParser, Element, File, FileReader, HTMLCanvasElement, HTMLImageElement, Image, ImageData, Node */
 
+import { ErrorCodes, userError } from "../../../errors/errorCodes";
 import type { ImageChunk, ChatFile, ChatFileChunk, TextChunk } from "../fileModels";
 
 const MAX_LONG_SIDE = 2048;
@@ -49,7 +50,7 @@ export async function normalizeImageDataToChunk(imageData: ImageData): Promise<I
 
   const context = canvas.getContext("2d");
   if (!context) {
-    throw new Error("Failed to get canvas context");
+    throw userError(ErrorCodes.CanvasUnavailable);
   }
 
   context.putImageData(imageData, 0, 0);
@@ -188,7 +189,7 @@ async function normalizeImageDataUrlToChunk(dataUrl: string): Promise<ImageChunk
 
   const context = canvas.getContext("2d");
   if (!context) {
-    throw new Error("Failed to get canvas context");
+    throw userError(ErrorCodes.CanvasUnavailable);
   }
 
   context.drawImage(image, 0, 0, width, height);
@@ -244,7 +245,7 @@ function loadImage(src: string): Promise<HTMLImageElement> {
   return new Promise((resolve, reject) => {
     const image = new Image();
     image.onload = () => resolve(image);
-    image.onerror = () => reject(new Error("Failed to load image"));
+    image.onerror = () => reject(userError(ErrorCodes.ImageDecodeFailed));
     image.src = src;
   });
 }
@@ -253,7 +254,8 @@ function blobToDataUrl(blob: Blob): Promise<string> {
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
     reader.onload = () => resolve(reader.result as string);
-    reader.onerror = () => reject(reader.error ?? new Error("Failed to read blob"));
+    reader.onerror = () =>
+      reject(userError(ErrorCodes.ImageBlobUnreadable, { detail: reader.error?.message, cause: reader.error }));
     reader.readAsDataURL(blob);
   });
 }
@@ -262,7 +264,7 @@ function canvasToBlob(canvas: HTMLCanvasElement, type: string): Promise<Blob> {
   return new Promise((resolve, reject) => {
     canvas.toBlob((blob) => {
       if (!blob) {
-        reject(new Error("Failed to create blob from canvas"));
+        reject(userError(ErrorCodes.ImageEncodeFailed));
         return;
       }
 

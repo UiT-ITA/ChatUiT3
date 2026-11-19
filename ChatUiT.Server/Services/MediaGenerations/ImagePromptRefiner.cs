@@ -1,5 +1,6 @@
 namespace ChatUiT.Server.Services.MediaGenerations;
 
+using ChatUiT.Server.Errors;
 using ChatUiT.Server.Models;
 using ChatUiT.Server.Services.AiProviders;
 using ChatUiT.Server.Services.TokenCounting;
@@ -48,7 +49,7 @@ public sealed class ImagePromptRefiner
         }
         catch (ImagePromptRefinementException ex)
         {
-            _telemetry.ImagePromptRefined(imageModel.ModelId, stopwatch.ElapsedMilliseconds, Telemetry.Outcomes.Failed, ex.InnerException);
+            _telemetry.ImagePromptRefined(imageModel.ModelId, stopwatch.ElapsedMilliseconds, Telemetry.Outcomes.Failed, ex.InnerException, ex.Error.Code);
             throw;
         }
         catch (OperationCanceledException)
@@ -66,7 +67,7 @@ public sealed class ImagePromptRefiner
             : await _modelService.GetModelWithEndpointAsync<LanguageModel>(settings.DefaultModelId);
         if (resolved is not var (endpoint, model) || !_providers.Supports(endpoint.EndpointType))
         {
-            throw new ImagePromptRefinementException("No default model is set up to refine prompts.");
+            throw new ImagePromptRefinementException(ErrorCodes.PromptRefinementUnavailable);
         }
 
         var instructions = Instructions(imageModel, isEdit);
@@ -83,7 +84,7 @@ public sealed class ImagePromptRefiner
             var inputTokens = _tokenCounting.CountSystemPrompt(instructions, [], schemeId) + _tokenCounting.CountMessage(message, schemeId);
             if (inputTokens + parameters.MaxOutputTokens > model.Capabilities.MaxContextTokens)
             {
-                throw new ImagePromptRefinementException("The prompt is too long to refine.");
+                throw new ImagePromptRefinementException(ErrorCodes.PromptTooLongToRefine);
             }
         }
 
@@ -103,12 +104,12 @@ public sealed class ImagePromptRefiner
         }
         catch (Exception ex) when (ex is not OperationCanceledException)
         {
-            throw new ImagePromptRefinementException("The model could not refine the prompt.", ex);
+            throw new ImagePromptRefinementException(ProviderErrors.Classify(ex) ?? ErrorCodes.PromptRefinementFailed, ex);
         }
 
         if (refined.Length == 0)
         {
-            throw new ImagePromptRefinementException("The model returned no prompt.");
+            throw new ImagePromptRefinementException(ErrorCodes.PromptRefinementEmpty);
         }
 
         return refined;
@@ -136,7 +137,11 @@ public sealed class ImagePromptRefiner
 /// <summary>The prompt could not be refined. The message is safe to show.</summary>
 public sealed class ImagePromptRefinementException : Exception
 {
-    public ImagePromptRefinementException(string message, Exception? inner = null) : base(message, inner)
+    public ImagePromptRefinementException(ErrorCode error, Exception? inner = null) : base(error.Message, inner)
     {
+        Error = error;
     }
+
+    /// <summary>The error the user is shown.</summary>
+    public ErrorCode Error { get; }
 }

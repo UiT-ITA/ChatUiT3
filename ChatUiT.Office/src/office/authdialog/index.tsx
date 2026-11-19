@@ -1,4 +1,4 @@
-/* global document, fetch, URLSearchParams, window */
+/* global document, fetch, Response, URLSearchParams, window */
 
 import { Button, FluentProvider, makeStyles } from "@fluentui/react-components";
 import { useLayoutEffect, useState } from "react";
@@ -7,6 +7,7 @@ import { matchCode, parseState, relayUrl, type SignInRelayResult } from "../../c
 import { useGlobalStyles } from "../../chat/ui/globalStyles";
 import { chatuitTheme } from "../../chat/ui/theme";
 import { color, font, paletteVariables, typography, type ThemeMode } from "../../chat/ui/tokens";
+import { ErrorCodes, formatError, refFrom, serverError, userError, userErrorText } from "../../errors/errorCodes";
 
 /**
  * The page Entra returns to after a browser sign-in started from the task pane. It reads the authorization
@@ -59,13 +60,23 @@ function readResponse(): SignInResponse {
 }
 
 async function post(relay: string, result: SignInRelayResult): Promise<void> {
-  const response = await fetch(relay, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(result),
-  });
+  let response: Response;
+  try {
+    response = await fetch(relay, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(result),
+    });
+  } catch (error) {
+    throw userError(ErrorCodes.SignInRelayUnreachable, { cause: error });
+  }
   if (!response.ok) {
-    throw new Error(`The ChatUiT server answered ${response.status}`);
+    const body: unknown = await response.json().catch(() => null);
+    const message =
+      body && typeof body === "object" && "message" in body && typeof body.message === "string" ? body.message : null;
+    throw serverError(message ?? `The ChatUiT server answered ${response.status}`, ErrorCodes.SignInRelayRejected, {
+      ref: refFrom(response.headers),
+    });
   }
 }
 
@@ -88,9 +99,10 @@ function SignInPage({ response, mode }: { response: SignInResponse; mode: ThemeM
     }
     const { relay, result } = response;
     if (result.error) {
+      const message = formatError(ErrorCodes.SignInRejected, { detail: result.error });
       post(relay, result).then(
-        () => setStep({ kind: "failed", message: result.error }),
-        () => setStep({ kind: "failed", message: result.error })
+        () => setStep({ kind: "failed", message }),
+        () => setStep({ kind: "failed", message })
       );
       return;
     }
@@ -106,7 +118,7 @@ function SignInPage({ response, mode }: { response: SignInResponse; mode: ThemeM
       await post(response.relay, response.result);
       setStep({ kind: "done" });
     } catch (error) {
-      setStep({ kind: "failed", message: String(error) });
+      setStep({ kind: "failed", message: userErrorText(error, ErrorCodes.SignInRelayRejected) });
     }
   };
 
@@ -137,7 +149,7 @@ function SignInPage({ response, mode }: { response: SignInResponse; mode: ThemeM
           {step.kind === "done" && (
             <p className={styles.text}>You're signed in. Go back to ChatUiT. You can close this page.</p>
           )}
-          {step.kind === "failed" && <p className={styles.text}>The sign-in failed: {step.message}</p>}
+          {step.kind === "failed" && <p className={styles.text}>{step.message}</p>}
         </div>
       </main>
     </FluentProvider>

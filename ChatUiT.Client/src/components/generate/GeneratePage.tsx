@@ -14,6 +14,7 @@ import ImageGenerationForm from './ImageGenerationForm';
 import GenerationCard from './GenerationCard';
 import PageTitleBar from '../common/PageTitleBar';
 import Page, { PageIntro } from '../common/Page';
+import { ErrorCode, formatError } from '../../errors/errorCodes';
 
 /** The generation types the page offers. Voice has no model API yet. */
 type GenerationType = Exclude<ModelType, 'Language'>;
@@ -44,7 +45,7 @@ const GeneratePage: React.FC = () => {
             ? <EmptyNote>{t('common.loading')}</EmptyNote>
             : selected
               ? <GenerationCard generation={selected} />
-              : <EmptyNote>{t('generate.notFound')}</EmptyNote>}
+              : <EmptyNote>{formatError(t('generate.notFound'), ErrorCode.GenerationNotFound)}</EmptyNote>}
         </Stack>
       </Page>
     );

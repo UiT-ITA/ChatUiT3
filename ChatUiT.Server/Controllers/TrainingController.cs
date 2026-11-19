@@ -1,3 +1,4 @@
+using ChatUiT.Server.Errors;
 using ChatUiT.Server.Models;
 using ChatUiT.Server.Services;
 using ChatUiT.Server.Services.Training;
@@ -65,13 +66,13 @@ public class TrainingController : ControllerBase
     {
         if (request.Version != _catalog.Version)
         {
-            return Conflict(new { message = "The course has a new version. Reload the course and take the test again.", code = "course_version_changed" });
+            return ApiErrors.Conflict(ErrorCodes.TrainingCourseChanged, fields: new { code = "course_version_changed" });
         }
 
         var result = _trainingService.Check(request.QuestionId, request.OptionId, request.Language);
         if (result == null)
         {
-            return BadRequest(new { message = "Unknown question." });
+            return ApiErrors.BadRequest(ErrorCodes.TrainingQuestionUnknown);
         }
 
         return Ok(new TrainingQuestionResultDto
@@ -88,7 +89,7 @@ public class TrainingController : ControllerBase
     {
         if (request.Version != _catalog.Version)
         {
-            return Conflict(new { message = "The course has a new version. Reload the course and take the test again.", code = "course_version_changed" });
+            return ApiErrors.Conflict(ErrorCodes.TrainingCourseChanged, fields: new { code = "course_version_changed" });
         }
 
         var grade = await _trainingService.SubmitAsync(_userService.GetCurrentUserId(User), request.Answers, request.Language);

@@ -5,6 +5,7 @@ import { createRoot } from "react-dom/client";
 import { configureLoginHint } from "../../chat/auth/accountManager";
 import { reportRenderError, startPaneTelemetry } from "../../chat/telemetry/pane";
 import { App } from "../../chat/ui/App";
+import { ErrorCodes, formatError } from "../../errors/errorCodes";
 import { teamsAdapter } from "../adapter";
 import { paneTheme } from "../theme";
 
@@ -20,7 +21,7 @@ async function start() {
     context = await app.getContext();
   } catch {
     root.render(
-      <App adapter={null} unsupportedMessage="Open ChatUiT from a Teams meeting." theme={paneTheme(undefined)} />
+      <App adapter={null} unsupportedMessage={formatError(ErrorCodes.TeamsNotInMeeting)} theme={paneTheme(undefined)} />
     );
     return;
   }

@@ -28,6 +28,7 @@ import Box from '../common/Box';
 import RichText, { RichTextLink } from '../common/RichText';
 import KeyCombo from '../common/KeyCombo';
 import { trackError } from '../../services/telemetryService';
+import { ErrorCode, formatError } from '../../errors/errorCodes';
 
 /**
  * Blockquotes whose first paragraph is one of these markers render as callouts.
@@ -227,7 +228,7 @@ const HelpPage = () => {
       </Box>
 
       {doc.status !== 'ready' && (
-        <Text as="p" variant="body" tone="secondary">{t(doc.status === 'loading' ? 'help.loading' : 'help.loadError')}</Text>
+        <Text as="p" variant="body" tone="secondary">{doc.status === 'loading' ? t('help.loading') : formatError(t('help.loadError'), ErrorCode.HelpLoadFailed)}</Text>
       )}
       {doc.status === 'ready' && (
         <>

@@ -1,3 +1,4 @@
+using ChatUiT.Server.Errors;
 using ChatUiT.Server.Telemetry;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Filters;
@@ -49,10 +50,7 @@ public sealed class RequireTrainingFilter : IAsyncAuthorizationFilter
         }
 
         _telemetry.AccessDenied(context.ActionDescriptor.AttributeRouteInfo?.Template, null, Reason);
-        context.Result = new ObjectResult(new { message = "The mandatory training must be completed first.", code = Reason })
-        {
-            StatusCode = StatusCodes.Status403Forbidden
-        };
+        context.Result = ApiErrors.Result(StatusCodes.Status403Forbidden, ErrorCodes.TrainingRequired, fields: new { code = Reason });
     }
 }
 

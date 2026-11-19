@@ -5,6 +5,7 @@
 import * as pdfjs from "pdfjs-dist/legacy/build/pdf.mjs";
 import type { PDFPageProxy } from "pdfjs-dist";
 import type { TextItem, TextMarkedContent } from "pdfjs-dist/types/src/display/api";
+import { ErrorCodes, userError } from "../../../errors/errorCodes";
 import type { ChatFile, ChatFileChunk } from "../fileModels";
 import { createChatFile, createTextChunk, normalizeImageDataToChunk } from "./processingShared";
 
@@ -201,7 +202,7 @@ async function renderPageToChunk(page: PDFPageProxy): Promise<ChatFileChunk | nu
   canvas.height = Math.round(viewport.height);
   const context = canvas.getContext("2d");
   if (!context) {
-    throw new Error("Failed to get canvas context");
+    throw userError(ErrorCodes.CanvasUnavailable);
   }
 
   await page.render({ canvasContext: context, viewport, intent: RENDER_INTENT }).promise;

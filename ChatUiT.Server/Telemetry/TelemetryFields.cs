@@ -70,6 +70,9 @@ public static class FieldNames
     public const string Outcome = "outcome";
     public const string ErrorCategory = "error.category";
     public const string ErrorCode = "error.code";
+
+    /// <summary>The code of the error the user was shown, such as E2002 (docs/error-codes.md).</summary>
+    public const string UserErrorCode = "error.user_code";
 }
 
 /// <summary>The values of <see cref="FieldNames.Outcome"/>.</summary>

@@ -1,5 +1,6 @@
 /* global File, performance */
 
+import { errorDetail, ErrorCodes, findUserError, userError, type ErrorCode } from "../../errors/errorCodes";
 import type { ChatFile } from "./fileModels";
 import { getFileExtension, getSupportedImportKind } from "./kinds";
 import { track } from "../telemetry/telemetryService";
@@ -9,7 +10,7 @@ async function loadReader<T>(load: () => Promise<T>): Promise<T> {
   try {
     return await load();
   } catch (error) {
-    throw new Error("a new version of ChatUiT is available. Reopen the pane and try again.", { cause: error });
+    throw userError(ErrorCodes.AppUpdated, { cause: error });
   }
 }
 
@@ -20,6 +21,23 @@ const complexReaders = new Map<string, (file: File) => Promise<ChatFile>>([
   ["pptx", async (file) => (await loadReader(() => import("./import/pptxImportProcessor"))).processPptxImport(file)],
   ["xlsx", async (file) => (await loadReader(() => import("./import/xlsxImportProcessor"))).processXlsxImport(file)],
 ]);
+
+/** The code of a failed reader, by extension. */
+const complexFailures = new Map<string, ErrorCode>([
+  ["pdf", ErrorCodes.PdfUnreadable],
+  ["docx", ErrorCodes.DocxUnreadable],
+  ["pptx", ErrorCodes.PptxUnreadable],
+  ["xlsx", ErrorCodes.XlsxUnreadable],
+]);
+
+/** Runs the reader. A failure without a code is thrown as the fallback's UserError. */
+async function withCode(fallback: ErrorCode, read: () => Promise<ChatFile>): Promise<ChatFile> {
+  try {
+    return await read();
+  } catch (error) {
+    throw findUserError(error) ?? userError(fallback, { detail: errorDetail(error), cause: error });
+  }
+}
 
 /** The name of the reader that imports the file: image, text, pdf, docx, pptx, xlsx or unsupported. */
 export function processorFor(file: File): string {
@@ -63,15 +81,19 @@ async function importFile(file: File): Promise<ChatFile> {
   const extension = getFileExtension(file.name);
 
   if (kind === "image") {
-    return (await loadReader(() => import("./import/imageImportProcessor"))).processImageImport(file);
+    return withCode(ErrorCodes.ImageUnreadable, async () =>
+      (await loadReader(() => import("./import/imageImportProcessor"))).processImageImport(file)
+    );
   }
   if (kind === "text") {
     const format = extension === "md" || extension === "markdown" ? "markdown" : "plain";
-    return (await loadReader(() => import("./import/textImportProcessor"))).processTextImport(file, format);
+    return withCode(ErrorCodes.TextUnreadable, async () =>
+      (await loadReader(() => import("./import/textImportProcessor"))).processTextImport(file, format)
+    );
   }
   const complexReader = kind === "complex" ? complexReaders.get(extension) : undefined;
   if (complexReader) {
-    return complexReader(file);
+    return withCode(complexFailures.get(extension) ?? ErrorCodes.FileUnreadable, () => complexReader(file));
   }
-  throw new Error(`Unsupported file type: ${file.type || extension}`);
+  throw userError(ErrorCodes.FileTypeUnsupported, { detail: file.type || extension });
 }

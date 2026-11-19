@@ -1,5 +1,6 @@
 using Azure.Core;
 using Azure.Identity;
+using ChatUiT.Server.Errors;
 using ChatUiT.Server.Hubs;
 using ChatUiT.Server.Models;
 using ChatUiT.Server.Services;
@@ -59,7 +60,8 @@ builder.Services.AddCors(options =>
         }
         policy.AllowAnyHeader()
             .AllowAnyMethod()
-            .AllowCredentials();
+            .AllowCredentials()
+            .WithExposedHeaders(ErrorReference.HeaderName);
     });
 });
 
@@ -107,7 +109,17 @@ builder.Services.Configure<JwtBearerOptions>(JwtBearerDefaults.AuthenticationSch
 });
 
 
-builder.Services.AddControllers(options => options.Filters.Add<RequireTrainingFilter>());
+builder.Services.AddControllers(options => options.Filters.Add<RequireTrainingFilter>())
+    .ConfigureApiBehaviorOptions(options =>
+    {
+        // Answers a request that fails model validation with the coded error body.
+        options.InvalidModelStateResponseFactory = context => ApiErrors.BadRequest(ErrorCodes.RequestInvalid, fields: new
+        {
+            Errors = context.ModelState
+                .Where(entry => entry.Value?.Errors.Count > 0)
+                .ToDictionary(entry => entry.Key, entry => entry.Value!.Errors.Select(error => error.ErrorMessage).ToArray())
+        });
+    });
 builder.Services.AddOpenApi();
 
 builder.Services.AddSignalR(options =>
@@ -175,6 +187,7 @@ app.Services.GetRequiredService<IKnowledgeSourceRegistry>();
 app.Services.GetRequiredService<TrainingCourseCatalog>();
 var telemetry = app.Services.GetRequiredService<AppTelemetry>();
 
+app.UseMiddleware<ErrorReferenceMiddleware>();
 app.UseExceptionHandler();
 
 // Sends visitors of the azurewebsites.net host to ki-beta.uit.no. The Office add-ins (/office),

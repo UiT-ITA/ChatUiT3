@@ -19,6 +19,7 @@ using OpenAI.Responses;
 
 namespace ChatUiT.Server.Services.AiProviders.Protocols;
 
+using ChatUiT.Server.Errors;
 using ChatUiT.Server.Models;
 using ChatUiT.Server.Telemetry;
 using ChatUiT.Server.Services.TokenCounting;
@@ -190,7 +191,7 @@ public sealed class OpenAiResponsesProtocol : IApiProtocol
     {
         var items = new List<ResponseItem>();
 
-        foreach (var segment in AiInputSegment.Split(request.Messages, Protocol, request.Model.Id))
+        foreach (var segment in AiInputSegment.Split(ImageLimit.KeepNewest(request.Messages), Protocol, request.Model.Id))
         {
             switch (segment)
             {
@@ -421,7 +422,7 @@ public sealed class OpenAiResponsesProtocol : IApiProtocol
                     // with whatever it had produced, or with nothing at all.
                     var reason = incomplete.Response?.IncompleteStatusDetails?.Reason?.ToString() ?? "unknown";
                     throw new AiTurnFailedException(
-                        $"The model stopped before finishing its answer (incomplete: {reason}).",
+                        ProviderErrors.FromIncompleteReason(reason),
                         reason == "content_filter" ? ErrorCategories.ProviderRefused : ErrorCategories.Internal,
                         reason);
                 }
@@ -429,14 +430,14 @@ public sealed class OpenAiResponsesProtocol : IApiProtocol
                 {
                     var code = failed.Response?.Error?.Code.ToString() ?? "unknown";
                     throw new AiTurnFailedException(
-                        $"The model service reported a failure ({code}): {failed.Response?.Error?.Message ?? "no message"}",
+                        ProviderErrors.FromStreamError(code, failed.Response?.Error?.Message),
                         CategoryOf(code),
                         code);
                 }
                 else if (update is StreamingResponseErrorUpdate error)
                 {
                     throw new AiTurnFailedException(
-                        $"The model service sent an error ({error.Code ?? "unknown"}): {error.Message ?? "no message"}",
+                        ProviderErrors.FromStreamError(error.Code, error.Message),
                         CategoryOf(error.Code),
                         error.Code ?? "unknown");
                 }

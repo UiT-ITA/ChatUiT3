@@ -9,9 +9,13 @@ import {
     parseXmlDocument,
     resolveZipPath
 } from './processingShared';
+import i18n from 'i18next';
+import { CodedError, ErrorCode } from '../errors/errorCodes';
 
 export async function processPptxImport(file: File): Promise<ChatFile> {
-    const zip = await JSZip.loadAsync(await file.arrayBuffer());
+    const zip = await JSZip.loadAsync(await file.arrayBuffer()).catch((error: unknown) => {
+        throw new CodedError(ErrorCode.PptxOpenFailed, i18n.t('files.errors.pptxOpenFailed'), undefined, { cause: error });
+    });
     const slideNames = Object.keys(zip.files)
         .filter((name) => /^ppt\/slides\/slide\d+\.xml$/.test(name))
         .sort(compareOpenXmlPartNames);

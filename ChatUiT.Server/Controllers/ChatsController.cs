@@ -1,3 +1,4 @@
+using ChatUiT.Server.Errors;
 using ChatUiT.Server.Authentication;
 using ChatUiT.Server.Services;
 using Microsoft.AspNetCore.Authorization;
@@ -83,7 +84,7 @@ public class ChatsController : ControllerBase
 
         return _assistantService.ClassificationOf(assistant) == DataClassification.Red
             ? null
-            : BadRequest("Red data requires a red assistant");
+            : ApiErrors.BadRequest(ErrorCodes.RedChatNeedsRedAssistant);
     }
 
     private string GetCurrentUserId()
@@ -127,7 +128,7 @@ public class ChatsController : ControllerBase
 
         if (chat == null)
         {
-            return NotFound("Chat not found");
+            return ApiErrors.NotFound(ErrorCodes.ChatNotFound);
         }
 
         return Ok(MapToDto(chat));
@@ -141,7 +142,7 @@ public class ChatsController : ControllerBase
 
         if (file == null)
         {
-            return NotFound("File not found");
+            return ApiErrors.NotFound(ErrorCodes.ChatFileNotFound);
         }
 
         return Ok(MapFilesToDto(new List<ChatFile> { file }).First());
@@ -205,11 +206,11 @@ public class ChatsController : ControllerBase
         }
         catch (ToolArgumentException ex)
         {
-            return BadRequest(new { error = "invalid_client_tools", message = ex.Message });
+            return ApiErrors.BadRequest(ErrorCodes.ClientToolsInvalid, ex.Message, new { error = "invalid_client_tools" });
         }
         catch (ArgumentException ex)
         {
-            return BadRequest(new { error = "invalid_response", message = ex.Message });
+            return ApiErrors.BadRequest(ErrorCodes.ToolCallResponseInvalid, ex.Message, new { error = "invalid_response" });
         }
     }
 
@@ -242,15 +243,15 @@ public class ChatsController : ControllerBase
             var result = await _chatService.RespondToToolCallAsync(
                 userId, chatId, messageId, toolCallId, response, promptUser, BuildToolSession(response.ClientTools, response.TimeZone));
 
-            return result.Accepted ? Ok(result) : Conflict(result);
+            return result.Accepted ? Ok(result) : ApiErrors.Conflict(ErrorCodes.ToolCallNotWaiting, fields: result);
         }
         catch (ToolArgumentException ex)
         {
-            return BadRequest(new { error = "invalid_client_tools", message = ex.Message });
+            return ApiErrors.BadRequest(ErrorCodes.ClientToolsInvalid, ex.Message, new { error = "invalid_client_tools" });
         }
         catch (ArgumentException ex)
         {
-            return BadRequest(new { error = "invalid_response", message = ex.Message });
+            return ApiErrors.BadRequest(ErrorCodes.ToolCallResponseInvalid, ex.Message, new { error = "invalid_response" });
         }
     }
 
@@ -396,11 +397,11 @@ public class ChatsController : ControllerBase
             newName = request.Name.Trim();
             if (newName.Length == 0)
             {
-                return BadRequest("Chat name cannot be empty");
+                return ApiErrors.BadRequest(ErrorCodes.ChatNameEmpty);
             }
             if (newName.Length > MaxChatNameLength)
             {
-                return BadRequest($"Chat name cannot be longer than {MaxChatNameLength} characters");
+                return ApiErrors.BadRequest(ErrorCodes.ChatNameTooLong, $"Chat name cannot be longer than {MaxChatNameLength} characters.");
             }
         }
 
@@ -415,7 +416,7 @@ public class ChatsController : ControllerBase
 
             if (!request.RedEnabled.Value && chat.RedEnabled)
             {
-                return BadRequest("Red data cannot be switched off once allowed");
+                return ApiErrors.BadRequest(ErrorCodes.RedCannotBeSwitchedOff);
             }
 
             if (request.RedEnabled.Value && !chat.RedEnabled)

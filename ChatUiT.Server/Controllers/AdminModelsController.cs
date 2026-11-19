@@ -1,3 +1,4 @@
+using ChatUiT.Server.Errors;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using ChatUiT.Server.Models;
@@ -51,7 +52,7 @@ public class AdminModelsController : ControllerBase
         var model = await _modelService.GetModelAsync<Model>(id);
         if (model == null)
         {
-            return NotFound($"Model with id {id} not found");
+            return ApiErrors.NotFound(ErrorCodes.ModelNotFound, $"Model with id {id} not found.");
         }
 
         return Ok(ModelDtoMapper.ToDto(model));
@@ -62,13 +63,13 @@ public class AdminModelsController : ControllerBase
     {
         if (ValidateLanguageModel(dto) is { } problem)
         {
-            return BadRequest(problem);
+            return ApiErrors.BadRequest(problem);
         }
 
         var model = ToLanguageModel(dto, Guid.NewGuid().ToString());
         if (model.ExposedInApi && await _catalog.ModelExposureProblemAsync(model) is { } exposureProblem)
         {
-            return BadRequest(exposureProblem);
+            return ApiErrors.BadRequest(exposureProblem);
         }
 
         await _modelService.CreateModelAsync(model);
@@ -81,13 +82,13 @@ public class AdminModelsController : ControllerBase
     {
         if (ValidateLanguageModel(dto) is { } problem)
         {
-            return BadRequest(problem);
+            return ApiErrors.BadRequest(problem);
         }
 
         var model = ToLanguageModel(dto, id);
         if (model.ExposedInApi && await _catalog.ModelExposureProblemAsync(model) is { } exposureProblem)
         {
-            return BadRequest(exposureProblem);
+            return ApiErrors.BadRequest(exposureProblem);
         }
 
         return await SaveAsync(model);
@@ -98,7 +99,7 @@ public class AdminModelsController : ControllerBase
     {
         if (ValidateImageModel(dto) is { } problem)
         {
-            return BadRequest(problem);
+            return ApiErrors.BadRequest(problem);
         }
 
         var model = ToImageModel(dto, Guid.NewGuid().ToString());
@@ -112,7 +113,7 @@ public class AdminModelsController : ControllerBase
     {
         if (ValidateImageModel(dto) is { } problem)
         {
-            return BadRequest(problem);
+            return ApiErrors.BadRequest(problem);
         }
 
         return await SaveAsync(ToImageModel(dto, id));
@@ -125,7 +126,7 @@ public class AdminModelsController : ControllerBase
         var deleted = await _modelService.DeleteModelAsync(id);
         if (!deleted)
         {
-            return NotFound($"Model with id {id} not found");
+            return ApiErrors.NotFound(ErrorCodes.ModelNotFound, $"Model with id {id} not found.");
         }
 
         if (existing != null)
@@ -145,16 +146,16 @@ public class AdminModelsController : ControllerBase
         {
             if (await _modelService.GetModelAsync<Model>(id) == null)
             {
-                return NotFound($"Model with id {id} not found");
+                return ApiErrors.NotFound(ErrorCodes.ModelNotFound, $"Model with id {id} not found.");
             }
 
-            return Ok(new ModelTestResultDto { Success = false, Error = "The model's endpoint does not exist." });
+            return Ok(FailedTest(ErrorCodes.ModelTestEndpointMissing));
         }
 
         var (endpoint, model) = resolved.Value;
         if (!_providers.Supports(endpoint.EndpointType))
         {
-            return Ok(new ModelTestResultDto { Success = false, Error = $"No AI provider is registered for endpoint type {endpoint.EndpointType}." });
+            return Ok(FailedTest(ErrorCodes.ModelTestProviderMissing with { Message = $"No AI provider is registered for endpoint type {endpoint.EndpointType}." }));
         }
 
         ModelTestResultDto result;
@@ -164,12 +165,12 @@ public class AdminModelsController : ControllerBase
             {
                 LanguageModel language => await TestLanguageModelAsync(language, endpoint, cancellationToken),
                 ImageModel image => await TestImageModelAsync(image, endpoint, cancellationToken),
-                _ => new ModelTestResultDto { Success = false, Error = $"{model.Type} models cannot be tested yet." }
+                _ => FailedTest(ErrorCodes.ModelTestTypeNotSupported with { Message = $"{model.Type} models cannot be tested yet." })
             };
         }
         catch (Exception ex)
         {
-            result = new ModelTestResultDto { Success = false, Error = ex.Message };
+            result = FailedTest(ProviderErrors.Classify(ex) ?? (ErrorCodes.ModelTestFailed with { Message = ex.Message }));
         }
 
         _telemetry.AdminModelTested(model.ModelId, result.Success ? Outcomes.Succeeded : Outcomes.Failed);
@@ -196,7 +197,7 @@ public class AdminModelsController : ControllerBase
         var text = await _providers.For(endpoint.EndpointType).CompleteTextAsync(request, cancellationToken);
         if (text.Length == 0)
         {
-            return new ModelTestResultDto { Success = false, Error = "The model returned no text." };
+            return FailedTest(ErrorCodes.ModelTestNoText);
         }
 
         return new ModelTestResultDto { Success = true, Response = text };
@@ -216,7 +217,7 @@ public class AdminModelsController : ControllerBase
         var problems = ImageParameterValidator.Validate(capabilities, parameters);
         if (problems.Count > 0)
         {
-            return new ModelTestResultDto { Success = false, Error = string.Join(" ", problems) };
+            return new ModelTestResultDto { Success = false, Error = ApiErrors.Format(problems) };
         }
 
         var request = new ImageRequest { Model = model, Endpoint = endpoint, Parameters = parameters };
@@ -228,8 +229,10 @@ public class AdminModelsController : ControllerBase
             }
         }
 
-        return new ModelTestResultDto { Success = false, Error = "The model returned no image." };
+        return FailedTest(ErrorCodes.ModelTestNoImage);
     }
+
+    private static ModelTestResultDto FailedTest(ErrorCode error) => new() { Success = false, Error = error.Format() };
 
     // Saves an update; a model of another type under the id is refused.
     private async Task<ActionResult<ModelDto>> SaveAsync(Model model)
@@ -237,79 +240,79 @@ public class AdminModelsController : ControllerBase
         var existing = await _modelService.GetModelAsync<Model>(model.Id);
         if (existing == null)
         {
-            return NotFound($"Model with id {model.Id} not found");
+            return ApiErrors.NotFound(ErrorCodes.ModelNotFound, $"Model with id {model.Id} not found.");
         }
 
         if (existing.Type != model.Type)
         {
-            return BadRequest($"Model {model.Id} is a {existing.Type} model, not a {model.Type} model.");
+            return ApiErrors.BadRequest(ErrorCodes.ModelTypeMismatch, $"Model {model.Id} is a {existing.Type} model, not a {model.Type} model.");
         }
 
         if (!await _modelService.UpdateModelAsync(model))
         {
-            return NotFound($"Model with id {model.Id} not found");
+            return ApiErrors.NotFound(ErrorCodes.ModelNotFound, $"Model with id {model.Id} not found.");
         }
 
         RecordChange("updated", existing, model);
         return Ok(ModelDtoMapper.ToDto(model));
     }
 
-    private static string? ValidateLanguageModel(SaveLanguageModelDto dto)
+    private static ErrorCode? ValidateLanguageModel(SaveLanguageModelDto dto)
     {
         if (!IsValidScheme(dto.Capabilities.TokenCountingScheme))
         {
-            return $"Unknown token counting scheme '{dto.Capabilities.TokenCountingScheme}'";
+            return ErrorCodes.ModelTokenSchemeUnknown with { Message = $"Unknown token counting scheme '{dto.Capabilities.TokenCountingScheme}'." };
         }
 
         if (!Enum.IsDefined(dto.ApiProtocol))
         {
-            return $"Unknown API protocol '{dto.ApiProtocol}'";
+            return ErrorCodes.ModelApiProtocolUnknown with { Message = $"Unknown API protocol '{dto.ApiProtocol}'." };
         }
 
         if (!Enum.IsDefined(dto.Classification))
         {
-            return $"Unknown data classification '{dto.Classification}'";
+            return ErrorCodes.ModelClassificationUnknown with { Message = $"Unknown data classification '{dto.Classification}'." };
         }
 
         return null;
     }
 
-    private static string? ValidateImageModel(SaveImageModelDto dto)
+    private static ErrorCode? ValidateImageModel(SaveImageModelDto dto)
     {
         var capabilities = dto.Capabilities;
         if (!Enum.IsDefined(dto.ImageApi))
         {
-            return $"Unknown image API '{dto.ImageApi}'";
+            return ErrorCodes.ModelImageApiUnknown with { Message = $"Unknown image API '{dto.ImageApi}'." };
         }
 
         if (capabilities.MaxImagesPerRequest < 1)
         {
-            return "The model must make at least 1 image per request.";
+            return ErrorCodes.ModelImagesPerRequestTooLow;
         }
 
         if (capabilities.OutputFormats.Count == 0)
         {
-            return "The model must return at least one format.";
+            return ErrorCodes.ModelOutputFormatMissing;
         }
 
         if (capabilities.SizePresets.Count == 0 && !capabilities.SupportsAutoSize && !capabilities.SupportsCustomSize)
         {
-            return "The model must offer a size: presets, auto size or custom sizes.";
+            return ErrorCodes.ModelSizeMissing;
         }
 
         if (capabilities.SizePresets.Any(s => s.Width <= 0 || s.Height <= 0))
         {
-            return "Every size preset needs a width and height above 0.";
+            return ErrorCodes.ModelSizePresetInvalid;
         }
 
         if (capabilities.MaxPartialImages < 0)
         {
-            return "Partial images cannot be negative.";
+            return ErrorCodes.ModelPartialImagesNegative;
         }
 
         if (capabilities.Editing is { } editing && (editing.MaxInputImages < 1 || editing.InputFormats.Count == 0))
         {
-            return "An editing model must take at least 1 input image and one input format.";
+            return ErrorCodes.ModelEditingInputsMissing;
         }
 
         return null;

@@ -1,6 +1,7 @@
 import React from 'react';
 import { useTranslation } from 'react-i18next';
 import { useAuth } from '../../hooks/useAuth';
+import { ErrorCode, formatError } from '../../errors/errorCodes';
 import Stack from '../common/Stack';
 import Text from '../common/Text';
 
@@ -11,7 +12,7 @@ const ProtectedRoute: React.FC<{ children: React.ReactNode }> = ({ children }) =
   if (!isAdmin) {
     return (
       <Stack p="xl" gap="sm">
-        <Text as="h2" variant="page-title">{t('auth.accessDenied')}</Text>
+        <Text as="h2" variant="page-title">{formatError(t('auth.accessDenied'), ErrorCode.AccessDenied)}</Text>
         <Text as="p" variant="body">{t('auth.noPermission')}</Text>
       </Stack>
     );

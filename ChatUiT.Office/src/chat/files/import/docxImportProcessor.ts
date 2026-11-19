@@ -1,6 +1,7 @@
 /* global Element, File, Node */
 
 import JSZip from "jszip";
+import { ErrorCodes, userError } from "../../../errors/errorCodes";
 import type { ChatFile, ChatFileChunk } from "../fileModels";
 import {
   collectElementText,
@@ -19,7 +20,7 @@ export async function processDocxImport(file: File): Promise<ChatFile> {
   const relsXml = await zip.file("word/_rels/document.xml.rels")?.async("text");
 
   if (!documentXml || !relsXml) {
-    throw new Error("DOCX document content is missing");
+    throw userError(ErrorCodes.DocxContentMissing);
   }
 
   const relationshipTargets = getRelationshipTargets(relsXml, "word/_rels/document.xml.rels");
@@ -27,7 +28,7 @@ export async function processDocxImport(file: File): Promise<ChatFile> {
   const body = Array.from(documentNode.getElementsByTagName("*")).find((element) => element.localName === "body");
 
   if (!body) {
-    throw new Error("DOCX body is missing");
+    throw userError(ErrorCodes.DocxBodyMissing);
   }
 
   const chunks: ChatFileChunk[] = [];

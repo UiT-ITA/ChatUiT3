@@ -1,3 +1,4 @@
+using ChatUiT.Server.Errors;
 using System.Text.Json;
 using ChatUiT.Server.Telemetry;
 using Microsoft.AspNetCore.Authorization;
@@ -112,7 +113,7 @@ public class TelemetryController : ControllerBase
         var records = batch.Records ?? [];
         if (records.Count > MaxRecords)
         {
-            return BadRequest($"At most {MaxRecords} records per batch.");
+            return ApiErrors.BadRequest(ErrorCodes.TelemetryBatchTooLarge, $"At most {MaxRecords} records per batch.");
         }
 
         var accepted = 0;

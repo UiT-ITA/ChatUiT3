@@ -18,6 +18,7 @@ import { useBusy } from '../../hooks/useBusy';
 import PageTitleBar from '../common/PageTitleBar';
 import EmptyNote from '../common/EmptyNote';
 import Text from '../common/Text';
+import { ErrorCode, formatError } from '../../errors/errorCodes';
 
 interface InternalAgentEditorProps {
   agentId: string;
@@ -48,7 +49,7 @@ const InternalAgentEditor: React.FC<InternalAgentEditorProps> = ({ agentId }) =>
   }
 
   if (!agent) {
-    return <EmptyNote>{t('common.notFound')}</EmptyNote>;
+    return <EmptyNote>{formatError(t('common.notFound'), ErrorCode.AdminItemNotFound)}</EmptyNote>;
   }
 
   const modelOptions = (models ?? []).filter(model => model.capabilities.supportsFunctionCalling);

@@ -8,6 +8,7 @@ import {
   runClientToolCall,
 } from '../services/clientTools/clientToolRunner';
 import { ApiError } from '../services/apiService';
+import { ErrorCode, errorRef, formatError } from '../errors/errorCodes';
 import { isAwaitingStatus } from '../types/chatModels';
 import type { ActivityEntryDto, PendingAnswerDto, ToolPreviewDto, UserAnswerDto, UserQuestionDto } from '../types/chatModels';
 
@@ -131,7 +132,7 @@ export function useInteractionDock(chatId: string | undefined) {
       await send();
       setAnswered(previous => new Set(previous).add(current.entry.toolCallId!));
     } catch (failure) {
-      setError(failure instanceof ApiError && failure.status === 400 ? failure.message : t('interaction.failed'));
+      setError(failure instanceof ApiError && failure.status === 400 ? failure.displayMessage : formatError(t('interaction.failed'), ErrorCode.AnswerNotSent, errorRef(failure)));
     } finally {
       setBusy(false);
     }

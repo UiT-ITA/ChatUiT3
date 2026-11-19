@@ -13,6 +13,7 @@ using Microsoft.Extensions.Logging;
 
 namespace ChatUiT.Server.Services.AiProviders.Protocols;
 
+using ChatUiT.Server.Errors;
 using ChatUiT.Server.Models;
 using ChatUiT.Server.Telemetry;
 using ChatUiT.Server.Services.TokenCounting;
@@ -215,7 +216,7 @@ public sealed class AnthropicMessagesProtocol : IApiProtocol
             turns.Add((role, content));
         }
 
-        foreach (var segment in AiInputSegment.Split(request.Messages, Protocol, request.Model.Id))
+        foreach (var segment in AiInputSegment.Split(ImageLimit.KeepNewest(request.Messages), Protocol, request.Model.Id))
         {
             switch (segment)
             {
@@ -507,7 +508,7 @@ public sealed class AnthropicMessagesProtocol : IApiProtocol
                     continue;
                 }
 
-                // Fails the turn when the model refused it, with the refusal's category and explanation.
+                // Fails the turn when the model refused it, with the refusal's category.
                 if (streamEvent.TryPickDelta(out var messageDelta) && messageDelta != null)
                 {
                     stopReason = messageDelta.Delta.StopReason?.Raw() ?? stopReason;
@@ -516,8 +517,7 @@ public sealed class AnthropicMessagesProtocol : IApiProtocol
                     if (messageDelta.Delta.StopReason?.Raw() == RefusalStopReason)
                     {
                         var category = messageDelta.Delta.StopDetails?.Category?.Raw() ?? "unknown";
-                        var explanation = messageDelta.Delta.StopDetails?.Explanation ?? "no explanation";
-                        throw new AiTurnFailedException($"The model refused to answer ({category}): {explanation}", ErrorCategories.ProviderRefused, category);
+                        throw new AiTurnFailedException(ErrorCodes.ProviderRefused, ErrorCategories.ProviderRefused, category);
                     }
 
                     continue;

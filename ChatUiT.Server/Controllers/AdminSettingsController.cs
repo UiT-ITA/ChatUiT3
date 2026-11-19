@@ -1,3 +1,4 @@
+using ChatUiT.Server.Errors;
 using ChatUiT.Server.Models;
 using ChatUiT.Server.Services;
 using Microsoft.AspNetCore.Authorization;
@@ -42,17 +43,17 @@ public class AdminSettingsController : ControllerBase
     {
         if (!await IsKnownModelAsync(updateDto.DefaultModelId))
         {
-            return BadRequest($"Unknown model id {updateDto.DefaultModelId}");
+            return ApiErrors.BadRequest(ErrorCodes.SettingsModelUnknown, $"Unknown model id {updateDto.DefaultModelId}.");
         }
 
         if (!await IsKnownModelAsync(updateDto.ChatNamingModelId))
         {
-            return BadRequest($"Unknown model id {updateDto.ChatNamingModelId}");
+            return ApiErrors.BadRequest(ErrorCodes.SettingsModelUnknown, $"Unknown model id {updateDto.ChatNamingModelId}.");
         }
 
         if (!await IsSystemAssistantAsync(updateDto.DefaultAssistantId))
         {
-            return BadRequest($"Unknown system assistant id {updateDto.DefaultAssistantId}");
+            return ApiErrors.BadRequest(ErrorCodes.SettingsAssistantUnknown, $"Unknown system assistant id {updateDto.DefaultAssistantId}.");
         }
 
         var settings = new AppSettings

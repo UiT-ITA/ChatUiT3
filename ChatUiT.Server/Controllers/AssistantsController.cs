@@ -1,3 +1,4 @@
+using ChatUiT.Server.Errors;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Authorization;
 using ChatUiT.Server.Services;
@@ -60,7 +61,7 @@ public class AssistantsController : ControllerBase
             return null;
         }
 
-        return BadRequest(new
+        return ApiErrors.BadRequest(ErrorCodes.AssistantToolsNotAllowed, fields: new
         {
             error = "tools_not_allowed",
             invalidToolIds = check.Invalid,
@@ -82,7 +83,7 @@ public class AssistantsController : ControllerBase
             return null;
         }
 
-        return BadRequest(new
+        return ApiErrors.BadRequest(ErrorCodes.AssistantKnowledgeSourcesNotAllowed, fields: new
         {
             error = "knowledge_sources_not_allowed",
             unknownKnowledgeSourceIds = check.Unknown,
@@ -109,7 +110,7 @@ public class AssistantsController : ControllerBase
 
         if (file == null)
         {
-            return NotFound("File not found");
+            return ApiErrors.NotFound(ErrorCodes.AssistantFileNotFound);
         }
 
         return Ok(file);
@@ -140,7 +141,7 @@ public class AssistantsController : ControllerBase
         }
         catch (AssistantValidationException ex)
         {
-            return BadRequest(ex.Message);
+            return ApiErrors.BadRequest(ex.Error, ex.Message);
         }
     }
 
@@ -169,7 +170,7 @@ public class AssistantsController : ControllerBase
         }
         catch (AssistantValidationException ex)
         {
-            return BadRequest(ex.Message);
+            return ApiErrors.BadRequest(ex.Error, ex.Message);
         }
     }
 
@@ -208,7 +209,7 @@ public class AssistantsController : ControllerBase
 
         if (!success)
         {
-            return BadRequest("This assistant cannot be set as your default.");
+            return ApiErrors.BadRequest(ErrorCodes.AssistantCannotBeDefault);
         }
 
         await _hubContext.Clients.Group(userId).AssistantsUpdated();
@@ -254,7 +255,7 @@ public class AssistantsController : ControllerBase
         }
         catch (SharedAssistantRefusedException ex)
         {
-            return BadRequest(new { error = "tools_not_allowed", message = ex.Message, disallowedTools = ex.DisallowedToolNames });
+            return ApiErrors.BadRequest(ErrorCodes.SharedAssistantToolsNotAllowed, ex.Message, new { error = "tools_not_allowed", disallowedTools = ex.DisallowedToolNames });
         }
     }
 

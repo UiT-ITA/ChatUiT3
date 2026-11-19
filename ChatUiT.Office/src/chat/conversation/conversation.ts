@@ -16,6 +16,7 @@ import type {
   StreamEvent,
   TextPart,
 } from "../api/types";
+import { ErrorCodes, serverError, userError, userErrorText } from "../../errors/errorCodes";
 import type { ChatFile } from "../files/fileModels";
 import { toFilePart } from "../files/filePart";
 import { ToolResultWithImages, type ClientToolDefinition, type ToolArguments } from "../tools/types";
@@ -259,7 +260,7 @@ export class Conversation {
    */
   async answerApproval(requestId: string, decision: ApprovalDecision): Promise<void> {
     if (this.isBusy()) {
-      throw new Error("Wait for the current response to finish.");
+      throw userError(ErrorCodes.AnswerWhileBusy);
     }
 
     if (this.state.previews[requestId]) {
@@ -278,10 +279,10 @@ export class Conversation {
       (item): item is McpApprovalRequestItem => item.type === "mcp_approval_request" && item.id === requestId
     );
     if (!request) {
-      throw new Error("Unknown approval request.");
+      throw userError(ErrorCodes.ApprovalUnknown);
     }
     if (approvalState(this.state.items, request) !== "pending") {
-      throw new Error("This approval request is no longer pending.");
+      throw userError(ErrorCodes.ApprovalNotPending);
     }
 
     const response: McpApprovalResponseItem = {
@@ -293,19 +294,19 @@ export class Conversation {
       if (decision.approve) {
         const answers = decision.answers ?? [];
         if (answers.length !== (request.chatuit_questions?.length ?? 0)) {
-          throw new Error("Give one answer per question.");
+          throw userError(ErrorCodes.AnswerCountMismatch);
         }
         if (!answers.some((answer) => answer && (answer.selected.length > 0 || answer.text?.trim()))) {
-          throw new Error("An answer picks an option or has text.");
+          throw userError(ErrorCodes.AnswerEmpty);
         }
         response.chatuit_answers = answers;
       }
     } else if (decision.approve && decision.editedArguments !== undefined) {
       if (request.chatuit_preview?.allow_edit !== true) {
-        throw new Error("This request does not allow edited arguments.");
+        throw userError(ErrorCodes.EditNotAllowed);
       }
       if (!isJsonObjectString(decision.editedArguments)) {
-        throw new Error("Edited arguments must be a JSON object.");
+        throw userError(ErrorCodes.EditNotObject);
       }
       response.chatuit_edited_arguments = decision.editedArguments;
     }
@@ -462,7 +463,7 @@ export class Conversation {
           status: "idle",
           live: [],
           runningCallId: null,
-          error: describeError(error),
+          error: userErrorText(error, ErrorCodes.ResponseUnexpected),
           activity: finishActivity(this.state.activity),
         });
       }
@@ -488,7 +489,7 @@ export class Conversation {
       }));
     }
 
-    const events = await this.options.client.stream(request, signal);
+    const { events, ref } = await this.options.client.stream(request, signal);
     let live: OutputItem[] = [];
     let output: OutputItem[] | null = null;
 
@@ -502,10 +503,10 @@ export class Conversation {
         continue;
       }
       if (event.type === "response.failed") {
-        throw new Error(event.response.error?.message || "The response failed.");
+        throw serverError(event.response.error?.message, ErrorCodes.ResponseFailed, { ref });
       }
       if (event.type === "error") {
-        throw new Error(event.message || "The server reported an error.");
+        throw serverError(event.message, ErrorCodes.StreamError, { ref });
       }
       const next = applyStreamEvent(live, event);
       const activity = applyActivityEvent(this.state.activity, event);
@@ -520,7 +521,7 @@ export class Conversation {
       return null;
     }
     if (output === null) {
-      throw new Error("The response stream ended before the response completed.");
+      throw userError(ErrorCodes.StreamEnded, { ref });
     }
     return output;
   }

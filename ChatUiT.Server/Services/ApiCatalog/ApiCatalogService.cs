@@ -1,3 +1,4 @@
+using ChatUiT.Server.Errors;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -26,7 +27,7 @@ public interface IApiCatalogService
     Task<IReadOnlyList<ApiTarget>> GetUsableAsync(UserAccess access);
 
     /// <summary>Why the model cannot be exposed under its <see cref="Model.ModelId"/>, or null.</summary>
-    Task<string?> ModelExposureProblemAsync(LanguageModel model);
+    Task<ErrorCode?> ModelExposureProblemAsync(LanguageModel model);
 }
 
 /// <summary>
@@ -72,33 +73,33 @@ public sealed partial class ApiCatalogService : IApiCatalogService
     /// tied to the arguments a second inner run produces. An agent whose function is an agent tool
     /// with confirmable functions is therefore refused. Checked on save and on every resolve.
     /// </summary>
-    public static string? ExposureProblem(InternalAgent agent)
+    public static ErrorCode? ExposureProblem(InternalAgent agent)
     {
         foreach (var function in agent.Functions)
         {
             if (function is InternalAgentTool nested && nested.Agent.Functions.OfType<IConfirmableTool>().FirstOrDefault() is { } confirmable)
             {
-                return $"'{agent.Id}' cannot be exposed: its function '{function.Id}' is an agent whose function '{confirmable.Id}' needs confirmation, which the Responses API cannot resume inside a nested agent.";
+                return ErrorCodes.AgentNotExposable with { Message = $"'{agent.Id}' cannot be exposed: its function '{function.Id}' is an agent whose function '{confirmable.Id}' needs confirmation, which the Responses API cannot resume inside a nested agent." };
             }
         }
 
         return null;
     }
 
-    public async Task<string?> ModelExposureProblemAsync(LanguageModel model)
+    public async Task<ErrorCode?> ModelExposureProblemAsync(LanguageModel model)
     {
         if (!PublicIdPattern().IsMatch(model.ModelId))
         {
-            return $"The model id '{model.ModelId}' is its id in the API, so it must match ^[a-z0-9][a-z0-9._-]{{0,63}}$.";
+            return ErrorCodes.ModelApiIdInvalid with { Message = $"The model id '{model.ModelId}' is its id in the API, so it must match ^[a-z0-9][a-z0-9._-]{{0,63}}$." };
         }
 
         if (_agents.Find(model.ModelId) != null)
         {
-            return $"The model id '{model.ModelId}' is an internal agent's id in the API.";
+            return ErrorCodes.ModelApiIdIsAgentId with { Message = $"The model id '{model.ModelId}' is an internal agent's id in the API." };
         }
 
         var other = (await _models.GetModelsAsync<LanguageModel>()).FirstOrDefault(m => m.ExposedInApi && m.Id != model.Id && m.ModelId == model.ModelId);
-        return other == null ? null : $"'{other.ModelName}' is already exposed in the API with the model id '{model.ModelId}'.";
+        return other == null ? null : ErrorCodes.ModelApiIdTaken with { Message = $"'{other.ModelName}' is already exposed in the API with the model id '{model.ModelId}'." };
     }
 
     public async Task<ApiTarget?> ResolveAsync(string publicId, UserAccess access)

@@ -18,6 +18,7 @@ import { floatingPanelClass } from '../common/floatingPanel';
 import { spacePx } from '../common/layout';
 import FormFooter from '../common/FormFooter';
 import Text from '../common/Text';
+import { ErrorCode, errorText } from '../../errors/errorCodes';
 
 /** The fields and footer every model type's editor shares. */
 
@@ -143,7 +144,7 @@ export const ModelEditorFooter: React.FC<{ modelId: string; dirty: boolean }> = 
     try {
       setTestResult(await testModel(modelId));
     } catch (error) {
-      setTestResult({ success: false, error: error instanceof Error ? error.message : String(error) });
+      setTestResult({ success: false, error: errorText(error, ErrorCode.ModelTestFailed, t('admin.models.test.failed')) });
     } finally {
       setTesting(false);
     }

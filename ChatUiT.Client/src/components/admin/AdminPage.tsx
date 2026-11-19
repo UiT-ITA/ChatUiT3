@@ -22,6 +22,7 @@ import PageTitleBar from '../common/PageTitleBar';
 import EmptyNote from '../common/EmptyNote';
 import Page, { PageIntro } from '../common/Page';
 import Text from '../common/Text';
+import { ErrorCode, formatError } from '../../errors/errorCodes';
 
 const AdminPage: React.FC = () => {
   useSignals();
@@ -141,7 +142,7 @@ const AdminPage: React.FC = () => {
     }
     if (models === undefined) return renderLoading();
     const model = models.find(m => m.id === modelId);
-    if (!model) return <EmptyNote>{t('common.notFound')}</EmptyNote>;
+    if (!model) return <EmptyNote>{formatError(t('common.notFound'), ErrorCode.AdminItemNotFound)}</EmptyNote>;
     return model.type === 'Image' ? <ImageModelEditor key={modelId} modelId={modelId} /> : <LanguageModelEditor key={modelId} modelId={modelId} />;
   };
 

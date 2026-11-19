@@ -1,6 +1,7 @@
 namespace ChatUiT.Server.Services.AiProviders.Images;
 
 using ChatUiT.Server.Models;
+using ChatUiT.Server.Errors;
 
 /// <summary>What an image API emits while one request runs.</summary>
 public abstract record ImageStreamEvent
@@ -22,11 +23,15 @@ public abstract record ImageStreamEvent
 /// </summary>
 public sealed class ImageGenerationFailedException : Exception, Telemetry.IContentCarryingException
 {
-    public ImageGenerationFailedException(string message, string category, string? code = null) : base(message)
+    public ImageGenerationFailedException(string message, string category, string? code = null, ErrorCode? error = null) : base(message)
     {
         Category = category;
         Code = code;
+        Error = (error ?? ErrorCodes.ImageServiceFailed) with { Message = message };
     }
+
+    /// <summary>The error the user is shown, with <see cref="Exception.Message"/> as its text.</summary>
+    public ErrorCode Error { get; }
 
     /// <summary>The error category, one of <see cref="Telemetry.ErrorCategories"/>.</summary>
     public string Category { get; }

@@ -3,6 +3,7 @@
 import type { HostAdapter } from "../chat/host";
 import type { ClientApp } from "../chat/telemetry/telemetryService";
 import type { ClientToolDefinition } from "../chat/tools/types";
+import { ErrorCodes, formatError } from "../errors/errorCodes";
 import { isSetSupported, type OfficeApp, type OfficeToolDefinition, type RequirementSet } from "./shared/officeTool";
 import { callAsync } from "./shared/callAsync";
 import { excelApp } from "./excel/adapter";
@@ -41,11 +42,13 @@ function appFor(host: Office.HostType | null): { app: OfficeApp; clientApp: Clie
 export function resolveHost(host: Office.HostType | null): HostResult {
   const found = appFor(host);
   if (!found) {
-    return { message: "Open ChatUiT from Word, Excel, PowerPoint or Outlook." };
+    return { message: formatError(ErrorCodes.HostUnsupported) };
   }
   const { app, clientApp } = found;
   if (!isSetSupported(NESTED_APP_AUTH) || !isSetSupported(app.minimum)) {
-    return { message: `ChatUiT needs a newer version of ${app.name}.` };
+    return {
+      message: formatError({ ...ErrorCodes.HostTooOld, message: `ChatUiT needs a newer version of ${app.name}.` }),
+    };
   }
   return {
     clientApp,

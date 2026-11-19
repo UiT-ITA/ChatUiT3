@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Text.Json;
 using System.Text.Json.Serialization;
+using ChatUiT.Server.Errors;
 
 namespace ChatUiT.Server.Services.ResponsesApi;
 
@@ -335,14 +336,18 @@ public sealed class ErrorDetail
 /// <summary>A request the API refuses, with the HTTP status and the error body fields.</summary>
 public sealed class ResponsesApiException : System.Exception
 {
-    public ResponsesApiException(int status, string message, string? param = null, string? code = null, string type = "invalid_request_error")
-        : base(message)
+    public ResponsesApiException(int status, ErrorCode error, string? param = null, string? code = null, string type = "invalid_request_error")
+        : base(error.Message)
     {
         Status = status;
+        Error = error;
         Param = param;
         Code = code;
         Type = type;
     }
+
+    /// <summary>The ChatUiT error code, with <see cref="System.Exception.Message"/> as its text.</summary>
+    public ErrorCode Error { get; }
 
     public int Status { get; }
 
@@ -352,10 +357,12 @@ public sealed class ResponsesApiException : System.Exception
 
     public string Type { get; }
 
-    public static ResponsesApiException BadRequest(string message, string? param = null, string? code = null) => new(400, message, param, code);
+    public static ResponsesApiException BadRequest(ErrorCode error, string message, string? param = null, string? code = null)
+        => new(400, error with { Message = message }, param, code);
 
     public static ResponsesApiException ModelNotFound(string? model) => new(
-        404, $"The model '{model}' does not exist or you do not have access to it.", "model", "model_not_found");
+        404, ErrorCodes.ResponsesModelNotFound with { Message = $"The model '{model}' does not exist or you do not have access to it." }, "model", "model_not_found");
 
-    public ErrorBody ToBody() => new() { Error = new ErrorDetail { Message = Message, Type = Type, Param = Param, Code = Code } };
+    /// <summary>The error body. Its <c>message</c> is the formatted text with the ChatUiT code and reference.</summary>
+    public ErrorBody ToBody() => new() { Error = new ErrorDetail { Message = Error.Format(), Type = Type, Param = Param, Code = Code } };
 }

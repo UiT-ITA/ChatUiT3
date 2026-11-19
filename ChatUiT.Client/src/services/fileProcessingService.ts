@@ -8,13 +8,37 @@ import {
 } from '../utils/fileUtils';
 import { track, trackError } from './telemetryService';
 import { addNotification } from './notificationService';
+import { CodedError, ErrorCode, errorText } from '../errors/errorCodes';
 
 // Rethrows a failed processor chunk load as an app-updated message.
 async function loadProcessor<T>(load: () => Promise<T>): Promise<T> {
     try {
         return await load();
     } catch (error) {
-        throw new Error(i18n.t('files.appUpdated'), { cause: error });
+        throw new CodedError(ErrorCode.AppUpdated, i18n.t('files.appUpdated'), undefined, { cause: error });
+    }
+}
+
+/** The code and text for an import failure without its own code, by processor. */
+const importFailures: Record<string, { code: ErrorCode; key: string }> = {
+    image: { code: ErrorCode.ImageImportFailed, key: 'files.errors.imageFailed' },
+    text: { code: ErrorCode.TextImportFailed, key: 'files.errors.textFailed' },
+    pdf: { code: ErrorCode.PdfImportFailed, key: 'files.errors.pdfFailed' },
+    docx: { code: ErrorCode.DocxImportFailed, key: 'files.errors.docxFailed' },
+    pptx: { code: ErrorCode.PptxImportFailed, key: 'files.errors.pptxFailed' },
+    xlsx: { code: ErrorCode.XlsxImportFailed, key: 'files.errors.xlsxFailed' },
+};
+
+// Rethrows an error without a code as the processor's import failure.
+async function withImportFailure<T>(processor: string, run: () => Promise<T>): Promise<T> {
+    try {
+        return await run();
+    } catch (error) {
+        const failure = importFailures[processor];
+        if (error instanceof CodedError || !failure) {
+            throw error;
+        }
+        throw new CodedError(failure.code, i18n.t(failure.key), undefined, { cause: error });
     }
 }
 
@@ -33,7 +57,7 @@ export class FileProcessingService {
         results.forEach((result, index) => {
             if (result.status === 'fulfilled') return;
             const file = files[index];
-            const reason = result.reason instanceof Error ? result.reason.message : 'File processing failed';
+            const reason = errorText(result.reason, ErrorCode.ImportFailed, i18n.t('files.errors.importFailed'));
             console.error(`Failed to process file ${file.name}:`, result.reason);
             trackError('file_import', {
                 message: failureMessage,
@@ -73,7 +97,7 @@ export class FileProcessingService {
         });
 
         try {
-            const result = await FileProcessingService.importFile(file);
+            const result = await withImportFailure(FileProcessingService.processorFor(file), () => FileProcessingService.importFile(file));
             record('succeeded');
             return result;
         } catch (error) {
@@ -103,7 +127,7 @@ export class FileProcessingService {
             return complexProcessor(file);
         }
 
-        throw new Error(`Unsupported file type: ${file.type}`);
+        throw new CodedError(ErrorCode.NoImportProcessor, i18n.t('files.errors.noProcessor'));
     }
 
     static isImageFile(file: File): boolean {

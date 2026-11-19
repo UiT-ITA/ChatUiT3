@@ -3,6 +3,7 @@ import { useTranslation } from 'react-i18next';
 import { useAsyncOptions } from '@ui-sdk/react/async-options';
 import { Combobox, ComboboxContent, ComboboxEmpty, ComboboxInput, ComboboxItem, ComboboxList, ComboboxStatus } from '@ui-sdk/react/combobox';
 import type { DirectoryGroupDto } from '../../types/admin';
+import { ErrorCode, errorText } from '../../errors/errorCodes';
 import { Icon } from './Icon';
 import Chip from './Chip';
 import Stack from './Stack';
@@ -88,7 +89,7 @@ const GroupPicker: React.FC<GroupPickerProps> = ({ value, onChange, search, reso
         {searching && (
           <ComboboxContent sideOffset={spacePx('xs')} className={floatingPanelClass()} style={{ width: 'var(--anchor-width)' }}>
             <ComboboxStatus className="t-caption">
-              {state => state.status === 'error' ? <span className="group-picker-error">{t('groupPicker.error')}</span> : state.loading ? t('groupPicker.searching') : null}
+              {state => state.status === 'error' ? <span className="group-picker-error">{errorText(groups.error, ErrorCode.GroupSearchFailed, t('groupPicker.error'))}</span> : state.loading ? t('groupPicker.searching') : null}
             </ComboboxStatus>
             <ComboboxEmpty className="t-caption">
               {state => state.empty && !state.loading && groups.status !== 'error' ? t('groupPicker.noResults') : null}

@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useSignals } from '@preact/signals-react/runtime';
+import { ErrorCode, errorRef, formatError } from '../../errors/errorCodes';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import Alert from '../common/Alert';
@@ -40,7 +41,7 @@ import './TrainingScreen.css';
 type CourseState =
   | { status: 'loading' }
   | { status: 'ready'; language: string; course: TrainingCourse }
-  | { status: 'error' };
+  | { status: 'error'; ref?: string };
 
 /** Course text as markdown. Links open in a new tab. */
 const CourseText = ({ children }: { children: string }) => (
@@ -98,7 +99,7 @@ const TrainingScreen = () => {
     let cancelled = false;
     fetchTrainingCourse(language).then(
       (course) => { if (!cancelled) setState({ status: 'ready', language, course }); },
-      () => { if (!cancelled) setState({ status: 'error' }); },
+      (error) => { if (!cancelled) setState({ status: 'error', ref: errorRef(error) }); },
     );
     return () => { cancelled = true; };
   }, [language, attempt]);
@@ -142,7 +143,7 @@ const TrainingScreen = () => {
   if (state.status !== 'ready' || state.language !== language) {
     return frame(state.status === 'error' ? (
       <Stack gap="md" align="start">
-        <Text as="p" variant="body" tone="secondary">{t('training.loadError')}</Text>
+        <Text as="p" variant="body" tone="secondary">{formatError(t('training.loadError'), ErrorCode.CourseLoadFailed, state.ref)}</Text>
         <Button variant="primary" onClick={() => { setState({ status: 'loading' }); setAttempt(value => value + 1); }}>{t('training.retry')}</Button>
       </Stack>
     ) : (

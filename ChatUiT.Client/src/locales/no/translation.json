@@ -428,7 +428,29 @@
     "unknownFile": "Ukjent fil",
     "removeFile": "Fjern fil",
     "typeNotSupported": "Filtype ikke støttet",
-    "appUpdated": "En ny versjon av ChatUiT er tilgjengelig. Last inn siden på nytt og prøv igjen."
+    "appUpdated": "En ny versjon av ChatUiT er tilgjengelig. Last inn siden på nytt og prøv igjen.",
+    "errors": {
+      "importFailed": "Filen kunne ikke importeres.",
+      "noProcessor": "Denne filtypen kan ikke importeres.",
+      "imageLoadFailed": "Et bilde kunne ikke leses. Det kan være skadet eller i et format nettleseren ikke støtter.",
+      "fileReadFailed": "Fildataene kunne ikke leses.",
+      "canvasUnavailable": "Nettleseren kunne ikke behandle bilder. Prøv en annen nettleser.",
+      "imageEncodeFailed": "Et bilde kunne ikke konverteres.",
+      "pdfFailed": "PDF-filen kunne ikke leses.",
+      "pdfPasswordProtected": "PDF-filen er passordbeskyttet. Fjern passordet og prøv igjen.",
+      "pdfInvalid": "Filen er ikke en gyldig PDF eller er skadet.",
+      "docxFailed": "Word-dokumentet kunne ikke leses.",
+      "docxContentMissing": "Word-dokumentet mangler dokumentinnhold.",
+      "docxBodyMissing": "Word-dokumentet mangler dokumentets hoveddel.",
+      "docxOpenFailed": "Word-dokumentet kunne ikke åpnes. Det kan være skadet eller passordbeskyttet.",
+      "pptxFailed": "PowerPoint-presentasjonen kunne ikke leses.",
+      "pptxOpenFailed": "PowerPoint-presentasjonen kunne ikke åpnes. Den kan være skadet eller passordbeskyttet.",
+      "xlsxFailed": "Excel-arbeidsboken kunne ikke leses.",
+      "xlsxOpenFailed": "Excel-arbeidsboken kunne ikke åpnes. Den kan være skadet eller passordbeskyttet.",
+      "xlsxImagesUnsupported": "Bildene i denne Excel-arbeidsboken kan ikke leses.",
+      "imageFailed": "Bildet kunne ikke importeres.",
+      "textFailed": "Tekstfilen kunne ikke leses."
+    }
   },
   "contextColumn": {
     "chats": "Samtaler",
@@ -611,7 +633,8 @@
       "test": {
         "button": "Test",
         "running": "Tester...",
-        "saveFirst": "Lagre endringene før du tester."
+        "saveFirst": "Lagre endringene før du tester.",
+        "failed": "Testen kunne ikke kjøres."
       },
       "actions": {
         "delete": "Slett"
@@ -1210,5 +1233,19 @@
       "openNewVersion": "Obligatorisk opplæring (ny versjon)",
       "certificate": "Last ned kursbevis"
     }
+  },
+  "errors": {
+    "notSignedIn": "Du er ikke logget inn. Last inn siden på nytt for å logge inn.",
+    "tooLarge": "Forespørselen er for stor til å sendes.",
+    "toolsNotAllowed": "Ett eller flere av de valgte verktøyene er ikke tilgjengelige for deg.",
+    "knowledgeSourcesNotAllowed": "Én eller flere av de valgte kunnskapskildene er ikke tilgjengelige for deg.",
+    "invalidTools": "Ett eller flere av de valgte verktøyene finnes ikke.",
+    "invalidGroupIds": "Én eller flere gruppe-id-er er ikke gyldige objekt-id-er.",
+    "unknownKnowledgeSources": "Én eller flere av de valgte kunnskapskildene finnes ikke.",
+    "courseVersionChanged": "Kurset har en ny versjon. Last inn kurset på nytt og ta testen igjen.",
+    "realtimeNoToken": "Kunne ikke koble til serveren fordi du ikke er logget inn.",
+    "realtimeConnectionFailed": "Kunne ikke åpne direkteforbindelsen til serveren.",
+    "signInFailed": "Innloggingen mislyktes.",
+    "trainingStatusFailed": "Opplæringsstatusen din kunne ikke lastes."
   }
 }

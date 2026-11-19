@@ -11,6 +11,7 @@ import type { AssistantDto, AssistantSummaryDto, FullAssistantDto } from "../typ
 import type { ChatFile } from "../types/fileModels";
 import { formatFileSize, mapToCreateChatFileDto } from "../utils/fileUtils";
 import { addNotification } from "./notificationService";
+import { CodedError, ErrorCode } from "../errors/errorCodes";
 
 // Must stay below the server's Kestrel MaxRequestBodySize (100 MB); the margin
 // covers headers and JSON overhead.
@@ -20,8 +21,9 @@ function ensurePayloadWithinLimit(payload: unknown): void {
   const size = new Blob([JSON.stringify(payload)]).size;
   if (size > MAX_MESSAGE_PAYLOAD_BYTES) {
     const message = `Message is too large to send (${formatFileSize(size)}). The limit is ${formatFileSize(MAX_MESSAGE_PAYLOAD_BYTES)} — remove some files or use smaller ones.`;
-    addNotification({ level: "Error", message });
-    throw new Error(message);
+    const error = new CodedError(ErrorCode.MessageTooLarge, message);
+    addNotification({ level: "Error", message: error.displayMessage });
+    throw error;
   }
 }
 

@@ -9,6 +9,8 @@ import { receiveMediaGenerationEvent, resumeGenerationStreams, setStreamGenerati
 import type { MediaGenerationEvent } from "../types/mediaGenerationModels";
 import type { NotifyLevel } from "../types/notification";
 import { telemetryQuery, trackError } from "./telemetryService";
+import i18n from "i18next";
+import { CodedError, ErrorCode } from "../errors/errorCodes";
 
 class SignalrService {
   private static instance: SignalrService;
@@ -66,7 +68,7 @@ class SignalrService {
     try {
       const token = await authService.getAccessToken();
       if (!token) {
-        throw new Error("No access token available");
+        throw new CodedError(ErrorCode.RealtimeNoToken, i18n.t("errors.realtimeNoToken"));
       }
 
       if (!this.connection || this.connection.state === signalR.HubConnectionState.Disconnected) {
@@ -87,7 +89,7 @@ class SignalrService {
 
       while (this.connection.state !== signalR.HubConnectionState.Connected) {
         if (this.connection.state === signalR.HubConnectionState.Disconnected) {
-          throw new Error("Connection failed");
+          throw new CodedError(ErrorCode.RealtimeConnectionFailed, i18n.t("errors.realtimeConnectionFailed"));
         }
         await new Promise(resolve => setTimeout(resolve, 10));
       }

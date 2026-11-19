@@ -1,3 +1,4 @@
+using ChatUiT.Server.Errors;
 using System.Text.Json;
 using Azure;
 using Azure.Core;
@@ -49,22 +50,22 @@ public sealed class LogsQueryRunner : IInsightsQueryRunner
         }
         catch (RequestFailedException exception) when (exception.Status is 401 or 403)
         {
-            _logger.LogWarning(exception, "Insights query refused with status {Status}", exception.Status);
+            _logger.LogWarning(exception, "Insights query refused with status {Status} ({ErrorCode})", exception.Status, ErrorCodes.InsightsNoAccess.Code);
             return InsightsTableDto.Failed(InsightsErrors.NoAccess);
         }
         catch (AuthenticationFailedException exception)
         {
-            _logger.LogWarning(exception, "Insights query got no token");
+            _logger.LogWarning(exception, "Insights query got no token ({ErrorCode})", ErrorCodes.InsightsNoAccess.Code);
             return InsightsTableDto.Failed(InsightsErrors.NoAccess);
         }
         catch (RequestFailedException exception)
         {
-            _logger.LogWarning(exception, "Insights query failed with status {Status}", exception.Status);
+            _logger.LogWarning(exception, "Insights query failed with status {Status} ({ErrorCode})", exception.Status, ErrorCodes.InsightsQueryFailed.Code);
             return InsightsTableDto.Failed(InsightsErrors.QueryFailed);
         }
         catch (OperationCanceledException exception) when (!cancellationToken.IsCancellationRequested)
         {
-            _logger.LogWarning(exception, "Insights query timed out");
+            _logger.LogWarning(exception, "Insights query timed out ({ErrorCode})", ErrorCodes.InsightsQueryFailed.Code);
             return InsightsTableDto.Failed(InsightsErrors.QueryFailed);
         }
     }

@@ -157,7 +157,7 @@ public sealed class OpenAiChatCompletionsProtocol : IApiProtocol
             messages.Add(new SystemChatMessage(request.SystemPrompt));
         }
 
-        foreach (var segment in AiInputSegment.Split(request.Messages, ApiProtocol.OpenAiChatCompletions, request.Model.Id))
+        foreach (var segment in AiInputSegment.Split(ImageLimit.KeepNewest(request.Messages), ApiProtocol.OpenAiChatCompletions, request.Model.Id))
         {
             switch (segment)
             {
