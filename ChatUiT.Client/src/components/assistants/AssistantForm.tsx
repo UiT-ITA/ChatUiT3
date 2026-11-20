@@ -284,7 +284,8 @@ const AssistantForm: React.FC<AssistantFormProps> = ({
         >
           <span>
             <Text variant="table-strong" tone={wider ? 'warning' : 'inherit'}>{tool.name}</Text>
-            <ClassificationBadge classification={tool.classification} ml="sm" />
+            {/* TODO: Gradering av verktøy er skjult for nå. Vi må komme tilbake til denne senere. */}
+            {/* <ClassificationBadge classification={tool.classification} ml="sm" /> */}
             <Text tone="muted"> — {tool.description}</Text>
             {(tool.requiresConfirmation || wider) && (
               <Stack as="span" direction="row" gap="sm" wrap mt="xs">
