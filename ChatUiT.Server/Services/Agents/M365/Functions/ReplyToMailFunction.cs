@@ -20,10 +20,12 @@ public sealed record ReplyToMailArgs(
     [property: Description("Message id from search_mail or get_mail.")]
     string MessageId,
     MailReplyMode Mode,
-    [property: Description("Plain-text message placed above the original email.")]
+    [property: Description("The message placed above the original email, as plain text or HTML according to format.")]
     string Text,
     [property: Description("Recipient email addresses. Required for forward, ignored otherwise.")]
-    List<string>? To);
+    List<string>? To,
+    [property: Description("Format of the message: text or html. Defaults to text.")]
+    MailBodyFormat? Format);
 
 /// <summary>Replies to, replies all to or forwards an email after the user has approved it.</summary>
 public sealed class ReplyToMailFunction : ConfirmableTool<ReplyToMailArgs>
@@ -57,7 +59,7 @@ public sealed class ReplyToMailFunction : ConfirmableTool<ReplyToMailArgs>
         return new ToolPreview(
             title,
             null,
-            [new ToolPreviewField("To", recipients, Role: ToolPreviewFieldRole.Recipients), new ToolPreviewField("Subject", original.Str("subject") ?? "", Role: ToolPreviewFieldRole.Subject), new ToolPreviewField("Message", args.Text, Multiline: true, Role: ToolPreviewFieldRole.Body)],
+            [new ToolPreviewField("To", recipients, Role: ToolPreviewFieldRole.Recipients), new ToolPreviewField("Subject", original.Str("subject") ?? "", Role: ToolPreviewFieldRole.Subject), new ToolPreviewField("Message", args.Text, Multiline: true, Role: ToolPreviewFieldRole.Body, Html: args.Format == MailBodyFormat.Html)],
             AllowEdit: false, Kind: ToolPreviewKind.Message);
     }
 
@@ -65,6 +67,24 @@ public sealed class ReplyToMailFunction : ConfirmableTool<ReplyToMailArgs>
     {
         var to = Validate(args);
         var action = args.Mode switch { MailReplyMode.Forward => "forward", MailReplyMode.ReplyAll => "replyAll", _ => "reply" };
+        if (args.Format == MailBodyFormat.Html)
+        {
+            var createAction = args.Mode switch { MailReplyMode.Forward => "createForward", MailReplyMode.ReplyAll => "createReplyAll", _ => "createReply" };
+            var draft = await MailSupport.CreateHtmlReplyDraftAsync(_graph, invocation.Context, args.MessageId, createAction, args.Text, args.Mode == MailReplyMode.Forward ? to : [], ct);
+            var draftPath = $"me/messages/{Uri.EscapeDataString(draft.Str("id")!)}";
+            try
+            {
+                await _graph.PostAsync(invocation.Context, $"{draftPath}/send", new { }, MailSupport.SendScopes, ct);
+            }
+            catch
+            {
+                await _graph.DeleteAsync(invocation.Context, draftPath, MailSupport.WriteScopes, CancellationToken.None);
+                throw;
+            }
+
+            return ToolResult.Ok(new { sent = true, mode = action }, "Email sent.");
+        }
+
         object body = args.Mode == MailReplyMode.Forward
             ? new { comment = args.Text, toRecipients = MailSupport.Recipients(to) }
             : new { comment = args.Text };
@@ -75,7 +95,7 @@ public sealed class ReplyToMailFunction : ConfirmableTool<ReplyToMailArgs>
 
     private static List<string> Validate(ReplyToMailArgs args)
     {
-        if (string.IsNullOrWhiteSpace(args.MessageId) || string.IsNullOrWhiteSpace(args.Text))
+        if (string.IsNullOrWhiteSpace(args.MessageId) || MailSupport.IsBlank(args.Text, args.Format))
         {
             throw new ToolArgumentException("messageId and text are required.");
         }

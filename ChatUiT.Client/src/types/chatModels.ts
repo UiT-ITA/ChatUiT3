@@ -82,6 +82,8 @@ export interface ToolPreviewFieldDto {
   value: string;
   multiline: boolean;
   role: ToolPreviewFieldRole;
+  /** The value is HTML. */
+  html: boolean;
 }
 
 /** What the user sees before approving a confirmable tool call. */

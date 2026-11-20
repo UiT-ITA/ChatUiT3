@@ -93,4 +93,7 @@ public class ToolPreviewFieldDto
     public string Value { get; set; } = string.Empty;
     public bool Multiline { get; set; }
     public ToolPreviewFieldRole Role { get; set; } = ToolPreviewFieldRole.None;
+
+    /// <summary>The value is HTML.</summary>
+    public bool Html { get; set; }
 }

@@ -8,7 +8,7 @@ using ChatUiT.Server.Services.Tools;
 namespace ChatUiT.Server.Services.Agents.M365.Functions;
 
 public sealed record SendChatMessageArgs(
-    [property: Description("The plain-text message to send.")]
+    [property: Description(TeamsChatSupport.HtmlMessageDescription)]
     string Text,
     [property: Description("Id of an existing chat (from list_chats). Provide this or userIdOrEmail, not both.")]
     string? ChatId,
@@ -46,7 +46,7 @@ public sealed class SendChatMessageFunction : ConfirmableTool<SendChatMessageArg
         return new ToolPreview(
             "Send Teams message",
             null,
-            [new ToolPreviewField("To", recipient, Role: ToolPreviewFieldRole.Recipients), new ToolPreviewField("Message", args.Text, Multiline: true, Role: ToolPreviewFieldRole.Body)],
+            [new ToolPreviewField("To", recipient, Role: ToolPreviewFieldRole.Recipients), new ToolPreviewField("Message", args.Text, Multiline: true, Role: ToolPreviewFieldRole.Body, Html: true)],
             AllowEdit: false, Kind: ToolPreviewKind.Message);
     }
 
@@ -67,7 +67,7 @@ public sealed class SendChatMessageFunction : ConfirmableTool<SendChatMessageArg
 
     private static void Validate(SendChatMessageArgs args)
     {
-        if (string.IsNullOrWhiteSpace(args.Text))
+        if (GraphJson.IsBlankHtml(args.Text))
         {
             throw new ToolArgumentException("text must not be empty.");
         }
