@@ -37,8 +37,6 @@ public sealed record InternalAgentSetup(
 /// </summary>
 public sealed class InternalAgentRunner
 {
-    private const float Temperature = 0.2f;
-
     private readonly IModelService _modelService;
     private readonly IAiProviderRegistry _providers;
     private readonly InternalAgentSettingsService _settings;
@@ -107,7 +105,6 @@ public sealed class InternalAgentRunner
 
         var settings = new ChatSettings
         {
-            Temperature = Temperature,
             ReasoningEffort = effort,
             AvailableToolIds = agent.Functions.Select(f => f.Id).ToList()
         };

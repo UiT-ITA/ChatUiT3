@@ -2,14 +2,14 @@ import React, { useState, useRef, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { useSignals } from '@preact/signals-react/runtime';
-import { PROMPT_SNIPPET_IDS, withDescendants, type AssistantAccessPolicyDto, type AssistantFileDto, type CreateAssistantDto, type FullAssistantDto, type PromptSnippetId, type ReasoningEffort, type ChatToolDto, type UpdateAssistantDto, type UserRole } from '../../types/assistantModels';
+import { PROMPT_SNIPPET_IDS, withDescendants, type AssistantAccessPolicyDto, type AssistantFileDto, type CreateAssistantDto, type FullAssistantDto, type PromptSnippetId, type ChatToolDto, clampAssistantEffort, reasoningTier, type UpdateAssistantDto, type UserRole } from '../../types/assistantModels';
 import { getModels } from '../../services/modelService';
 import { getAppDefaults } from '../../services/appSettingsService';
 import { getTools } from '../../services/toolService';
 import { getKnowledgeSources } from '../../services/knowledgeSourceService';
 import { adminToolsSignal } from '../../services/adminDataService';
 import { searchAdminGroups, resolveAdminGroups } from '../../services/adminService';
-import { ALL_ROLES, clampEffort, CLIENT_TOOLS_POLICY_ID, type AdminToolDto, type ToolAccessPolicyDto } from '../../types/admin';
+import { ALL_ROLES, CLIENT_TOOLS_POLICY_ID, type AdminToolDto, type ToolAccessPolicyDto } from '../../types/admin';
 import GroupPicker from '../common/GroupPicker';
 import type { UserLanguageModelDto } from '../../types/modelModels';
 import { createAssistant, updateAssistant, fetchAssistantFile, getAssistants } from '../../services/assistantService';
@@ -48,15 +48,6 @@ const createEmptyKnowledgeFiles = (): Record<KnowledgeFileCategory, KnowledgeFil
   ragLoaded: []
 });
 
-/** True when a temperature control makes sense for the model at the current effort. */
-const showsTemperature = (model: UserLanguageModelDto | undefined, effort: ReasoningEffort | undefined) => {
-  if (!model) return false;
-  if (model.capabilities.temperature === 'Supported') return true;
-  // gpt-5.x rejects a non-default temperature while reasoning is active.
-  return model.capabilities.temperature === 'SupportedWhenReasoningDisabled'
-    && (effort ?? 'None') === 'None';
-};
-
 
 /**
  * Whether everyone the assistant admits may also use the tool on their own. System assistants
@@ -75,7 +66,6 @@ const emptyFormData = (): CreateAssistantDto => ({
   tags: [],
   modelId: '',
   systemPrompt: '',
-  temperature: 0.7,
   reasoningEffort: 'None',
   availableToolIds: [],
   promptSnippets: [],
@@ -107,7 +97,6 @@ const formStateFor = (editingAssistant: FullAssistantDto | null) => {
       tags: editingAssistant.tags || [],
       modelId: editingAssistant.modelId,
       systemPrompt: editingAssistant.systemPrompt || '',
-      temperature: editingAssistant.temperature,
       reasoningEffort: editingAssistant.reasoningEffort,
       availableToolIds: editingAssistant.availableToolIds || [],
       promptSnippets: editingAssistant.promptSnippets ?? [],
@@ -173,8 +162,8 @@ const AssistantForm: React.FC<AssistantFormProps> = ({
 
   const models: UserLanguageModelDto[] = modelsSignal.value ?? [];
   const selectedModel = models.find(m => m.id === formData.modelId);
-  const supportedEfforts = selectedModel?.capabilities.supportedEfforts ?? [];
-  const currentEffort = clampEffort(formData.reasoningEffort, supportedEfforts);
+  const supportedEfforts = selectedModel?.capabilities.assistantEfforts ?? [];
+  const currentEffort = clampAssistantEffort(formData.reasoningEffort, supportedEfforts);
 
   // Token budget for always-loaded files. A model without a counter has no budget.
   const scheme = parseScheme(selectedModel?.capabilities.tokenCountingScheme);
@@ -263,7 +252,7 @@ const AssistantForm: React.FC<AssistantFormProps> = ({
 
   const handleModelChange = (modelId: string) => {
     const newModel = models.find(m => m.id === modelId);
-    const effort = clampEffort(formData.reasoningEffort, newModel?.capabilities.supportedEfforts);
+    const effort = clampAssistantEffort(formData.reasoningEffort, newModel?.capabilities.assistantEfforts);
 
     if (effort !== formData.reasoningEffort) {
       setFormData(prev => ({ ...prev, modelId, reasoningEffort: effort }));
@@ -441,13 +430,10 @@ const AssistantForm: React.FC<AssistantFormProps> = ({
     // Normalize unsupported params on submit
     const normalized: CreateAssistantDto = { ...formData, files: buildFileDtos() };
     if (selectedModel) {
-      normalized.reasoningEffort = clampEffort(
+      normalized.reasoningEffort = clampAssistantEffort(
         formData.reasoningEffort,
-        selectedModel.capabilities.supportedEfforts,
+        selectedModel.capabilities.assistantEfforts,
       );
-      if (!showsTemperature(selectedModel, normalized.reasoningEffort)) {
-        normalized.temperature = 1;
-      }
       if (!selectedModel.capabilities.tools) {
         normalized.availableToolIds = [];
       }
@@ -725,30 +711,10 @@ const AssistantForm: React.FC<AssistantFormProps> = ({
         </Field>
 
         <Stack gap="lg">
-          {showsTemperature(selectedModel, formData.reasoningEffort) && (
-            <Slider
-              label={t('assistants.form.temperature')}
-              labelAside={<Text variant="caption" tone="muted">{formData.temperature}</Text>}
-              min={0}
-              max={1}
-              step={0.1}
-              value={formData.temperature}
-              onChange={(value) => handleChange('temperature', value)}
-              disabled={loading}
-              maxWidth="sm"
-            />
-          )}
-
-          {/* Explains why the temperature control disappeared once reasoning was turned on. */}
-          {selectedModel?.capabilities.temperature === 'SupportedWhenReasoningDisabled'
-            && (formData.reasoningEffort ?? 'None') !== 'None' && (
-            <FieldDescription>{t('assistants.form.temperatureUnavailableWithReasoning')}</FieldDescription>
-          )}
-
           {supportedEfforts.length > 0 && (
             <Slider
               label={t('assistants.form.reasoningEffort')}
-              labelAside={<Text variant="caption" tone="muted">{t(`assistants.form.reasoningLevels.${currentEffort.toLowerCase()}`)}</Text>}
+              labelAside={<Text variant="caption" tone="muted">{t(`assistants.form.reasoningTiers.${reasoningTier(currentEffort)}`)}</Text>}
               min={0}
               max={supportedEfforts.length - 1}
               step={1}

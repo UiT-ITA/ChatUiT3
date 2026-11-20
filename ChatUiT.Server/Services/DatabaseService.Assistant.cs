@@ -236,7 +236,6 @@ public partial class DatabaseService
             {
                 SystemPrompt = document.ChatSettings.SystemPrompt,
                 Model = model,
-                Temperature = document.ChatSettings.Temperature,
                 ReasoningEffort = document.ChatSettings.ReasoningEffort,
                 AvailableToolIds = document.ChatSettings.AvailableToolIds,
                 PromptSnippets = document.ChatSettings.PromptSnippets
@@ -264,7 +263,6 @@ public partial class DatabaseService
             {
                 SystemPrompt = assistant.ChatSettings.SystemPrompt,
                 ModelId = assistant.ChatSettings.Model?.Id ?? string.Empty,
-                Temperature = assistant.ChatSettings.Temperature,
                 ReasoningEffort = assistant.ChatSettings.ReasoningEffort,
                 AvailableToolIds = assistant.ChatSettings.AvailableToolIds,
                 PromptSnippets = assistant.ChatSettings.PromptSnippets

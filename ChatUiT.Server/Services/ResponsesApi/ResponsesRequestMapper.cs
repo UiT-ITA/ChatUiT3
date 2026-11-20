@@ -166,14 +166,13 @@ public sealed class ResponsesRequestMapper
 
         var settings = new ChatSettings
         {
-            Temperature = request.Temperature ?? 1f,
+            Temperature = request.Temperature,
             ReasoningEffort = ParseEffort(request.Reasoning?.Effort)
         };
 
         var resolved = ChatParameterResolver.Resolve(target.Model.Capabilities, settings);
         return resolved with
         {
-            Temperature = request.Temperature == null ? null : resolved.Temperature,
             MaxOutputTokens = request.MaxOutputTokens is { } max ? Math.Min(max, resolved.MaxOutputTokens) : resolved.MaxOutputTokens,
             SummaryLength = summaryLength
         };

@@ -13,11 +13,8 @@ public class UserLanguageModelCapabilitiesDto
     public bool Vision { get; set; }
     public bool Tools { get; set; }
 
-    /// <summary>"Unsupported" | "Supported" | "SupportedWhenReasoningDisabled".</summary>
-    public TemperatureSupport Temperature { get; set; }
-
-    /// <summary>Ascending list of accepted reasoning levels; empty when the model does not reason.</summary>
-    public List<ReasoningEffort> SupportedEfforts { get; set; } = new List<ReasoningEffort>();
+    /// <summary>The levels an assistant can choose on this model, one per tier, lowest first. See <see cref="Assistant.Efforts"/>.</summary>
+    public List<ReasoningEffort> AssistantEfforts { get; set; } = new List<ReasoningEffort>();
 
     public int ContextSize { get; set; }
     public int MaxOutputTokens { get; set; }

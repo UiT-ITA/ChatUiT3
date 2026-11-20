@@ -16,19 +16,15 @@ Each model also has a **context window**, the amount of text it can hold at once
 
 ## Reasoning effort
 
-Reasoning models can spend time thinking before they write. The effort setting on the assistant controls how much: None, Low, Medium, High, Extra high or Max, depending on what the model supports.
+Reasoning models can spend time thinking before they write. The effort setting on the assistant controls how much: Fast, Normal or Extra. Fast is the default. Fast means no reasoning, or low reasoning for models that always reason.
 
 | Effort | Good for |
 |---|---|
-| None or Low | Rewriting, summaries, simple questions. Fast. |
-| Medium | Most everyday work. |
-| High and up | Analysis, maths, tricky code, anything with several steps. Slower and costs more. |
+| Fast | Rewriting, summaries, simple questions. |
+| Normal | Most everyday work. |
+| Extra | Analysis, maths, tricky code, anything with several steps. Slower and costs more. |
 
 The thinking is shown in the activity line under the answer, so you can see how the model got there.
-
-## Temperature
-
-Temperature sets how varied the answers are. Near 0 the model gives the same careful answer every time. Near 1 it takes more chances with wording and ideas, which suits brainstorming. Some models do not accept a temperature at all, and some only accept it while reasoning is off. The assistant form hides the slider in those cases.
 
 ## Tools
 

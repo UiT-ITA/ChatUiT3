@@ -13,7 +13,7 @@ export const CAPABILITIES: { key: Capability; icon: IconName }[] = [
 /** The capabilities of an assistant's model, in the order of CAPABILITIES. */
 export function capabilityKeys(assistant: { modelId: string }, models: UserLanguageModelDto[]): Capability[] {
   const model = models.find(m => m.id === assistant.modelId)?.capabilities;
-  const has = { vision: !!model?.vision, tools: !!model?.tools, reasoning: (model?.supportedEfforts.length ?? 0) > 0 };
+  const has = { vision: !!model?.vision, tools: !!model?.tools, reasoning: (model?.assistantEfforts.length ?? 0) > 0 };
   return CAPABILITIES.map(({ key }) => key).filter(key => has[key]);
 }
 

@@ -40,7 +40,6 @@ export interface FullAssistantDto {
     /** The lowest classification of the model and the tools of the selected toolboxes. Server-computed. */
     classification: DataClassification;
     systemPrompt?: string;
-    temperature: number;
     reasoningEffort: ReasoningEffort;
     availableToolIds: string[];
     promptSnippets: PromptSnippetId[];
@@ -109,7 +108,6 @@ export interface AssistantDto {
     /** The lowest classification of the model and the tools of the selected toolboxes. Server-computed. */
     classification: DataClassification;
     systemPrompt?: string;
-    temperature?: number;
     reasoningEffort?: ReasoningEffort;
     isVisible: boolean;
     isFavorite: boolean;
@@ -131,7 +129,6 @@ export interface CreateAssistantDto {
     tags?: string[];
     modelId: string;
     systemPrompt?: string;
-    temperature?: number;
     reasoningEffort?: ReasoningEffort;
     availableToolIds?: string[];
     promptSnippets?: PromptSnippetId[];
@@ -148,7 +145,6 @@ export interface UpdateAssistantDto {
     tags?: string[];
     modelId: string;
     systemPrompt?: string;
-    temperature?: number;
     reasoningEffort?: ReasoningEffort;
     availableToolIds?: string[];
     promptSnippets?: PromptSnippetId[];
@@ -158,7 +154,7 @@ export interface UpdateAssistantDto {
     access?: AssistantAccessPolicyDto | null;
 }
 
-/** Which levels a given model actually accepts varies — see UserLanguageModelCapabilitiesDto.supportedEfforts. */
+/** Which levels an assistant can choose on a given model varies — see UserLanguageModelCapabilitiesDto.assistantEfforts. */
 export type ReasoningEffort =
     "None"
     | "Low"
@@ -166,6 +162,40 @@ export type ReasoningEffort =
     | "High"
     | "XHigh"
     | "Max";
+
+/** The reasoning choices an assistant offers: Fast (None, or Low when the model always reasons), Normal (Medium) and Extra (High). */
+export type ReasoningTier = "fast" | "normal" | "extra";
+
+/** The tier an effort belongs to, or undefined for levels above High. */
+export function reasoningTier(effort: ReasoningEffort): ReasoningTier | undefined {
+    switch (effort) {
+        case "None":
+        case "Low":
+            return "fast";
+        case "Medium":
+            return "normal";
+        case "High":
+            return "extra";
+        default:
+            return undefined;
+    }
+}
+
+const TIER_ORDER: ReasoningTier[] = ["fast", "normal", "extra"];
+
+const tierIndex = (effort: ReasoningEffort) => TIER_ORDER.indexOf(reasoningTier(effort) ?? "extra");
+
+/**
+ * Maps an effort onto the model's assistant level for the same tier, with levels above High counted
+ * as Extra. A tier the model lacks steps down to the nearest lower tier, else up to the lowest one.
+ * Mirrors the server's Assistant.NormalizeEffort.
+ */
+export function clampAssistantEffort(requested: ReasoningEffort | undefined, levels: ReasoningEffort[] | undefined): ReasoningEffort {
+    if (!levels || levels.length === 0) return "None";
+
+    const tier = tierIndex(requested ?? "None");
+    return [...levels].reverse().find(level => tierIndex(level) <= tier) ?? levels[0];
+}
 
 /** Background knowledge the server loads at send time, which the current user may give to an assistant. */
 export interface KnowledgeSourceDto {

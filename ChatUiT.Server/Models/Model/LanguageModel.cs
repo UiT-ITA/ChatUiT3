@@ -86,9 +86,6 @@ public class LanguageModelCapabilities
     public ReasoningEffort LowestEffort =>
         SupportedEfforts.Count == 0 ? ReasoningEffort.None : SupportedEfforts.Min();
 
-    public bool SupportsEffort(ReasoningEffort effort) =>
-        effort == ReasoningEffort.None ? !SupportsReasoning || CanDisableReasoning : SupportedEfforts.Contains(effort);
-
     /// <summary>
     /// Maps a requested effort onto the nearest level this model accepts. A model that
     /// cannot reason always resolves to <see cref="ReasoningEffort.None"/>; a model that

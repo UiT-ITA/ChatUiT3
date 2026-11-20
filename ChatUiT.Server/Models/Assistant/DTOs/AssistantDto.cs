@@ -35,7 +35,6 @@ public class FullAssistantDto
     /// <summary>The lowest classification of the model and the tools of the selected toolboxes. Set when reading an assistant.</summary>
     public DataClassification Classification { get; set; }
     public string SystemPrompt { get; set; } = string.Empty;
-    public float Temperature { get; set; } = 0.7f;
     public ReasoningEffort ReasoningEffort { get; set; } = ReasoningEffort.None;
     public List<string> AvailableToolIds { get; set; } = new List<string>();
     public List<string> PromptSnippets { get; set; } = new List<string>();
@@ -125,7 +124,6 @@ public class CreateAssistantDto
     [Required]
     public string ModelId { get; set; } = string.Empty;
     public string SystemPrompt { get; set; } = string.Empty;
-    public float Temperature { get; set; } = 0.7f;
     public ReasoningEffort ReasoningEffort { get; set; } = ReasoningEffort.None;
     public List<string> AvailableToolIds { get; set; } = new List<string>();
     public List<string> PromptSnippets { get; set; } = new List<string>();
@@ -146,7 +144,6 @@ public class UpdateAssistantDto
     [Required]
     public string ModelId { get; set; } = string.Empty;
     public string SystemPrompt { get; set; } = string.Empty;
-    public float Temperature { get; set; } = 0.7f;
     public ReasoningEffort ReasoningEffort { get; set; } = ReasoningEffort.None;
     public List<string> AvailableToolIds { get; set; } = new List<string>();
     public List<string> PromptSnippets { get; set; } = new List<string>();

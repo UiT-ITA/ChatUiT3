@@ -579,9 +579,6 @@ public partial class DatabaseService
         [JsonProperty("modelId")]
         public string ModelId { get; set; } = string.Empty;
 
-        [JsonProperty("temperature")]
-        public float Temperature { get; set; } = 0.5f;
-
         [JsonProperty("reasoningEffort")]
         [JsonConverter(typeof(StringEnumConverter))]
         public ReasoningEffort ReasoningEffort { get; set; } = ReasoningEffort.None;

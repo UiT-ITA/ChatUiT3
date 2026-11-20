@@ -24,6 +24,42 @@ public class Assistant
 
     public const string SystemOwnerId = "System";
 
+    /// <summary>
+    /// The model's level for each assistant tier it supports, lowest first: Fast (None, or Low when
+    /// the model always reasons), Normal (Medium) and Extra (High). Empty when the model does not reason.
+    /// </summary>
+    public static List<ReasoningEffort> Efforts(LanguageModelCapabilities capabilities)
+    {
+        var fast = capabilities.CanDisableReasoning ? ReasoningEffort.None : ReasoningEffort.Low;
+        return new[] { fast, ReasoningEffort.Medium, ReasoningEffort.High }
+            .Where(capabilities.SupportedEfforts.Contains)
+            .ToList();
+    }
+
+    /// <summary>
+    /// Maps an effort onto the model's level for the same tier, with XHigh and Max counted as Extra.
+    /// A tier the model lacks steps down to the nearest lower tier, else up to the lowest one.
+    /// A model that does not reason resolves to None.
+    /// </summary>
+    public static ReasoningEffort NormalizeEffort(LanguageModelCapabilities capabilities, ReasoningEffort requested)
+    {
+        var levels = Efforts(capabilities);
+        if (levels.Count == 0)
+        {
+            return ReasoningEffort.None;
+        }
+
+        var tier = Tier(requested);
+        return levels.LastOrDefault(level => Tier(level) <= tier, levels[0]);
+    }
+
+    private static int Tier(ReasoningEffort effort) => effort switch
+    {
+        ReasoningEffort.None or ReasoningEffort.Low => 0,
+        ReasoningEffort.Medium => 1,
+        _ => 2
+    };
+
     public bool IsSystem => OwnerId == SystemOwnerId;
 }
 

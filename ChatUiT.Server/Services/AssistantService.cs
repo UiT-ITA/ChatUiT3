@@ -718,7 +718,6 @@ namespace ChatUiT.Server.Services
             description = assistant.Description,
             tags = assistant.Tags,
             model = assistant.ChatSettings.Model?.Id,
-            temperature = assistant.ChatSettings.Temperature,
             reasoningEffort = assistant.ChatSettings.ReasoningEffort.ToString(),
             tools = assistant.ChatSettings.AvailableToolIds,
             promptSnippets = assistant.ChatSettings.PromptSnippets,
@@ -775,7 +774,6 @@ namespace ChatUiT.Server.Services
                 ChatSettings = BuildChatSettings(
                     model,
                     createDto.SystemPrompt,
-                    createDto.Temperature,
                     createDto.ReasoningEffort,
                     createDto.AvailableToolIds,
                     createDto.PromptSnippets),
@@ -833,21 +831,16 @@ namespace ChatUiT.Server.Services
         private ChatSettings BuildChatSettings(
             LanguageModel model,
             string systemPrompt,
-            float temperature,
             ReasoningEffort requestedEffort,
             List<string>? requestedToolIds,
             List<string>? requestedSnippets)
         {
             var capabilities = model.Capabilities;
-
-            var effort = capabilities.SupportsEffort(requestedEffort)
-                ? requestedEffort
-                : capabilities.ClampEffort(requestedEffort);
+            var effort = Assistant.NormalizeEffort(capabilities, requestedEffort);
 
             return new ChatSettings
             {
                 SystemPrompt = systemPrompt,
-                Temperature = capabilities.Temperature == TemperatureSupport.Unsupported ? 1f : temperature,
                 ReasoningEffort = effort,
                 Model = model,
                 AvailableToolIds = capabilities.SupportsFunctionCalling
@@ -871,7 +864,6 @@ namespace ChatUiT.Server.Services
             assistant.ChatSettings = BuildChatSettings(
                 model,
                 updateDto.SystemPrompt,
-                updateDto.Temperature,
                 updateDto.ReasoningEffort,
                 updateDto.AvailableToolIds,
                 updateDto.PromptSnippets);
@@ -915,7 +907,6 @@ namespace ChatUiT.Server.Services
                 ModelId = assistant.ChatSettings.Model.Id,
                 Classification = ClassificationOf(assistant),
                 SystemPrompt = assistant.ChatSettings.SystemPrompt,
-                Temperature = assistant.ChatSettings.Temperature,
                 ReasoningEffort = assistant.ChatSettings.ReasoningEffort,
                 AvailableToolIds = assistant.ChatSettings.AvailableToolIds,
                 PromptSnippets = assistant.ChatSettings.PromptSnippets,

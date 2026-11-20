@@ -7,6 +7,7 @@ import ToolCallBlock from './ToolCallBlock';
 import type { LiveActivity } from '../../services/chatService';
 import { isAwaitingStatus, type ActivityEntryDto, type MessageActivityDto } from '../../types/chatModels';
 import { formatDuration } from '../../utils/durationUtils';
+import { reasoningTier, type ReasoningEffort } from '../../types/assistantModels';
 import Box from '../common/Box';
 import Button from '../common/Button';
 import { Collapsible, CollapsiblePanel, CollapsibleTrigger } from '@ui-sdk/react/collapsible';
@@ -72,8 +73,8 @@ export default function MessageActivity({ activity, live, children }: Props) {
             {summary && (
               <Stack direction="row" wrap rowGap="xs" columnGap="lg" mb="sm">
                 <Text variant="meta" tone="muted">{t('chat.activity.model')}: {summary.model}</Text>
-                {summary.effort !== "None" && (
-                  <Text variant="meta" tone="muted">{t('chat.activity.effort')}: {t(`assistants.form.reasoningLevels.${summary.effort.toLowerCase()}`)}</Text>
+                {reasoningTier(summary.effort) !== "fast" && (
+                  <Text variant="meta" tone="muted">{t('chat.activity.effort')}: {effortLabel(summary.effort, t)}</Text>
                 )}
                 {summary.toolRounds > 0 && <Text variant="meta" tone="muted">{t('chat.activity.rounds', { count: summary.toolRounds })}</Text>}
               </Stack>
@@ -159,6 +160,12 @@ function thinkingHeading(text: string): string | null {
   const line = source.split("\n")[0].trim().replace(/^#{1,6}\s+/, "").replace(/\*\*/g, "").trim();
   if (line.length === 0) return null;
   return line.length > MAX_HEADING_LENGTH ? `${line.slice(0, MAX_HEADING_LENGTH - 1).trimEnd()}…` : line;
+}
+
+/** The assistant tier name for an effort, or the level name for efforts above High. */
+function effortLabel(effort: ReasoningEffort, t: Translate): string {
+  const tier = reasoningTier(effort);
+  return tier ? t(`assistants.form.reasoningTiers.${tier}`) : t(`assistants.form.reasoningLevels.${effort.toLowerCase()}`);
 }
 
 function doneHeadline(summary: MessageActivityDto, thinkingCount: number, toolCount: number, t: Translate): string {
