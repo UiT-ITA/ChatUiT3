@@ -342,7 +342,7 @@ public class ChatService : IChatService
             if (wasEmpty)
             {
                 _ = Task.Run(async () => {
-                    var name = await GenerateChatNameAsync(chatId, userMessage.Content);
+                    var name = await GenerateChatNameAsync(userId, chatId, userMessage.Content);
                     if (name != null)
                     {
                         await UpdateChatAsync(userId, chatId, name, null);
@@ -1275,7 +1275,7 @@ public class ChatService : IChatService
 
     // Generates a chat name using the model configured in the admin settings.
     // Returns null when no naming model is configured or it can no longer be resolved.
-    private async Task<string?> GenerateChatNameAsync(string chatId, string prompt)
+    private async Task<string?> GenerateChatNameAsync(string userId, string chatId, string prompt)
     {
         var settings = await _settingsService.GetEffectiveAppSettingsAsync();
 
@@ -1308,6 +1308,18 @@ public class ChatService : IChatService
             ReasoningEffort = ReasoningEffort.None
         };
 
+        // The names of the user's 10 most recently created chats, excluding this chat and unnamed chats.
+        var recentNames = (await _databaseService.GetChatListAsync(userId))
+            .Where(c => c.Id != chatId && !string.IsNullOrWhiteSpace(c.Name) && c.Name != "New chat")
+            .OrderByDescending(c => c.CreatedAt)
+            .Take(10)
+            .Select(c => c.Name)
+            .ToList();
+
+        var namingPrompt = recentNames.Count == 0
+            ? ChatNamingPrompt
+            : ChatNamingPrompt + RecentChatNamesPrompt + string.Join("\n", recentNames.Select(n => "- " + n)) + "\n\n";
+
         var request = new AiRequest
         {
             Model = model,
@@ -1315,7 +1327,7 @@ public class ChatService : IChatService
             SystemPrompt = string.Empty,
             Messages = AiInputItem.From(new List<Models.ChatMessage>
             {
-                new() { Role = AiChatRole.User, Content = ChatNamingPrompt + prompt }
+                new() { Role = AiChatRole.User, Content = namingPrompt + UserMessagePrompt + prompt }
             }),
             Parameters = ChatParameterResolver.Resolve(model.Capabilities, namingSettings)
         };
@@ -1339,11 +1351,17 @@ public class ChatService : IChatService
         "Create a name for this chat based on the users initial message. The name must be shorter than 30 characters. " +
         "Make the name as descriptive as possible. You should **only** respond with the name, exactly the way the name " +
         "should be written. It should have no quotes around it. It should not have any formating. It will be set " +
-        "directly as the name of the chat. The user's message:\n\n";
+        "directly as the name of the chat.\n\n";
+
+    private const string RecentChatNamesPrompt =
+        "These are the names of the user's most recent chats. Do not reuse any of these names. If this chat is about " +
+        "the same topic as one of them, make the name clearly different from it:\n";
+
+    private const string UserMessagePrompt = "The user's message:\n\n";
 
     private async void SetChatName(string userId, string chatId, string prompt)
     {
-        var name = await GenerateChatNameAsync(chatId, prompt);
+        var name = await GenerateChatNameAsync(userId, chatId, prompt);
         if (name != null)
         {
             await UpdateChatAsync(userId, chatId, null, name);
