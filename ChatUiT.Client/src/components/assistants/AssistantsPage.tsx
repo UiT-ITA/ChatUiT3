@@ -11,7 +11,8 @@ import { ASSISTANT_SECTIONS } from './assistantSections';
 import { capabilityKeys, distinctCapabilities } from './assistantCapabilities';
 import AssistantCard, { DefaultBadge } from './AssistantCard';
 import CapabilityTag from './CapabilityTag';
-import ClassificationBadge from '../classification/ClassificationBadge';
+// TODO: Brukes av graderingen av verktøy som er kommentert ut under.
+// import ClassificationBadge from '../classification/ClassificationBadge';
 import Badge from '../common/Badge';
 import { CardGrid } from '../common/CardGrid';
 import Scroller from '../common/Scroller';
@@ -100,7 +101,8 @@ const AssistantsPage: React.FC = () => {
     <React.Fragment key={tool.id}>
       <span>
         <Text variant="table-strong">{tool.name}</Text>
-        <ClassificationBadge classification={tool.classification} ml="sm" />
+        {/* TODO: Gradering av verktøy er skjult for nå. Vi må komme tilbake til denne senere. */}
+        {/* <ClassificationBadge classification={tool.classification} ml="sm" /> */}
         <Text tone="muted"> — {tool.description}</Text>
         {tool.requiresConfirmation && (
           <Stack as="span" direction="row" gap="sm" wrap mt="xs">
