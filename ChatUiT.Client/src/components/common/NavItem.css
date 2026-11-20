@@ -97,9 +97,9 @@
   transform: translateY(-50%);
 }
 
-.nav-item-group:is(:hover, :focus-within) > .nav-item__actions { display: inline-flex; }
+.nav-item-group:is(:hover, :focus-within, :has(> .nav-item__actions [aria-expanded="true"])) > .nav-item__actions { display: inline-flex; }
 
-.nav-item-group:is(:hover, :focus-within) > .nav-item {
+.nav-item-group:is(:hover, :focus-within, :has(> .nav-item__actions [aria-expanded="true"])) > .nav-item {
   padding-right: calc(var(--space-md) + var(--space-sm) + var(--control-sm));
 }
 
