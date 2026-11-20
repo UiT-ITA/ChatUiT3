@@ -1,4 +1,4 @@
-import type { ReasoningEffortLevel, TemperatureSupport } from './admin';
+import type { ReasoningEffortLevel } from './admin';
 
 /** What a model produces. Each type has its own model DTO and capabilities. */
 export type ModelType = 'Language' | 'Image' | 'Voice';
@@ -12,9 +12,8 @@ export const MODEL_TYPES: ModelType[] = ['Language', 'Image', 'Voice'];
 export interface UserLanguageModelCapabilitiesDto {
     vision: boolean;
     tools: boolean;
-    temperature: TemperatureSupport;
-    /** Empty means the model does not reason; omitting 'None' means reasoning cannot be turned off. */
-    supportedEfforts: ReasoningEffortLevel[];
+    /** The levels an assistant can choose on this model, one per tier, lowest first. Empty means the model does not reason. */
+    assistantEfforts: ReasoningEffortLevel[];
     contextSize: number;
     maxOutputTokens: number;
     knowledgeCutoff: string | null; // "YYYY-MM", null when unknown

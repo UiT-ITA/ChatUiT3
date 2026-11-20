@@ -295,8 +295,7 @@ public class AssistantsController : ControllerBase
             {
                 Vision = m.Capabilities.SupportsVision,
                 Tools = m.Capabilities.SupportsFunctionCalling,
-                Temperature = m.Capabilities.Temperature,
-                SupportedEfforts = m.Capabilities.SupportedEfforts,
+                AssistantEfforts = Assistant.Efforts(m.Capabilities),
                 ContextSize = m.Capabilities.MaxContextTokens,
                 MaxOutputTokens = m.Capabilities.MaxOutputTokens,
                 KnowledgeCutoff = m.Capabilities.KnowledgeCutoff?.ToString("yyyy-MM"),

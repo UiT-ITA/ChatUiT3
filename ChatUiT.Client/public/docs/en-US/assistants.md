@@ -31,8 +31,7 @@ Click one to see its details, or **New assistant** to create one.
 | Model | Which AI model answers. The list shows each model's capabilities, context size and knowledge cutoff. See [Models](/help/models). |
 | Instructions | What the assistant should know and how it should behave. This is sent before every conversation. |
 | Tools | Which tools the assistant may call, if the model supports tools. |
-| Temperature | How varied the answers are, from 0 (predictable) to 1 (varied). Shown only for models that accept it. |
-| Reasoning effort | How long the model may think before answering. Shown only for reasoning models. |
+| Reasoning effort | How long the model may think before answering: Fast, Normal or Extra. Shown only for reasoning models. |
 
 > [!NOT_IMPLEMENTED]
 

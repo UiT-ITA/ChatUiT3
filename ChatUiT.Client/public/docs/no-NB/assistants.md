@@ -31,8 +31,7 @@ Klikk en for å se detaljene, eller **Ny assistent** for å lage en.
 | Modell | Hvilken AI-modell som svarer. Listen viser egenskaper, kontekststørrelse og kunnskapsgrense for hver modell. Se [Modeller](/help/models). |
 | Instruks | Hva assistenten skal vite og hvordan den skal oppføre seg. Sendes før hver samtale. |
 | Verktøy | Hvilke verktøy assistenten får kalle, hvis modellen støtter verktøy. |
-| Temperatur | Hvor varierte svarene er, fra 0 (forutsigbar) til 1 (variert). Vises bare for modeller som godtar det. |
-| Resonneringsinnsats | Hvor lenge modellen får tenke før den svarer. Vises bare for resonnerende modeller. |
+| Resonneringsinnsats | Hvor lenge modellen får tenke før den svarer: Rask, Normal eller Ekstra. Vises bare for resonnerende modeller. |
 
 > [!NOT_IMPLEMENTED]
 

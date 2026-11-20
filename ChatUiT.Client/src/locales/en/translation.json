@@ -229,8 +229,12 @@
         "basicUserInfo": "Include basic info about you",
         "answerPreferences": "Include your answer preferences"
       },
-      "temperature": "Temperature",
       "reasoningEffort": "Reasoning Effort",
+      "reasoningTiers": {
+        "fast": "Fast",
+        "normal": "Normal",
+        "extra": "Extra"
+      },
       "reasoningLevels": {
         "none": "None",
         "low": "Low",
@@ -239,7 +243,6 @@
         "xhigh": "Extra high",
         "max": "Max"
       },
-      "temperatureUnavailableWithReasoning": "This model only accepts a temperature while reasoning is off.",
       "modelNotDefaultEligible": "This is your default assistant. This model cannot be used as a default, so saving will stop new chats from starting here.",
       "toolHints": {
         "requiresConfirmation": "Asks before running",

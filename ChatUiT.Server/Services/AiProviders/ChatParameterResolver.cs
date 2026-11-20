@@ -34,8 +34,13 @@ public static class ChatParameterResolver
         };
     }
 
-    private static float? ResolveTemperature(LanguageModelCapabilities capabilities, float requested, ReasoningEffort effort)
+    private static float? ResolveTemperature(LanguageModelCapabilities capabilities, float? requested, ReasoningEffort effort)
     {
+        if (requested == null)
+        {
+            return null;
+        }
+
         return capabilities.Temperature switch
         {
             TemperatureSupport.Supported => requested,

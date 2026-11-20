@@ -16,19 +16,15 @@ Hver modell har også et **kontekstvindu**, mengden tekst den kan holde på samt
 
 ## Resonneringsinnsats
 
-Resonnerende modeller kan bruke tid på å tenke før de skriver. Nivået på assistenten styrer hvor mye: Ingen, Lav, Middels, Høy, Ekstra høy eller Maks, avhengig av hva modellen støtter.
+Resonnerende modeller kan bruke tid på å tenke før de skriver. Nivået på assistenten styrer hvor mye: Rask, Normal eller Ekstra. Rask er standard. Rask betyr ingen resonnering, eller lav resonnering for modeller som alltid resonnerer.
 
 | Innsats | Passer til |
 |---|---|
-| Ingen eller Lav | Omskriving, sammendrag, enkle spørsmål. Raskt. |
-| Middels | Det meste av daglig arbeid. |
-| Høy og oppover | Analyse, matematikk, vanskelig kode, alt med flere trinn. Tregere og koster mer. |
+| Rask | Omskriving, sammendrag, enkle spørsmål. |
+| Normal | Det meste av daglig arbeid. |
+| Ekstra | Analyse, matematikk, vanskelig kode, alt med flere trinn. Tregere og koster mer. |
 
 Tenkingen vises i aktivitetslinjen under svaret, så du kan se hvordan modellen kom fram til det.
-
-## Temperatur
-
-Temperaturen styrer hvor varierte svarene er. Nær 0 gir modellen det samme forsiktige svaret hver gang. Nær 1 tar den flere sjanser med ordvalg og ideer, noe som passer til idémyldring. Noen modeller godtar ikke temperatur i det hele tatt, og noen bare når resonnering er av. Assistentskjemaet skjuler glidebryteren i de tilfellene.
 
 ## Verktøy
 

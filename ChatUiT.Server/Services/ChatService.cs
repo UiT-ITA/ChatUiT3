@@ -813,8 +813,7 @@ public class ChatService : IChatService
                 assistant.Files,
                 pinnedFileIds,
                 canLoadOnDemand),
-            Temperature = assistant.ChatSettings.Temperature,
-            ReasoningEffort = assistant.ChatSettings.ReasoningEffort,
+            ReasoningEffort = Assistant.NormalizeEffort(model.Capabilities, assistant.ChatSettings.ReasoningEffort),
             AvailableToolIds = assistant.ChatSettings.AvailableToolIds
         };
 
@@ -1304,7 +1303,6 @@ public class ChatService : IChatService
         var namingSettings = new ChatSettings
         {
             Model = model,
-            Temperature = 1f,
             ReasoningEffort = ReasoningEffort.None
         };
 

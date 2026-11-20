@@ -75,6 +75,7 @@ public sealed class ImagePromptRefiner
         var parameters = ChatParameterResolver.Resolve(model.Capabilities, new ChatSettings
         {
             Model = model,
+            Temperature = 0.5f,
             ReasoningEffort = ReasoningEffort.None
         });
 

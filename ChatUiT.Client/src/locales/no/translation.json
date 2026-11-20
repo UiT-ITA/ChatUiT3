@@ -229,8 +229,12 @@
         "basicUserInfo": "Ta med grunnleggende info om deg",
         "answerPreferences": "Ta med dine svarpreferanser"
       },
-      "temperature": "Temperatur",
       "reasoningEffort": "Resonneringsinnsats",
+      "reasoningTiers": {
+        "fast": "Rask",
+        "normal": "Normal",
+        "extra": "Ekstra"
+      },
       "reasoningLevels": {
         "none": "Ingen",
         "low": "Lav",
@@ -239,7 +243,6 @@
         "xhigh": "Ekstra høy",
         "max": "Maks"
       },
-      "temperatureUnavailableWithReasoning": "Denne modellen godtar kun temperatur når resonnering er av.",
       "modelNotDefaultEligible": "Dette er standardassistenten din. Denne modellen kan ikke være standard, så nye samtaler slutter å starte her hvis du lagrer.",
       "toolHints": {
         "requiresConfirmation": "Spør før kjøring",
