@@ -152,7 +152,7 @@ function ChatItem({ chat }: { chat: ChatHeaderDto }) {
         actions={!isRenaming && (
           <Menu>
             <MenuTrigger render={<IconButton icon="moreVert" label={t('sidebar.moreOptions')} size="small" />} />
-            <MenuContent align="start" sideOffset={0} className={floatingPanelClass('small')}>
+            <MenuContent side="right" align="start" sideOffset={0} className={floatingPanelClass('small')}>
               <MenuItem onSelect={() => { setChatFavorite(chat.id, !chat.isFavorite).catch(() => {}); }}>
                 <MenuItemIcon><Icon name="star" size="sm" /></MenuItemIcon>
                 {chat.isFavorite ? t('sidebar.unfavorite') : t('sidebar.favorite')}

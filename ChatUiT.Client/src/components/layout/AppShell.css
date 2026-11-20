@@ -282,8 +282,9 @@
   transition: clip-path var(--dur-base) ease, visibility 0s var(--dur-base);
 }
 
-/* Shown over the main column with its shadow: the clip reaches past the right edge */
-.side-column--peek {
+/* Shown over the main column with its shadow while peeking or while a menu in it is open: the clip reaches past the right edge */
+.side-column--peek,
+.side-column--collapsed:has([aria-haspopup="menu"][aria-expanded="true"]) {
   visibility: visible;
   clip-path: inset(0 calc(-1 * (var(--space-2xl) + var(--space-lg))) 0 0);
   box-shadow: var(--shadow-overlay);
