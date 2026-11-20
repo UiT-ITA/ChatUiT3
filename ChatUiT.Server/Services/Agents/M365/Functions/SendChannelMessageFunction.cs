@@ -13,7 +13,7 @@ public sealed record SendChannelMessageArgs(
     string TeamId,
     [property: Description("Channel id from list_channels.")]
     string ChannelId,
-    [property: Description("The plain-text message to post.")]
+    [property: Description(TeamsChatSupport.HtmlMessageDescription)]
     string Text,
     [property: Description("Id of a post from get_channel_messages to reply to. Omit to start a new post.")]
     string? ReplyToMessageId);
@@ -46,7 +46,7 @@ public sealed class SendChannelMessageFunction : ConfirmableTool<SendChannelMess
             fields.Add(new ToolPreviewField("Reply to", $"{post.Str("from", "user", "displayName")}: {(text.Length > 300 ? text[..300] + "…" : text)}"));
         }
 
-        fields.Add(new ToolPreviewField("Message", args.Text, Multiline: true, Role: ToolPreviewFieldRole.Body));
+        fields.Add(new ToolPreviewField("Message", args.Text, Multiline: true, Role: ToolPreviewFieldRole.Body, Html: true));
         return new ToolPreview(string.IsNullOrWhiteSpace(args.ReplyToMessageId) ? "Post in Teams channel" : "Reply in Teams channel", null, fields, AllowEdit: false, Kind: ToolPreviewKind.Message);
     }
 
@@ -58,13 +58,13 @@ public sealed class SendChannelMessageFunction : ConfirmableTool<SendChannelMess
             path += $"/{Uri.EscapeDataString(args.ReplyToMessageId.Trim())}/replies";
         }
 
-        var sent = await _graph.PostAsync(invocation.Context, path, new { body = new { contentType = "text", content = args.Text } }, Scopes, ct);
+        var sent = await _graph.PostAsync(invocation.Context, path, new { body = new { contentType = "html", content = args.Text } }, Scopes, ct);
         return ToolResult.Ok(new { sent = true, messageId = sent.Str("id"), webUrl = sent.Str("webUrl") }, "Message posted.");
     }
 
     private static string ChannelPath(SendChannelMessageArgs args)
     {
-        if (string.IsNullOrWhiteSpace(args.TeamId) || string.IsNullOrWhiteSpace(args.ChannelId) || string.IsNullOrWhiteSpace(args.Text))
+        if (string.IsNullOrWhiteSpace(args.TeamId) || string.IsNullOrWhiteSpace(args.ChannelId) || GraphJson.IsBlankHtml(args.Text))
         {
             throw new ToolArgumentException("teamId, channelId and text are required.");
         }

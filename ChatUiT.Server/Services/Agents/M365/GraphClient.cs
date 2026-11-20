@@ -301,6 +301,9 @@ public static class GraphJson
             ? array.EnumerateArray()
             : [];
 
+    /// <summary>True when the HTML has no visible text.</summary>
+    public static bool IsBlankHtml(string? html) => HtmlToText(html).Length == 0;
+
     public static string HtmlToText(string? html)
     {
         if (string.IsNullOrWhiteSpace(html))

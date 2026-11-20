@@ -510,7 +510,7 @@ public sealed class AiConversationRunner
         Summary = preview.Summary,
         AllowEdit = preview.AllowEdit,
         Kind = preview.Kind,
-        Fields = preview.Fields.Select(f => new ToolPreviewFieldDto { Label = f.Label, Value = f.Value, Multiline = f.Multiline, Role = f.Role }).ToList()
+        Fields = preview.Fields.Select(f => new ToolPreviewFieldDto { Label = f.Label, Value = f.Value, Multiline = f.Multiline, Role = f.Role, Html = f.Html }).ToList()
     };
 
     private static UserQuestionDto ToQuestionDto(UserQuestion question) => new()

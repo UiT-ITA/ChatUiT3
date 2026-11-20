@@ -11,6 +11,9 @@ namespace ChatUiT.Server.Services.Agents.M365.Functions;
 /// <summary>Shared Graph calls and projections for the Teams functions.</summary>
 internal static class TeamsChatSupport
 {
+    /// <summary>The argument description of a Teams message body.</summary>
+    public const string HtmlMessageDescription = "The message as HTML. Teams shows only HTML formatting: use <p> for paragraphs, <br> for line breaks, <ul>/<ol>/<li> for lists, <b>, <i> and <a href> for emphasis and links. Do not use markdown.";
+
     /// <summary>A chat or channel message as the model sees it.</summary>
     public static object ToMessage(JsonElement m) => new
     {
@@ -60,7 +63,7 @@ internal static class TeamsChatSupport
     }
 
     public static Task<JsonElement> SendAsync(GraphClient graph, ToolExecutionContext context, string chatId, string text, CancellationToken ct)
-        => graph.PostAsync(context, $"chats/{Uri.EscapeDataString(chatId)}/messages", new { body = new { contentType = "text", content = text } }, SendScopes, ct);
+        => graph.PostAsync(context, $"chats/{Uri.EscapeDataString(chatId)}/messages", new { body = new { contentType = "html", content = text } }, SendScopes, ct);
 
     public static async Task<string> DescribeChatAsync(GraphClient graph, ToolExecutionContext context, string chatId, CancellationToken ct)
     {

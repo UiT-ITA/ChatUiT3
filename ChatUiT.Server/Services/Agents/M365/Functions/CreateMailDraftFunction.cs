@@ -16,10 +16,12 @@ public sealed record CreateMailDraftArgs(
     List<string>? Cc,
     [property: Description("Subject line. Ignored for a reply draft.")]
     string? Subject,
-    [property: Description("Plain-text body.")]
+    [property: Description("The body, as plain text or HTML according to format.")]
     string Body,
     [property: Description("Message id to reply to. Makes the draft a reply to the sender.")]
-    string? ReplyToMessageId);
+    string? ReplyToMessageId,
+    [property: Description("Format of the body: text or html. Defaults to text.")]
+    MailBodyFormat? Format);
 
 /// <summary>Saves an email in Drafts after the user has approved it. Nothing is sent.</summary>
 public sealed class CreateMailDraftFunction : ConfirmableTool<CreateMailDraftArgs>
@@ -53,7 +55,7 @@ public sealed class CreateMailDraftFunction : ConfirmableTool<CreateMailDraftArg
             fields.Add(new ToolPreviewField("Subject", args.Subject ?? "", Role: ToolPreviewFieldRole.Subject));
         }
 
-        fields.Add(new ToolPreviewField("Message", args.Body, Multiline: true, Role: ToolPreviewFieldRole.Body));
+        fields.Add(new ToolPreviewField("Message", args.Body, Multiline: true, Role: ToolPreviewFieldRole.Body, Html: args.Format == MailBodyFormat.Html));
         return Task.FromResult(new ToolPreview("Save email draft", "The draft is saved in Drafts and not sent.", fields, AllowEdit: false, Kind: ToolPreviewKind.Message));
     }
 
@@ -62,7 +64,11 @@ public sealed class CreateMailDraftFunction : ConfirmableTool<CreateMailDraftArg
         var (to, cc) = Validate(args);
 
         JsonElement draft;
-        if (IsReply(args))
+        if (IsReply(args) && args.Format == MailBodyFormat.Html)
+        {
+            draft = await MailSupport.CreateHtmlReplyDraftAsync(_graph, invocation.Context, args.ReplyToMessageId!, "createReply", args.Body, [], ct);
+        }
+        else if (IsReply(args))
         {
             draft = await _graph.PostAsync(invocation.Context,
                 $"me/messages/{Uri.EscapeDataString(args.ReplyToMessageId!.Trim())}/createReply",
@@ -73,7 +79,7 @@ public sealed class CreateMailDraftFunction : ConfirmableTool<CreateMailDraftArg
             draft = await _graph.PostAsync(invocation.Context, "me/messages", new
             {
                 subject = args.Subject ?? "",
-                body = new { contentType = "Text", content = args.Body },
+                body = new { contentType = MailSupport.ContentType(args.Format), content = args.Body },
                 toRecipients = MailSupport.Recipients(to),
                 ccRecipients = MailSupport.Recipients(cc)
             }, MailSupport.WriteScopes, ct);
@@ -86,7 +92,7 @@ public sealed class CreateMailDraftFunction : ConfirmableTool<CreateMailDraftArg
 
     private static (List<string> To, List<string> Cc) Validate(CreateMailDraftArgs args)
     {
-        if (string.IsNullOrWhiteSpace(args.Body))
+        if (MailSupport.IsBlank(args.Body, args.Format))
         {
             throw new ToolArgumentException("body must not be empty.");
         }

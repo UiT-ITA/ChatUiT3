@@ -51,10 +51,11 @@ public sealed class LoadToolsTool : Tool<LoadToolsArgs>
         var text = new StringBuilder(
             "Loads toolboxes into this conversation. Their functions can be called from the result on and stay loaded for the rest of the conversation. " +
             "Load every toolbox you expect to need in this conversation as early as possible, in one call: what is loaded early is cached and costs less on every later message. " +
-            "Toolboxes:");
-        foreach (var toolbox in offered.Select(o => o.Toolbox))
+            "Before saying you cannot do something, load the toolbox that may hold it. " +
+            "Toolboxes, with the functions each one loads:");
+        foreach (var o in offered)
         {
-            text.Append($"\n- {toolbox.Id}: {toolbox.Description}");
+            text.Append($"\n- {o.Toolbox.Id}: {o.Toolbox.Description} Functions: {string.Join(", ", o.Tools.Select(t => t.Id))}.");
         }
 
         return text.ToString();

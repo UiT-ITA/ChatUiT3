@@ -48,7 +48,9 @@ export default function ToolPreview({ preview }: { preview: ToolPreviewDto }) {
       {[...blocks, ...rest.filter(field => field.multiline)].map((field, index) => (
         <Stack key={index} gap="xs">
           <Text as="div" variant="overline" tone="muted" mt="xs">{field.label}</Text>
-          <TextBlock surface={field.role === 'body' ? 'panel' : 'code'} monospace={field.role === 'content'}>{field.value}</TextBlock>
+          {field.html
+            ? <TextBlock surface={field.role === 'body' ? 'panel' : 'code'} monospace={field.role === 'content'} html={field.value} />
+            : <TextBlock surface={field.role === 'body' ? 'panel' : 'code'} monospace={field.role === 'content'}>{field.value}</TextBlock>}
         </Stack>
       ))}
     </Stack>

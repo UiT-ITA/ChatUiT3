@@ -97,7 +97,7 @@ public sealed record ToolPreview(
     bool AllowEdit = true,
     ToolPreviewKind Kind = ToolPreviewKind.General);
 
-public sealed record ToolPreviewField(string Label, string Value, bool Multiline = false, ToolPreviewFieldRole Role = ToolPreviewFieldRole.None);
+public sealed record ToolPreviewField(string Label, string Value, bool Multiline = false, ToolPreviewFieldRole Role = ToolPreviewFieldRole.None, bool Html = false);
 
 /// <summary>A question for the user, with the answers to choose from. The user may always write their own.</summary>
 public sealed record UserQuestion(string Question, IReadOnlyList<UserQuestionOption> Options, bool MultiSelect);

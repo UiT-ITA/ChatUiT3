@@ -13,7 +13,7 @@ public sealed record CreateGroupChatArgs(
     List<string> UserIdsOrEmails,
     [property: Description("Chat topic shown in Teams.")]
     string? Topic,
-    [property: Description("A first message to post after creating the chat.")]
+    [property: Description("A first message to post after creating the chat. " + TeamsChatSupport.HtmlMessageDescription)]
     string? FirstMessage);
 
 public sealed class CreateGroupChatFunction : ConfirmableTool<CreateGroupChatArgs>
@@ -43,7 +43,7 @@ public sealed class CreateGroupChatFunction : ConfirmableTool<CreateGroupChatArg
 
         if (!string.IsNullOrWhiteSpace(args.FirstMessage))
         {
-            fields.Add(new ToolPreviewField("First message", args.FirstMessage, Multiline: true, Role: ToolPreviewFieldRole.Body));
+            fields.Add(new ToolPreviewField("First message", args.FirstMessage, Multiline: true, Role: ToolPreviewFieldRole.Body, Html: true));
         }
 
         return new ToolPreview("Create Teams group chat", null, fields, AllowEdit: false, Kind: ToolPreviewKind.Message);
@@ -69,6 +69,11 @@ public sealed class CreateGroupChatFunction : ConfirmableTool<CreateGroupChatArg
 
     private async Task<List<TeamsChatSupport.Person>> ResolveAllAsync(CreateGroupChatArgs args, ToolExecutionContext context, CancellationToken ct)
     {
+        if (!string.IsNullOrWhiteSpace(args.FirstMessage) && GraphJson.IsBlankHtml(args.FirstMessage))
+        {
+            throw new ToolArgumentException("firstMessage has no visible text. Omit it or write a message.");
+        }
+
         var ids = args.UserIdsOrEmails.Where(s => !string.IsNullOrWhiteSpace(s)).Select(s => s.Trim()).Distinct().ToList();
         if (ids.Count < 2)
         {

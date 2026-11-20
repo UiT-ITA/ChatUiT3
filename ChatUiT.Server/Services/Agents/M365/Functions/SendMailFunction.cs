@@ -22,10 +22,12 @@ public sealed record SendMailArgs(
     List<string>? Cc,
     [property: Description("Subject line.")]
     string Subject,
-    [property: Description("Plain-text body.")]
+    [property: Description("The body, as plain text or HTML according to format.")]
     string Body,
     [property: Description("OneDrive or SharePoint files to attach, at most 3 MB in total.")]
-    List<MailFileRef>? Attachments);
+    List<MailFileRef>? Attachments,
+    [property: Description("Format of the body: text or html. Defaults to text.")]
+    MailBodyFormat? Format);
 
 /// <summary>Sends an email from the user's mailbox after the user has approved recipients, text and attachments.</summary>
 public sealed class SendMailFunction : ConfirmableTool<SendMailArgs>
@@ -54,7 +56,7 @@ public sealed class SendMailFunction : ConfirmableTool<SendMailArgs>
         }
 
         fields.Add(new ToolPreviewField("Subject", args.Subject, Role: ToolPreviewFieldRole.Subject));
-        fields.Add(new ToolPreviewField("Message", args.Body, Multiline: true, Role: ToolPreviewFieldRole.Body));
+        fields.Add(new ToolPreviewField("Message", args.Body, Multiline: true, Role: ToolPreviewFieldRole.Body, Html: args.Format == MailBodyFormat.Html));
         if (files.Count > 0)
         {
             fields.Add(new ToolPreviewField("Attachments", string.Join(", ", files.Select(f => f.Name)), Role: ToolPreviewFieldRole.Attachments));
@@ -83,7 +85,7 @@ public sealed class SendMailFunction : ConfirmableTool<SendMailArgs>
         var message = new
         {
             subject = args.Subject,
-            body = new { contentType = "Text", content = args.Body },
+            body = new { contentType = MailSupport.ContentType(args.Format), content = args.Body },
             toRecipients = MailSupport.Recipients(to),
             ccRecipients = MailSupport.Recipients(cc),
             attachments
@@ -101,7 +103,7 @@ public sealed class SendMailFunction : ConfirmableTool<SendMailArgs>
             throw new ToolArgumentException("to must contain at least one address.");
         }
 
-        if (string.IsNullOrWhiteSpace(args.Subject) || string.IsNullOrWhiteSpace(args.Body))
+        if (string.IsNullOrWhiteSpace(args.Subject) || MailSupport.IsBlank(args.Body, args.Format))
         {
             throw new ToolArgumentException("subject and body must not be empty.");
         }

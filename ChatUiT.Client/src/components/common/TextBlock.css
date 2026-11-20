@@ -14,3 +14,7 @@
 
 .text-block--panel { background: var(--panel); }
 .text-block--mono { font-family: var(--font-mono); }
+.text-block--html { white-space: normal; contain: paint; }
+.text-block--html :is(p, ul, ol, blockquote, pre, table) { margin: 0 0 var(--space-sm); }
+.text-block--html :is(ul, ol) { padding-left: var(--space-lg); }
+.text-block--html > :last-child { margin-bottom: 0; }
