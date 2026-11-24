@@ -18,7 +18,7 @@ Every error a user can see shows a code and, when the server was involved, a ref
 | E3000–E3999 | Office add-in | ChatUiT.Office |
 | E4000–E4999 | REST and admin endpoints (server) | ChatUiT.Server/Errors |
 | E5000–E5499 | Files and media generation (server) | ChatUiT.Server/Errors |
-| E5500–E5799 | File import in the web client | ChatUiT.Client |
+| E5500–E5799 | Files in the web client | ChatUiT.Client |
 | E5800–E5999 | File import in the Office add-in | ChatUiT.Office |
 
 ## E1000–E1999 Web client
@@ -47,7 +47,6 @@ Paths are relative to ChatUiT.Client/src. Server texts that already carry a code
 | E1021 | Could not open the live connection to the server. | SignalR start failed or disconnected | services/signalrService.ts, contexts/AuthContext.tsx |
 | E1022 | Sign-in failed. | Teams sign-in error on the start screen | contexts/AuthContext.tsx |
 | E1023 | Your training status could not be loaded. | Training status failed with no coded error | contexts/AuthContext.tsx |
-| E1030 | Message is too large to send (size). The limit is … | Message payload over 95 MB | services/chatService.ts |
 | E1031 | Chat not found. You can start a new chat below. | Opened chat id does not exist | components/chat/ChatSurface.tsx |
 | E1032 | The answer could not be sent. Try again. | Tool-call answer failed (not a 400) | hooks/useInteractionDock.ts |
 | E1033 | Could not draw the diagram | Mermaid render or parse failed | components/common/MermaidDiagram.tsx |
@@ -232,6 +231,7 @@ Paths are relative to ChatUiT.Server. Error bodies are `{ "message": "<text> (E4
 | E4034 | An on-demand file needs a description. | Selective file without description | Services/AssistantService.cs |
 | E4035 | This assistant cannot be set as your default. | The model is not allowed as default | Controllers/AssistantsController.cs |
 | E4036 | The shared assistant uses tools you are not allowed to use. | Adding a shared assistant was refused | Controllers/AssistantsController.cs |
+| E4037 | Assistant not found. | File uploaded to an assistant the caller may not edit, or that does not exist | Controllers/AssistantsController.cs, Services/AssistantService.cs |
 | E4100 | The assistant names tools that do not exist. | Admin: invalid tools | Controllers/AdminAssistantsController.cs |
 | E4101 | The assistant names knowledge sources that do not exist. | Admin: unknown knowledge sources | Controllers/AdminAssistantsController.cs |
 | E4102 | Group ids must be GUIDs. | Invalid group ids | Controllers/AdminAssistantsController.cs, Controllers/AdminToolsController.cs |
@@ -336,35 +336,32 @@ Paths are relative to ChatUiT.Server. Where a site has its own detailed text (fo
 | E5062 | The image has fewer pixels than the model accepts. | Below MinPixels | ImageParameterValidator.cs |
 | E5063 | The image has more pixels than the model accepts. | Above MaxPixels | ImageParameterValidator.cs |
 | E5064 | The aspect ratio is wider than the model accepts. | Above MaxAspectRatio | ImageParameterValidator.cs |
+| E5100 | The file is larger than 100 MB. | Upload over the 100 MB limit (413) | Controllers/FileTransfer.cs, Services/Files/FileService.cs |
+| E5101 | This file type is not supported. | Upload of a file type that is not accepted | Services/Files/FileService.cs |
+| E5102 | The upload does not hold one file. | Upload that is not a multipart form with a file | Controllers/FileTransfer.cs |
+| E5104 | Files cannot be stored for this id. | The chat or assistant id cannot name a blob container | Services/Files/FileService.cs |
+| E5105 | The file's category is not valid. | File uploaded to an assistant with a category that is not always loaded or selective loaded | Services/AssistantService.cs |
+| E5110 | The file could not be read. | Conversion failed without a more specific code | Services/Files/FileConversionService.cs |
+| E5111 | The image could not be read. | The image cannot be decoded | Services/Files/Converters/ImageConverter.cs |
+| E5112 | The PDF is password protected. | Encrypted PDF | Services/Files/Converters/PdfConverter.cs |
+| E5113 | The file is not a valid PDF. | The PDF cannot be opened | Services/Files/Converters/PdfConverter.cs |
+| E5114 | The Word document could not be opened. | The docx cannot be opened | Services/Files/Converters/DocxConverter.cs |
+| E5115 | The Word document has no content. | Docx without a document body | Services/Files/Converters/DocxConverter.cs |
+| E5116 | The PowerPoint presentation could not be opened. | The pptx cannot be opened | Services/Files/Converters/PptxConverter.cs |
+| E5117 | The Excel workbook could not be opened. | The xlsx cannot be opened | Services/Files/Converters/XlsxConverter.cs |
+| E5130 | The message is not waiting for files. | A file is uploaded to, or a send names, a message that does not exist or is already sent | Services/Files/FileService.cs, Controllers/ChatsController.cs |
+| E5131 | Preview is not available for this file. | Switched off in stage 1. Original requested for a file stored in Cosmos that is neither only text nor one image | Services/Files/FileService.cs |
 
-## E5500–E5799 File import in the web client
+## E5500–E5799 Files in the web client
 
 Paths are relative to ChatUiT.Client/src.
 
 | Code | Message | Cause | Where |
 |---|---|---|---|
-| E5500 | File type not supported | Attached file fails the type check | components/chat/ChatInput.tsx |
-| E5501 | A new version of ChatUiT is available. Reload the page and try again. | Import processor chunk failed to load | services/fileProcessingService.ts |
-| E5502 | This file type cannot be imported. | No processor for the file kind | services/fileProcessingService.ts |
-| E5503 | The file could not be imported. | Import rejected with no coded error | components/chat/ChatInput.tsx, components/assistants/KnowledgeFileList.tsx |
-| E5510 | An image could not be read. It may be damaged or in a format the browser does not support. | Browser could not decode an image | import/processingShared.ts |
-| E5511 | The file data could not be read. | FileReader failed on a blob | import/processingShared.ts |
-| E5512 | The browser could not process images. Try another browser. | No 2D canvas context | import/processingShared.ts, import/pdfImportProcessor.ts |
-| E5513 | An image could not be converted. | canvas.toBlob returned null | import/processingShared.ts |
-| E5520 | The PDF could not be read. | Other PDF import failure | services/fileProcessingService.ts |
-| E5521 | The PDF is password-protected. Remove the password and try again. | pdf.js PasswordException | import/pdfImportProcessor.ts |
-| E5522 | The file is not a valid PDF or is damaged. | pdf.js InvalidPDFException | import/pdfImportProcessor.ts |
-| E5530 | The Word document could not be read. | Other DOCX import failure | services/fileProcessingService.ts |
-| E5531 | The Word document has no document content. | word/document.xml or its rels missing | import/docxImportProcessor.ts |
-| E5532 | The Word document has no document body. | No body element in document.xml | import/docxImportProcessor.ts |
-| E5533 | The Word document could not be opened. It may be damaged or password-protected. | JSZip could not open the DOCX | import/docxImportProcessor.ts |
-| E5540 | The PowerPoint presentation could not be read. | Other PPTX import failure | services/fileProcessingService.ts |
-| E5541 | The PowerPoint presentation could not be opened. It may be damaged or password-protected. | JSZip could not open the PPTX | import/pptxImportProcessor.ts |
-| E5550 | The Excel workbook could not be read. | Other XLSX import failure | services/fileProcessingService.ts |
-| E5551 | The images in this Excel workbook cannot be read. | ExcelJS cannot extract the workbook's images | import/xlsxImportProcessor.ts |
-| E5552 | The Excel workbook could not be opened. It may be damaged or password-protected. | ExcelJS could not load the XLSX | import/xlsxImportProcessor.ts |
-| E5560 | The image could not be imported. | Other image import failure | services/fileProcessingService.ts |
-| E5570 | The text file could not be read. | Text import failure | services/fileProcessingService.ts |
+| E5500 | File type not supported | Attached file fails the type check | components/chat/ChatInput.tsx, components/assistants/KnowledgeFileList.tsx |
+| E5580 | The file is larger than 100 MB. | Attached file over the size limit, refused before upload | components/chat/ChatInput.tsx, components/assistants/KnowledgeFileList.tsx |
+| E5581 | The file could not be uploaded. | Upload failed with no coded error | services/chatService.ts, components/assistants/AssistantForm.tsx |
+| E5582 | The file could not be loaded. | Switched off in stage 1. The original could not be fetched for a preview, with no coded error | components/chat/OriginalFilePreviewModal.tsx |
 
 ## E5800–E5999 File import in the Office add-in
 

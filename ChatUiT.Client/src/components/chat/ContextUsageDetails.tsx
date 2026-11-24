@@ -21,7 +21,6 @@ export default function ContextUsageDetails({ usage }: { usage: ContextUsage }) 
     { key: 'knowledge', label: 'chat.panel.contextKnowledge', value: usage.knowledge, tone: 'viz-2' },
     { key: 'files', label: 'chat.panel.contextFiles', value: usage.files, tone: 'viz-3' },
     { key: 'messages', label: 'chat.panel.contextMessages', value: usage.messages, tone: 'viz-4' },
-    { key: 'draft', label: 'chat.panel.contextDraft', value: usage.draft, tone: 'viz-5' },
   ];
 
   const usedTone = usage.level === 'normal' ? 'accent' : usage.level;

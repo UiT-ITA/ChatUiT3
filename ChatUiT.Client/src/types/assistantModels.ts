@@ -8,18 +8,24 @@ export type PromptSnippetId = 'formatMarkdown' | 'equations' | 'htmlVisuals' | '
 
 export const PROMPT_SNIPPET_IDS: readonly PromptSnippetId[] = ['formatMarkdown', 'equations', 'htmlVisuals', 'basicUserInfo', 'answerPreferences'];
 
+/** A stored file of an assistant. */
 export interface AssistantFileDto {
-    // Absent for files that are new in a create/update request.
-    id?: string;
+    id: string;
     sourceFilename: string;
     category: AssistantFileCategory;
     description?: string;
-    // Full content for new files when saving; metadata only (no text/base64) when
-    // reading an assistant — content is fetched via fetchAssistantFile. A stored
-    // file sent back without content is kept as-is on the server.
+    /** The file's parts, without their text and image data. fetchAssistantFile gives them with it. */
     chunks: ChatFileChunkDto[];
-    /** Per scheme: what the file costs as the message that carries it. Set when reading an assistant. */
-    tokenCounts?: Record<string, number>;
+    /** Per scheme: what the file costs as the message that carries it. */
+    tokenCounts: Record<string, number>;
+}
+
+/** A file in an update request: one the assistant keeps. New files are uploaded to the assistant. */
+export interface AssistantFileRefDto {
+    id: string;
+    sourceFilename: string;
+    category: AssistantFileCategory;
+    description?: string;
 }
 
 export type UserRole = 'User' | 'Admin' | 'Beta' | 'Super' | 'External';
@@ -132,7 +138,6 @@ export interface CreateAssistantDto {
     reasoningEffort?: ReasoningEffort;
     availableToolIds?: string[];
     promptSnippets?: PromptSnippetId[];
-    files?: AssistantFileDto[];
     knowledgeSourceIds?: string[];
     /** System assistants only; ignored on user endpoints. Null means everyone. */
     access?: AssistantAccessPolicyDto | null;
@@ -148,7 +153,8 @@ export interface UpdateAssistantDto {
     reasoningEffort?: ReasoningEffort;
     availableToolIds?: string[];
     promptSnippets?: PromptSnippetId[];
-    files?: AssistantFileDto[];
+    /** The files the assistant keeps. A stored file that is not listed is deleted. */
+    files?: AssistantFileRefDto[];
     knowledgeSourceIds?: string[];
     /** System assistants only; ignored on user endpoints. Null means everyone. */
     access?: AssistantAccessPolicyDto | null;

@@ -1,4 +1,5 @@
 import type { ReasoningEffort } from "./assistantModels";
+import type { FileUpload } from "./fileModels";
 
 export type AiChatRole =
   | "User"
@@ -21,10 +22,11 @@ export type AiContentType = "Text" | "Image" | "Mixed";
 export interface ChatFileChunkDto {
   type: 'text' | 'image';
   text?: string;
-  format?: 'plain' | 'markdown';
+  format?: string;
   base64?: string;
 }
 
+/** A stored file with its parts. A chat carries the parts without their text and image data. */
 export interface ChatFileDto {
   id: string;
   sourceFilename: string;
@@ -250,6 +252,8 @@ export interface ChatMessageDto {
   /** The attachment share of tokenCounts per scheme; empty when the message has no files. */
   fileTokenCounts: Record<string, number>;
   optimistic?: boolean;
+  /** On an optimistic user message: its files while they are uploaded. */
+  uploads?: FileUpload[];
 }
 
 export interface ChatHeaderDto {
@@ -276,15 +280,8 @@ export interface ChatDto extends ChatHeaderDto {
   messages: ChatMessageDto[];
 }
 
-export interface CreateChatFileDto {
-  sourceFilename: string;
-  chunks: ChatFileChunkDto[];
-}
-
+/** Sends a message that was created, with its files uploaded, and starts the reply. */
 export interface SendMessageDto {
-  role?: AiChatRole;
-  content: string;
-  files?: CreateChatFileDto[] | null;
   assistantId: string;
   /** Client tools available for this message. Not stored. */
   clientTools?: ClientToolDeclarationDto[] | null;

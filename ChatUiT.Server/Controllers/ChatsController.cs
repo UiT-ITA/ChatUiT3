@@ -8,6 +8,7 @@ using ChatUiT.Server.Hubs;
 using ChatUiT.Server.Models;
 using ChatUiT.Server.Extentions;
 using ChatUiT.Server.Services.Tools;
+using ChatUiT.Server.Services.Files;
 using ChatUiT.Server.Telemetry;
 
 namespace ChatUiT.Server.Controllers;
@@ -27,6 +28,7 @@ public class ChatsController : ControllerBase
     private readonly IAssistantService _assistantService;
     private readonly IModelService _modelService;
     private readonly IUserTokenProviderFactory _tokenProviders;
+    private readonly FileService _fileService;
 
     public ChatsController(
         IChatService chatService,
@@ -36,9 +38,11 @@ public class ChatsController : ControllerBase
         IHubContext<AppHub, IAppHubClient> hubContext,
         IAssistantService assistantService,
         IModelService modelService,
-        IUserTokenProviderFactory tokenProviders)
+        IUserTokenProviderFactory tokenProviders,
+        FileService fileService)
     {
         _tokenProviders = tokenProviders;
+        _fileService = fileService;
         _chatService = chatService;
         _userService = userService;
         _telemetry = telemetry;
@@ -134,6 +138,7 @@ public class ChatsController : ControllerBase
         return Ok(MapToDto(chat));
     }
 
+    /// <summary>A file of the chat with its content: its text and images.</summary>
     [HttpGet("{chatId}/files/{fileId}")]
     public async Task<ActionResult<ChatFileDto>> GetChatFile(string chatId, string fileId)
     {
@@ -145,8 +150,25 @@ public class ChatsController : ControllerBase
             return ApiErrors.NotFound(ErrorCodes.ChatFileNotFound);
         }
 
-        return Ok(MapFilesToDto(new List<ChatFile> { file }).First());
+        return Ok(ChatFileDto.From(file, includeContent: true));
     }
+
+    // Switched off in stage 1: the original of a chat file, shown inline, or saved as a file with download=true.
+    // [HttpGet("{chatId}/files/{fileId}/content")]
+    // public async Task<IActionResult> GetChatFileContent(string chatId, string fileId, [FromQuery] bool download, CancellationToken cancellationToken)
+    // {
+    //     try
+    //     {
+    //         var file = await _fileService.OpenChatFileAsync(GetCurrentUserId(), chatId, fileId);
+    //         return file == null
+    //             ? ApiErrors.NotFound(ErrorCodes.ChatFileNotFound)
+    //             : await FileTransfer.WriteAsync(Response, file, download, cancellationToken);
+    //     }
+    //     catch (FileRequestException ex)
+    //     {
+    //         return FileTransfer.Error(ex);
+    //     }
+    // }
 
     [HttpPost]
     public async Task<ActionResult<ChatDto>> CreateChat([FromBody] CreateChatDto request)
@@ -175,8 +197,44 @@ public class ChatsController : ControllerBase
         return CreatedAtAction(nameof(GetChat), new { chatId = chat.Id }, MapToDto(chat));
     }
 
+    /// <summary>
+    /// Stores a message that waits for its files. No reply is started: the files are uploaded to
+    /// the message, and the message is then sent.
+    /// </summary>
     [HttpPost("{chatId}/messages")]
-    public async Task<ActionResult<object>> SendMessage(string chatId, [FromBody] SendMessageDto request)
+    public async Task<ActionResult<object>> CreateMessage(string chatId, [FromBody] CreateMessageDto request)
+    {
+        var message = await _chatService.CreateNewMessageAsync(GetCurrentUserId(), chatId, request.Content);
+        return message == null ? ApiErrors.NotFound(ErrorCodes.ChatNotFound) : Ok(new { id = message.Id });
+    }
+
+    /// <summary>
+    /// Uploads one file to a message that is not sent yet, as multipart form data. Answers when
+    /// the original is stored and converted, with the file and its parts.
+    /// </summary>
+    [HttpPost("{chatId}/messages/{messageId}/files")]
+    [Consumes("multipart/form-data")]
+    [DisableFormValueModelBinding]
+    public async Task<ActionResult<ChatFileDto>> UploadMessageFile(string chatId, string messageId, CancellationToken cancellationToken)
+    {
+        try
+        {
+            var userId = GetCurrentUserId();
+            var file = await FileTransfer.ReadFileAsync(
+                Request,
+                (upload, content) => _fileService.UploadChatFileAsync(userId, chatId, messageId, upload.FileName, upload.ContentType, content, cancellationToken),
+                cancellationToken);
+            return Ok(ChatFileDto.From(file, includeContent: false));
+        }
+        catch (FileRequestException ex)
+        {
+            return FileTransfer.Error(ex);
+        }
+    }
+
+    /// <summary>Sends a message that was created, with its files uploaded, and starts the reply.</summary>
+    [HttpPost("{chatId}/messages/{messageId}/send")]
+    public async Task<ActionResult<object>> SendMessage(string chatId, string messageId, [FromBody] SendMessageDto request)
     {
         try
         {
@@ -187,18 +245,13 @@ public class ChatsController : ControllerBase
                 return Forbid();
             }
 
-            var message = new ChatMessage
-            {
-                Role = AiChatRole.User,
-                Content = request.Content,
-                Status = AiChatStatus.Success,
-                Files = request.Files != null ? MapDtoToFiles(request.Files) : new List<ChatFile>()
-            };
-
             var promptUser = await _assistantService.GetPromptUserContextAsync(_userService.GetUserIdentity(User));
 
             // Uses the same streaming path as the SignalR hub, so both entry points behave alike.
-            await _chatService.SendStreamingMessageAsync(userId, chatId, message, request.AssistantId, promptUser, BuildToolSession(request.ClientTools, request.TimeZone), request.Answers);
+            if (!await _chatService.SendNewMessageAsync(userId, chatId, messageId, request.AssistantId, promptUser, BuildToolSession(request.ClientTools, request.TimeZone), request.Answers))
+            {
+                return ApiErrors.NotFound(ErrorCodes.MessageNotWaitingForFiles);
+            }
 
             await _hubContext.Clients.Group(userId).ChatUpdated(chatId);
 
@@ -212,6 +265,14 @@ public class ChatsController : ControllerBase
         {
             return ApiErrors.BadRequest(ErrorCodes.ToolCallResponseInvalid, ex.Message, new { error = "invalid_response" });
         }
+    }
+
+    /// <summary>Deletes a message that is not sent, with the files uploaded to it. Does nothing to a message that is sent.</summary>
+    [HttpDelete("{chatId}/messages/{messageId}")]
+    public async Task<ActionResult> DeleteNewMessage(string chatId, string messageId)
+    {
+        await _chatService.DeleteNewMessageAsync(GetCurrentUserId(), chatId, messageId);
+        return NoContent();
     }
 
     [HttpPost("{chatId}/messages/{messageId}/cancel")]
@@ -253,61 +314,6 @@ public class ChatsController : ControllerBase
         {
             return ApiErrors.BadRequest(ErrorCodes.ToolCallResponseInvalid, ex.Message, new { error = "invalid_response" });
         }
-    }
-
-    private List<ChatFile> MapDtoToFiles(IEnumerable<CreateChatFileDto> fileDtos)
-    {
-        var result = new List<ChatFile>();
-        foreach (var fileDto in fileDtos)
-        {
-            var chatFile = new ChatFile
-            {
-                SourceFilename = fileDto.SourceFilename,
-                Chunks = new List<ChatFileChunk>()
-            };
-
-            foreach (var chunkDto in fileDto.Chunks)
-            {
-                chatFile.Chunks.Add(new ChatFileChunk
-                {
-                    Type = chunkDto.Type,
-                    Text = chunkDto.Text,
-                    Format = chunkDto.Format,
-                    Base64 = chunkDto.Base64
-                });
-            }
-
-            result.Add(chatFile);
-        }
-        return result;
-    }
-
-    private List<ChatFile> MapDtoToFiles(IEnumerable<ChatFileDto> fileDtos)
-    {
-        var result = new List<ChatFile>();
-        foreach (var fileDto in fileDtos)
-        {
-            var chatFile = new ChatFile
-            {
-                Id = string.IsNullOrEmpty(fileDto.Id) ? Guid.NewGuid().ToString() : fileDto.Id,
-                SourceFilename = fileDto.SourceFilename,
-                Chunks = new List<ChatFileChunk>()
-            };
-
-            foreach (var chunkDto in fileDto.Chunks)
-            {
-                chatFile.Chunks.Add(new ChatFileChunk
-                {
-                    Type = chunkDto.Type,
-                    Text = chunkDto.Text,
-                    Format = chunkDto.Format,
-                    Base64 = chunkDto.Base64
-                });
-            }
-
-            result.Add(chatFile);
-        }
-        return result;
     }
 
     private ChatHeaderDto MapToHeaderDto(ChatHeader chat)
@@ -361,29 +367,13 @@ public class ChatsController : ControllerBase
             Timestamp = message.Timestamp,
             Content = message.Content,
             Status = message.Status,
-            Files = MapFilesToDto(message.Files),
+            Files = message.Files.Select(file => ChatFileDto.From(file, includeContent: false)).ToList(),
             AssistantId = message.AssistantId,
             AssistantName = message.AssistantName,
             Activity = message.Activity,
             TokenCounts = message.TokenCounts,
             FileTokenCounts = message.FileTokenCounts
         };
-    }
-
-    private List<ChatFileDto> MapFilesToDto(List<ChatFile> files)
-    {
-        return files.Select(f => new ChatFileDto
-        {
-            Id = f.Id,
-            SourceFilename = f.SourceFilename,
-            Chunks = f.Chunks.Select(c => new ChatFileChunkDto
-            {
-                Type = c.Type,
-                Text = c.Text,
-                Format = c.Format,
-                Base64 = c.Base64
-            }).ToList()
-        }).ToList();
     }
 
     [HttpPatch("{chatId}")]

@@ -4,14 +4,19 @@ import { useTranslation } from 'react-i18next';
 import { useSignals } from '@preact/signals-react/runtime';
 import { createAdminAssistant, updateAdminAssistant, deleteAdminAssistant } from '../../services/adminService';
 import { adminAssistantsSignal, loadAdminData } from '../../services/adminDataService';
-import type { CreateAdminAssistantDto, UpdateAdminAssistantDto } from '../../types/admin';
-import AssistantForm from '../assistants/AssistantForm';
+import AssistantForm, { type AssistantFormApi } from '../assistants/AssistantForm';
 import AssistantDeleteFooter from '../assistants/AssistantDeleteFooter';
 import { ConfirmDialog } from '../common/Dialog';
 import PageTitleBar from '../common/PageTitleBar';
 import EmptyNote from '../common/EmptyNote';
 import Text from '../common/Text';
 import { ErrorCode, formatError } from '../../errors/errorCodes';
+
+/** System assistants are saved through the admin endpoints. */
+const adminAssistantApi: AssistantFormApi = {
+  create: createAdminAssistant,
+  update: (assistant) => updateAdminAssistant(assistant.id, assistant)
+};
 
 interface AdminAssistantEditorProps {
   assistantId?: string;
@@ -34,14 +39,7 @@ const AdminAssistantEditor: React.FC<AdminAssistantEditorProps> = ({ assistantId
     return <EmptyNote>{formatError(t('common.notFound'), ErrorCode.AdminItemNotFound)}</EmptyNote>;
   }
 
-  const handleCreate = async (payload: CreateAdminAssistantDto) => {
-    await createAdminAssistant(payload);
-    await loadAdminData(true);
-    navigate('/admin/assistants');
-  };
-
-  const handleUpdate = async (payload: UpdateAdminAssistantDto) => {
-    await updateAdminAssistant(payload.id, payload);
+  const handleSaved = async () => {
     await loadAdminData(true);
     navigate('/admin/assistants');
   };
@@ -68,8 +66,8 @@ const AdminAssistantEditor: React.FC<AdminAssistantEditorProps> = ({ assistantId
         key={assistant?.id ?? 'new'}
         editingAssistant={assistant ?? null}
         systemAssistant
-        onCreate={handleCreate}
-        onUpdate={handleUpdate}
+        api={adminAssistantApi}
+        onSaved={() => { void handleSaved(); }}
         saveLabel={t('assistants.saveAssistant')}
         backPath="/admin/assistants"
         backLabel={t('admin.tabs.assistants')}

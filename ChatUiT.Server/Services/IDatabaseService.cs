@@ -16,8 +16,12 @@ public interface IDatabaseService
     Task<List<ChatHeader>> GetChatListAsync(string userId);
     /// <summary>The chat without its messages.</summary>
     Task<ChatHeader?> GetChatHeaderAsync(string userId, string chatId);
+    /// <summary>A file in Blob Storage comes with its parts listed, without their content.</summary>
     Task<Chat?> GetChatByIdAsync(string userId, string chatId, bool includeFileContent = true);
+    /// <summary>A file on a message of the chat. A file stored in Cosmos comes with its content, a file in Blob Storage without.</summary>
     Task<ChatFile?> GetChatFileAsync(string userId, string chatId, string fileId);
+    /// <summary>Marks the chat's files in Blob Storage as encrypted.</summary>
+    Task MarkChatFilesEncryptedAsync(string userId, string chatId);
     Task AddChatAsync(string userId, Chat chat);
     Task DeleteChatAsync(string userId, string chatId);
     Task UpdateChatAsync(string userId, string chatId, string? newTitle, string? newAssistantId = null);
@@ -31,6 +35,15 @@ public interface IDatabaseService
 
     // Message management
     Task AddMessageAsync(string userId, string chatId, ChatMessage message);
+    /// <summary>The message with its text and its files, without the files' content. Null when the chat has no such message.</summary>
+    Task<ChatMessage?> GetMessageAsync(string userId, string chatId, string messageId);
+    /// <summary>
+    /// Changes a message from status New to Success, with the timestamp. False when the chat has
+    /// no such message with status New, so only one caller gets true for a message.
+    /// </summary>
+    Task<bool> MarkMessageSentAsync(string userId, string chatId, string messageId, DateTime timestamp);
+    /// <summary>Adds a file in Blob Storage to a message with status New, and sets the message's timestamp to now. False when the chat has no such message.</summary>
+    Task<bool> AddMessageFileAsync(string userId, string chatId, string messageId, ChatFile file);
     Task UpdateMessageAsync(string userId, string chatId, ChatMessage message);
     Task DeleteMessageAsync(string userId, string chatId, string messageId);
     Task SetMessageTokenCountsAsync(string userId, string chatId, string messageId, IReadOnlyDictionary<string, int> tokenCounts, IReadOnlyDictionary<string, int> fileTokenCounts);
@@ -66,8 +79,12 @@ public interface IDatabaseService
     Task<List<Assistant>> GetAssistantsByOwnerAsync(string ownerId);
     Task<List<Assistant>> GetSystemAssistantsAsync();
     Task<List<Assistant>> GetAssistantsByIdsAsync(List<string> assistantIds);
+    /// <summary>A file in Blob Storage comes with its parts listed, without their content.</summary>
     Task<Assistant?> GetAssistantByIdAsync(string assistantId, bool includeFileContent = false);
+    /// <summary>A file of the assistant. A file stored in Cosmos comes with its content, a file in Blob Storage without.</summary>
     Task<AssistantFile?> GetAssistantFileAsync(string assistantId, string fileId);
+    /// <summary>Adds a file in Blob Storage to the assistant. False when the assistant does not exist.</summary>
+    Task<bool> AddAssistantFileAsync(string assistantId, AssistantFile file);
     Task<Assistant> CreateAssistantAsync(Assistant assistant);
     Task<Assistant?> UpdateAssistantAsync(Assistant assistant);
     Task<bool> DeleteAssistantAsync(string assistantId);

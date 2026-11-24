@@ -12,9 +12,8 @@ public static class FileFacts
         return string.IsNullOrEmpty(extension) ? null : extension.TrimStart('.').ToLowerInvariant();
     }
 
-    /// <summary>The size of the file's chunks: decoded bytes for base64 chunks, UTF-8 bytes for text chunks.</summary>
-    public static long BytesOf(ChatFile file) => file.Chunks.Sum(chunk =>
-        chunk.Base64 != null
-            ? (long)chunk.Base64.Length * 3 / 4
-            : System.Text.Encoding.UTF8.GetByteCount(chunk.Text ?? string.Empty));
+    /// <summary>The size of the original for a file in Blob Storage, else the size of the file's loaded chunks.</summary>
+    public static long BytesOf(ChatFile file) => file.IsInBlobStorage
+        ? file.Size
+        : file.Chunks.Sum(chunk => chunk.Data?.LongLength ?? System.Text.Encoding.UTF8.GetByteCount(chunk.Text ?? string.Empty));
 }
