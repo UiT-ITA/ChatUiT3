@@ -84,7 +84,7 @@ async function send(
       headers,
     });
   } catch (err) {
-    const networkError = new CodedError(ErrorCode.Network, "Network error. Please check your connection and try again.", undefined, { cause: err });
+    const networkError = new CodedError(ErrorCode.Network, i18n.t("errors.network"), undefined, { cause: err });
     addNotification({ level: "Error", message: networkError.displayMessage });
     trackError("network", { message: "The request did not reach the server", error: err });
     throw networkError;
@@ -204,10 +204,77 @@ apiService.getBlob = async (endpoint: string): Promise<Blob> => {
   return response.blob();
 };
 
+/**
+ * Uploads one file as multipart form data, with `fields` as form fields, and reports how much of it is sent, from 0 to 1.
+ * A failure throws ApiError or CodedError without showing a toast: the caller shows it.
+ */
+apiService.uploadFile = async <T>(endpoint: string, file: File, onProgress: (fraction: number) => void, fields: Record<string, string> = {}): Promise<T> => {
+  const token = await authService.getAccessToken();
+  if (!token && !authService.isAuthenticated()) {
+    throw new CodedError(ErrorCode.NotSignedIn, i18n.t("errors.notSignedIn"));
+  }
+
+  // The server reads the fields that come before the file
+  const form = new FormData();
+  for (const [name, value] of Object.entries(fields)) {
+    form.append(name, value);
+  }
+  form.append("file", file, file.name);
+
+  return new Promise<T>((resolve, reject) => {
+    const request = new XMLHttpRequest();
+    request.open("POST", `${API_BASE_URL}${endpoint}`);
+    request.setRequestHeader("Accept", "application/json");
+    for (const [name, value] of Object.entries(telemetryHeaders())) {
+      request.setRequestHeader(name, value);
+    }
+    if (token) {
+      request.setRequestHeader("Authorization", `Bearer ${token}`);
+    }
+
+    request.upload.onprogress = (event) => {
+      if (event.lengthComputable && event.total > 0) onProgress(event.loaded / event.total);
+    };
+    request.upload.onload = () => onProgress(1);
+
+    request.onerror = () => {
+      trackError("network", { message: "The upload did not reach the server" });
+      reject(new CodedError(ErrorCode.Network, i18n.t("errors.network")));
+    };
+
+    request.onload = () => {
+      let body: unknown;
+      try {
+        body = JSON.parse(request.responseText);
+      } catch {
+        body = undefined;
+      }
+
+      if (request.status >= 200 && request.status < 300) {
+        resolve(body as T);
+        return;
+      }
+
+      const data = body as { message?: unknown; errorCode?: unknown; ref?: unknown } | undefined;
+      const ref = request.getResponseHeader(REF_HEADER) || (typeof data?.ref === "string" ? data.ref : undefined);
+      const fallback = statusFallback(request.status);
+      const serverMessage = typeof data?.message === "string" ? data.message : undefined;
+      const errorCode = serverMessage && typeof data?.errorCode === "string" ? data.errorCode : fallback.code;
+      const displayMessage = serverMessage && CODED_TEXT.test(serverMessage)
+        ? serverMessage
+        : formatError(serverMessage ?? fallback.text, errorCode, ref);
+      reject(new ApiError(`API call failed: ${request.status} ${request.statusText}`, request.status, endpoint, displayMessage, errorCode, ref));
+    };
+
+    request.send(form);
+  });
+};
+
 export default apiService as typeof apiService & {
   post: <T>(endpoint: string, data: unknown) => Promise<T>;
   put: <T>(endpoint: string, data: unknown) => Promise<T>;
   delete: <T>(endpoint: string) => Promise<T>;
   postForm: <T>(endpoint: string, form: FormData) => Promise<T>;
   getBlob: (endpoint: string) => Promise<Blob>;
+  uploadFile: <T>(endpoint: string, file: File, onProgress: (fraction: number) => void, fields?: Record<string, string>) => Promise<T>;
 };

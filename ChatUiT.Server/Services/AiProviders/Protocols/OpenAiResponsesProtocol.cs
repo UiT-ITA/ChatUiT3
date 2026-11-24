@@ -250,7 +250,7 @@ public sealed class OpenAiResponsesProtocol : IApiProtocol
         var parts = new JsonArray { new JsonObject { ["type"] = "input_text", ["text"] = result.Content } };
         foreach (var image in images)
         {
-            parts.Add(new JsonObject { ["type"] = "input_image", ["image_url"] = $"data:{image.MediaType};base64,{image.Base64}" });
+            parts.Add(new JsonObject { ["type"] = "input_image", ["image_url"] = image.ToDataUrl() });
         }
 
         var item = ResponseItem.CreateFunctionCallOutputItem(result.ToolCallId, result.Content);
@@ -350,7 +350,7 @@ public sealed class OpenAiResponsesProtocol : IApiProtocol
                     parts.Add(ResponseContentPart.CreateInputTextPart(text.Text));
                     break;
                 case ImagePart image:
-                    parts.Add(ResponseContentPart.CreateInputImagePart(new Uri($"data:{image.MediaType};base64,{image.Base64}")));
+                    parts.Add(ResponseContentPart.CreateInputImagePart(new Uri(image.ToDataUrl())));
                     break;
             }
         }

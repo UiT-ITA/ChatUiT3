@@ -28,7 +28,6 @@ export const ErrorCode = {
   TrainingStatusFailed: 'E1023',
 
   // Chat
-  MessageTooLarge: 'E1030',
   ChatNotFound: 'E1031',
   AnswerNotSent: 'E1032',
   DiagramRenderFailed: 'E1033',
@@ -52,29 +51,11 @@ export const ErrorCode = {
   ModelTestFailed: 'E1060',
   DevStatusFailed: 'E1061',
 
-  // File import
+  // Files
   FileTypeNotSupported: 'E5500',
-  AppUpdated: 'E5501',
-  NoImportProcessor: 'E5502',
-  ImportFailed: 'E5503',
-  ImageLoadFailed: 'E5510',
-  FileReadFailed: 'E5511',
-  CanvasUnavailable: 'E5512',
-  ImageEncodeFailed: 'E5513',
-  PdfImportFailed: 'E5520',
-  PdfPasswordProtected: 'E5521',
-  PdfInvalid: 'E5522',
-  DocxImportFailed: 'E5530',
-  DocxContentMissing: 'E5531',
-  DocxBodyMissing: 'E5532',
-  DocxOpenFailed: 'E5533',
-  PptxImportFailed: 'E5540',
-  PptxOpenFailed: 'E5541',
-  XlsxImportFailed: 'E5550',
-  XlsxImagesUnsupported: 'E5551',
-  XlsxOpenFailed: 'E5552',
-  ImageImportFailed: 'E5560',
-  TextImportFailed: 'E5570',
+  FileTooLarge: 'E5580',
+  UploadFailed: 'E5581',
+  FileLoadFailed: 'E5582',
 } as const;
 
 export type ErrorCode = typeof ErrorCode[keyof typeof ErrorCode];

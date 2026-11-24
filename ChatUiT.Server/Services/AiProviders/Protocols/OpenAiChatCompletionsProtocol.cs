@@ -269,7 +269,7 @@ public sealed class OpenAiChatCompletionsProtocol : IApiProtocol
             if (images.Count > 0)
             {
                 imageParts.Add(ChatMessageContentPart.CreateTextPart($"Images returned by tool call {result.ToolCallId}:"));
-                imageParts.AddRange(images.Select(image => ChatMessageContentPart.CreateImagePart(new Uri($"data:{image.MediaType};base64,{image.Base64}"))));
+                imageParts.AddRange(images.Select(image => ChatMessageContentPart.CreateImagePart(new Uri(image.ToDataUrl()))));
             }
         }
 
@@ -295,7 +295,7 @@ public sealed class OpenAiChatCompletionsProtocol : IApiProtocol
                     parts.Add(ChatMessageContentPart.CreateTextPart(text.Text));
                     break;
                 case ImagePart image:
-                    parts.Add(ChatMessageContentPart.CreateImagePart(new Uri($"data:{image.MediaType};base64,{image.Base64}")));
+                    parts.Add(ChatMessageContentPart.CreateImagePart(new Uri(image.ToDataUrl())));
                     break;
             }
         }

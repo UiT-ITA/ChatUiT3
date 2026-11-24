@@ -12,12 +12,16 @@ using System.Security.Claims;
 using Microsoft.Extensions.Options;
 using ChatUiT.Server.Telemetry;
 using ChatUiT.Server.Errors;
+using ChatUiT.Server.Services.Files;
 
 namespace ChatUiT.Server.Services;
 
 public class ChatService : IChatService
 {
     private static readonly TimeSpan StaleGenerationThreshold = TimeSpan.FromMinutes(5);
+
+    /// <summary>How long a message may wait for its files, since it was created or last got a file, before it counts as left behind.</summary>
+    private static readonly TimeSpan StaleNewMessageThreshold = TimeSpan.FromMinutes(30);
 
     /// <summary>
     /// Upper bound on a single generation, tool rounds included. Matches the threshold that
@@ -43,6 +47,7 @@ public class ChatService : IChatService
     private readonly ITokenCountingService _tokenCounting;
     private readonly ToolOptions _toolOptions;
     private readonly IKnowledgeSourceRegistry _knowledgeSources;
+    private readonly FileService _fileService;
 
     public ChatService(
         AiConversationRunner conversationRunner,
@@ -59,8 +64,10 @@ public class ChatService : IChatService
         ISettingsService settingsService,
         ITokenCountingService tokenCounting,
         IOptions<ToolOptions> toolOptions,
-        IKnowledgeSourceRegistry knowledgeSources)
+        IKnowledgeSourceRegistry knowledgeSources,
+        FileService fileService)
     {
+        _fileService = fileService;
         _conversationRunner = conversationRunner;
         _providers = providers;
         _hubContext = hubContext;
@@ -94,6 +101,16 @@ public class ChatService : IChatService
         if (chat == null)
         {
             return null;
+        }
+
+        if (!await RemoveNewMessagesAsync(userId, chat))
+        {
+            return null;
+        }
+
+        if (includeFileContent)
+        {
+            await _fileService.LoadChatFileContentAsync(userId, chatId, chat.RedEnabled, chat.Messages.SelectMany(m => m.Files));
         }
 
         // A message left in Generating (e.g. after a server restart mid-stream) would
@@ -138,9 +155,48 @@ public class ChatService : IChatService
         return chat;
     }
 
+    /// <summary>
+    /// Takes the messages that wait for their files (status New) out of the chat that was read.
+    /// One older than <see cref="StaleNewMessageThreshold"/> was left behind by a send that never
+    /// finished: it is deleted with its files, and a chat left with no messages is deleted too.
+    /// False when the chat was deleted.
+    /// </summary>
+    private async Task<bool> RemoveNewMessagesAsync(string userId, Chat chat)
+    {
+        var waiting = chat.Messages.Where(m => m.Status == AiChatStatus.New).ToList();
+        if (waiting.Count == 0)
+        {
+            return true;
+        }
+
+        chat.Messages.RemoveAll(m => m.Status == AiChatStatus.New);
+
+        var stale = waiting.Where(m => DateTime.UtcNow - m.Timestamp >= StaleNewMessageThreshold).ToList();
+        foreach (var message in stale)
+        {
+            await DeleteMessageWithFilesAsync(userId, chat.Id, message);
+        }
+
+        if (stale.Count == waiting.Count && chat.Messages.All(m => m.Role == AiChatRole.System))
+        {
+            await DeleteChatAsync(userId, chat.Id);
+            return false;
+        }
+
+        return true;
+    }
+
+    private async Task DeleteMessageWithFilesAsync(string userId, string chatId, Models.ChatMessage message)
+    {
+        await _databaseService.DeleteMessageAsync(userId, chatId, message.Id);
+        await _fileService.DeleteFilesAsync(chatId, message.Files);
+    }
+
     // Counts are stored per message so a model switch is a key lookup on the client. Messages
     // lacking a count for an active scheme are counted on first read and written back, so each
-    // message is counted at most once per scheme.
+    // message is counted at most once per scheme. A file in Blob Storage is priced from the count
+    // stored on it. When it has none for a scheme, the message is counted on a read that loads
+    // every file's content, which a send does, and never by downloading blobs for this.
     private async Task BackfillTokenCountsAsync(string userId, string chatId, Chat chat, bool includeFileContent)
     {
         var schemes = await _tokenCounting.GetActiveSchemeIdsAsync();
@@ -158,10 +214,10 @@ public class ChatService : IChatService
             return;
         }
 
-        // Attachments dominate the count and are absent from a metadata-only load. One
-        // content load for the whole chat beats one fetch per file.
+        // Files stored in Cosmos dominate the count and are absent from a metadata-only load.
+        // One content load for the whole chat beats one fetch per file.
         IReadOnlyDictionary<string, Models.ChatMessage> countingSource;
-        if (!includeFileContent && needingCounts.Any(m => m.Files.Count > 0))
+        if (!includeFileContent && needingCounts.Any(m => m.Files.Any(f => !f.IsInBlobStorage)))
         {
             var fullChat = await _databaseService.GetChatByIdAsync(userId, chatId, includeFileContent: true);
             countingSource = (fullChat?.Messages ?? new List<Models.ChatMessage>()).ToDictionary(m => m.Id);
@@ -203,10 +259,8 @@ public class ChatService : IChatService
         !message.TokenCounts.ContainsKey(schemeId) ||
         (message.Files.Count > 0 && !message.FileTokenCounts.ContainsKey(schemeId));
 
-    public async Task<ChatFile?> GetChatFileAsync(string userId, string chatId, string fileId)
-    {
-        return await _databaseService.GetChatFileAsync(userId, chatId, fileId);
-    }
+    public Task<ChatFile?> GetChatFileAsync(string userId, string chatId, string fileId)
+        => _fileService.GetChatFileAsync(userId, chatId, fileId);
 
     public async Task<Chat> CreateChatAsync(string userId, string assistantId, bool redEnabled = false)
     {
@@ -247,12 +301,14 @@ public class ChatService : IChatService
     public async Task EnableRedAsync(string userId, string chatId, string? assistantId)
     {
         await _databaseService.EnableRedAsync(userId, chatId, assistantId);
+        await _fileService.EncryptChatFilesAsync(userId, chatId);
         NotifyChatListUpdated(userId);
     }
 
     public async Task DeleteChatAsync(string userId, string chatId)
     {
         await _databaseService.DeleteChatAsync(userId, chatId);
+        await _fileService.DeleteAllAsync(chatId);
         NotifyChatListUpdated(userId);
     }
 
@@ -278,7 +334,54 @@ public class ChatService : IChatService
     public Task SendStreamingMessageAsync(string userId, string chatId, Models.ChatMessage userMessage, string? assistantId, PromptUserContext promptUser)
         => SendStreamingMessageAsync(userId, chatId, userMessage, assistantId, promptUser, ToolSessionInput.Anonymous);
 
-    public async Task SendStreamingMessageAsync(string userId, string chatId, Models.ChatMessage userMessage, string? assistantId, PromptUserContext promptUser, ToolSessionInput tools, IReadOnlyList<PendingAnswerDto>? answers = null)
+    public Task SendStreamingMessageAsync(string userId, string chatId, Models.ChatMessage userMessage, string? assistantId, PromptUserContext promptUser, ToolSessionInput tools, IReadOnlyList<PendingAnswerDto>? answers = null)
+        => SendStreamingMessageAsync(userId, chatId, userMessage, assistantId, promptUser, tools, answers, isStored: false);
+
+    public async Task<Models.ChatMessage?> CreateNewMessageAsync(string userId, string chatId, string content)
+    {
+        if (await _databaseService.GetChatHeaderAsync(userId, chatId) == null)
+        {
+            return null;
+        }
+
+        var message = new Models.ChatMessage
+        {
+            Role = AiChatRole.User,
+            Content = content,
+            Status = AiChatStatus.New,
+            Timestamp = DateTime.UtcNow
+        };
+        await _databaseService.AddMessageAsync(userId, chatId, message);
+        return message;
+    }
+
+    public async Task<bool> SendNewMessageAsync(string userId, string chatId, string messageId, string? assistantId, PromptUserContext promptUser, ToolSessionInput tools, IReadOnlyList<PendingAnswerDto>? answers = null)
+    {
+        var message = await _databaseService.GetMessageAsync(userId, chatId, messageId);
+        if (message is not { Role: AiChatRole.User, Status: AiChatStatus.New })
+        {
+            return false;
+        }
+
+        message.Status = AiChatStatus.Success;
+        message.Timestamp = DateTime.UtcNow;
+        return await SendStreamingMessageAsync(userId, chatId, message, assistantId, promptUser, tools, answers, isStored: true);
+    }
+
+    public async Task<bool> DeleteNewMessageAsync(string userId, string chatId, string messageId)
+    {
+        var message = await _databaseService.GetMessageAsync(userId, chatId, messageId);
+        if (message is not { Status: AiChatStatus.New })
+        {
+            return false;
+        }
+
+        await DeleteMessageWithFilesAsync(userId, chatId, message);
+        return true;
+    }
+
+    /// <summary>False, with nothing started, when a stored message was already sent by another call.</summary>
+    private async Task<bool> SendStreamingMessageAsync(string userId, string chatId, Models.ChatMessage userMessage, string? assistantId, PromptUserContext promptUser, ToolSessionInput tools, IReadOnlyList<PendingAnswerDto>? answers, bool isStored)
     {
         if (userMessage.Timestamp == default)
         {
@@ -308,6 +411,12 @@ public class ChatService : IChatService
             ? string.Empty
             : targetAssistant?.Name ?? string.Empty;
 
+        // Only one send gets a message that waited for its files.
+        if (isStored && !await _databaseService.MarkMessageSentAsync(userId, chatId, userMessage.Id, userMessage.Timestamp))
+        {
+            return false;
+        }
+
         var assistantMessage = new Models.ChatMessage
         {
             Role = AiChatRole.Assistant,
@@ -319,8 +428,7 @@ public class ChatService : IChatService
 
         _streamingService.StartMessage(userId, assistantMessage.Id);
 
-        // Files still carry their content here (they came straight from the request), so
-        // this is the one cheap moment to count the message for every scheme.
+        // The files are priced from the counts stored on them at upload.
         var activeSchemes = await _tokenCounting.GetActiveSchemeIdsAsync();
         _tokenCounting.FillMissingMessageCounts(userMessage, activeSchemes);
 
@@ -328,7 +436,10 @@ public class ChatService : IChatService
         ToolExecutionContext toolContext;
         try
         {
-            var userMessageTask = _databaseService.AddMessageAsync(userId, chatId, userMessage);
+            // A message that waited for its files is already stored: it is saved as sent.
+            var userMessageTask = isStored
+                ? _databaseService.UpdateMessageAsync(userId, chatId, userMessage)
+                : _databaseService.AddMessageAsync(userId, chatId, userMessage);
             var assistantMessageTask = _databaseService.AddMessageAsync(userId, chatId, assistantMessage);
 
             await Task.WhenAll(userMessageTask, assistantMessageTask);
@@ -438,7 +549,7 @@ public class ChatService : IChatService
                 // A cancel undoes the send entirely: both messages go away and the client puts the
                 // text back in the composer, as if it was never sent.
                 await _databaseService.DeleteMessageAsync(userId, chatId, assistantMessage.Id);
-                await _databaseService.DeleteMessageAsync(userId, chatId, userMessage.Id);
+                await DeleteMessageWithFilesAsync(userId, chatId, userMessage);
 
                 var remainingChat = await GetChatByIdAsync(userId, chatId, includeFileContent: false);
                 // The knowledge message alone is not a conversation.
@@ -452,6 +563,8 @@ public class ChatService : IChatService
                 }
             }
         });
+
+        return true;
     }
 
     /// <summary>What one background run of an assistant message needs.</summary>
@@ -833,7 +946,7 @@ public class ChatService : IChatService
 
         if (canLoadOnDemand && onDemandFiles.Count > 0)
         {
-            resolvedTools.Add(new LoadKnowledgeFileTool(assistant.Id, onDemandFiles, _databaseService, _tokenCounting, _toolOptions, _telemetry));
+            resolvedTools.Add(new LoadKnowledgeFileTool(assistant.Id, onDemandFiles, _fileService.GetAssistantFileAsync, _databaseService, _tokenCounting, _toolOptions, _telemetry));
         }
 
         if (canLoadOnDemand)

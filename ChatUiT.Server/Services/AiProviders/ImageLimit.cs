@@ -49,7 +49,7 @@ public static class ImageLimit
     };
 
     private static bool IsImage(ChatFileChunk chunk)
-        => chunk.Type.Equals("image", System.StringComparison.OrdinalIgnoreCase) && !string.IsNullOrWhiteSpace(chunk.Base64);
+        => chunk.IsImage && chunk.Data is { Length: > 0 };
 
     private static AiInputItem KeepNewest(AiInputItem.ToolResult result, ref int remaining, int maxImages)
     {
@@ -108,7 +108,16 @@ public static class ImageLimit
                 chunks[c] = chunk;
             }
 
-            copies.Insert(0, new ChatFile { Id = file.Id, SourceFilename = file.SourceFilename, Chunks = chunks.ToList() });
+            copies.Insert(0, new ChatFile
+            {
+                Id = file.Id,
+                SourceFilename = file.SourceFilename,
+                IsInBlobStorage = file.IsInBlobStorage,
+                Size = file.Size,
+                ContentType = file.ContentType,
+                IsEncrypted = file.IsEncrypted,
+                Chunks = chunks.ToList()
+            });
         }
 
         var copy = new ChatMessage

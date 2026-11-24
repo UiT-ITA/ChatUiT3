@@ -1,7 +1,8 @@
+import { useTranslation } from 'react-i18next';
 import { Icon } from '../common/Icon';
 import IconButton from '../common/IconButton';
 import TextInput from '../common/TextInput';
-import type { ChatFile } from '../../types/fileModels';
+import type { FileUpload } from '../../types/fileModels';
 import Card from '../common/Card';
 import { ListItem } from '../common/List';
 
@@ -11,12 +12,14 @@ export interface KnowledgeFileItemData {
   id: string;
   name: string;
   description?: string;
-  ChatFile?: ChatFile;
-  // Set for files that are already stored on the server; their content is
-  // fetched on demand.
+  // Set for a file picked in the form. It is uploaded when the assistant is saved.
+  file?: File;
+  // Set for a file that is stored on the server. Its content is fetched on demand.
   fileId?: string;
-  // Per scheme, for stored files. New files are counted on the client.
+  // Per scheme, for stored files, as counted by the server.
   tokenCounts?: Record<string, number>;
+  // The file's upload while the assistant is being saved.
+  upload?: Pick<FileUpload, 'status' | 'progress'>;
 }
 
 interface KnowledgeFileItemProps {
@@ -27,7 +30,8 @@ interface KnowledgeFileItemProps {
   descriptionPlaceholder?: string;
   onDescriptionChange?: (description: string) => void;
   disabled?: boolean;
-  tokenLabel?: string;
+  /** Shown after the name: the file's token count, or how far its upload has come. */
+  trailingLabel?: string;
 }
 
 const KnowledgeFileItem = ({
@@ -38,8 +42,9 @@ const KnowledgeFileItem = ({
   descriptionPlaceholder = '',
   onDescriptionChange,
   disabled = false,
-  tokenLabel
+  trailingLabel
 }: KnowledgeFileItemProps) => {
+  const { t } = useTranslation();
   const isDescriptionMissing = allowDescription && !item.description?.trim();
 
   return (
@@ -48,11 +53,11 @@ const KnowledgeFileItem = ({
         density="compact"
         leading={<Icon name="file" color="muted" />}
         title={item.name}
-        trailing={tokenLabel}
+        trailing={trailingLabel}
         onClick={onPreview}
-        disabled={disabled || !onPreview}
+        disabled={!onPreview}
         actions={onRemove && !disabled && (
-          <IconButton icon="trash" label="Remove file" size="small" onClick={onRemove} />
+          <IconButton icon="trash" label={t('files.removeFile')} size="small" onClick={onRemove} />
         )}
       />
       {allowDescription && (

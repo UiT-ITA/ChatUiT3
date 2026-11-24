@@ -314,11 +314,11 @@ public sealed class AnthropicMessagesProtocol : IApiProtocol
                 var chunk = file.Chunks[i];
                 blocks.Add(new TextBlockParam { Text = $"[File Part {i + 1} of {file.Chunks.Count}]\n" });
 
-                if (chunk.Type.Equals("text", StringComparison.OrdinalIgnoreCase))
+                if (chunk.IsText)
                 {
                     blocks.Add(new TextBlockParam { Text = (chunk.Text ?? string.Empty) + "\n" });
                 }
-                else if (chunk.Type.Equals("image", StringComparison.OrdinalIgnoreCase) && !string.IsNullOrWhiteSpace(chunk.Base64))
+                else if (chunk.IsImage && chunk.Data is { Length: > 0 })
                 {
                     if (!allowImages)
                     {
@@ -332,7 +332,7 @@ public sealed class AnthropicMessagesProtocol : IApiProtocol
                         // rather than being assumed to be jpeg.
                         Source = new Base64ImageSource
                         {
-                            Data = chunk.Base64!,
+                            Data = Convert.ToBase64String(chunk.Data),
                             MediaType = ResolveMediaType(chunk.Format)
                         }
                     });
@@ -421,7 +421,7 @@ public sealed class AnthropicMessagesProtocol : IApiProtocol
         var blocks = new List<Block> { new TextBlockParam { Text = result.Content } };
         blocks.AddRange(images.Select(image => (Block)new ImageBlockParam
         {
-            Source = new Base64ImageSource { Data = image.Base64, MediaType = ResolveToolImageMediaType(image.MediaType) }
+            Source = new Base64ImageSource { Data = image.ToBase64(), MediaType = ResolveToolImageMediaType(image.MediaType) }
         }));
         return new ToolResultBlockParam { ToolUseID = result.ToolCallId, Content = blocks, IsError = result.IsError };
     }

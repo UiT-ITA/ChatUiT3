@@ -1,19 +1,16 @@
 import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import type { ChatFileDto, CreateChatFileDto } from '../../types/chatModels';
+import type { ChatFileDto } from '../../types/chatModels';
 import FileChip from '../common/FileChip';
 import IconButton from '../common/IconButton';
-import { getFileExtension } from '../../utils/fileUtils';
-import type { ChatFile } from '../../types/fileModels';
+import { getFileExtension, isImageImportFile, toJpegDataUrl } from '../../utils/fileUtils';
 import { fetchChatFile } from '../../services/chatService';
 import FilePreviewModal from './FilePreviewModal';
-import { toJpegDataUrl } from '../../import/processingShared';
-
-type AnyChatFile = ChatFile | ChatFileDto | CreateChatFileDto;
 
 interface FileThumbnailProps {
-  file: AnyChatFile;
-  /** The chat the file belongs to, for fetching a stored file's content. Omitted for files in the composer. */
+  /** A stored file, or a file on this device that is not sent yet. */
+  file: ChatFileDto | File;
+  /** The chat the stored file belongs to, for fetching its content. */
   chatId?: string;
   // Shows a remove button that calls this
   onRemove?: () => void;
@@ -26,39 +23,65 @@ const loadStoredFile = (chatId: string, fileId: string): Promise<ChatFileDto | u
     return undefined;
   });
 
-const hasFullContent = (file: AnyChatFile) => file.chunks.every((chunk) => chunk.type === 'image' ? chunk.base64 != null : chunk.text != null);
+const hasFullContent = (file: ChatFileDto) => file.chunks.every((chunk) => chunk.type === 'image' ? chunk.base64 != null : chunk.text != null);
 
+/** The object URL of an image on this device, or '' for any other file. */
+function useLocalImage(file: ChatFileDto | File): string {
+  const [source, setSource] = useState('');
+
+  useEffect(() => {
+    if (!(file instanceof File) || !isImageImportFile(file)) return;
+    const url = URL.createObjectURL(file);
+    let cancelled = false;
+    void Promise.resolve().then(() => {
+      if (!cancelled) setSource(url);
+    });
+    return () => {
+      cancelled = true;
+      URL.revokeObjectURL(url);
+    };
+  }, [file]);
+
+  return source;
+}
+
+/**
+ * A chip for an attached file. An image shows as a thumbnail. A click on a stored file opens its
+ * preview. A file that is not sent yet has no preview.
+ */
 const FileThumbnail = ({ file, chatId, onRemove }: FileThumbnailProps) => {
   const { t } = useTranslation();
-  const [selectedFile, setSelectedFile] = useState<AnyChatFile | null>(null);
+  const [selectedFile, setSelectedFile] = useState<ChatFileDto | null>(null);
   const [loadedFile, setLoadedFile] = useState<ChatFileDto | null>(null);
+  const localImage = useLocalImage(file);
 
   // A stored file without its content fetches the content on demand
-  const storedFileId = 'id' in file ? file.id : undefined;
-  const effectiveFile = loadedFile ?? file;
-  const needsFetch = !!storedFileId && !hasFullContent(effectiveFile);
+  const storedFile = file instanceof File ? undefined : (loadedFile ?? file);
+  const needsFetch = storedFile !== undefined && !hasFullContent(storedFile);
 
-  // Opens the preview, with the content of a stored file fetched first
+  // Opens the preview, with the content of the stored file fetched first
   const handleFileClick = async () => {
-    const fetched = needsFetch && chatId && storedFileId ? await loadStoredFile(chatId, storedFileId) : undefined;
+    if (!storedFile) return;
+    const fetched = needsFetch && chatId ? await loadStoredFile(chatId, storedFile.id) : undefined;
     if (fetched) setLoadedFile(fetched);
-    setSelectedFile(fetched ?? effectiveFile);
+    setSelectedFile(fetched ?? storedFile);
   };
 
-  const filename = effectiveFile.sourceFilename ?? t('files.unknownFile');
+  const filename = (file instanceof File ? file.name : file.sourceFilename) || t('files.unknownFile');
   const extension = getFileExtension(filename).toUpperCase() || 'FILE';
   // The name without its extension
   const baseName = filename.includes('.') ? filename.substring(0, filename.lastIndexOf('.')) : filename;
 
-  // An image thumbnail for a file of exactly one chunk that is an image
-  const singleChunk = effectiveFile.chunks.length === 1 ? effectiveFile.chunks[0] : undefined;
-  const isImage = singleChunk?.type === 'image';
-  const imageBase64 = isImage ? singleChunk.base64 : undefined;
-  const imageSource = imageBase64 ? toJpegDataUrl(imageBase64) : '';
+  // An image thumbnail for a stored file of exactly one chunk that is an image
+  const singleChunk = storedFile?.chunks.length === 1 ? storedFile.chunks[0] : undefined;
+  const isStoredImage = singleChunk?.type === 'image';
+  const imageBase64 = isStoredImage ? singleChunk.base64 : undefined;
+  const imageSource = imageBase64 ? toJpegDataUrl(imageBase64) : localImage;
+  const storedFileId = storedFile?.id;
 
   // An image thumbnail of a stored file fetches its content to show it
   useEffect(() => {
-    if (!isImage || imageBase64 || !needsFetch || !chatId || !storedFileId) return;
+    if (!isStoredImage || imageBase64 || !needsFetch || !chatId || !storedFileId) return;
     let cancelled = false;
     void loadStoredFile(chatId, storedFileId).then((fetched) => {
       if (fetched && !cancelled) setLoadedFile(fetched);
@@ -66,22 +89,22 @@ const FileThumbnail = ({ file, chatId, onRemove }: FileThumbnailProps) => {
     return () => {
       cancelled = true;
     };
-  }, [isImage, imageBase64, needsFetch, chatId, storedFileId]);
+  }, [isStoredImage, imageBase64, needsFetch, chatId, storedFileId]);
 
   return (
     <>
       <FileChip
-        image={isImage && imageSource ? { src: imageSource, alt: filename } : undefined}
+        image={imageSource ? { src: imageSource, alt: filename } : undefined}
         name={baseName}
         title={filename}
         extension={extension}
-        onClick={() => void handleFileClick()}
+        onClick={storedFile ? () => void handleFileClick() : undefined}
         removeAction={onRemove && (
           <IconButton
             icon="close"
             label={t('files.removeFile')}
-            variant={isImage && imageSource ? 'subtle' : 'ghost'}
-            shape={isImage && imageSource ? 'round' : 'square'}
+            variant={imageSource ? 'subtle' : 'ghost'}
+            shape={imageSource ? 'round' : 'square'}
             size="small"
             onClick={(e) => {
               e.stopPropagation();

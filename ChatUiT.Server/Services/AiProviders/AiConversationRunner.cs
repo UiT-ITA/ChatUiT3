@@ -379,7 +379,7 @@ public sealed class AiConversationRunner
                 Content = result.Content,
                 IsError = result.IsError,
                 LoadedToolIds = result.LoadedToolIds is { Count: > 0 } ids ? ids.ToList() : null,
-                Images = result.Images is { Count: > 0 } images ? images.Select(i => new TranscriptImage { Base64 = i.Base64, MediaType = i.MediaType }).ToList() : null
+                Images = result.Images is { Count: > 0 } images ? images.Select(i => new TranscriptImage { Base64 = i.ToBase64(), MediaType = i.MediaType }).ToList() : null
             });
         }
     }

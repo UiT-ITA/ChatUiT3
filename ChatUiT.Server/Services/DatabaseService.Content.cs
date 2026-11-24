@@ -9,15 +9,6 @@ namespace ChatUiT.Server.Services;
 public partial class DatabaseService
 {
     private int MaxTextChunkUtf8Bytes => Math.Min(Math.Max(_options.MaxTextChunkUtf8Bytes, 4_096), 1_000_000);
-    private int MaxBinaryPayloadCharacters
-    {
-        get
-        {
-            var requestedSize = Math.Min(Math.Max(_options.MaxBinaryPayloadCharacters, 4_096), 1_000_000);
-            return requestedSize - (requestedSize % 4);
-        }
-    }
-
     private async Task<List<string>> WriteTextContentAsync(string userId, string chatId, string ownerId, string? content, byte[]? key, ICollection<string>? writtenBlockIds = null)
     {
         if (_contentContainer == null)
@@ -54,96 +45,10 @@ public partial class DatabaseService
         return blockIds;
     }
 
-    private async Task<List<string>> WriteBinaryContentAsync(string userId, string chatId, string ownerId, byte[] bytes, byte[]? key, ICollection<string>? writtenBlockIds = null)
-    {
-        if (_contentContainer == null)
-        {
-            throw new InvalidOperationException("Content container is not initialized.");
-        }
-
-        if (bytes.Length == 0)
-        {
-            return new List<string>();
-        }
-
-        var base64Payload = Convert.ToBase64String(bytes);
-        var chunks = SplitBinaryPayload(base64Payload);
-        var blockIds = new List<string>(chunks.Count);
-
-        for (var index = 0; index < chunks.Count; index++)
-        {
-            var document = new ContentBlockDocument
-            {
-                Id = Guid.NewGuid().ToString(),
-                UserId = userId,
-                ChatId = chatId,
-                OwnerId = ownerId,
-                ContentType = StoredContentType.Binary,
-                ChunkIndex = index,
-                IsEncrypted = key != null,
-                Payload = key == null ? chunks[index] : ChatContentCipher.Encrypt(key, Convert.FromBase64String(chunks[index]))
-            };
-
-            await _contentContainer.CreateItemAsync(document, new Microsoft.Azure.Cosmos.PartitionKey(userId));
-            blockIds.Add(document.Id);
-            writtenBlockIds?.Add(document.Id);
-        }
-
-        return blockIds;
-    }
-
-    private async Task<List<StoredFileDocument>> WriteFilesAsync(string userId, string chatId, IReadOnlyCollection<ChatFile>? files, byte[]? key, ICollection<string>? writtenBlockIds = null)
-    {
-        if (files == null || files.Count == 0)
-        {
-            return new List<StoredFileDocument>();
-        }
-
-        var storedFiles = new List<StoredFileDocument>(files.Count);
-        foreach (var file in files)
-        {
-            var storedFile = new StoredFileDocument
-            {
-                Id = string.IsNullOrWhiteSpace(file.Id) ? Guid.NewGuid().ToString() : file.Id,
-                SourceFilename = file.SourceFilename,
-                Chunks = new List<StoredFileChunkDocument>()
-            };
-
-            foreach (var chunk in file.Chunks)
-            {
-                var storedChunk = new StoredFileChunkDocument
-                {
-                    Id = string.IsNullOrWhiteSpace(chunk.Id) ? Guid.NewGuid().ToString() : chunk.Id,
-                    Type = chunk.Type,
-                    Format = chunk.Format,
-                    ContentBlockIds = new List<string>()
-                };
-
-                if (chunk.Type.Equals("text", StringComparison.OrdinalIgnoreCase))
-                {
-                    storedChunk.ContentBlockIds = await WriteTextContentAsync(userId, chatId, storedChunk.Id, chunk.Text, key, writtenBlockIds);
-                }
-                else if (chunk.Type.Equals("image", StringComparison.OrdinalIgnoreCase))
-                {
-                    var imageBytes = string.IsNullOrWhiteSpace(chunk.Base64)
-                        ? Array.Empty<byte>()
-                        : Convert.FromBase64String(chunk.Base64);
-                    storedChunk.ContentBlockIds = await WriteBinaryContentAsync(userId, chatId, storedChunk.Id, imageBytes, key, writtenBlockIds);
-                }
-
-                storedFile.Chunks.Add(storedChunk);
-            }
-
-            storedFiles.Add(storedFile);
-        }
-
-        return storedFiles;
-    }
-
     private List<ChatFile> ReadFiles(
         IReadOnlyCollection<StoredFileDocument>? files,
         IReadOnlyDictionary<string, ContentBlockDocument> contentBlocksById,
-        bool includeContent,
+        bool includeCosmosContent,
         byte[]? key)
     {
         if (files == null || files.Count == 0)
@@ -154,42 +59,76 @@ public partial class DatabaseService
         var chatFiles = new List<ChatFile>(files.Count);
         foreach (var file in files)
         {
-            var chatFile = new ChatFile
-            {
-                Id = file.Id,
-                SourceFilename = file.SourceFilename,
-                Chunks = new List<ChatFileChunk>()
-            };
-
-            foreach (var chunk in file.Chunks)
-            {
-                var chatChunk = new ChatFileChunk
-                {
-                    Id = chunk.Id,
-                    Type = chunk.Type,
-                    Format = chunk.Format
-                };
-
-                if (includeContent)
-                {
-                    if (chunk.Type.Equals("text", StringComparison.OrdinalIgnoreCase))
-                    {
-                        chatChunk.Text = ReadTextContent(chunk.ContentBlockIds, contentBlocksById, key);
-                    }
-                    else if (chunk.Type.Equals("image", StringComparison.OrdinalIgnoreCase))
-                    {
-                        chatChunk.Base64 = Convert.ToBase64String(ReadBinaryContent(chunk.ContentBlockIds, contentBlocksById, key));
-                    }
-                }
-
-                chatFile.Chunks.Add(chatChunk);
-            }
-
+            var chatFile = new ChatFile { Id = file.Id, SourceFilename = file.SourceFilename };
+            ApplyBlob(chatFile, file.Blob);
+            chatFile.Chunks = ReadChunks(file.Chunks, contentBlocksById, includeCosmosContent, key);
             chatFiles.Add(chatFile);
         }
 
         return chatFiles;
     }
+
+    /// <summary>The parts of a file. A part stored in Cosmos gets its text or image bytes when <paramref name="includeContent"/>.</summary>
+    private List<ChatFileChunk> ReadChunks(
+        IReadOnlyCollection<StoredFileChunkDocument> chunks,
+        IReadOnlyDictionary<string, ContentBlockDocument> contentBlocksById,
+        bool includeContent,
+        byte[]? key)
+    {
+        var result = new List<ChatFileChunk>(chunks.Count);
+        foreach (var chunk in chunks)
+        {
+            var chatChunk = new ChatFileChunk { Id = chunk.Id, Type = chunk.Type, Format = chunk.Format };
+            if (includeContent && chatChunk.IsText)
+            {
+                chatChunk.Text = ReadTextContent(chunk.ContentBlockIds, contentBlocksById, key);
+            }
+            else if (includeContent && chatChunk.IsImage)
+            {
+                chatChunk.Data = ReadBinaryContent(chunk.ContentBlockIds, contentBlocksById, key);
+            }
+
+            result.Add(chatChunk);
+        }
+
+        return result;
+    }
+
+    private static void ApplyBlob(ChatFile file, StoredBlobFileDocument? blob)
+    {
+        if (blob == null)
+        {
+            return;
+        }
+
+        file.IsInBlobStorage = true;
+        file.Size = blob.Size;
+        file.ContentType = blob.ContentType;
+        file.IsEncrypted = blob.Encrypted;
+        file.TokenCounts = new Dictionary<string, int>(blob.TokenCounts);
+    }
+
+    private static StoredBlobFileDocument ToBlobDocument(ChatFile file) => new()
+    {
+        Original = $"input/{file.SourceFilename}",
+        Converted = $"converted/{file.SourceFilename}/",
+        Size = file.Size,
+        ContentType = file.ContentType,
+        Encrypted = file.IsEncrypted,
+        TokenCounts = new Dictionary<string, int>(file.TokenCounts)
+    };
+
+    /// <summary>A file in Blob Storage as it is stored on a message: its metadata and its parts without content.</summary>
+    private static StoredFileDocument ToStoredFile(ChatFile file) => new()
+    {
+        Id = file.Id,
+        SourceFilename = file.SourceFilename,
+        Chunks = ToStoredChunks(file),
+        Blob = ToBlobDocument(file)
+    };
+
+    private static List<StoredFileChunkDocument> ToStoredChunks(ChatFile file)
+        => file.Chunks.Select(chunk => new StoredFileChunkDocument { Id = chunk.Id, Type = chunk.Type, Format = chunk.Format }).ToList();
 
     private string ReadTextContent(
         IReadOnlyCollection<string> contentBlockIds,
@@ -412,24 +351,6 @@ public partial class DatabaseService
         if (builder.Length > 0)
         {
             chunks.Add(builder.ToString());
-        }
-
-        return chunks;
-    }
-
-    private List<string> SplitBinaryPayload(string base64Payload)
-    {
-        if (string.IsNullOrEmpty(base64Payload))
-        {
-            return new List<string>();
-        }
-
-        var chunkSize = MaxBinaryPayloadCharacters;
-        var chunks = new List<string>();
-
-        for (var index = 0; index < base64Payload.Length; index += chunkSize)
-        {
-            chunks.Add(base64Payload.Substring(index, Math.Min(chunkSize, base64Payload.Length - index)));
         }
 
         return chunks;

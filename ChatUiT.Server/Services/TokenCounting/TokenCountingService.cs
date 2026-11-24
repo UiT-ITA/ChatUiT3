@@ -27,7 +27,7 @@ public sealed class TokenCountingService : ITokenCountingService
     private const int ToolEnumItem = 3;
     private const int ToolFunctionEnd = 12;
 
-    // The client bounds images to this; used when a header cannot be read.
+    // Uploaded images are bounded to this; used when a header cannot be read.
     private const int FallbackImageWidth = 2048;
     private const int FallbackImageHeight = 1024;
 
@@ -60,6 +60,34 @@ public sealed class TokenCountingService : ITokenCountingService
         CountMessage(message, new[] { schemeId }).Total[schemeId];
 
     public MessageTokenCounts CountMessage(ChatMessage message, IReadOnlyList<string> schemeIds)
+    {
+        var storedSchemeIds = schemeIds.Where(id => HasStoredFileCounts(message, id)).ToList();
+        var counts = CountFromContent(message, schemeIds.Except(storedSchemeIds).ToList());
+
+        foreach (var schemeId in storedSchemeIds)
+        {
+            var fileTokens = message.Files.Sum(file => file.TokenCounts[schemeId]);
+            counts.Total[schemeId] = MessageFramingTokens + CountText(message.Content ?? string.Empty, Parse(schemeId)) + fileTokens;
+            counts.Files[schemeId] = fileTokens;
+        }
+
+        return counts;
+    }
+
+    public Dictionary<string, int> CountFile(ChatFile file, IReadOnlyList<string> schemeIds)
+    {
+        var message = new ChatMessage
+        {
+            Content = string.Empty,
+            Files = [new ChatFile { SourceFilename = file.SourceFilename, Chunks = file.Chunks }]
+        };
+        return CountFromContent(message, schemeIds).Files;
+    }
+
+    private static bool HasStoredFileCounts(ChatMessage message, string schemeId)
+        => message.Files is { Count: > 0 } files && files.All(file => file.TokenCounts.ContainsKey(schemeId));
+
+    private MessageTokenCounts CountFromContent(ChatMessage message, IReadOnlyList<string> schemeIds)
     {
         var hasFiles = message.Files is { Count: > 0 };
         var schemes = schemeIds.Select(Parse).ToList();
@@ -160,8 +188,10 @@ public sealed class TokenCountingService : ITokenCountingService
         message.FileTokenCounts ??= new Dictionary<string, int>();
         var hasFiles = message.Files is { Count: > 0 };
 
+        var filesAreLoaded = !hasFiles || message.Files!.All(file => file.IsContentLoaded);
         var missing = schemeIds
             .Where(id => !message.TokenCounts.ContainsKey(id) || (hasFiles && !message.FileTokenCounts.ContainsKey(id)))
+            .Where(id => filesAreLoaded || HasStoredFileCounts(message, id))
             .ToList();
         if (missing.Count == 0)
         {
@@ -202,7 +232,7 @@ public sealed class TokenCountingService : ITokenCountingService
 
     private (int Width, int Height) ReadDimensions(ImagePart image)
     {
-        if (ImageHeaderReader.TryReadDimensions(image.Base64, out var width, out var height))
+        if (ImageHeaderReader.TryReadDimensions(image.Data, out var width, out var height))
         {
             return (width, height);
         }

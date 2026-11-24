@@ -5,9 +5,18 @@ namespace ChatUiT.Server.Services;
 public interface IAssistantService
 {
     Task<UserAssistantsResult> GetUserAssistantsAsync(string userId, UserAccess access);
+    /// <summary>With <paramref name="includeFileContent"/> every file has its content loaded, from Cosmos or from Blob Storage.</summary>
     Task<Assistant?> GetAssistantByIdAsync(string assistantId, bool includeFileContent = false);
+    /// <summary>A file of the assistant with its content: its text and images.</summary>
     Task<AssistantFileDto?> GetAssistantFileDtoAsync(string assistantId, string fileId);
-    Task<bool> CreateAssistantAsync(CreateAssistantDto createDto, string userId);
+    /// <summary>
+    /// Uploads a file to the assistant and adds it to the assistant's files. The caller has checked
+    /// that the user may edit the assistant.
+    /// </summary>
+    /// <exception cref="Files.FileRequestException">The file is refused, cannot be converted, or does not fit the always-loaded limit.</exception>
+    Task<AssistantFileDto> UploadFileAsync(string assistantId, string category, string? description, string fileName, string? contentType, Stream content, CancellationToken cancellationToken);
+    /// <summary>Creates the assistant without files and returns its id. Files are uploaded to it and added with an update.</summary>
+    Task<string> CreateAssistantAsync(CreateAssistantDto createDto, string userId);
     Task<bool> UpdateAssistantAsync(UpdateAssistantDto updateDto, string userId);
     Task<bool> DeleteAssistantAsync(string assistantId, string userId);
     /// <exception cref="SharedAssistantRefusedException">The assistant carries tools the user may not use.</exception>

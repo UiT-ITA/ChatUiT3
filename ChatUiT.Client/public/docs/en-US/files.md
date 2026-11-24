@@ -1,6 +1,6 @@
 ## Attach a file
 
-Click the paperclip in the message box and pick one or more files. They appear as thumbnails above the box. Click a thumbnail to preview what the assistant will see, or the cross to remove it. Then write your question and send as usual.
+Click the paperclip in the message box and pick one or more files. They appear as thumbnails above the box. Click the cross on a thumbnail to remove it. Then write your question and send as usual. In a sent message, click a file to preview what the assistant sees.
 
 ![Replace with screenshot featuring the composer with a PDF and an image attached](placeholder)
 
@@ -16,7 +16,7 @@ You can also drag files from your computer onto the chat, or paste an image or a
 
 > [!NOTE]
 >
-> Up to 10 files in one message, and about 95 MB in total. Files are converted in your browser before anything is sent, so a large PDF can take a few seconds.
+> Up to 10 files in one message, and up to 100 MB per file. Files are uploaded and converted when you send the message, so a large PDF can take a few seconds.
 
 ## Images need vision
 

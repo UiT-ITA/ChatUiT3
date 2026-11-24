@@ -6,7 +6,13 @@ public abstract record MessagePart;
 
 public sealed record TextPart(string Text) : MessagePart;
 
-public sealed record ImagePart(string Base64, string MediaType) : MessagePart;
+/// <summary>An image as bytes. Base64 is only produced where a provider API needs it.</summary>
+public sealed record ImagePart(byte[] Data, string MediaType) : MessagePart
+{
+    public string ToBase64() => Convert.ToBase64String(Data);
+
+    public string ToDataUrl() => $"data:{MediaType};base64,{ToBase64()}";
+}
 
 /// <summary>
 /// The exact sequence of parts a user message becomes on the wire: the text, then each
@@ -44,11 +50,11 @@ public static class MessageParts
             var chunk = file.Chunks[i];
             parts.Add(new TextPart($"[File Part {i + 1} of {file.Chunks.Count}]\n"));
 
-            if (chunk.Type.Equals("text", StringComparison.OrdinalIgnoreCase))
+            if (chunk.IsText)
             {
                 parts.Add(new TextPart((chunk.Text ?? string.Empty) + "\n"));
             }
-            else if (chunk.Type.Equals("image", StringComparison.OrdinalIgnoreCase) && !string.IsNullOrWhiteSpace(chunk.Base64))
+            else if (chunk.IsImage && chunk.Data is { Length: > 0 })
             {
                 if (!allowImages)
                 {
@@ -57,7 +63,7 @@ public static class MessageParts
                     continue;
                 }
 
-                parts.Add(new ImagePart(chunk.Base64, ResolveMediaType(chunk.Format)));
+                parts.Add(new ImagePart(chunk.Data, ResolveMediaType(chunk.Format)));
                 parts.Add(new TextPart("\n"));
             }
         }

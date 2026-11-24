@@ -8,6 +8,7 @@ using ChatUiT.Server.Services.Knowledge;
 using ChatUiT.Server.Services.TokenCounting;
 using Microsoft.AspNetCore.SignalR;
 using ChatUiT.Server.Hubs;
+using ChatUiT.Server.Services.Files;
 
 namespace ChatUiT.Server.Controllers;
 
@@ -23,6 +24,7 @@ public class AssistantsController : ControllerBase
     private readonly IToolAccessService _toolAccess;
     private readonly IKnowledgeSourceRegistry _knowledgeSources;
     private readonly IHubContext<AppHub, IAppHubClient> _hubContext;
+    private readonly FileService _fileService;
 
     public AssistantsController(
         IAssistantService assistantService,
@@ -31,8 +33,10 @@ public class AssistantsController : ControllerBase
         IToolRegistry toolRegistry,
         IToolAccessService toolAccess,
         IKnowledgeSourceRegistry knowledgeSources,
-        IHubContext<AppHub, IAppHubClient> hubContext)
+        IHubContext<AppHub, IAppHubClient> hubContext,
+        FileService fileService)
     {
+        _fileService = fileService;
         _assistantService = assistantService;
         _userService = userService;
         _modelService = modelService;
@@ -103,10 +107,20 @@ public class AssistantsController : ControllerBase
         return Ok(assistants);
     }
 
+    /// <summary>Whether the caller may change the assistant and its files: its owner, or an admin for a system assistant.</summary>
+    private async Task<bool> CanEditAssistantAsync(string assistantId)
+    {
+        var assistant = await _assistantService.GetAssistantByIdAsync(assistantId);
+        return assistant != null && (assistant.IsSystem ? User.IsInRole("Admin") : assistant.OwnerId == GetCurrentUserId());
+    }
+
+    /// <summary>A file of the assistant with its content: its text and images.</summary>
     [HttpGet("{assistantId}/files/{fileId}")]
     public async Task<ActionResult<AssistantFileDto>> GetAssistantFile(string assistantId, string fileId)
     {
-        var file = await _assistantService.GetAssistantFileDtoAsync(assistantId, fileId);
+        var file = await CanEditAssistantAsync(assistantId)
+            ? await _assistantService.GetAssistantFileDtoAsync(assistantId, fileId)
+            : null;
 
         if (file == null)
         {
@@ -116,8 +130,65 @@ public class AssistantsController : ControllerBase
         return Ok(file);
     }
 
+    /// <summary>
+    /// Uploads one file to the assistant as multipart form data, with the form fields
+    /// <c>category</c> and <c>description</c> before the file. Answers when the original is stored
+    /// and converted and the file is added to the assistant, with the file and its parts.
+    /// </summary>
+    [HttpPost("{assistantId}/files")]
+    [Consumes("multipart/form-data")]
+    [DisableFormValueModelBinding]
+    public async Task<ActionResult<AssistantFileDto>> UploadAssistantFile(string assistantId, CancellationToken cancellationToken)
+    {
+        if (!await CanEditAssistantAsync(assistantId))
+        {
+            return ApiErrors.NotFound(ErrorCodes.AssistantNotFound);
+        }
+
+        try
+        {
+            return Ok(await FileTransfer.ReadFileAsync(
+                Request,
+                (upload, content) => _assistantService.UploadFileAsync(
+                    assistantId,
+                    upload.Fields.GetValueOrDefault("category") ?? AssistantFileCategories.AlwaysLoaded,
+                    upload.Fields.GetValueOrDefault("description"),
+                    upload.FileName,
+                    upload.ContentType,
+                    content,
+                    cancellationToken),
+                cancellationToken));
+        }
+        catch (FileRequestException ex)
+        {
+            return FileTransfer.Error(ex);
+        }
+    }
+
+    // Switched off in stage 1: the original of an assistant file, shown inline, or saved as a file with download=true.
+    // [HttpGet("{assistantId}/files/{fileId}/content")]
+    // public async Task<IActionResult> GetAssistantFileContent(string assistantId, string fileId, [FromQuery] bool download, CancellationToken cancellationToken)
+    // {
+    //     if (!await CanEditAssistantAsync(assistantId))
+    //     {
+    //         return ApiErrors.NotFound(ErrorCodes.AssistantFileNotFound);
+    //     }
+    //
+    //     try
+    //     {
+    //         var file = await _fileService.OpenAssistantFileAsync(assistantId, fileId);
+    //         return file == null
+    //             ? ApiErrors.NotFound(ErrorCodes.AssistantFileNotFound)
+    //             : await FileTransfer.WriteAsync(Response, file, download, cancellationToken);
+    //     }
+    //     catch (FileRequestException ex)
+    //     {
+    //         return FileTransfer.Error(ex);
+    //     }
+    // }
+
     [HttpPost]
-    public async Task<ActionResult> CreateAssistant([FromBody] CreateAssistantDto createDto)
+    public async Task<ActionResult<object>> CreateAssistant([FromBody] CreateAssistantDto createDto)
     {
         try
         {
@@ -132,12 +203,12 @@ public class AssistantsController : ControllerBase
                 return rejectedSources;
             }
 
-            await _assistantService.CreateAssistantAsync(createDto, userId);
+            var id = await _assistantService.CreateAssistantAsync(createDto, userId);
 
             // Notify all clients that assistant data has changed
             await _hubContext.Clients.Group(userId).AssistantsUpdated();
 
-            return Ok();
+            return Ok(new { id });
         }
         catch (AssistantValidationException ex)
         {

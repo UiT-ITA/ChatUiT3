@@ -1,18 +1,16 @@
-import { computed, signal, Signal } from '@preact/signals-react';
-import type { ChatFile } from '../types/fileModels';
+import { computed, Signal } from '@preact/signals-react';
 import { getAssistant } from './assistantService';
 import { getChat, getCurrentAssistantId } from './chatService';
 import { getModels } from './modelService';
-import { getTokenizer } from './tokenizerService';
-import { countDraftTokens, parseScheme } from '../utils/tokenCounting';
+import { parseScheme } from '../utils/tokenCounting';
 
 /**
- * What the next request will cost against the current model's context window. Everything
- * except the draft comes pre-counted from the server; the current assistant (not the chat's
- * stored one) decides which scheme key is read, since the next send goes to that assistant.
+ * What the chat costs against the current model's context window, before the next message.
+ * Everything is counted by the server; the current assistant (not the chat's stored one)
+ * decides which scheme key is read, since the next send goes to that assistant.
  */
 export interface ContextUsage {
-    /** Scheme parsed, assistant and model resolved, tokenizer ready. */
+    /** Scheme parsed, assistant and model resolved. */
     available: boolean;
     scheme: string | null;
     isEstimate: boolean;
@@ -22,7 +20,6 @@ export interface ContextUsage {
     fixed: number;
     /** Sum of stored message counts. */
     history: number;
-    draft: number;
     total: number;
     /** What fills the window. systemPrompt + knowledge = fixed; files + messages = history. */
     systemPrompt: number;
@@ -49,7 +46,6 @@ const UNAVAILABLE: ContextUsage = {
     maxOutputTokens: 0,
     fixed: 0,
     history: 0,
-    draft: 0,
     total: 0,
     systemPrompt: 0,
     knowledge: 0,
@@ -59,14 +55,6 @@ const UNAVAILABLE: ContextUsage = {
     overLimit: false,
     level: 'normal',
 };
-
-const draftSignal = signal<{ text: string; files: ChatFile[] }>({ text: '', files: [] });
-
-export function setDraft(text: string, files: ChatFile[]): void {
-    const current = draftSignal.value;
-    if (current.text === text && current.files === files) return;
-    draftSignal.value = { text, files };
-}
 
 export function getContextUsage(chatId: string | undefined): Signal<ContextUsage> {
     return computed<ContextUsage>(() => {
@@ -81,9 +69,6 @@ export function getContextUsage(chatId: string | undefined): Signal<ContextUsage
 
         const scheme = parseScheme(model.capabilities.tokenCountingScheme);
         if (!scheme) return UNAVAILABLE;
-
-        const tokenizer = getTokenizer(scheme).value;
-        if (!tokenizer) return { ...UNAVAILABLE, scheme: scheme.id, isEstimate: scheme.isEstimate };
 
         const chat = chatId !== undefined ? getChat(chatId).value : undefined;
 
@@ -113,12 +98,9 @@ export function getContextUsage(chatId: string | undefined): Signal<ContextUsage
         }
         const history = fileTokensTotal + messages;
 
-        const { text, files } = draftSignal.value;
-        const draft = text.length > 0 || files.length > 0 ? countDraftTokens(text, files, tokenizer, scheme) : 0;
-
         const contextSize = model.capabilities.contextSize;
         const maxOutputTokens = model.capabilities.maxOutputTokens;
-        const total = fixed + history + draft;
+        const total = fixed + history;
         const fraction = contextSize > 0 ? total / contextSize : 0;
         const level: ContextLevel = fraction >= DANGER_FRACTION ? 'danger' : fraction >= WARN_FRACTION ? 'warn' : 'normal';
 
@@ -130,7 +112,6 @@ export function getContextUsage(chatId: string | undefined): Signal<ContextUsage
             maxOutputTokens,
             fixed,
             history,
-            draft,
             total,
             systemPrompt,
             knowledge,

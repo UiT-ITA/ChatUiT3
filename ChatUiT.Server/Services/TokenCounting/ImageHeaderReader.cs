@@ -2,60 +2,11 @@ using System.Buffers.Binary;
 
 namespace ChatUiT.Server.Services.TokenCounting;
 
-/// <summary>
-/// Reads pixel dimensions from an image's header bytes. The client re-encodes every image
-/// to JPEG through a canvas, which strips metadata, so the size marker sits within the first
-/// few hundred bytes; PNG and GIF are handled for images that bypass the client.
-/// </summary>
+/// <summary>Reads pixel dimensions from the header of a JPEG, PNG or GIF image.</summary>
 public static class ImageHeaderReader
 {
-    // Enough base64 to cover any canvas-produced JPEG header, and a multiple of 4 so it
-    // decodes standalone.
-    private const int PrefixCharacters = 65_536;
-
-    public static bool TryReadDimensions(string base64, out int width, out int height)
-    {
-        width = 0;
-        height = 0;
-
-        if (string.IsNullOrWhiteSpace(base64))
-        {
-            return false;
-        }
-
-        var prefixLength = Math.Min(base64.Length, PrefixCharacters);
-        prefixLength -= prefixLength % 4;
-
-        if (!TryDecode(base64.AsSpan(0, prefixLength), out var prefix))
-        {
-            return false;
-        }
-
-        var result = TryRead(prefix, out width, out height);
-        if (result != ReadResult.NeedMore || prefixLength == base64.Length)
-        {
-            return result == ReadResult.Found;
-        }
-
-        // A JPEG with large leading segments: read the whole thing.
-        return TryDecode(base64.AsSpan(), out var full) && TryRead(full, out width, out height) == ReadResult.Found;
-    }
-
-    private static bool TryDecode(ReadOnlySpan<char> base64, out byte[] bytes)
-    {
-        bytes = new byte[base64.Length / 4 * 3];
-        if (Convert.TryFromBase64Chars(base64, bytes, out var written))
-        {
-            if (written != bytes.Length)
-            {
-                Array.Resize(ref bytes, written);
-            }
-            return true;
-        }
-
-        bytes = Array.Empty<byte>();
-        return false;
-    }
+    public static bool TryReadDimensions(ReadOnlySpan<byte> image, out int width, out int height)
+        => TryRead(image, out width, out height) == ReadResult.Found;
 
     private enum ReadResult { Found, Unsupported, NeedMore }
 
