@@ -11,7 +11,9 @@ public interface IChatService
     Task<List<ChatHeader>> GetChatListAsync(string userId);
     /// <summary>The chat without its messages.</summary>
     Task<ChatHeader?> GetChatHeaderAsync(string userId, string chatId);
+    /// <summary>Messages that wait for their files (status New) are left out.</summary>
     Task<Chat?> GetChatByIdAsync(string userId, string chatId, bool includeFileContent = true);
+    /// <summary>A file on a message of the chat, with its content.</summary>
     Task<ChatFile?> GetChatFileAsync(string userId, string chatId, string fileId);
     Task<Chat> CreateChatAsync(string userId, string assistantId, bool redEnabled = false);
     Task UpdateChatAsync(string userId, string chatId, string? newTitle, string? newAssistantId = null);
@@ -27,6 +29,13 @@ public interface IChatService
     Task SendStreamingMessageAsync(string userId, string chatId, ChatMessage message, string assistantId, PromptUserContext promptUser);
     /// <param name="answers">Answers the user gave to calls a message waits on before writing this message instead.</param>
     Task SendStreamingMessageAsync(string userId, string chatId, ChatMessage message, string? assistantId, PromptUserContext promptUser, ToolSessionInput tools, IReadOnlyList<PendingAnswerDto>? answers = null);
+    /// <summary>Stores a user message that waits for its files (status New). No reply is started. Null when the chat does not exist.</summary>
+    Task<ChatMessage?> CreateNewMessageAsync(string userId, string chatId, string content);
+    /// <summary>Sends a message that waited for its files and starts the reply. False when the chat has no such message.</summary>
+    /// <param name="answers">Answers the user gave to calls a message waits on before writing this message instead.</param>
+    Task<bool> SendNewMessageAsync(string userId, string chatId, string messageId, string? assistantId, PromptUserContext promptUser, ToolSessionInput tools, IReadOnlyList<PendingAnswerDto>? answers = null);
+    /// <summary>Deletes a message that waits for its files, with the files uploaded to it. False when the chat has no such message.</summary>
+    Task<bool> DeleteNewMessageAsync(string userId, string chatId, string messageId);
     Task AddMessageAsync(string userId, string chatId, ChatMessage message);
     Task DeleteMessageAsync(string userId, string chatId, string messageId);
 

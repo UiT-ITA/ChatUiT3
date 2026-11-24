@@ -1,9 +1,9 @@
 import { useState, useRef, useEffect } from 'react';
 import { useSignals } from '@preact/signals-react/runtime';
 import { useTranslation } from 'react-i18next';
-import { sendMessage, sendNewChatMessage, deleteChat, getCurrentChatId, getCurrentAssistantId, getChat, cancelGeneration, forgetChat } from '../../services/chatService';
+import { sendMessage, sendNewChatMessage, deleteChat, getCurrentChatId, getCurrentAssistantId, getChat, cancelGeneration, forgetChat, MessageNotSentError } from '../../services/chatService';
 import { removeCachedChat } from '../../hooks/useChatCache';
-import { FileProcessingService } from '../../services/fileProcessingService';
+import { MAX_FILE_BYTES } from '../../services/fileService';
 import AssistantSelector from './AssistantSelector';
 import { parseRoute } from '../../utils/routes';
 import ChatClassification from './ChatClassification';
@@ -18,19 +18,18 @@ import Stack from '../common/Stack';
 import Text from '../common/Text';
 import ContextUsageDetails from './ContextUsageDetails';
 import FileThumbnail from './FileThumbnail';
-import type { ChatFile } from '../../types/fileModels';
-import { SUPPORTED_IMPORT_ACCEPT, isValidFileType } from '../../utils/fileUtils';
+import type { ComposerFile } from '../../types/fileModels';
+import { SUPPORTED_IMPORT_ACCEPT, formatFileSize, isValidFileType } from '../../utils/fileUtils';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { addNotification } from '../../services/notificationService';
 import { ErrorCode, formatError } from '../../errors/errorCodes';
-import { getContextUsage, setDraft } from '../../services/contextUsageService';
+import { getContextUsage } from '../../services/contextUsageService';
 import { formatTokens, formatTokensCompact } from '../../utils/tokenCounting';
 import TextArea from '../common/TextArea';
 import InteractionCard from './interaction/InteractionCard';
 import { useInteractionDock } from '../../hooks/useInteractionDock';
 import './Composer.css';
 
-const DRAFT_COUNT_DEBOUNCE_MS = 150;
 const DISCLAIMER_KEY = 'chatuit-disclaimer-dismissed';
 
 const NO_FILES: File[] = [];
@@ -41,7 +40,7 @@ export default function ChatInput() {
   const navigate = useNavigate();
   const location = useLocation();
 
-  const [selectedFiles, setSelectedFiles] = useState<ChatFile[]>([]);
+  const [selectedFiles, setSelectedFiles] = useState<ComposerFile[]>([]);
   const [charCount, setCharCount] = useState(0);
   const [isCancelling, setIsCancelling] = useState(false);
   // The disclaimer stays dismissed in this browser. Shown when the storage cannot be read.
@@ -53,10 +52,9 @@ export default function ChatInput() {
     }
   });
   const textareaRef = useRef<HTMLTextAreaElement>(null);
-  const draftDebounceRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
 
   // What was last sent per chat, put back in the composer when its generation is cancelled
-  const lastSentRef = useRef(new Map<string, { text: string; files: ChatFile[] }>());
+  const lastSentRef = useRef(new Map<string, { text: string; files: ComposerFile[] }>());
 
   const currentAssistantId = getCurrentAssistantId();
   const chatId = getCurrentChatId().value;
@@ -70,12 +68,6 @@ export default function ChatInput() {
   const usage = getContextUsage(chatId).value;
   const contextFraction = usage.contextSize > 0 ? usage.total / usage.contextSize : 0;
 
-
-  // Recounts the draft at once when the attachments change. Typing is counted after a debounce.
-  useEffect(() => {
-    clearTimeout(draftDebounceRef.current);
-    setDraft(textareaRef.current?.value ?? '', selectedFiles);
-  }, [selectedFiles]);
 
   // Focuses the message box on every path change
   useEffect(() => {
@@ -91,12 +83,10 @@ export default function ChatInput() {
     }
   };
 
-  const fillComposer = (text: string, files: ChatFile[]) => {
+  const fillComposer = (text: string, files: ComposerFile[]) => {
     if (textareaRef.current) textareaRef.current.value = text;
     setCharCount(text.length);
     setSelectedFiles(files);
-    clearTimeout(draftDebounceRef.current);
-    setDraft(text, files);
     textareaRef.current?.focus();
   };
 
@@ -127,12 +117,16 @@ export default function ChatInput() {
       }
     } catch (error) {
       console.error('Failed to send message:', error);
+      // A new chat that could not get its first message is deleted
       if (chatId === undefined) {
         navigate('/');
         if (newChatId !== undefined) {
           removeCachedChat(newChatId);
           deleteChat(newChatId).catch(() => {});
         }
+      }
+      if (error instanceof MessageNotSentError) {
+        error.failures.forEach(failure => addNotification({ level: 'Error', message: `${failure.name}: ${failure.error}` }));
       }
       fillComposer(message, sentFiles);
     }
@@ -147,6 +141,7 @@ export default function ChatInput() {
       if (!cancelled || !undone) return;
 
       // Both messages are deleted: puts back the sent text and attachments, or without a snapshot the text of the last user message
+      // The server deleted the files with the message, so they are uploaded again on the next send
       const snapshot = lastSentRef.current.get(chatId);
       const cancelledUserMessage = [...(chat?.messages ?? [])].reverse().find(m => m.role === 'User');
       fillComposer(snapshot?.text ?? cancelledUserMessage?.content ?? '', snapshot?.files ?? []);
@@ -164,16 +159,25 @@ export default function ChatInput() {
     }
   };
 
-  const addFiles = async (files: File[]) => {
-    const valid = files.filter(file => isValidFileType(file));
-    files.filter(file => !isValidFileType(file)).forEach(file => addNotification({
-      level: 'Warning',
-      message: `${file.name}: ${formatError(t('files.typeNotSupported'), ErrorCode.FileTypeNotSupported)}`
-    }));
-    if (valid.length === 0) return;
+  // Adds the files that are of a supported type and within the size limit. They are uploaded when the message is sent.
+  const addFiles = (files: File[]) => {
+    const accepted: ComposerFile[] = [];
+    for (const file of files) {
+      if (!isValidFileType(file)) {
+        addNotification({ level: 'Warning', message: `${file.name}: ${formatError(t('files.typeNotSupported'), ErrorCode.FileTypeNotSupported)}` });
+      } else if (file.size > MAX_FILE_BYTES) {
+        addNotification({ level: 'Warning', message: `${file.name}: ${formatError(t('files.tooLarge', { limit: formatFileSize(MAX_FILE_BYTES) }), ErrorCode.FileTooLarge)}` });
+      } else {
+        accepted.push({ id: crypto.randomUUID(), file });
+      }
+    }
+    if (accepted.length === 0) return;
 
-    const imported = await FileProcessingService.importFiles(valid, 'A file attached to a message could not be imported');
-    setSelectedFiles(prev => [...prev, ...imported].slice(0, 10));
+    setSelectedFiles(prev => [...prev, ...accepted].slice(0, 10));
+  };
+
+  const removeFile = (fileId: string) => {
+    setSelectedFiles(prev => prev.filter(file => file.id !== fileId));
   };
 
   return (
@@ -184,7 +188,7 @@ export default function ChatInput() {
           accept={SUPPORTED_IMPORT_ACCEPT}
           value={NO_FILES}
           onValueChange={(_, details) => {
-            void addFiles(details.added);
+            addFiles(details.added);
             if (details.reason === 'drop') textareaRef.current?.focus();
           }}
           onReject={rejected => rejected.forEach(({ file }) => addNotification({ level: 'Warning', message: `${file.name}: ${formatError(t('files.typeNotSupported'), ErrorCode.FileTypeNotSupported)}` }))}
@@ -194,12 +198,8 @@ export default function ChatInput() {
 
             {selectedFiles.length > 0 && (
               <Stack direction="row" wrap gap="sm" pt="md" px="md">
-                {selectedFiles.map((file, index) => (
-                  <FileThumbnail
-                    key={`${file.id}-${index}`}
-                    file={file}
-                    onRemove={() => setSelectedFiles(prev => prev.filter((_, i) => i !== index))}
-                  />
+                {selectedFiles.map((file) => (
+                  <FileThumbnail key={file.id} file={file.file} onRemove={() => removeFile(file.id)} />
                 ))}
               </Stack>
             )}
@@ -213,11 +213,7 @@ export default function ChatInput() {
               maxRows={6}
               placeholder={t('chat.messagePlaceholder')}
               submitOnEnter
-              onChange={(value) => {
-                setCharCount(value.length);
-                clearTimeout(draftDebounceRef.current);
-                draftDebounceRef.current = setTimeout(() => setDraft(value, selectedFiles), DRAFT_COUNT_DEBOUNCE_MS);
-              }}
+              onChange={(value) => setCharCount(value.length)}
             />
 
             <div className="composer-toolbar">

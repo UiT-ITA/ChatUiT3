@@ -8,22 +8,19 @@ import { TERMINAL_TOOL_STATUSES } from "../types/chatModels";
 import { getAssistants, getAssistant } from "./assistantService";
 import { getAppDefaults } from "./appSettingsService";
 import type { AssistantDto, AssistantSummaryDto, FullAssistantDto } from "../types/assistantModels";
-import type { ChatFile } from "../types/fileModels";
-import { formatFileSize, mapToCreateChatFileDto } from "../utils/fileUtils";
-import { addNotification } from "./notificationService";
-import { CodedError, ErrorCode } from "../errors/errorCodes";
+import type { ComposerFile, FileUpload } from "../types/fileModels";
+import { fileErrorText, uploadMessageFile } from "./fileService";
+import { ErrorCode } from "../errors/errorCodes";
+import i18n from "i18next";
 
-// Must stay below the server's Kestrel MaxRequestBodySize (100 MB); the margin
-// covers headers and JSON overhead.
-const MAX_MESSAGE_PAYLOAD_BYTES = 95 * 1024 * 1024;
-
-function ensurePayloadWithinLimit(payload: unknown): void {
-  const size = new Blob([JSON.stringify(payload)]).size;
-  if (size > MAX_MESSAGE_PAYLOAD_BYTES) {
-    const message = `Message is too large to send (${formatFileSize(size)}). The limit is ${formatFileSize(MAX_MESSAGE_PAYLOAD_BYTES)} — remove some files or use smaller ones.`;
-    const error = new CodedError(ErrorCode.MessageTooLarge, message);
-    addNotification({ level: "Error", message: error.displayMessage });
-    throw error;
+/**
+ * Thrown when a message could not be sent. `failures` says which files could not be uploaded
+ * and why, and is empty when something else failed.
+ */
+export class MessageNotSentError extends Error {
+  constructor(readonly failures: { name: string; error: string }[], options?: { cause?: unknown }) {
+    super("The message was not sent", options);
+    this.name = "MessageNotSentError";
   }
 }
 
@@ -85,8 +82,9 @@ async function createChat(assistantId: string): Promise<ChatDto> {
   return apiService.post<ChatDto>("/api/Chats", createChatDto);
 }
 
-function buildOptimisticMessages(content: string, files: ChatFile[], assistantId: string): ChatMessageDto[] {
+function buildOptimisticMessages(content: string, files: ComposerFile[], assistantId: string): ChatMessageDto[] {
   const timestamp = new Date().toISOString();
+  const uploads: FileUpload[] = files.map(file => ({ id: file.id, name: file.file.name, status: "waiting", progress: 0 }));
 
   return [
     {
@@ -95,7 +93,8 @@ function buildOptimisticMessages(content: string, files: ChatFile[], assistantId
       timestamp,
       content,
       status: "Success",
-      files,
+      files: [],
+      uploads,
       assistantId: "",
       assistantName: "",
       tokenCounts: {},
@@ -125,9 +124,45 @@ function removeOptimisticMessages(chatId: string): void {
   }
 }
 
+/** Changes the upload of one file on the chat's optimistic user message. */
+function setUpload(chatId: string, fileId: string, change: Partial<FileUpload>): void {
+  const chatSignal = chatCache.get(chatId);
+  if (!chatSignal?.value) return;
+  chatSignal.value = {
+    ...chatSignal.value,
+    messages: chatSignal.value.messages.map(message => message.uploads
+      ? { ...message, uploads: message.uploads.map(upload => upload.id === fileId ? { ...upload, ...change } : upload) }
+      : message)
+  };
+}
+
+/**
+ * Uploads the files to the message, one at a time, so the message gets them in the order they
+ * were picked. Each file's progress shows on the optimistic message. Throws MessageNotSentError,
+ * naming the file that failed and why, at the first one that fails.
+ */
+async function uploadFiles(chatId: string, messageId: string, files: ComposerFile[]): Promise<void> {
+  for (const file of files) {
+    setUpload(chatId, file.id, { status: "uploading", progress: 0 });
+    try {
+      const stored = await uploadMessageFile(chatId, messageId, file.file, (progress) => {
+        setUpload(chatId, file.id, progress < 1 ? { status: "uploading", progress } : { status: "converting", progress: 1 });
+      });
+      setUpload(chatId, file.id, { status: "done", progress: 1, name: stored.sourceFilename });
+    } catch (error) {
+      console.error(`Failed to upload file ${file.file.name}:`, error);
+      throw new MessageNotSentError([{ name: file.file.name, error: fileErrorText(error, ErrorCode.UploadFailed, i18n.t("files.uploadFailed")) }]);
+    }
+  }
+}
+
+/**
+ * Creates the chat, opens it through `onCreated` with the optimistic messages, and sends the
+ * message. Throws MessageNotSentError when the message could not be sent: the caller deletes the chat.
+ */
 export async function sendNewChatMessage(
   content: string,
-  files: ChatFile[],
+  files: ComposerFile[],
   assistantId: string,
   onCreated: (chatId: string) => void
 ): Promise<void> {
@@ -216,8 +251,11 @@ export async function deleteChat(chatId: string): Promise<void> {
   }
 }
 
-/** Sends a message. `answers` are answers the user gave to calls the chat waits on, sent with it. */
-export async function sendMessage(chatId: string, content: string, files: ChatFile[], answers: PendingAnswerDto[] = []): Promise<void> {
+/**
+ * Sends the message with its files. `answers` are answers the user gave to calls the chat waits
+ * on, sent with it. Throws MessageNotSentError when the message could not be sent.
+ */
+export async function sendMessage(chatId: string, content: string, files: ComposerFile[], answers: PendingAnswerDto[] = []): Promise<void> {
   const assistantId = getCurrentAssistantId().value;
   if (!assistantId) {
     throw new Error("No assistant selected");
@@ -239,22 +277,30 @@ export async function sendMessage(chatId: string, content: string, files: ChatFi
   }
 }
 
-async function postMessage(chatId: string, content: string, files: ChatFile[], assistantId: string, answers: PendingAnswerDto[] = []): Promise<void> {
-  // Lets the optimistic messages paint before the request is serialized, which is slow with large files.
-  await new Promise(resolve => setTimeout(resolve, 0));
+/**
+ * Creates the message on the server, uploads its files to it, and starts the reply. When a step
+ * fails, the message is deleted on the server with the files uploaded to it, and
+ * MessageNotSentError is thrown.
+ */
+async function postMessage(chatId: string, content: string, files: ComposerFile[], assistantId: string, answers: PendingAnswerDto[] = []): Promise<void> {
+  let messageId: string | undefined;
+  try {
+    messageId = (await apiService.post<{ id: string }>(`/api/Chats/${chatId}/messages`, { content })).id;
+    await uploadFiles(chatId, messageId, files);
 
-  const messageDto: SendMessageDto = {
-    content,
-    assistantId,
-    files: mapToCreateChatFileDto(files),
-    clientTools: getClientToolDeclarations(),
-    timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone,
-    answers: answers.length > 0 ? answers : null,
-  };
-
-  ensurePayloadWithinLimit(messageDto);
-
-  await apiService.post(`/api/Chats/${chatId}/messages`, messageDto);
+    const messageDto: SendMessageDto = {
+      assistantId,
+      clientTools: getClientToolDeclarations(),
+      timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+      answers: answers.length > 0 ? answers : null,
+    };
+    await apiService.post(`/api/Chats/${chatId}/messages/${messageId}/send`, messageDto);
+  } catch (error) {
+    if (messageId !== undefined) {
+      await apiService.delete(`/api/Chats/${chatId}/messages/${messageId}`).catch(() => {});
+    }
+    throw error instanceof MessageNotSentError ? error : new MessageNotSentError([], { cause: error });
+  }
 }
 
 /**

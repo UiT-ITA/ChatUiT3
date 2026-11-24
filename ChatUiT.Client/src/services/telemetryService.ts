@@ -15,12 +15,10 @@ export type ClientErrorKind =
   | "network"
   | "realtime"
   | "auth"
-  | "file_import"
   | "render_markdown"
   | "render_mermaid"
   | "clipboard"
   | "storage"
-  | "tokenizer"
   | "client_tool";
 
 type FieldValue = string | number | null | undefined;

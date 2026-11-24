@@ -55,11 +55,14 @@ public static class KnowledgeFileMessages
     /// <summary>The text of a file as the model reads it: its text chunks joined, images dropped.</summary>
     public static string TextOf(AssistantFile file)
         => string.Concat(file.Chunks
-            .Where(chunk => chunk.Type.Equals("text", StringComparison.OrdinalIgnoreCase))
+            .Where(chunk => chunk.IsText)
             .Select(chunk => chunk.Text));
 
+    /// <summary>Whether the file has any text or image. Known without its content for a file in Blob Storage.</summary>
     public static bool HasContent(AssistantFile file)
-        => file.Chunks.Any(chunk =>
-            (chunk.Type.Equals("text", StringComparison.OrdinalIgnoreCase) && !string.IsNullOrWhiteSpace(chunk.Text)) ||
-            (chunk.Type.Equals("image", StringComparison.OrdinalIgnoreCase) && !string.IsNullOrWhiteSpace(chunk.Base64)));
+        => file.IsInBlobStorage
+            ? file.Chunks.Count > 0
+            : file.Chunks.Any(chunk =>
+                (chunk.IsText && !string.IsNullOrWhiteSpace(chunk.Text)) ||
+                (chunk.IsImage && chunk.Data is { Length: > 0 }));
 }

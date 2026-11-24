@@ -1,25 +1,19 @@
-export interface ChatFile {
-    id: string;
-    sourceFilename: string;
-    chunks: ChatFileChunk[];
+/** How a file's original is shown. Only used by the original-file preview, which is switched off. */
+export type FilePreviewKind = 'pdf' | 'image' | 'text' | 'markdown' | 'download' | 'unavailable';
+
+/** A file picked in the composer. It is uploaded when the message is sent. */
+export interface ComposerFile {
+  id: string;
+  file: File;
 }
 
-export interface TextChunk {
-    type: 'text';
-    text: string;
-    format: 'plain' | 'markdown';
-}
+export type FileUploadStatus = 'waiting' | 'uploading' | 'converting' | 'done';
 
-export interface ImageChunk {
-    type: 'image';
-    base64: string;
-    /**
-     * Pixel size after normalization, set at import. Needed to price the image in tokens
-     * before it is sent. Absent on chunks rebuilt from stored files, where the server has
-     * already counted them.
-     */
-    width?: number;
-    height?: number;
+/** The upload of one file of a message that is being sent. */
+export interface FileUpload {
+  id: string;
+  name: string;
+  status: FileUploadStatus;
+  /** How much of the file is sent, from 0 to 1. */
+  progress: number;
 }
-
-export type ChatFileChunk = TextChunk | ImageChunk;

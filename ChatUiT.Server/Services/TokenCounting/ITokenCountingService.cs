@@ -26,8 +26,15 @@ public interface ITokenCountingService
     /// <summary>Everything the provider would send for this message, framing included.</summary>
     int CountMessage(ChatMessage message, string schemeId);
 
-    /// <summary>Tokens for every scheme in <paramref name="schemeIds"/>, with the attachment share.</summary>
+    /// <summary>
+    /// Tokens for every scheme in <paramref name="schemeIds"/>, with the attachment share. For a
+    /// scheme every file has a stored count for, the files are priced from those counts.
+    /// Otherwise the files must carry their content.
+    /// </summary>
     MessageTokenCounts CountMessage(ChatMessage message, IReadOnlyList<string> schemeIds);
+
+    /// <summary>Per scheme: what the file adds to the message that carries it. The file must carry its content.</summary>
+    Dictionary<string, int> CountFile(ChatFile file, IReadOnlyList<string> schemeIds);
 
     /// <summary>
     /// The fixed cost of every request made through an assistant: system prompt (knowledge
@@ -37,8 +44,8 @@ public interface ITokenCountingService
 
     /// <summary>
     /// Adds counts for schemes the message lacks in either map (the attachment map only
-    /// matters for messages with files). Returns true when anything was added. Message files
-    /// must carry their content.
+    /// matters for messages with files). Returns true when anything was added. A scheme is
+    /// left out while a file has neither a stored count for it nor its content loaded.
     /// </summary>
     bool FillMissingMessageCounts(ChatMessage message, IReadOnlyList<string> schemeIds);
 }

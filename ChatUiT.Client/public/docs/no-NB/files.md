@@ -1,6 +1,6 @@
 ## Legg ved en fil
 
-Klikk bindersen i meldingsfeltet og velg én eller flere filer. De vises som miniatyrer over feltet. Klikk en miniatyr for å se hva assistenten får, eller krysset for å fjerne den. Skriv så spørsmålet og send som vanlig.
+Klikk bindersen i meldingsfeltet og velg én eller flere filer. De vises som miniatyrer over feltet. Klikk krysset på en miniatyr for å fjerne den. Skriv så spørsmålet og send som vanlig. I en sendt melding kan du klikke en fil for å se hva assistenten får.
 
 ![Replace with screenshot featuring the composer with a PDF and an image attached](placeholder)
 
@@ -16,7 +16,7 @@ Du kan også dra filer fra datamaskinen inn i samtalen, eller lime inn et bilde 
 
 > [!NOTE]
 >
-> Opptil 10 filer i én melding, og omtrent 95 MB totalt. Filene konverteres i nettleseren din før noe sendes, så en stor PDF kan ta noen sekunder.
+> Opptil 10 filer i én melding, og opptil 100 MB per fil. Filene lastes opp og konverteres når du sender meldingen, så en stor PDF kan ta noen sekunder.
 
 ## Bilder krever syn
 

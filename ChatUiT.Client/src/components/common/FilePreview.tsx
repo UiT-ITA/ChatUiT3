@@ -11,6 +11,11 @@ export const FilePreviewImage: React.FC<{ src: string; alt?: string }> = ({ src,
   <img src={src} alt={alt} className="file-preview-image" />
 );
 
+/** A document shown by the browser's own viewer, such as a PDF. */
+export const FilePreviewDocument: React.FC<{ src: string; title: string }> = ({ src, title }) => (
+  <iframe src={src} title={title} className="file-preview-document" />
+);
+
 /** A plain text part of a file preview, in the code face with its line breaks kept. */
 export const FilePreviewText: React.FC<{ children: React.ReactNode }> = ({ children }) => (
   <pre className="file-preview-text t-code">{children}</pre>

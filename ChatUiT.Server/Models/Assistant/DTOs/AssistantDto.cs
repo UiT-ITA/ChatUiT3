@@ -66,23 +66,28 @@ public class FullAssistantDto
     public Dictionary<string, int> KnowledgeTokenCounts { get; set; } = new();
 }
 
+/// <summary>
+/// A file of an assistant. An update request lists the files the assistant keeps, and reads only
+/// <see cref="Id"/>, <see cref="Category"/> and <see cref="Description"/>. New files are uploaded
+/// to the assistant.
+/// </summary>
 public class AssistantFileDto
 {
-    // Empty for files that are new in a create/update request.
-    public string? Id { get; set; }
+    public string Id { get; set; } = string.Empty;
     public string SourceFilename { get; set; } = string.Empty;
     public string Category { get; set; } = AssistantFileCategories.AlwaysLoaded;
     public string? Description { get; set; }
-    // Full content for new files in create/update requests; when reading an
-    // assistant the chunks carry metadata only (no text/base64) and content is
-    // fetched separately. An already-stored file is kept as-is when its chunks
-    // arrive without content.
-    public List<ChatFileChunkDto> Chunks { get; set; } = new List<ChatFileChunkDto>();
 
     /// <summary>
-    /// Per scheme: what the file costs as the message that carries it. Set when reading an
-    /// assistant; ignored in create/update requests.
+    /// The file's parts. An assistant carries them without their text and image data. The file's
+    /// own endpoint gives them with it.
     /// </summary>
+    public List<ChatFileChunkDto> Chunks { get; set; } = new List<ChatFileChunkDto>();
+
+    // Switched off in stage 1: how the original is shown. See FilePreviews.
+    // public string Preview { get; set; } = string.Empty;
+
+    /// <summary>Per scheme: what the file costs as the message that carries it.</summary>
     public Dictionary<string, int> TokenCounts { get; set; } = new();
 }
 

@@ -27,7 +27,6 @@ public partial class DatabaseService
         public string DatabaseName { get; set; } = "UserData";
         public string ConfigurationDatabaseName { get; set; } = "Configuration";
         public int MaxTextChunkUtf8Bytes { get; set; } = 500_000;
-        public int MaxBinaryPayloadCharacters { get; set; } = 900_000;
         public CosmosContainerOptions Users { get; set; } = new CosmosContainerOptions { Name = "Users", PartitionKeyPath = "/userId" };
         public CosmosContainerOptions Chats { get; set; } = new CosmosContainerOptions { Name = "Chats", PartitionKeyPath = "/userId" };
         public CosmosContainerOptions ChatMessages { get; set; } = new CosmosContainerOptions { Name = "ChatMessages", PartitionKeyPath = "/userId" };
@@ -202,8 +201,36 @@ public partial class DatabaseService
         [JsonProperty("sourceFilename")]
         public string SourceFilename { get; set; } = string.Empty;
 
+        // The file's parts. A part of a file in Blob Storage has no content blocks.
         [JsonProperty("chunks")]
         public List<StoredFileChunkDocument> Chunks { get; set; } = new();
+
+        // Set for a file in Blob Storage. Absent on files stored in Cosmos.
+        [JsonProperty("blob", NullValueHandling = NullValueHandling.Ignore)]
+        public StoredBlobFileDocument? Blob { get; set; }
+    }
+
+    /// <summary>A file in Blob Storage, in the container of its chat or assistant, stored under the file's name.</summary>
+    private sealed class StoredBlobFileDocument
+    {
+        [JsonProperty("original")]
+        public string Original { get; set; } = string.Empty;
+
+        [JsonProperty("converted")]
+        public string Converted { get; set; } = string.Empty;
+
+        [JsonProperty("size")]
+        public long Size { get; set; }
+
+        [JsonProperty("contentType")]
+        public string ContentType { get; set; } = string.Empty;
+
+        [JsonProperty("encrypted")]
+        public bool Encrypted { get; set; }
+
+        // Scheme id → tokens the file adds to the message that carries it.
+        [JsonProperty("tokenCounts")]
+        public Dictionary<string, int> TokenCounts { get; set; } = new();
     }
 
     private sealed class StoredFileChunkDocument
@@ -543,8 +570,13 @@ public partial class DatabaseService
         [JsonProperty("description")]
         public string? Description { get; set; }
 
+        // The file's parts. A part of a file in Blob Storage has no content blocks.
         [JsonProperty("chunks")]
         public List<StoredFileChunkDocument> Chunks { get; set; } = new();
+
+        // Set for a file in Blob Storage. Absent on files stored in Cosmos.
+        [JsonProperty("blob", NullValueHandling = NullValueHandling.Ignore)]
+        public StoredBlobFileDocument? Blob { get; set; }
     }
 
     private sealed class AssistantContentBlockDocument

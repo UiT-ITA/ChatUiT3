@@ -1,3 +1,4 @@
+using System.Text;
 using ChatUiT.Server.Models;
 using ChatUiT.Server.Services.AiProviders;
 using ChatUiT.Server.Services.TokenCounting;
@@ -27,7 +28,7 @@ public class ImageLimitTests
         var c = Assert.IsType<AiInputItem.ToolResult>(kept[2]);
         Assert.Null(a.Images);
         Assert.Equal(3, Count(a.Content, ImageLimit.RemovedText(5)));
-        Assert.Equal(new[] { "b2", "b3" }, b.Images!.Select(i => i.Base64));
+        Assert.Equal(new[] { "b2", "b3" }, b.Images!.Select(i => Encoding.UTF8.GetString(i.Data)));
         Assert.Equal(1, Count(b.Content, ImageLimit.RemovedText(5)));
         Assert.Same(items[2], c);
     }
@@ -52,16 +53,16 @@ public class ImageLimitTests
         Assert.Equal("text", chunks[0].Type);
         Assert.Equal(ImageLimit.RemovedText(2), chunks[0].Text);
         Assert.Equal("page", chunks[1].Text);
-        Assert.Equal("x2", chunks[2].Base64);
+        Assert.Equal("x2", Encoding.UTF8.GetString(chunks[2].Data!));
         Assert.Equal("image", message.Files.Single().Chunks[0].Type);
         Assert.Equal("look", copy.Content);
         Assert.Same(items[1], kept[1]);
     }
 
     private static AiInputItem.ToolResult Result(string id, int images)
-        => new(id, "text", false, Enumerable.Range(1, images).Select(i => new ImagePart($"{id}{i}", "image/png")).ToList());
+        => new(id, "text", false, Enumerable.Range(1, images).Select(i => new ImagePart(Encoding.UTF8.GetBytes($"{id}{i}"), "image/png")).ToList());
 
-    private static ChatFileChunk Image(string base64) => new() { Type = "image", Base64 = base64, Format = "png" };
+    private static ChatFileChunk Image(string data) => new() { Type = "image", Data = Encoding.UTF8.GetBytes(data), Format = "png" };
 
     private static ChatFileChunk Text(string text) => new() { Type = "text", Text = text };
 

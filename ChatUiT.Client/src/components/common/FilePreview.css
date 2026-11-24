@@ -20,6 +20,15 @@
   border: var(--border-sm) solid var(--line);
 }
 
+.file-preview-document {
+  flex: 1;
+  width: 100%;
+  min-height: var(--size-md);
+  border: var(--border-sm) solid var(--line);
+  border-radius: var(--radius-sm);
+  background: var(--panel);
+}
+
 .file-preview-text {
   background: var(--code-bg);
   color: var(--text);

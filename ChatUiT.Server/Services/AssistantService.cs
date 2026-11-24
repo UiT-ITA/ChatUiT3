@@ -9,6 +9,7 @@ using Microsoft.Extensions.Options;
 
 using ChatUiT.Server.Telemetry;
 using ChatUiT.Server.Errors;
+using ChatUiT.Server.Services.Files;
 
 namespace ChatUiT.Server.Services
 {
@@ -22,6 +23,7 @@ namespace ChatUiT.Server.Services
         private readonly ITokenCountingService _tokenCounting;
         private readonly ToolOptions _toolOptions;
         private readonly Telemetry.AppTelemetry _telemetry;
+        private readonly FileService _fileService;
 
         // Keyed by assistant id. Invalidated by the assistant's UpdatedAt and by the set of
         // active schemes, so both an edit and a newly registered model recount.
@@ -50,8 +52,10 @@ namespace ChatUiT.Server.Services
             IToolAccessService toolAccess,
             ITokenCountingService tokenCounting,
             IOptions<ToolOptions> toolOptions,
-            Telemetry.AppTelemetry telemetry)
+            Telemetry.AppTelemetry telemetry,
+            FileService fileService)
         {
+            _fileService = fileService;
             _databaseService = databaseService;
             _modelService = modelService;
             _hubContext = hubContext;
@@ -103,7 +107,7 @@ namespace ChatUiT.Server.Services
             var onDemandFiles = KnowledgeFileMessages.Loadable(files, noLoadedFiles);
             if (canLoadOnDemand && onDemandFiles.Count > 0)
             {
-                tools.Add(new LoadKnowledgeFileTool(assistant.Id, onDemandFiles, _databaseService, _tokenCounting, _toolOptions, _telemetry));
+                tools.Add(new LoadKnowledgeFileTool(assistant.Id, onDemandFiles, _fileService.GetAssistantFileAsync, _databaseService, _tokenCounting, _toolOptions, _telemetry));
             }
 
             if (canLoadOnDemand)
@@ -129,7 +133,9 @@ namespace ChatUiT.Server.Services
             return counts;
         }
 
-        // Per file id, per scheme. File content is read from the database only on a cache miss.
+        // Per file id, per scheme. A file in Blob Storage is priced from the counts stored on it.
+        // File content is read only on a cache miss, and then only when a file is stored in
+        // Cosmos or has no stored count for a scheme.
         private async Task<Dictionary<string, Dictionary<string, int>>> GetFileTokenCountsAsync(
             Assistant assistant,
             IReadOnlyList<string> schemes,
@@ -143,14 +149,16 @@ namespace ChatUiT.Server.Services
             }
 
             var files = assistant.Files;
-            var needsContent = files.Any(f =>
-                f.Chunks.Any(c =>
-                    (c.Type.Equals("text", StringComparison.OrdinalIgnoreCase) && c.Text == null) ||
-                    (c.Type.Equals("image", StringComparison.OrdinalIgnoreCase) && c.Base64 == null)));
-            if (needsContent)
+            var unloaded = files.Where(f => !f.IsContentLoaded).ToList();
+            var needsBlobContent = unloaded.Any(f => f.IsInBlobStorage && schemes.Any(scheme => !f.TokenCounts.ContainsKey(scheme)));
+            if (needsBlobContent || unloaded.Any(f => !f.IsInBlobStorage))
             {
                 var loaded = await _databaseService.GetAssistantByIdAsync(assistant.Id, includeFileContent: true);
                 files = loaded?.Files ?? files;
+                if (needsBlobContent)
+                {
+                    await _fileService.LoadAssistantFileContentAsync(assistant.Id, files);
+                }
             }
 
             var counts = files.ToDictionary(
@@ -271,7 +279,18 @@ namespace ChatUiT.Server.Services
         public async Task<Assistant?> GetAssistantByIdAsync(string assistantId, bool includeFileContent = false)
         {
             var assistant = await _databaseService.GetAssistantByIdAsync(assistantId, includeFileContent);
+            if (assistant != null && includeFileContent)
+            {
+                await _fileService.LoadAssistantFileContentAsync(assistantId, assistant.Files);
+            }
+
             return assistant == null ? null : await WithModelAsync(assistant);
+        }
+
+        public async Task<AssistantFileDto?> GetAssistantFileDtoAsync(string assistantId, string fileId)
+        {
+            var file = await _fileService.GetAssistantFileAsync(assistantId, fileId);
+            return file == null ? null : MapAssistantFileDto(file, includeContent: true);
         }
 
         // Assistants come from the database with only the model id; the model itself is read
@@ -318,22 +337,105 @@ namespace ChatUiT.Server.Services
             return user != null && user.Preferences.SharedAssistantIds.Contains(assistant.Id);
         }
 
-        public async Task<AssistantFileDto?> GetAssistantFileDtoAsync(string assistantId, string fileId)
+        public async Task<AssistantFileDto> UploadFileAsync(string assistantId, string category, string? description, string fileName, string? contentType, Stream content, CancellationToken cancellationToken)
         {
-            var file = await _databaseService.GetAssistantFileAsync(assistantId, fileId);
-            return file == null ? null : MapAssistantFileDto(file);
+            if (category != AssistantFileCategories.AlwaysLoaded && category != AssistantFileCategories.SelectiveLoaded)
+            {
+                throw new FileRequestException(ErrorCodes.AssistantFileCategoryInvalid);
+            }
+
+            if (category == AssistantFileCategories.SelectiveLoaded && string.IsNullOrWhiteSpace(description))
+            {
+                throw new FileRequestException(ErrorCodes.OnDemandFileNeedsDescription);
+            }
+
+            var file = await _fileService.StoreAssistantFileAsync(assistantId, fileName, contentType, content, cancellationToken);
+            file.Category = category;
+            file.Description = description?.Trim();
+
+            Assistant assistant;
+            Dictionary<string, int> tokenCounts;
+            object before;
+            try
+            {
+                var schemes = await _tokenCounting.GetActiveSchemeIdsAsync();
+                tokenCounts = KnowledgeFileMessages.HasContent(file)
+                    ? _tokenCounting.CountMessage(KnowledgeFileMessages.For(file), schemes).Total
+                    : schemes.ToDictionary(scheme => scheme, _ => 0);
+
+                assistant = await _databaseService.GetAssistantByIdAsync(assistantId)
+                    ?? throw new FileRequestException(ErrorCodes.AssistantNotFound, StatusCodes.Status404NotFound);
+                before = TelemetryView(assistant);
+                if (!await AlwaysLoadedFitsWithAsync(assistant, file, tokenCounts))
+                {
+                    throw new FileRequestException(ErrorCodes.AlwaysLoadedFilesTooLarge);
+                }
+
+                if (!await _databaseService.AddAssistantFileAsync(assistantId, file))
+                {
+                    throw new FileRequestException(ErrorCodes.AssistantNotFound, StatusCodes.Status404NotFound);
+                }
+            }
+            catch
+            {
+                // A file that is not added to the assistant leaves no blobs behind.
+                await _fileService.DeleteFilesAsync(assistantId, [file]);
+                throw;
+            }
+
+            assistant.Files.Add(file);
+            if (assistant.IsSystem)
+            {
+                var diff = TelemetryDiff.Compute(before, TelemetryView(assistant), ValuelessPaths);
+                _telemetry.AdminChanged("system_assistant", assistantId, "updated", diff.Changed, diff.Changes);
+            }
+            else
+            {
+                var diff = TelemetryDiff.Compute(before, TelemetryView(assistant), ValuelessPaths, includeOld: false);
+                _telemetry.AssistantChanged("updated", await TelemetrySummaryAsync(assistant), diff.Changed, diff.Changes);
+            }
+
+            _promptTokenCache.TryRemove(assistantId, out _);
+            _fileTokenCache.TryRemove(assistantId, out _);
+            if (assistant.IsSystem)
+            {
+                await NotifyAllUsersAssistantsUpdated();
+            }
+            else
+            {
+                await NotifyAssistantsUpdated(assistant.OwnerId);
+            }
+
+            return MapAssistantFileDto(file, includeContent: false, tokenCounts);
         }
 
-        public async Task<bool> CreateAssistantAsync(CreateAssistantDto createDto, string userId)
+        /// <summary>Whether the assistant's always-loaded files stay within its model's limit with <paramref name="file"/> added.</summary>
+        private async Task<bool> AlwaysLoadedFitsWithAsync(Assistant assistant, AssistantFile file, Dictionary<string, int> fileTokenCounts)
+        {
+            await WithModelAsync(assistant);
+            var capabilities = assistant.ChatSettings.Model.Capabilities;
+            var schemeId = TokenCountingSchemes.IdFor(capabilities);
+            if (file.Category != AssistantFileCategories.AlwaysLoaded || schemeId == null)
+            {
+                return true;
+            }
+
+            var storedCounts = await GetFileTokenCountsAsync(assistant);
+            var total = fileTokenCounts.GetValueOrDefault(schemeId) + assistant.Files
+                .Where(f => f.Category == AssistantFileCategories.AlwaysLoaded)
+                .Sum(f => storedCounts.GetValueOrDefault(f.Id)?.GetValueOrDefault(schemeId) ?? 0);
+            return total <= AlwaysLoadedFileLimit.For(capabilities);
+        }
+
+        public async Task<string> CreateAssistantAsync(CreateAssistantDto createDto, string userId)
         {
             var assistant = await BuildAssistantAsync(createDto, userId);
-            EnsureAlwaysLoadedFits(assistant, [], [], modelChanged: true);
             await _databaseService.CreateAssistantAsync(assistant);
             _telemetry.AssistantChanged("created", await TelemetrySummaryAsync(assistant));
 
             await NotifyAssistantsUpdated(userId);
-            
-            return true;
+
+            return assistant.Id;
         }
 
         public async Task<bool> UpdateAssistantAsync(UpdateAssistantDto updateDto, string userId)
@@ -342,7 +444,7 @@ namespace ChatUiT.Server.Services
             if (assistant == null || assistant.OwnerId != userId) return false;
 
             var previousModelId = assistant.ChatSettings.Model.Id;
-            var previousFiles = assistant.Files;
+            var previousFiles = SnapshotFiles(assistant.Files);
             var storedCounts = await GetFileTokenCountsAsync(assistant);
             var before = TelemetryView(assistant);
 
@@ -352,6 +454,7 @@ namespace ChatUiT.Server.Services
 
             var updatedAssistant = await _databaseService.UpdateAssistantAsync(assistant);
             if (updatedAssistant == null) return false;
+            await _fileService.DeleteFilesAsync(assistant.Id, previousFiles.Where(previous => assistant.Files.All(kept => kept.Id != previous.Id)));
             var diff = TelemetryDiff.Compute(before, TelemetryView(assistant), ValuelessPaths, includeOld: false);
             _telemetry.AssistantChanged("updated", await TelemetrySummaryAsync(assistant), diff.Changed, diff.Changes);
             _promptTokenCache.TryRemove(assistant.Id, out _);
@@ -387,6 +490,7 @@ namespace ChatUiT.Server.Services
             
             if (success)
             {
+                await _fileService.DeleteAllAsync(assistantId);
                 _telemetry.AssistantChanged("deleted", await TelemetrySummaryAsync(assistant));
                 _promptTokenCache.TryRemove(assistantId, out _);
                 _fileTokenCache.TryRemove(assistantId, out _);
@@ -641,7 +745,6 @@ namespace ChatUiT.Server.Services
         public async Task<FullAssistantDto> CreateSystemAssistantAsync(CreateAssistantDto createDto)
         {
             var assistant = await BuildAssistantAsync(createDto, "System");
-            EnsureAlwaysLoadedFits(assistant, [], [], modelChanged: true);
             var createdAssistant = await WithModelAsync(await _databaseService.CreateAssistantAsync(assistant));
             var created = TelemetryDiff.Compute(null, TelemetryView(createdAssistant), ValuelessPaths);
             _telemetry.AdminChanged("system_assistant", createdAssistant.Id, "created", created.Changed, created.Changes);
@@ -660,7 +763,7 @@ namespace ChatUiT.Server.Services
             }
 
             var previousModelId = assistant.ChatSettings.Model.Id;
-            var previousFiles = assistant.Files;
+            var previousFiles = SnapshotFiles(assistant.Files);
             var storedCounts = await GetFileTokenCountsAsync(assistant);
             var before = TelemetryView(assistant);
 
@@ -676,6 +779,7 @@ namespace ChatUiT.Server.Services
             {
                 return null;
             }
+            await _fileService.DeleteFilesAsync(assistant.Id, previousFiles.Where(previous => assistant.Files.All(kept => kept.Id != previous.Id)));
 
             var diff = TelemetryDiff.Compute(before, TelemetryView(assistant), ValuelessPaths);
             _telemetry.AdminChanged("system_assistant", assistantId, "updated", diff.Changed, diff.Changes);
@@ -698,6 +802,7 @@ namespace ChatUiT.Server.Services
             var deleted = await _databaseService.DeleteAssistantAsync(assistantId);
             if (deleted)
             {
+                await _fileService.DeleteAllAsync(assistantId);
                 var removed = TelemetryDiff.Compute(TelemetryView(assistant), null, ValuelessPaths);
                 _telemetry.AdminChanged("system_assistant", assistantId, "deleted", removed.Changed, removed.Changes);
                 _promptTokenCache.TryRemove(assistantId, out _);
@@ -777,7 +882,6 @@ namespace ChatUiT.Server.Services
                     createDto.ReasoningEffort,
                     createDto.AvailableToolIds,
                     createDto.PromptSnippets),
-                Files = MapAssistantFiles(createDto.Files),
                 KnowledgeSourceIds = NormalizeIds(createDto.KnowledgeSourceIds),
                 OwnerId = ownerId,
                 Access = ownerId == Assistant.SystemOwnerId ? MapAccess(createDto.Access) : null
@@ -785,8 +889,8 @@ namespace ChatUiT.Server.Services
         }
 
         // Rejects a save that leaves the always-loaded files over the model's limit, unless the
-        // model is unchanged and the always-loaded files cost no more than before. Files sent
-        // without content are priced from storedCounts.
+        // model is unchanged and the always-loaded files cost no more than before. The files are
+        // priced from storedCounts.
         private void EnsureAlwaysLoadedFits(
             Assistant assistant,
             IReadOnlyList<AssistantFile> previousFiles,
@@ -801,16 +905,7 @@ namespace ChatUiT.Server.Services
             }
 
             int Tokens(AssistantFile file)
-            {
-                if (file.Chunks.Any(c => c.Text != null || c.Base64 != null))
-                {
-                    return KnowledgeFileMessages.HasContent(file)
-                        ? _tokenCounting.CountMessage(KnowledgeFileMessages.For(file), schemeId)
-                        : 0;
-                }
-
-                return storedCounts.GetValueOrDefault(file.Id)?.GetValueOrDefault(schemeId) ?? 0;
-            }
+                => storedCounts.GetValueOrDefault(file.Id)?.GetValueOrDefault(schemeId) ?? 0;
 
             int AlwaysLoadedTokens(IEnumerable<AssistantFile> files)
                 => files.Where(f => f.Category == AssistantFileCategories.AlwaysLoaded).Sum(Tokens);
@@ -867,7 +962,7 @@ namespace ChatUiT.Server.Services
                 updateDto.ReasoningEffort,
                 updateDto.AvailableToolIds,
                 updateDto.PromptSnippets);
-            assistant.Files = MapAssistantFiles(updateDto.Files);
+            assistant.Files = ResolveFiles(updateDto.Files, assistant.Files);
             assistant.KnowledgeSourceIds = NormalizeIds(updateDto.KnowledgeSourceIds);
             if (assistant.IsSystem)
             {
@@ -914,7 +1009,7 @@ namespace ChatUiT.Server.Services
                 IsFavorite = user?.Preferences.FavoritedAssistantIds.Contains(assistant.Id) ?? false,
                 CanBeDefault = eligibleModelIds?.Contains(assistant.ChatSettings.Model.Id) ?? false,
                 Access = MapAccess(assistant.Access),
-                Files = assistant.Files.Select(file => MapAssistantFileDto(file, promptTokenCounts.Files.GetValueOrDefault(file.Id))).ToList(),
+                Files = assistant.Files.Select(file => MapAssistantFileDto(file, includeContent: false, promptTokenCounts.Files.GetValueOrDefault(file.Id))).ToList(),
                 KnowledgeSourceIds = assistant.KnowledgeSourceIds
             };
         }
@@ -922,38 +1017,45 @@ namespace ChatUiT.Server.Services
         private static List<string> NormalizeIds(List<string>? ids)
             => (ids ?? new List<string>()).Where(id => !string.IsNullOrWhiteSpace(id)).Select(id => id.Trim()).Distinct().ToList();
 
-        private static List<AssistantFile> MapAssistantFiles(List<AssistantFileDto>? fileDtos)
-        {
-            if (fileDtos == null)
+        /// <summary>The files as they are before a save changes their category: what the limit check and the blob cleanup compare against.</summary>
+        private static List<AssistantFile> SnapshotFiles(IEnumerable<AssistantFile> files)
+            => files.Select(file => new AssistantFile
             {
-                return new List<AssistantFile>();
-            }
+                Id = file.Id,
+                SourceFilename = file.SourceFilename,
+                Category = file.Category,
+                IsInBlobStorage = file.IsInBlobStorage
+            }).ToList();
 
-            foreach (var dto in fileDtos)
+        /// <summary>
+        /// The files a save keeps, each one a file the assistant has, with the category and
+        /// description from the request.
+        /// </summary>
+        private static List<AssistantFile> ResolveFiles(List<AssistantFileDto>? fileDtos, IReadOnlyList<AssistantFile> known)
+        {
+            var knownById = known.ToDictionary(file => file.Id);
+            var files = new List<AssistantFile>();
+            foreach (var dto in fileDtos ?? [])
             {
+                if (!knownById.Remove(dto.Id, out var file))
+                {
+                    throw new AssistantValidationException(ErrorCodes.AssistantFileNotFound, $"File '{dto.SourceFilename}' is not a file of this assistant.");
+                }
+
                 if (dto.Category == AssistantFileCategories.SelectiveLoaded && string.IsNullOrWhiteSpace(dto.Description))
                 {
-                    throw new AssistantValidationException(ErrorCodes.OnDemandFileNeedsDescription, $"On-demand file '{dto.SourceFilename}' needs a description.");
+                    throw new AssistantValidationException(ErrorCodes.OnDemandFileNeedsDescription, $"On-demand file '{file.SourceFilename}' needs a description.");
                 }
+
+                file.Category = dto.Category;
+                file.Description = dto.Description?.Trim();
+                files.Add(file);
             }
 
-            return fileDtos.Select(dto => new AssistantFile
-            {
-                Id = string.IsNullOrWhiteSpace(dto.Id) ? Guid.NewGuid().ToString() : dto.Id,
-                SourceFilename = dto.SourceFilename,
-                Category = dto.Category,
-                Description = dto.Description?.Trim(),
-                Chunks = dto.Chunks.Select(chunk => new ChatFileChunk
-                {
-                    Type = chunk.Type,
-                    Text = chunk.Text,
-                    Format = chunk.Format,
-                    Base64 = chunk.Base64
-                }).ToList()
-            }).ToList();
+            return files;
         }
 
-        private static AssistantFileDto MapAssistantFileDto(AssistantFile file, Dictionary<string, int>? tokenCounts = null)
+        private static AssistantFileDto MapAssistantFileDto(AssistantFile file, bool includeContent, Dictionary<string, int>? tokenCounts = null)
         {
             return new AssistantFileDto
             {
@@ -962,13 +1064,8 @@ namespace ChatUiT.Server.Services
                 SourceFilename = file.SourceFilename,
                 Category = file.Category,
                 Description = file.Description,
-                Chunks = file.Chunks.Select(chunk => new ChatFileChunkDto
-                {
-                    Type = chunk.Type,
-                    Text = chunk.Text,
-                    Format = chunk.Format,
-                    Base64 = chunk.Base64
-                }).ToList()
+                Chunks = file.Chunks.Select(chunk => ChatFileDto.ChunkFrom(chunk, includeContent)).ToList()
+                // Preview = FilePreviews.KindOf(file)
             };
         }
 

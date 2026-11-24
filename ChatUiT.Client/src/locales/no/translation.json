@@ -85,7 +85,6 @@
       "context": "Kontekstvindu",
       "contextUsed": "{{used}} av {{limit}} tokens",
       "contextUsedLabel": "Brukt",
-      "contextDraft": "Utkast",
       "contextReserved": "Reservert til svaret",
       "contextUnknown": "{{count}} meldinger er ikke talt opp ennå",
       "contextOver": "Samtalen får ikke lenger plass i modellens kontekstvindu. Start en ny samtale eller fjern vedlegg.",
@@ -286,17 +285,15 @@
       "shortDescriptionPlaceholder": "Legg til kort beskrivelse",
       "descriptionRequired": "Hver selektivt lastede fil trenger en kort beskrivelse.",
       "budget": {
-        "counting": "Teller tokens …",
         "unavailable": "Tokentallene for denne modellen er ikke klare. Last inn siden på nytt for å oppdatere dem.",
         "used": "{{used}} av {{limit}} tokens brukt",
         "explanation": "Tokens måler hvor mye tekst assistenten leser. Alltid lastede filer leses i starten av hver samtale, så de tar plass som samtalen ellers kunne brukt. Med denne modellen kan de til sammen bruke opptil {{limit}} tokens.",
         "estimate": "Tallene er anslag for denne modellen.",
         "fileTokens": "{{tokens}} tokens",
-        "rejectedTitle": "«{{name}}» ble ikke lagt til",
-        "rejected": "Denne filen er {{tokens}} tokens, men det er bare {{remaining}} tokens igjen til alltid lastede filer. Legg den heller til under selektivt lastede filer. Da leser assistenten den bare når et spørsmål trenger den, slik at samtalene går raskt og det blir plass til samtalen.",
         "overBlocked": "De alltid lastede filene bruker {{used}} tokens, men denne modellen tillater {{limit}}. Fjern filer fra alltid lastede filer og legg dem heller til under selektivt lastede filer. Du kan lagre når de får plass.",
         "overAllowed": "De alltid lastede filene bruker {{used}} tokens, mer enn de {{limit}} denne modellen tillater. Du kan fortsatt lagre andre endringer, men du kan ikke legge til flere alltid lastede filer før de får plass.",
-        "modelTooSmall": "De alltid lastede filene dine er for store for denne modellen ({{used}} av {{limit}} tokens)."
+        "modelTooSmall": "De alltid lastede filene dine er for store for denne modellen ({{used}} av {{limit}} tokens).",
+        "unsavedFiles": "Nye filer telles når assistenten lagres."
       },
       "categories": {
         "alwaysLoaded": {
@@ -431,28 +428,31 @@
     "unknownFile": "Ukjent fil",
     "removeFile": "Fjern fil",
     "typeNotSupported": "Filtype ikke støttet",
-    "appUpdated": "En ny versjon av ChatUiT er tilgjengelig. Last inn siden på nytt og prøv igjen.",
+    "tooLarge": "Filen er større enn {{limit}}.",
+    "uploadFailed": "Filen kunne ikke lastes opp.",
+    "loadFailed": "Filen kunne ikke lastes inn.",
+    "download": "Last ned",
+    "downloadOnly": "Denne filtypen kan ikke forhåndsvises. Last ned filen for å åpne den.",
+    "previewNotAvailable": "Forhåndsvisning er ikke tilgjengelig",
+    "upload": {
+      "waiting": "Venter",
+      "uploading": "Laster opp {{percent}} %",
+      "converting": "Behandler…",
+      "done": "Lastet opp"
+    },
     "errors": {
       "importFailed": "Filen kunne ikke importeres.",
-      "noProcessor": "Denne filtypen kan ikke importeres.",
       "imageLoadFailed": "Et bilde kunne ikke leses. Det kan være skadet eller i et format nettleseren ikke støtter.",
-      "fileReadFailed": "Fildataene kunne ikke leses.",
-      "canvasUnavailable": "Nettleseren kunne ikke behandle bilder. Prøv en annen nettleser.",
-      "imageEncodeFailed": "Et bilde kunne ikke konverteres.",
-      "pdfFailed": "PDF-filen kunne ikke leses.",
       "pdfPasswordProtected": "PDF-filen er passordbeskyttet. Fjern passordet og prøv igjen.",
       "pdfInvalid": "Filen er ikke en gyldig PDF eller er skadet.",
-      "docxFailed": "Word-dokumentet kunne ikke leses.",
-      "docxContentMissing": "Word-dokumentet mangler dokumentinnhold.",
-      "docxBodyMissing": "Word-dokumentet mangler dokumentets hoveddel.",
       "docxOpenFailed": "Word-dokumentet kunne ikke åpnes. Det kan være skadet eller passordbeskyttet.",
-      "pptxFailed": "PowerPoint-presentasjonen kunne ikke leses.",
+      "docxContentMissing": "Word-dokumentet mangler dokumentinnhold.",
       "pptxOpenFailed": "PowerPoint-presentasjonen kunne ikke åpnes. Den kan være skadet eller passordbeskyttet.",
-      "xlsxFailed": "Excel-arbeidsboken kunne ikke leses.",
       "xlsxOpenFailed": "Excel-arbeidsboken kunne ikke åpnes. Den kan være skadet eller passordbeskyttet.",
-      "xlsxImagesUnsupported": "Bildene i denne Excel-arbeidsboken kan ikke leses.",
-      "imageFailed": "Bildet kunne ikke importeres.",
-      "textFailed": "Tekstfilen kunne ikke leses."
+      "alwaysLoadedTooLarge": "Filen får ikke plass. Med den ville de alltid lastede filene brukt flere tokens enn denne modellen tillater. Legg den heller til under selektivt lastede filer.",
+      "messageGone": "Meldingen venter ikke lenger på filer. Send den på nytt.",
+      "chatGone": "Samtalen finnes ikke lenger.",
+      "assistantGone": "Assistenten finnes ikke lenger, eller du kan ikke endre den."
     }
   },
   "contextColumn": {
@@ -1249,6 +1249,7 @@
     "realtimeNoToken": "Kunne ikke koble til serveren fordi du ikke er logget inn.",
     "realtimeConnectionFailed": "Kunne ikke åpne direkteforbindelsen til serveren.",
     "signInFailed": "Innloggingen mislyktes.",
-    "trainingStatusFailed": "Opplæringsstatusen din kunne ikke lastes."
+    "trainingStatusFailed": "Opplæringsstatusen din kunne ikke lastes.",
+    "network": "Nettverksfeil. Sjekk tilkoblingen og prøv igjen."
   }
 }
