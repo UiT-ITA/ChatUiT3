@@ -112,7 +112,7 @@ public partial class DatabaseService
             await EncryptBlocksAsync(userId, contentBlocksById.Values, key);
         }
 
-        return ReadFiles(new[] { file }, contentBlocksById, includeContent: true, key).FirstOrDefault();
+        return ReadFiles(new[] { file }, contentBlocksById, includeCosmosContent: true, key).FirstOrDefault();
     }
 
     public async Task AddChatAsync(string userId, Chat chat)
@@ -233,6 +233,153 @@ public partial class DatabaseService
         await EncryptChatContentAsync(userId, chatId, await _chatKeys.GetUserKeyAsync(userId));
     }
 
+    public async Task MarkChatFilesEncryptedAsync(string userId, string chatId)
+    {
+        await EnsureInitializedAsync();
+
+        var messageDocuments = await QueryItemsAsync<ChatMessageDocument>(
+            _chatMessageContainer!,
+            new QueryDefinition("SELECT * FROM c WHERE c.userId = @userId AND c.chatId = @chatId AND ARRAY_LENGTH(c.files) > 0")
+                .WithParameter("@userId", userId)
+                .WithParameter("@chatId", chatId),
+            userId);
+
+        foreach (var messageDocument in messageDocuments.Where(m => m.Files.Any(f => f.Blob is { Encrypted: false })))
+        {
+            await ChangeMessageFilesAsync(userId, chatId, messageDocument.Id, (_, files) =>
+            {
+                foreach (var file in files.Where(f => f.Blob != null))
+                {
+                    file.Blob!.Encrypted = true;
+                }
+
+                return true;
+            });
+        }
+    }
+
+    public async Task<ChatMessage?> GetMessageAsync(string userId, string chatId, string messageId)
+    {
+        await EnsureInitializedAsync();
+
+        var messageDocument = await ReadItemOrDefaultAsync<ChatMessageDocument>(_chatMessageContainer!, messageId, userId);
+        if (messageDocument == null || messageDocument.ChatId != chatId)
+        {
+            return null;
+        }
+
+        var contentBlocksById = await ReadContentBlockMapByOwnersAsync(userId, chatId, new List<string> { messageId });
+        var key = await GetContentKeyAsync(userId, chatId);
+        return MapChatMessage(messageDocument, contentBlocksById, includeCosmosFileContent: false, key);
+    }
+
+    public async Task<bool> AddMessageFileAsync(string userId, string chatId, string messageId, ChatFile file)
+    {
+        await EnsureInitializedAsync();
+
+        return await ChangeMessageFilesAsync(userId, chatId, messageId, (message, files) =>
+        {
+            if (message.Status != AiChatStatus.New)
+            {
+                return false;
+            }
+
+            files.Add(ToStoredFile(file));
+            return true;
+        }, touch: true);
+    }
+
+    public async Task<bool> MarkMessageSentAsync(string userId, string chatId, string messageId, DateTime timestamp)
+    {
+        await EnsureInitializedAsync();
+
+        while (true)
+        {
+            ItemResponse<ChatMessageDocument> response;
+            try
+            {
+                response = await _chatMessageContainer!.ReadItemAsync<ChatMessageDocument>(messageId, new PartitionKey(userId));
+            }
+            catch (CosmosException ex) when (ex.StatusCode == System.Net.HttpStatusCode.NotFound)
+            {
+                return false;
+            }
+
+            if (response.Resource.ChatId != chatId || response.Resource.Status != AiChatStatus.New)
+            {
+                return false;
+            }
+
+            try
+            {
+                await _chatMessageContainer!.PatchItemAsync<ChatMessageDocument>(
+                    messageId,
+                    new PartitionKey(userId),
+                    new[] { PatchOperation.Set("/status", AiChatStatus.Success), PatchOperation.Set("/timestamp", timestamp) },
+                    new PatchItemRequestOptions { IfMatchEtag = response.ETag });
+                return true;
+            }
+            catch (CosmosException ex) when (ex.StatusCode == System.Net.HttpStatusCode.PreconditionFailed)
+            {
+            }
+            catch (CosmosException ex) when (ex.StatusCode == System.Net.HttpStatusCode.NotFound)
+            {
+                return false;
+            }
+        }
+    }
+
+    /// <summary>
+    /// Changes the files of a message and saves them when <paramref name="change"/> returns true.
+    /// Runs again when the message was changed meanwhile. False when the message does not exist
+    /// in the chat or nothing was saved. With <paramref name="touch"/> the message's timestamp
+    /// is set to now.
+    /// </summary>
+    private async Task<bool> ChangeMessageFilesAsync(string userId, string chatId, string messageId, Func<ChatMessageDocument, List<StoredFileDocument>, bool> change, bool touch = false)
+    {
+        while (true)
+        {
+            ItemResponse<ChatMessageDocument> response;
+            try
+            {
+                response = await _chatMessageContainer!.ReadItemAsync<ChatMessageDocument>(messageId, new PartitionKey(userId));
+            }
+            catch (CosmosException ex) when (ex.StatusCode == System.Net.HttpStatusCode.NotFound)
+            {
+                return false;
+            }
+
+            var files = response.Resource.Files;
+            if (response.Resource.ChatId != chatId || !change(response.Resource, files))
+            {
+                return false;
+            }
+
+            try
+            {
+                var operations = new List<PatchOperation> { PatchOperation.Set("/files", files) };
+                if (touch)
+                {
+                    operations.Add(PatchOperation.Set("/timestamp", DateTime.UtcNow));
+                }
+
+                await _chatMessageContainer!.PatchItemAsync<ChatMessageDocument>(
+                    messageId,
+                    new PartitionKey(userId),
+                    operations,
+                    new PatchItemRequestOptions { IfMatchEtag = response.ETag });
+                return true;
+            }
+            catch (CosmosException ex) when (ex.StatusCode == System.Net.HttpStatusCode.PreconditionFailed)
+            {
+            }
+            catch (CosmosException ex) when (ex.StatusCode == System.Net.HttpStatusCode.NotFound)
+            {
+                return false;
+            }
+        }
+    }
+
     public async Task UpdateChatAsync(string userId, string chatId, string? newTitle, string? newAssistantId = null)
     {
         await EnsureInitializedAsync();
@@ -292,7 +439,7 @@ public partial class DatabaseService
                 ContentBlockIds = await WriteTextContentAsync(userId, chatId, messageId, message.Content, key, writtenBlockIds),
                 ActivityBlockIds = await WriteTextContentAsync(userId, chatId, messageId, SerializeActivity(message.Activity), key, writtenBlockIds),
                 TranscriptBlockIds = await WriteTextContentAsync(userId, chatId, messageId, SerializeTranscript(message.Transcript), key, writtenBlockIds),
-                Files = await WriteFilesAsync(userId, chatId, message.Files, key, writtenBlockIds),
+                Files = message.Files.Select(ToMessageFile).ToList(),
                 AssistantId = message.AssistantId,
                 AssistantName = message.AssistantName,
                 TokenCounts = message.TokenCounts ?? new Dictionary<string, int>(),
@@ -310,7 +457,8 @@ public partial class DatabaseService
         message.Id = messageId;
         message.Timestamp = timestamp;
 
-        await TouchChatAsync(userId, chatId, timestamp, message.Status);
+        // A message that waits for its files is not sent yet: the chat keeps its status.
+        await TouchChatAsync(userId, chatId, timestamp, message.Status == AiChatStatus.New ? null : message.Status);
     }
 
     public async Task UpdateMessageAsync(string userId, string chatId, ChatMessage message)
@@ -327,24 +475,18 @@ public partial class DatabaseService
         var timestamp = message.Timestamp == default ? existingMessage.Timestamp : message.Timestamp;
         var role = message.Role;
         var status = message.Status;
-        var replaceFiles = message.Files != null && message.Files.Count > 0;
         var key = await GetContentKeyAsync(userId, chatId);
 
         // Write the new blocks and replace the message document first; the old blocks
         // are only deleted once the replacement is safely stored. On failure the new
-        // blocks are removed and the existing message stays intact.
+        // blocks are removed and the existing message stays intact. The message keeps
+        // the files it has.
         var writtenBlockIds = new List<string>();
         try
         {
             var contentBlockIds = await WriteTextContentAsync(userId, chatId, message.Id, message.Content, key, writtenBlockIds);
             var activityBlockIds = await WriteTextContentAsync(userId, chatId, message.Id, SerializeActivity(message.Activity), key, writtenBlockIds);
             var transcriptBlockIds = await WriteTextContentAsync(userId, chatId, message.Id, SerializeTranscript(message.Transcript), key, writtenBlockIds);
-
-            var files = existingMessage.Files;
-            if (replaceFiles)
-            {
-                files = await WriteFilesAsync(userId, chatId, message.Files, key, writtenBlockIds);
-            }
 
             var replacement = new ChatMessageDocument
             {
@@ -357,7 +499,7 @@ public partial class DatabaseService
                 ContentBlockIds = contentBlockIds,
                 ActivityBlockIds = activityBlockIds,
                 TranscriptBlockIds = transcriptBlockIds,
-                Files = files,
+                Files = existingMessage.Files,
                 // A full replace, so anything not carried here is wiped. Callers that build a
                 // partial message (the stale-generation fixup, for one) leave these blank.
                 AssistantId = string.IsNullOrWhiteSpace(message.AssistantId)
@@ -385,11 +527,6 @@ public partial class DatabaseService
         await DeleteContentBlocksAsync(userId, existingMessage.ContentBlockIds);
         await DeleteContentBlocksAsync(userId, existingMessage.ActivityBlockIds);
         await DeleteContentBlocksAsync(userId, existingMessage.TranscriptBlockIds);
-        if (replaceFiles)
-        {
-            await DeleteContentBlocksAsync(userId, CollectFileContentBlockIds(existingMessage.Files));
-        }
-
         message.Timestamp = timestamp;
         await TouchChatAsync(userId, chatId, timestamp, status);
     }
@@ -434,10 +571,7 @@ public partial class DatabaseService
         await _chatMessageContainer!.DeleteItemAsync<ChatMessageDocument>(messageId, new PartitionKey(userId));
 
         await DeleteOwnedContentAsync(userId, chatId, messageId);
-        if (existingMessage != null)
-        {
-            await DeleteFileContentAsync(userId, chatId, existingMessage.Files);
-        }
+        await DeleteFileContentAsync(userId, chatId, existingMessage.Files);
 
         await TouchChatAsync(userId, chatId, DateTime.UtcNow, null);
     }
@@ -503,7 +637,7 @@ public partial class DatabaseService
     private ChatMessage MapChatMessage(
         ChatMessageDocument messageDocument,
         IReadOnlyDictionary<string, ContentBlockDocument> contentBlocksById,
-        bool includeFileContent,
+        bool includeCosmosFileContent,
         byte[]? key)
     {
         return new ChatMessage
@@ -515,13 +649,19 @@ public partial class DatabaseService
             Activity = DeserializeActivity(ReadTextContent(messageDocument.ActivityBlockIds, contentBlocksById, key)),
             Transcript = DeserializeTranscript(ReadTextContent(messageDocument.TranscriptBlockIds, contentBlocksById, key)),
             Status = messageDocument.Status,
-            Files = ReadFiles(messageDocument.Files, contentBlocksById, includeFileContent, key),
+            Files = ReadFiles(messageDocument.Files, contentBlocksById, includeCosmosFileContent, key),
             AssistantId = messageDocument.AssistantId,
             AssistantName = messageDocument.AssistantName,
             TokenCounts = messageDocument.TokenCounts ?? new Dictionary<string, int>(),
             FileTokenCounts = messageDocument.FileTokenCounts ?? new Dictionary<string, int>()
         };
     }
+
+    /// <summary>A file as it is stored on a message. Only files in Blob Storage can be added to a message.</summary>
+    private static StoredFileDocument ToMessageFile(ChatFile file)
+        => file.IsInBlobStorage
+            ? ToStoredFile(file)
+            : throw new InvalidOperationException($"File {file.Id} is not in Blob Storage and cannot be stored on a message.");
 
     private static readonly System.Text.Json.JsonSerializerOptions ActivityJsonOptions =
         new(System.Text.Json.JsonSerializerDefaults.Web);

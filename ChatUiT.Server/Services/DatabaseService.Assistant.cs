@@ -80,14 +80,54 @@ public partial class DatabaseService
             assistantId,
             ConfigurationPartitionKey);
 
-        var file = document?.Files.FirstOrDefault(f => f.Id == fileId);
-        if (file == null)
+        var stored = document?.Files.FirstOrDefault(f => f.Id == fileId);
+        if (stored == null)
         {
             return null;
         }
 
-        var contentBlocksById = await ReadAssistantContentBlockMapAsync(assistantId);
-        return ReadAssistantFiles(new[] { file }, contentBlocksById, includeContent: true).FirstOrDefault();
+        var contentBlocksById = stored.Blob == null
+            ? await ReadAssistantContentBlockMapAsync(assistantId)
+            : new Dictionary<string, ContentBlockDocument>();
+        return ReadAssistantFiles(new[] { stored }, contentBlocksById, includeCosmosContent: true).Single();
+    }
+
+    public async Task<bool> AddAssistantFileAsync(string assistantId, AssistantFile file)
+    {
+        await EnsureInitializedAsync();
+
+        while (true)
+        {
+            ItemResponse<AssistantDocument> response;
+            try
+            {
+                response = await _assistantContainer!.ReadItemAsync<AssistantDocument>(assistantId, new PartitionKey(ConfigurationPartitionKey));
+            }
+            catch (CosmosException ex) when (ex.StatusCode == System.Net.HttpStatusCode.NotFound)
+            {
+                return false;
+            }
+
+            var files = response.Resource.Files;
+            files.Add(ToStoredAssistantFile(file));
+
+            try
+            {
+                await _assistantContainer!.PatchItemAsync<AssistantDocument>(
+                    assistantId,
+                    new PartitionKey(ConfigurationPartitionKey),
+                    new[] { PatchOperation.Set("/files", files), PatchOperation.Set("/updatedAt", DateTime.UtcNow) },
+                    new PatchItemRequestOptions { IfMatchEtag = response.ETag });
+                return true;
+            }
+            catch (CosmosException ex) when (ex.StatusCode == System.Net.HttpStatusCode.PreconditionFailed)
+            {
+            }
+            catch (CosmosException ex) when (ex.StatusCode == System.Net.HttpStatusCode.NotFound)
+            {
+                return false;
+            }
+        }
     }
 
     public async Task<Assistant> CreateAssistantAsync(Assistant assistant)
@@ -96,25 +136,10 @@ public partial class DatabaseService
 
         var assistantId = string.IsNullOrWhiteSpace(assistant.Id) ? Guid.NewGuid().ToString() : assistant.Id;
         var document = MapAssistantDocument(assistant, assistantId);
-
-        var writtenBlockIds = new List<string>();
-        try
-        {
-            foreach (var file in assistant.Files)
-            {
-                document.Files.Add(await WriteAssistantFileAsync(assistantId, file, writtenBlockIds));
-            }
-
-            await _assistantContainer!.CreateItemAsync(document, new PartitionKey(ConfigurationPartitionKey));
-        }
-        catch
-        {
-            await DeleteAssistantContentBlocksAsync(assistantId, writtenBlockIds);
-            throw;
-        }
+        await _assistantContainer!.CreateItemAsync(document, new PartitionKey(ConfigurationPartitionKey));
 
         assistant.Id = assistantId;
-        return await MapAssistantAsync(document, includeFileContent: false);
+        return await MapAssistantAsync(document);
     }
 
     public async Task<Assistant?> UpdateAssistantAsync(Assistant assistant)
@@ -139,50 +164,28 @@ public partial class DatabaseService
         var existingFilesById = existingDocument.Files.ToDictionary(f => f.Id, f => f);
         var document = MapAssistantDocument(assistant, assistant.Id);
 
-        // assistant.Files is the full desired list. A file whose chunks carry no
-        // content refers to an already-stored file and is kept (category/description
-        // may still change); files with content are written fresh. Old blocks are
-        // only deleted after the document is safely replaced.
-        var writtenBlockIds = new List<string>();
-        var replacedFiles = new List<StoredAssistantFileDocument>();
-        try
+        // assistant.Files is the full desired list. Each file is one the assistant already
+        // has. The content blocks of the files it no longer has are only deleted after the
+        // document is safely replaced.
+        foreach (var file in assistant.Files)
         {
-            foreach (var file in assistant.Files)
+            if (!existingFilesById.TryGetValue(file.Id, out var stored))
             {
-                var hasContent = file.Chunks.Any(chunk => chunk.Text != null || chunk.Base64 != null);
-
-                if (!hasContent && !string.IsNullOrWhiteSpace(file.Id) && existingFilesById.TryGetValue(file.Id, out var keptFile))
-                {
-                    keptFile.Category = file.Category;
-                    keptFile.Description = file.Description;
-                    document.Files.Add(keptFile);
-                    continue;
-                }
-
-                if (!string.IsNullOrWhiteSpace(file.Id) && existingFilesById.TryGetValue(file.Id, out var replacedFile))
-                {
-                    replacedFiles.Add(replacedFile);
-                }
-
-                document.Files.Add(await WriteAssistantFileAsync(assistant.Id, file, writtenBlockIds));
+                throw new InvalidOperationException($"File {file.Id} is not a file of assistant {assistant.Id}.");
             }
 
-            await _assistantContainer!.ReplaceItemAsync(document, document.Id, new PartitionKey(ConfigurationPartitionKey));
+            stored.Category = file.Category;
+            stored.Description = file.Description;
+            document.Files.Add(stored);
         }
-        catch
-        {
-            await DeleteAssistantContentBlocksAsync(assistant.Id, writtenBlockIds);
-            throw;
-        }
+
+        await _assistantContainer!.ReplaceItemAsync(document, document.Id, new PartitionKey(ConfigurationPartitionKey));
 
         var keptFileIds = document.Files.Select(f => f.Id).ToHashSet();
-        var obsoleteFiles = existingDocument.Files
-            .Where(f => !keptFileIds.Contains(f.Id))
-            .Concat(replacedFiles)
-            .ToList();
+        var obsoleteFiles = existingDocument.Files.Where(f => !keptFileIds.Contains(f.Id)).ToList();
         await DeleteAssistantContentBlocksAsync(assistant.Id, CollectAssistantFileContentBlockIds(obsoleteFiles));
 
-        return await MapAssistantAsync(document, includeFileContent: false);
+        return await MapAssistantAsync(document);
     }
 
     public async Task<bool> DeleteAssistantAsync(string assistantId)
@@ -222,7 +225,8 @@ public partial class DatabaseService
             ? new LanguageModel()
             : new LanguageModel { Id = document.ChatSettings.ModelId };
 
-        var contentBlocksById = includeFileContent && document.Files.Count > 0
+        var includeCosmosContent = includeFileContent && document.Files.Any(f => f.Blob == null);
+        var contentBlocksById = includeCosmosContent
             ? await ReadAssistantContentBlockMapAsync(document.Id)
             : new Dictionary<string, ContentBlockDocument>();
 
@@ -240,7 +244,7 @@ public partial class DatabaseService
                 AvailableToolIds = document.ChatSettings.AvailableToolIds,
                 PromptSnippets = document.ChatSettings.PromptSnippets
             },
-            Files = ReadAssistantFiles(document.Files, contentBlocksById, includeFileContent),
+            Files = ReadAssistantFiles(document.Files, contentBlocksById, includeCosmosContent),
             KnowledgeSourceIds = document.KnowledgeSourceIds ?? new List<string>(),
             OwnerId = document.OwnerId,
             UpdatedAt = document.UpdatedAt,

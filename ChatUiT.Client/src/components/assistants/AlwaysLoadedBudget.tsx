@@ -1,7 +1,6 @@
 import { useId } from 'react';
 import { useTranslation } from 'react-i18next';
 import { formatTokens } from '../../utils/tokenCounting';
-import Button from '../common/Button';
 import ProgressBar from '../common/ProgressBar';
 import Text from '../common/Text';
 import Alert from '../common/Alert';
@@ -9,27 +8,18 @@ import Stack from '../common/Stack';
 
 const WARN_FRACTION = 0.8;
 
-export interface RejectedKnowledgeFile {
-  id: string;
-  name: string;
-  tokens: number;
-  remaining: number;
-}
-
 interface AlwaysLoadedBudgetProps {
-  /** Undefined while the files are being counted, or when a stored file has no count. */
+  /** What the stored files use, as counted by the server. Undefined when a stored file has no count for this model. */
   used: number | undefined;
-  /** A stored file has no count for this model. */
-  unavailable: boolean;
+  /** Files are added that are not saved yet. The server counts them when the assistant is saved. */
+  hasUnsavedFiles: boolean;
   limit: number;
   isEstimate: boolean;
   /** Over the limit in a way that blocks saving. */
   blocked: boolean;
-  rejected: RejectedKnowledgeFile[];
-  onDismissRejected: () => void;
 }
 
-const AlwaysLoadedBudget = ({ used, unavailable, limit, isEstimate, blocked, rejected, onDismissRejected }: AlwaysLoadedBudgetProps) => {
+const AlwaysLoadedBudget = ({ used, hasUnsavedFiles, limit, isEstimate, blocked }: AlwaysLoadedBudgetProps) => {
   const { t, i18n } = useTranslation();
   const usedId = useId();
   const number = (value: number) => formatTokens(value, i18n.language);
@@ -38,7 +28,7 @@ const AlwaysLoadedBudget = ({ used, unavailable, limit, isEstimate, blocked, rej
   if (used === undefined) {
     return (
       <Text as="div" variant="meta" tone="muted">
-        {t(unavailable ? 'assistants.knowledge.budget.unavailable' : 'assistants.knowledge.budget.counting')}
+        {t('assistants.knowledge.budget.unavailable')}
       </Text>
     );
   }
@@ -65,26 +55,8 @@ const AlwaysLoadedBudget = ({ used, unavailable, limit, isEstimate, blocked, rej
           })}
         </Alert>
       )}
-
-      {rejected.length > 0 && (
-        <Alert tone="warning" role="alert">
-          <Stack gap="sm">
-            {rejected.map((file) => (
-              <Stack key={file.id} gap="xs">
-                <Text as="div" variant="ui">{t('assistants.knowledge.budget.rejectedTitle', { name: file.name })}</Text>
-                <Text as="div" variant="ui-plain">
-                  {t('assistants.knowledge.budget.rejected', {
-                    tokens: approx + number(file.tokens),
-                    remaining: number(Math.max(0, file.remaining))
-                  })}
-                </Text>
-              </Stack>
-            ))}
-            <Button variant="subtle" size="small" alignSelf="end" onClick={onDismissRejected}>
-              {t('common.close')}
-            </Button>
-          </Stack>
-        </Alert>
+      {hasUnsavedFiles && (
+        <Text as="p" variant="meta" tone="muted" leading="base">{t('assistants.knowledge.budget.unsavedFiles')}</Text>
       )}
     </Stack>
   );

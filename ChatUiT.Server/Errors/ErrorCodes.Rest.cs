@@ -27,6 +27,7 @@ public static partial class ErrorCodes
     public static readonly ErrorCode OnDemandFileNeedsDescription = new("E4034", "An on-demand file needs a description.");
     public static readonly ErrorCode AssistantCannotBeDefault = new("E4035", "This assistant cannot be set as your default.");
     public static readonly ErrorCode SharedAssistantToolsNotAllowed = new("E4036", "The shared assistant uses tools you are not allowed to use.");
+    public static readonly ErrorCode AssistantNotFound = new("E4037", "Assistant not found.");
 
     // Admin: assistants, tools, agents and settings
     public static readonly ErrorCode AdminToolsInvalid = new("E4100", "The assistant names tools that do not exist.");

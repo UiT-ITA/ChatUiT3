@@ -13,6 +13,7 @@ using ChatUiT.Server.Services.ApiCatalog;
 using ChatUiT.Server.Services.ResponsesApi;
 using ChatUiT.Server.Services.Directory;
 using ChatUiT.Server.Services.Encryption;
+using ChatUiT.Server.Services.Files;
 using ChatUiT.Server.Services.Insights;
 using ChatUiT.Server.Services.Knowledge;
 using ChatUiT.Server.Services.MediaGenerations;
@@ -34,8 +35,8 @@ if (builder.Environment.IsDevelopment())
     IdentityModelEventSource.ShowPII = false;
 }
 
-// Messages are posted as a single JSON body including file content (base64-inflated),
-// so the default 30 MB body limit is too small.
+// The Responses API takes a request as a single JSON body including file content
+// (base64-inflated), so the default 30 MB body limit is too small.
 builder.WebHost.ConfigureKestrel(options =>
 {
     options.Limits.MaxRequestBodySize = 100 * 1024 * 1024;
@@ -134,6 +135,11 @@ builder.Services.AddSingleton<TokenCredential>(new CachingTokenCredential(new De
 builder.Services.AddScoped<UserService>();
 builder.Services.AddSingleton<StreamingService>();
 builder.Services.AddSingleton<IChatKeyService, ChatKeyService>();
+// Chat and assistant files: originals and converted content in Blob Storage.
+builder.Services.AddSingleton<IBlobStorage, AzureBlobStorage>();
+builder.Services.AddSingleton<BlobFileStore>();
+builder.Services.AddSingleton<FileConversionService>();
+builder.Services.AddSingleton<FileService>();
 builder.Services.AddSingleton<IDatabaseService, DatabaseService>();
 builder.Services.AddSingleton<IModelService, ModelService>();
 builder.Services.AddSingleton<ISettingsService, SettingsService>();

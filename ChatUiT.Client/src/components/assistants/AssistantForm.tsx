@@ -1,8 +1,8 @@
-import React, { useState, useRef, useEffect, useMemo } from 'react';
+import React, { useState, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { useSignals } from '@preact/signals-react/runtime';
-import { PROMPT_SNIPPET_IDS, withDescendants, type AssistantAccessPolicyDto, type AssistantFileDto, type CreateAssistantDto, type FullAssistantDto, type PromptSnippetId, type ChatToolDto, clampAssistantEffort, reasoningTier, type UpdateAssistantDto, type UserRole } from '../../types/assistantModels';
+import { PROMPT_SNIPPET_IDS, withDescendants, type AssistantAccessPolicyDto, type AssistantFileRefDto, type CreateAssistantDto, type FullAssistantDto, type PromptSnippetId, type ChatToolDto, clampAssistantEffort, reasoningTier, type UpdateAssistantDto, type UserRole } from '../../types/assistantModels';
 import { getModels } from '../../services/modelService';
 import { getAppDefaults } from '../../services/appSettingsService';
 import { getTools } from '../../services/toolService';
@@ -12,7 +12,10 @@ import { searchAdminGroups, resolveAdminGroups } from '../../services/adminServi
 import { ALL_ROLES, CLIENT_TOOLS_POLICY_ID, type AdminToolDto, type ToolAccessPolicyDto } from '../../types/admin';
 import GroupPicker from '../common/GroupPicker';
 import type { UserLanguageModelDto } from '../../types/modelModels';
-import { createAssistant, updateAssistant, fetchAssistantFile, getAssistants } from '../../services/assistantService';
+import { createAssistant, updateAssistant, fetchAssistantFile, uploadAssistantFile, getAssistants } from '../../services/assistantService';
+import { addNotification } from '../../services/notificationService';
+import { ErrorCode } from '../../errors/errorCodes';
+import { fileErrorText } from '../../services/fileService';
 import TagField from '../common/TagField';
 import ClassificationBadge from '../classification/ClassificationBadge';
 import { SelectChevron } from '../common/Select';
@@ -31,11 +34,8 @@ import KnowledgeSourceList from './KnowledgeSourceList';
 import UnavailableOption from './UnavailableOption';
 import CapabilityTag from './CapabilityTag';
 import { capabilityKeys } from './assistantCapabilities';
-import type { ChatFile } from '../../types/fileModels';
-import { getTokenizer, loadTokenizer } from '../../services/tokenizerService';
-import { alwaysLoadedLimit, formatTokens, parseScheme, type ParsedScheme, type Tokenizer } from '../../utils/tokenCounting';
-import AlwaysLoadedBudget, { type RejectedKnowledgeFile } from './AlwaysLoadedBudget';
-import { knowledgeFileTokens, knowledgeFilesTokens } from './knowledgeTokens';
+import { alwaysLoadedLimit, formatTokens, parseScheme, type ParsedScheme } from '../../utils/tokenCounting';
+import AlwaysLoadedBudget from './AlwaysLoadedBudget';
 import EditorHeader from '../layout/EditorHeader';
 import { hasChanges } from '../../utils/formChanges';
 import Text from '../common/Text';
@@ -109,10 +109,22 @@ const formStateFor = (editingAssistant: FullAssistantDto | null) => {
   };
 };
 
+/** The endpoints the form saves through. */
+export interface AssistantFormApi {
+  /** Creates the assistant without files and returns its id. */
+  create: (assistant: CreateAssistantDto) => Promise<{ id: string }>;
+  update: (assistant: UpdateAssistantDto) => Promise<unknown>;
+}
+
+const userAssistantApi: AssistantFormApi = {
+  create: createAssistant,
+  update: updateAssistant
+};
+
 interface AssistantFormProps {
   editingAssistant: FullAssistantDto | null;
-  onCreate?: (assistant: CreateAssistantDto) => Promise<unknown>;
-  onUpdate?: (assistant: UpdateAssistantDto) => Promise<unknown>;
+  /** The endpoints to save through. The user's own assistants when absent. */
+  api?: AssistantFormApi;
   /** Called after a successful save */
   onSaved?: () => void;
   saveLabel?: string;
@@ -125,8 +137,7 @@ interface AssistantFormProps {
 
 const AssistantForm: React.FC<AssistantFormProps> = ({
   editingAssistant,
-  onCreate,
-  onUpdate,
+  api = userAssistantApi,
   onSaved,
   saveLabel,
   backPath,
@@ -145,19 +156,23 @@ const AssistantForm: React.FC<AssistantFormProps> = ({
   const [access, setAccess] = useState<AssistantAccessPolicyDto | null>(initialState.access);
 
   const [knowledgeFiles, setKnowledgeFiles] = useState<Record<KnowledgeFileCategory, KnowledgeFileItemData[]>>(initialState.knowledgeFiles);
-  const [rejectedFiles, setRejectedFiles] = useState<RejectedKnowledgeFile[]>([]);
+  // The id of a new assistant once it is created. The form then edits that assistant.
+  const [createdId, setCreatedId] = useState<string | undefined>(undefined);
+  const assistantId = editingAssistant?.id ?? createdId;
 
   const [formData, setFormData] = useState<CreateAssistantDto>(initialState.formData);
 
+  // The form follows the assistant when it is fetched again, except while it is saving or holds
+  // files that are not stored yet: those would be lost.
+  const hasUnstoredFiles = Object.values(knowledgeFiles).flat().some((item) => item.file && !item.fileId);
   const [syncedAssistant, setSyncedAssistant] = useState(editingAssistant);
-  if (editingAssistant !== syncedAssistant) {
+  if (editingAssistant !== syncedAssistant && !loading && !hasUnstoredFiles) {
     setSyncedAssistant(editingAssistant);
     const next = formStateFor(editingAssistant);
     setInitialState(next);
     setKnowledgeFiles(next.knowledgeFiles);
     setFormData(next.formData);
     setAccess(next.access);
-    setRejectedFiles([]);
   }
 
   const models: UserLanguageModelDto[] = modelsSignal.value ?? [];
@@ -165,16 +180,32 @@ const AssistantForm: React.FC<AssistantFormProps> = ({
   const supportedEfforts = selectedModel?.capabilities.assistantEfforts ?? [];
   const currentEffort = clampAssistantEffort(formData.reasoningEffort, supportedEfforts);
 
-  // Token budget for always-loaded files. A model without a counter has no budget.
+  // A stored file shows the server's token count for the selected model, and a file that is being uploaded shows how far it has come.
   const scheme = parseScheme(selectedModel?.capabilities.tokenCountingScheme);
-  const tokenizer = scheme ? getTokenizer(scheme).value : undefined;
-  const alwaysLoadedBudget = (model: UserLanguageModelDto, modelScheme: ParsedScheme, modelTokenizer: Tokenizer | undefined) => ({
-    used: knowledgeFilesTokens(knowledgeFiles.alwaysLoaded, modelScheme, modelTokenizer),
+  const trailingLabel = (item: KnowledgeFileItemData) => {
+    if (item.upload) {
+      return item.upload.status === 'uploading'
+        ? t('files.upload.uploading', { percent: Math.round(item.upload.progress * 100) })
+        : t(`files.upload.${item.upload.status}`);
+    }
+    const tokens = scheme ? item.tokenCounts?.[scheme.id] : undefined;
+    return tokens === undefined
+      ? undefined
+      : `${scheme!.isEstimate ? '≈ ' : ''}${t('assistants.knowledge.budget.fileTokens', { tokens: formatTokens(tokens, i18n.language) })}`;
+  };
+
+  // Token budget for always-loaded files, from the server's counts of the stored files. A model
+  // without a counter has no budget. Files that are not saved yet have no count: the server
+  // counts them, and checks the budget, when they are uploaded.
+  const storedAlwaysLoaded = knowledgeFiles.alwaysLoaded.filter((item) => item.fileId);
+  const hasUnsavedAlwaysLoaded = storedAlwaysLoaded.length < knowledgeFiles.alwaysLoaded.length;
+  const alwaysLoadedBudget = (model: UserLanguageModelDto, modelScheme: ParsedScheme) => ({
+    used: storedAlwaysLoaded.every((item) => item.tokenCounts?.[modelScheme.id] !== undefined)
+      ? storedAlwaysLoaded.reduce((sum, item) => sum + item.tokenCounts![modelScheme.id], 0)
+      : undefined,
     limit: alwaysLoadedLimit(model.capabilities.contextSize)
   });
-  const budget = selectedModel && scheme ? alwaysLoadedBudget(selectedModel, scheme, tokenizer) : undefined;
-  const isBudgetUnavailable = scheme !== null &&
-    knowledgeFiles.alwaysLoaded.some((item) => !item.ChatFile && item.tokenCounts?.[scheme.id] === undefined);
+  const budget = selectedModel && scheme ? alwaysLoadedBudget(selectedModel, scheme) : undefined;
   // Over the limit blocks saving, except while the model is unchanged and the always-loaded
   // files cost no more than when saved.
   const savedAlwaysLoadedTokens = scheme && editingAssistant
@@ -188,19 +219,6 @@ const AssistantForm: React.FC<AssistantFormProps> = ({
     formData.modelId !== editingAssistant.modelId ||
     budget.used! > savedAlwaysLoadedTokens
   );
-  // The files and model as of the latest render, for the upload handler.
-  const latestRef = useRef({ knowledgeFiles, model: selectedModel });
-  useEffect(() => {
-    latestRef.current = { knowledgeFiles, model: selectedModel };
-  }, [knowledgeFiles, selectedModel]);
-
-  const tokenLabel = (item: KnowledgeFileItemData) => {
-    if (!scheme) return undefined;
-    const tokens = knowledgeFileTokens(item, scheme, tokenizer);
-    return tokens === undefined
-      ? undefined
-      : `${scheme.isEstimate ? '≈ ' : ''}${t('assistants.knowledge.budget.fileTokens', { tokens: formatTokens(tokens, i18n.language) })}`;
-  };
 
   // The admin-configured default model, only once it is known to be selectable
   const defaultModelId = appDefaultsSignal.value?.defaultModelId ?? '';
@@ -259,7 +277,6 @@ const AssistantForm: React.FC<AssistantFormProps> = ({
     } else {
       handleChange('modelId', modelId);
     }
-    setRejectedFiles([]);
   };
 
   const selectedToolIds = formData.availableToolIds ?? [];
@@ -306,53 +323,11 @@ const AssistantForm: React.FC<AssistantFormProps> = ({
     );
   };
 
-  // Adds always-loaded files in order while they fit the budget and refuses the rest with a
-  // notice. Adds all files when there is no counter or the files cannot be counted.
-  const handleKnowledgeFilesSelected = async (category: KnowledgeFileCategory, files: ChatFile[]) => {
-    if (files.length === 0) {
-      return;
-    }
-
-    let newItems: KnowledgeFileItemData[] = files.map((file) => ({
-      id: crypto.randomUUID(),
-      name: file.sourceFilename,
-      ChatFile: file
-    }));
-
-    const model = latestRef.current.model;
-    const modelScheme = parseScheme(model?.capabilities.tokenCountingScheme);
-    if (category === 'alwaysLoaded' && model && modelScheme) {
-      const loadedTokenizer = await loadTokenizer(modelScheme);
-      const used = loadedTokenizer
-        ? knowledgeFilesTokens(latestRef.current.knowledgeFiles.alwaysLoaded, modelScheme, loadedTokenizer)
-        : undefined;
-
-      if (loadedTokenizer && used !== undefined) {
-        const limit = alwaysLoadedLimit(model.capabilities.contextSize);
-        const accepted: KnowledgeFileItemData[] = [];
-        const rejected: RejectedKnowledgeFile[] = [];
-        let total = used;
-        for (const item of newItems) {
-          const tokens = knowledgeFileTokens(item, modelScheme, loadedTokenizer) ?? 0;
-          if (total + tokens > limit) {
-            rejected.push({ id: item.id, name: item.name, tokens, remaining: limit - total });
-          } else {
-            accepted.push(item);
-            total += tokens;
-          }
-        }
-        newItems = accepted;
-        setRejectedFiles(rejected);
-      }
-    }
-
-    if (newItems.length === 0) {
-      return;
-    }
-
+  // Adds the picked files to the category. They are uploaded when the assistant is saved.
+  const handleKnowledgeFilesSelected = (category: KnowledgeFileCategory, files: File[]) => {
     setKnowledgeFiles((prev) => ({
       ...prev,
-      [category]: [...prev[category], ...newItems]
+      [category]: [...prev[category], ...files.map((file) => ({ id: crypto.randomUUID(), name: file.name, file }))]
     }));
   };
 
@@ -379,57 +354,82 @@ const AssistantForm: React.FC<AssistantFormProps> = ({
     }));
   };
 
-  const buildFileDtos = (): AssistantFileDto[] => {
-    return (Object.keys(knowledgeFiles) as KnowledgeFileCategory[]).flatMap((category) =>
-      knowledgeFiles[category].map((item) => ({
-        id: item.fileId,
-        sourceFilename: item.name,
-        category,
-        description: item.description?.trim(),
-        // Already-stored files are sent without content; the server keeps them as-is.
-        chunks: item.ChatFile
-          ? item.ChatFile.chunks.map((chunk) => ({
-              type: chunk.type,
-              text: chunk.type === 'text' ? chunk.text : undefined,
-              format: chunk.type === 'text' ? chunk.format : undefined,
-              base64: chunk.type === 'image' ? chunk.base64 : undefined
-            }))
-          : []
-      }))
-    );
+  const updateKnowledgeFile = (itemId: string, change: Partial<KnowledgeFileItemData>) => {
+    setKnowledgeFiles((prev) => Object.fromEntries(
+      Object.entries(prev).map(([category, items]) => [category, items.map((item) => (item.id === itemId ? { ...item, ...change } : item))])
+    ) as Record<KnowledgeFileCategory, KnowledgeFileItemData[]>);
   };
 
-  const loadKnowledgeFileContent = async (item: KnowledgeFileItemData): Promise<ChatFile | null> => {
-    if (!editingAssistant || !item.fileId) {
-      return null;
+  /**
+   * Uploads the files that are not stored yet to the assistant, one at a time in the order they
+   * are listed. Returns every file as it is now: an uploaded file is stored, and a file that
+   * failed stays as picked, with its error shown. `allStored` says whether none failed.
+   */
+  const uploadNewFiles = async (id: string) => {
+    const changes = new Map<string, Partial<KnowledgeFileItemData>>();
+    let allStored = true;
+    for (const category of Object.keys(knowledgeFiles) as KnowledgeFileCategory[]) {
+      for (const item of knowledgeFiles[category]) {
+        if (!item.file || item.fileId) continue;
+
+        updateKnowledgeFile(item.id, { upload: { status: 'uploading', progress: 0 } });
+        try {
+          const file = await uploadAssistantFile(id, item.file, category, item.description?.trim(), (progress) => {
+            updateKnowledgeFile(item.id, { upload: progress < 1 ? { status: 'uploading', progress } : { status: 'converting', progress: 1 } });
+          });
+          const change = { name: file.sourceFilename, fileId: file.id, tokenCounts: file.tokenCounts, file: undefined, upload: undefined };
+          changes.set(item.id, change);
+          updateKnowledgeFile(item.id, change);
+        } catch (error) {
+          console.error(`Failed to upload file ${item.name}:`, error);
+          allStored = false;
+          updateKnowledgeFile(item.id, { upload: undefined });
+          addNotification({ level: 'Error', message: `${item.name}: ${fileErrorText(error, ErrorCode.UploadFailed, t('files.uploadFailed'))}` });
+        }
+      }
     }
 
+    const files = Object.fromEntries(
+      Object.entries(knowledgeFiles).map(([category, items]) => [category, items.map((item) => ({ ...item, ...changes.get(item.id) }))])
+    ) as Record<KnowledgeFileCategory, KnowledgeFileItemData[]>;
+    return { files, allStored };
+  };
+
+  /** A stored file with its content, for the preview. */
+  const loadStoredFile = async (item: KnowledgeFileItemData) => {
+    if (!assistantId || !item.fileId) return null;
     try {
-      const file = await fetchAssistantFile(editingAssistant.id, item.fileId);
-      return {
-        id: file.id ?? item.fileId,
-        sourceFilename: file.sourceFilename,
-        chunks: file.chunks.map((chunk) => (
-          chunk.type === 'image'
-            ? { type: 'image' as const, base64: chunk.base64 ?? '' }
-            : { type: 'text' as const, text: chunk.text ?? '', format: chunk.format ?? 'plain' }
-        ))
-      };
+      return await fetchAssistantFile(assistantId, item.fileId);
     } catch (error) {
-      console.error(`Failed to load assistant file ${item.fileId}:`, error);
+      console.error(`Failed to load file ${item.fileId}:`, error);
       return null;
     }
+  };
+
+  /** The stored files, as an update lists the files the assistant keeps. */
+  const buildFileDtos = (files: Record<KnowledgeFileCategory, KnowledgeFileItemData[]>): AssistantFileRefDto[] => {
+    return (Object.keys(files) as KnowledgeFileCategory[]).flatMap((category) =>
+      files[category].filter((item) => item.fileId).map((item) => ({
+        id: item.fileId!,
+        sourceFilename: item.name,
+        category,
+        description: item.description?.trim()
+      }))
+    );
   };
 
   // The description is what the model reads to decide whether to load the file, so an
   // on-demand file without one cannot be saved. The server rejects it too.
   const hasMissingDescriptions = knowledgeFiles.selectiveLoaded.some((item) => !item.description?.trim());
 
+  // The assistant is saved first: a new one is created without files, and an existing one is
+  // updated, which deletes the stored files that were removed. The new files are then uploaded
+  // to the assistant. The server checks the always-loaded budget in the update and at each upload.
   const handleSubmit = async () => {
     if (!formData.name.trim() || !formData.modelId || loading || hasMissingDescriptions || isBudgetBlocking) return;
 
     // Normalize unsupported params on submit
-    const normalized: CreateAssistantDto = { ...formData, files: buildFileDtos() };
+    const normalized: CreateAssistantDto = { ...formData };
     if (selectedModel) {
       normalized.reasoningEffort = clampAssistantEffort(
         formData.reasoningEffort,
@@ -445,17 +445,21 @@ const AssistantForm: React.FC<AssistantFormProps> = ({
 
     setLoading(true);
     try {
-      if (editingAssistant) {
-        await (onUpdate ?? updateAssistant)({
-          id: editingAssistant.id,
-          ...normalized
-        });
-        // The saved values are the new baseline until the assistant list is refetched
-        setInitialState({ formData, knowledgeFiles, access });
+      let id = assistantId;
+      if (id === undefined) {
+        id = (await api.create(normalized)).id;
+        setCreatedId(id);
       } else {
-        await (onCreate ?? createAssistant)(normalized);
+        await api.update({ id, ...normalized, files: buildFileDtos(knowledgeFiles) });
       }
-      onSaved?.();
+
+      const { files, allStored } = await uploadNewFiles(id);
+      // What is stored is the new baseline. A file that failed stays in the form as not saved.
+      const storedFiles = Object.fromEntries(
+        Object.entries(files).map(([category, items]) => [category, items.filter((item) => item.fileId)])
+      ) as Record<KnowledgeFileCategory, KnowledgeFileItemData[]>;
+      setInitialState({ formData, knowledgeFiles: storedFiles, access });
+      if (allStored) onSaved?.();
     } catch (error) {
       console.error('Failed to save assistant:', error);
     } finally {
@@ -515,12 +519,10 @@ const AssistantForm: React.FC<AssistantFormProps> = ({
             </SelectTrigger>
             <SelectContent sideOffset={spacePx('xs')} className={floatingPanelClass()} style={{ width: 'var(--anchor-width)' }}>
               {models.map(model => {
-                const modelScheme = knowledgeFiles.alwaysLoaded.length > 0
+                const modelScheme = storedAlwaysLoaded.length > 0
                   ? parseScheme(model.capabilities.tokenCountingScheme)
                   : null;
-                const modelBudget = modelScheme
-                  ? alwaysLoadedBudget(model, modelScheme, getTokenizer(modelScheme).value)
-                  : undefined;
+                const modelBudget = modelScheme ? alwaysLoadedBudget(model, modelScheme) : undefined;
                 return (
                   <SelectItem key={model.id} value={model.id} label={model.modelName}>
                     <OptionContent
@@ -614,8 +616,8 @@ const AssistantForm: React.FC<AssistantFormProps> = ({
               description={t(`assistants.knowledge.categories.${category}.description`)}
               emptyLabel={t('assistants.knowledge.noFilesAdded')}
               items={knowledgeFiles[category]}
-              onFilesSelected={(files) => void handleKnowledgeFilesSelected(category, files)}
-              onLoadFile={loadKnowledgeFileContent}
+              onFilesSelected={(files) => handleKnowledgeFilesSelected(category, files)}
+              onLoadFile={loadStoredFile}
               disabled={loading}
               // Retrieval is not implemented on the server yet.
               unavailable={category === 'ragLoaded'}
@@ -623,16 +625,14 @@ const AssistantForm: React.FC<AssistantFormProps> = ({
               itemDescriptionPlaceholder={t('assistants.knowledge.shortDescriptionPlaceholder')}
               onItemDescriptionChange={(itemId, description) => handleKnowledgeFileDescriptionChange(category, itemId, description)}
               onItemRemove={(itemId) => handleKnowledgeFileRemove(category, itemId)}
-              itemTokenLabel={tokenLabel}
+              itemTrailingLabel={trailingLabel}
               status={category === 'alwaysLoaded' && budget && scheme && (
                 <AlwaysLoadedBudget
                   used={budget.used}
-                  unavailable={isBudgetUnavailable}
+                  hasUnsavedFiles={hasUnsavedAlwaysLoaded}
                   limit={budget.limit}
                   isEstimate={scheme.isEstimate}
                   blocked={isBudgetBlocking}
-                  rejected={rejectedFiles}
-                  onDismissRejected={() => setRejectedFiles([])}
                 />
               )}
             />

@@ -75,7 +75,7 @@ public static class TranscriptReplay
                     unanswered.Add(item.ToolCallId);
                     break;
                 case TranscriptItemKind.ToolResult when item.ToolCallId != null:
-                    items.Add(new AiInputItem.ToolResult(item.ToolCallId, item.Content ?? string.Empty, item.IsError, item.Images?.Select(i => new ImagePart(i.Base64, i.MediaType)).ToList(), item.LoadedToolIds));
+                    items.Add(new AiInputItem.ToolResult(item.ToolCallId, item.Content ?? string.Empty, item.IsError, item.Images?.Select(i => new ImagePart(Convert.FromBase64String(i.Base64), i.MediaType)).ToList(), item.LoadedToolIds));
                     unanswered.Remove(item.ToolCallId);
                     break;
             }

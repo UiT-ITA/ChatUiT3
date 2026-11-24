@@ -1,5 +1,5 @@
 import { signal, Signal, computed } from "@preact/signals-react";
-import type { AssistantDto, AssistantFileDto, CreateAssistantDto, UpdateAssistantDto, AssistantListDto } from "../types/assistantModels";
+import type { AssistantDto, AssistantFileDto, AssistantFileCategory, CreateAssistantDto, UpdateAssistantDto, AssistantListDto } from "../types/assistantModels";
 import apiService from "./apiService";
 
 // Assistant file content is loaded on demand (assistants carry file metadata only).
@@ -16,6 +16,21 @@ export function fetchAssistantFile(assistantId: string, fileId: string): Promise
     }
 
     return pending;
+}
+
+/**
+ * Uploads a file to an assistant, which adds it to the assistant's files. Resolves once the
+ * server has stored and converted it. The server refuses an always loaded file that does not
+ * fit the model's limit.
+ */
+export function uploadAssistantFile(
+    assistantId: string,
+    file: File,
+    category: AssistantFileCategory,
+    description: string | undefined,
+    onProgress: (fraction: number) => void
+): Promise<AssistantFileDto> {
+    return apiService.uploadFile<AssistantFileDto>(`/api/Assistants/${assistantId}/files`, file, onProgress, { category, description: description ?? '' });
 }
 
 const assistantListSignal = signal<AssistantListDto | undefined>(undefined);
@@ -72,9 +87,10 @@ export function getAssistant(assistantId: string): Signal<AssistantDto | undefin
     });
 }
 
-export async function createAssistant(assistant: CreateAssistantDto): Promise<AssistantDto> {
+/** Creates the assistant without files and returns its id. */
+export async function createAssistant(assistant: CreateAssistantDto): Promise<{ id: string }> {
     try {
-        const response = await apiService<AssistantDto>("/api/Assistants", {
+        const response = await apiService<{ id: string }>("/api/Assistants", {
             method: 'POST',
             body: JSON.stringify(assistant),
         });

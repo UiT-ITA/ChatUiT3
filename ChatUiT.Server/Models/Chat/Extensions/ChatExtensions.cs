@@ -85,7 +85,7 @@ public static class ChatExtensions
         };
     }
 
-    public static ChatMessage ToModel(this SendMessageDto dto)
+    public static ChatMessage ToModel(this CreateMessageDto dto)
     {
         return new ChatMessage
         {

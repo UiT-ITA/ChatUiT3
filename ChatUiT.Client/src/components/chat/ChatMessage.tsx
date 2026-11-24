@@ -18,6 +18,7 @@ import Text from '../common/Text';
 import ZoomToggle from '../common/ZoomToggle';
 import type { IconName } from '../common/Icon';
 import FileThumbnail from './FileThumbnail';
+import FileUploadChip from './FileUploadChip';
 import MessageActivity from './MessageActivity';
 import { Dialog, DialogClose, DialogContent, DialogTrigger } from '@ui-sdk/react/dialog';
 import { FilledContext } from './codeBlockFill';
@@ -312,6 +313,11 @@ function ChatMessage({ chatId, message, fallbackAssistantName }: ChatMessageProp
       {message.files && message.files.length > 0 && (
         <Stack direction="row" wrap gap="sm" mb="sm">
           {message.files.map((file) => <FileThumbnail key={file.id} chatId={chatId} file={file} />)}
+        </Stack>
+      )}
+      {message.uploads && message.uploads.length > 0 && (
+        <Stack direction="row" wrap gap="sm" mb="sm">
+          {message.uploads.map((upload) => <FileUploadChip key={upload.id} upload={upload} />)}
         </Stack>
       )}
       <RichText className="message__body">

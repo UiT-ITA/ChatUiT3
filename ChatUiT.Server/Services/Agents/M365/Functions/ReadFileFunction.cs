@@ -85,7 +85,7 @@ public sealed class ReadFileFunction : Tool<ReadFileArgs>
             try
             {
                 var (bytes, mediaType) = await _graph.DownloadAsync(invocation.Context, $"{itemPath}/thumbnails/0/{ImageSize}/content", Scopes, MaxImageBytes, ct);
-                var image = new ImagePart(Convert.ToBase64String(bytes), mediaType ?? "image/jpeg");
+                var image = new ImagePart(bytes, mediaType ?? "image/jpeg");
                 return ToolResult.Ok(new { metadata, note = "The image is attached." }) with { Images = [image] };
             }
             catch (GraphRequestException ex) when (ex.Status == HttpStatusCode.NotFound)

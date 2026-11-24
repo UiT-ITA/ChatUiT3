@@ -718,7 +718,14 @@ public sealed class ResponsesRequestMapper
             throw ResponsesApiException.BadRequest(ErrorCodes.ResponsesImageTooLarge, $"{partParam}: the image is larger than {MaxImageBytes / (1024 * 1024)} MB.", $"{partParam}.image_url", "invalid_value");
         }
 
-        return new ImagePart(match.Groups[2].Value, match.Groups[1].Value);
+        try
+        {
+            return new ImagePart(Convert.FromBase64String(match.Groups[2].Value), match.Groups[1].Value);
+        }
+        catch (FormatException)
+        {
+            throw ResponsesApiException.BadRequest(ErrorCodes.ResponsesImageUrlInvalid, $"{partParam}: image_url must be a base64 data URL of a png, jpeg, gif or webp image.", $"{partParam}.image_url", "invalid_value");
+        }
     }
 
     /// <summary>
@@ -795,7 +802,7 @@ public sealed class ResponsesRequestMapper
                     break;
                 case "input_image":
                     var image = ParseImage(chunk, chunkParam);
-                    file.Chunks.Add(new ChatFileChunk { Type = "image", Base64 = image.Base64, Format = image.MediaType });
+                    file.Chunks.Add(new ChatFileChunk { Type = "image", Data = image.Data, Format = image.MediaType });
                     break;
                 default:
                     throw ResponsesApiException.BadRequest(ErrorCodes.ResponsesChunkTypeNotSupported, $"{chunkParam}: chunk of type '{type}' is not supported.", $"{chunkParam}.type", "unsupported_value");

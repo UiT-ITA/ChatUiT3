@@ -50,6 +50,7 @@ public sealed class LoadKnowledgeFileTool : Tool<LoadKnowledgeFileArgs>
 
     private readonly string _assistantId;
     private readonly IReadOnlyList<AssistantFile> _files;
+    private readonly Func<string, string, Task<AssistantFile?>> _loadFile;
     private readonly IDatabaseService _database;
     private readonly ITokenCountingService _tokenCounting;
     private readonly Telemetry.AppTelemetry _telemetry;
@@ -58,6 +59,7 @@ public sealed class LoadKnowledgeFileTool : Tool<LoadKnowledgeFileArgs>
     public LoadKnowledgeFileTool(
         string assistantId,
         IReadOnlyList<AssistantFile> files,
+        Func<string, string, Task<AssistantFile?>> loadFile,
         IDatabaseService database,
         ITokenCountingService tokenCounting,
         ToolOptions options,
@@ -65,6 +67,7 @@ public sealed class LoadKnowledgeFileTool : Tool<LoadKnowledgeFileArgs>
     {
         _assistantId = assistantId;
         _files = files;
+        _loadFile = loadFile;
         _database = database;
         _tokenCounting = tokenCounting;
         _telemetry = telemetry;
@@ -90,7 +93,7 @@ public sealed class LoadKnowledgeFileTool : Tool<LoadKnowledgeFileArgs>
             return ToolResult.Error($"Unknown file id '{fileId}'. Available files: {available}");
         }
 
-        var loaded = await _database.GetAssistantFileAsync(_assistantId, fileId);
+        var loaded = await _loadFile(_assistantId, fileId);
         var text = loaded == null ? string.Empty : KnowledgeFileMessages.TextOf(loaded);
         if (string.IsNullOrWhiteSpace(text))
         {
