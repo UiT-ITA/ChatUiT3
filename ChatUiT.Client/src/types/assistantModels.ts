@@ -14,7 +14,7 @@ export interface AssistantFileDto {
     sourceFilename: string;
     category: AssistantFileCategory;
     description?: string;
-    /** The file's parts, without their text and image data. fetchAssistantFile gives them with it. */
+    /** The file's parts, without their text and image data. */
     chunks: ChatFileChunkDto[];
     /** Per scheme: what the file costs as the message that carries it. */
     tokenCounts: Record<string, number>;

@@ -14,7 +14,7 @@ export interface KnowledgeFileItemData {
   description?: string;
   // Set for a file picked in the form. It is uploaded when the assistant is saved.
   file?: File;
-  // Set for a file that is stored on the server. Its content is fetched on demand.
+  // Set for a file that is stored on the server. Its original opens on demand.
   fileId?: string;
   // Per scheme, for stored files, as counted by the server.
   tokenCounts?: Record<string, number>;

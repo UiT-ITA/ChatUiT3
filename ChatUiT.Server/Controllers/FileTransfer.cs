@@ -77,7 +77,7 @@ public static class FileTransfer
         throw new FileRequestException(ErrorCodes.FileUploadInvalid);
     }
 
-    /// <summary>Streams the original to the response, shown inline or saved as a file. Switched off in stage 1: nothing calls this.</summary>
+    /// <summary>Streams the original to the response, shown inline or saved as a file.</summary>
     public static async Task<IActionResult> WriteAsync(HttpResponse response, FileDownload file, bool download, CancellationToken cancellationToken)
     {
         var disposition = new ContentDispositionHeaderValue(download ? "attachment" : "inline");

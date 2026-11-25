@@ -69,19 +69,17 @@ public sealed partial class BlobFileStore
         return (name, limited.BytesRead);
     }
 
-    /// <summary>Writes the original of <paramref name="file"/> to <paramref name="destination"/>. False when it does not exist.</summary>
-    public async Task<bool> CopyOriginalToAsync(string ownerId, ChatFile file, byte[]? key, Stream destination, CancellationToken cancellationToken)
-    {
-        await using var content = await _blobs.OpenReadAsync(Container(ownerId), BlobName(InputPrefix + file.SourceFilename, file.IsEncrypted), cancellationToken);
-        if (content == null)
-        {
-            return false;
-        }
+    /// <summary>The stored original of <paramref name="file"/>, encrypted for an encrypted file. Null when it does not exist.</summary>
+    public Task<Stream?> OpenOriginalAsync(string ownerId, ChatFile file, CancellationToken cancellationToken)
+        => _blobs.OpenReadAsync(Container(ownerId), BlobName(InputPrefix + file.SourceFilename, file.IsEncrypted), cancellationToken);
 
+    /// <summary>Writes an original from <see cref="OpenOriginalAsync"/> to <paramref name="destination"/>, decrypted with the key for an encrypted file.</summary>
+    public static async Task CopyOriginalAsync(Stream original, ChatFile file, byte[]? key, Stream destination, CancellationToken cancellationToken)
+    {
         if (!file.IsEncrypted)
         {
-            await content.CopyToAsync(destination, cancellationToken);
-            return true;
+            await original.CopyToAsync(destination, cancellationToken);
+            return;
         }
 
         if (key == null)
@@ -89,8 +87,7 @@ public sealed partial class BlobFileStore
             throw new CryptographicException("An encrypted file was read without the owner's key.");
         }
 
-        await SegmentedCipher.DecryptAsync(key, content, destination, cancellationToken);
-        return true;
+        await SegmentedCipher.DecryptAsync(key, original, destination, cancellationToken);
     }
 
     /// <summary>

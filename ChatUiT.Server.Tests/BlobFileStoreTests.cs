@@ -86,14 +86,39 @@ public class BlobFileStoreTests
 
         async Task<string?> ReadAsync(ChatFile file, byte[]? key)
         {
+            await using var original = await _store.OpenOriginalAsync(Owner, file, default);
+            if (original == null)
+            {
+                return null;
+            }
+
             var output = new MemoryStream();
-            return await _store.CopyOriginalToAsync(Owner, file, key, output, default) ? Encoding.UTF8.GetString(output.ToArray()) : null;
+            await BlobFileStore.CopyOriginalAsync(original, file, key, output, default);
+            return Encoding.UTF8.GetString(output.ToArray());
         }
 
         Assert.Equal("plain text", await ReadAsync(new ChatFile { SourceFilename = "plain.txt" }, null));
         Assert.Equal("secret text", await ReadAsync(new ChatFile { SourceFilename = "secret.txt", IsEncrypted = true }, Key));
         Assert.Null(await ReadAsync(new ChatFile { SourceFilename = "none.txt" }, null));
         await Assert.ThrowsAnyAsync<CryptographicException>(() => ReadAsync(new ChatFile { SourceFilename = "secret.txt", IsEncrypted = true }, null));
+    }
+
+    [Fact]
+    public async Task An_original_opens_only_under_the_name_its_encryption_gives()
+    {
+        await WriteAsync("plain.txt", "plain text");
+        await WriteAsync("secret.txt", "secret text", Key);
+
+        async Task<bool> OpensAsync(ChatFile file)
+        {
+            await using var original = await _store.OpenOriginalAsync(Owner, file, default);
+            return original != null;
+        }
+
+        Assert.True(await OpensAsync(new ChatFile { SourceFilename = "plain.txt" }));
+        Assert.True(await OpensAsync(new ChatFile { SourceFilename = "secret.txt", IsEncrypted = true }));
+        Assert.False(await OpensAsync(new ChatFile { SourceFilename = "secret.txt" }));
+        Assert.False(await OpensAsync(new ChatFile { SourceFilename = "notes.txt.parts" }));
     }
 
     [Fact]

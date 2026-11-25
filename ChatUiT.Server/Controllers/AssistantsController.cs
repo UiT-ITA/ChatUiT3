@@ -114,22 +114,6 @@ public class AssistantsController : ControllerBase
         return assistant != null && (assistant.IsSystem ? User.IsInRole("Admin") : assistant.OwnerId == GetCurrentUserId());
     }
 
-    /// <summary>A file of the assistant with its content: its text and images.</summary>
-    [HttpGet("{assistantId}/files/{fileId}")]
-    public async Task<ActionResult<AssistantFileDto>> GetAssistantFile(string assistantId, string fileId)
-    {
-        var file = await CanEditAssistantAsync(assistantId)
-            ? await _assistantService.GetAssistantFileDtoAsync(assistantId, fileId)
-            : null;
-
-        if (file == null)
-        {
-            return ApiErrors.NotFound(ErrorCodes.AssistantFileNotFound);
-        }
-
-        return Ok(file);
-    }
-
     /// <summary>
     /// Uploads one file to the assistant as multipart form data, with the form fields
     /// <c>category</c> and <c>description</c> before the file. Answers when the original is stored
@@ -165,27 +149,27 @@ public class AssistantsController : ControllerBase
         }
     }
 
-    // Switched off in stage 1: the original of an assistant file, shown inline, or saved as a file with download=true.
-    // [HttpGet("{assistantId}/files/{fileId}/content")]
-    // public async Task<IActionResult> GetAssistantFileContent(string assistantId, string fileId, [FromQuery] bool download, CancellationToken cancellationToken)
-    // {
-    //     if (!await CanEditAssistantAsync(assistantId))
-    //     {
-    //         return ApiErrors.NotFound(ErrorCodes.AssistantFileNotFound);
-    //     }
-    //
-    //     try
-    //     {
-    //         var file = await _fileService.OpenAssistantFileAsync(assistantId, fileId);
-    //         return file == null
-    //             ? ApiErrors.NotFound(ErrorCodes.AssistantFileNotFound)
-    //             : await FileTransfer.WriteAsync(Response, file, download, cancellationToken);
-    //     }
-    //     catch (FileRequestException ex)
-    //     {
-    //         return FileTransfer.Error(ex);
-    //     }
-    // }
+    /// <summary>The original of an assistant file, shown inline, or saved as a file with download=true.</summary>
+    [HttpGet("{assistantId}/files/{fileId}/content")]
+    public async Task<IActionResult> GetAssistantFileContent(string assistantId, string fileId, [FromQuery] bool download, CancellationToken cancellationToken)
+    {
+        if (!await CanEditAssistantAsync(assistantId))
+        {
+            return ApiErrors.NotFound(ErrorCodes.AssistantFileNotFound);
+        }
+
+        try
+        {
+            var file = await _fileService.OpenAssistantFileAsync(assistantId, fileId);
+            return file == null
+                ? ApiErrors.NotFound(ErrorCodes.AssistantFileNotFound)
+                : await FileTransfer.WriteAsync(Response, file, download, cancellationToken);
+        }
+        catch (FileRequestException ex)
+        {
+            return FileTransfer.Error(ex);
+        }
+    }
 
     [HttpPost]
     public async Task<ActionResult<object>> CreateAssistant([FromBody] CreateAssistantDto createDto)

@@ -1,5 +1,5 @@
-/** How a file's original is shown. Only used by the original-file preview, which is switched off. */
-export type FilePreviewKind = 'pdf' | 'image' | 'text' | 'markdown' | 'download' | 'unavailable';
+/** How a stored file's original is shown: in the preview, downloaded, or not at all. */
+export type FilePreviewKind = 'pdf' | 'image' | 'text' | 'markdown' | 'download' | 'none';
 
 /** A file picked in the composer. It is uploaded when the message is sent. */
 export interface ComposerFile {

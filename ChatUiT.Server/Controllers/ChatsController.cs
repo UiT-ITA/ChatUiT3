@@ -153,22 +153,22 @@ public class ChatsController : ControllerBase
         return Ok(ChatFileDto.From(file, includeContent: true));
     }
 
-    // Switched off in stage 1: the original of a chat file, shown inline, or saved as a file with download=true.
-    // [HttpGet("{chatId}/files/{fileId}/content")]
-    // public async Task<IActionResult> GetChatFileContent(string chatId, string fileId, [FromQuery] bool download, CancellationToken cancellationToken)
-    // {
-    //     try
-    //     {
-    //         var file = await _fileService.OpenChatFileAsync(GetCurrentUserId(), chatId, fileId);
-    //         return file == null
-    //             ? ApiErrors.NotFound(ErrorCodes.ChatFileNotFound)
-    //             : await FileTransfer.WriteAsync(Response, file, download, cancellationToken);
-    //     }
-    //     catch (FileRequestException ex)
-    //     {
-    //         return FileTransfer.Error(ex);
-    //     }
-    // }
+    /// <summary>The original of a chat file, shown inline, or saved as a file with download=true.</summary>
+    [HttpGet("{chatId}/files/{fileId}/content")]
+    public async Task<IActionResult> GetChatFileContent(string chatId, string fileId, [FromQuery] bool download, CancellationToken cancellationToken)
+    {
+        try
+        {
+            var file = await _fileService.OpenChatFileAsync(GetCurrentUserId(), chatId, fileId);
+            return file == null
+                ? ApiErrors.NotFound(ErrorCodes.ChatFileNotFound)
+                : await FileTransfer.WriteAsync(Response, file, download, cancellationToken);
+        }
+        catch (FileRequestException ex)
+        {
+            return FileTransfer.Error(ex);
+        }
+    }
 
     [HttpPost]
     public async Task<ActionResult<ChatDto>> CreateChat([FromBody] CreateChatDto request)
@@ -453,7 +453,7 @@ public class ChatsController : ControllerBase
     public async Task<ActionResult> DeleteChat(string chatId)
     {
         var userId = GetCurrentUserId();
-        var existing = await _databaseService.GetChatByIdAsync(userId, chatId, includeFileContent: false);
+        var existing = await _databaseService.GetChatByIdAsync(userId, chatId);
         await _chatService.DeleteChatAsync(userId, chatId);
         _telemetry.ChatDeleted(
             chatId,
