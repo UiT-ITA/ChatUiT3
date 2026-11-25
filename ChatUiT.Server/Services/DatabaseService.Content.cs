@@ -31,7 +31,6 @@ public partial class DatabaseService
                 UserId = userId,
                 ChatId = chatId,
                 OwnerId = ownerId,
-                ContentType = StoredContentType.Text,
                 ChunkIndex = index,
                 IsEncrypted = key != null,
                 Payload = key == null ? chunks[index] : ChatContentCipher.Encrypt(key, Encoding.UTF8.GetBytes(chunks[index]))
