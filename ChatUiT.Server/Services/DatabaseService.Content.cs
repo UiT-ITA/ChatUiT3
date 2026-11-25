@@ -9,6 +9,15 @@ namespace ChatUiT.Server.Services;
 public partial class DatabaseService
 {
     private int MaxTextChunkUtf8Bytes => Math.Min(Math.Max(_options.MaxTextChunkUtf8Bytes, 4_096), 1_000_000);
+    private int MaxBinaryPayloadCharacters
+    {
+        get
+        {
+            var requestedSize = Math.Min(Math.Max(_options.MaxBinaryPayloadCharacters, 4_096), 1_000_000);
+            return requestedSize - (requestedSize % 4);
+        }
+    }
+
     private async Task<List<string>> WriteTextContentAsync(string userId, string chatId, string ownerId, string? content, byte[]? key, ICollection<string>? writtenBlockIds = null)
     {
         if (_contentContainer == null)
@@ -35,6 +44,44 @@ public partial class DatabaseService
                 ChunkIndex = index,
                 IsEncrypted = key != null,
                 Payload = key == null ? chunks[index] : ChatContentCipher.Encrypt(key, Encoding.UTF8.GetBytes(chunks[index]))
+            };
+
+            await _contentContainer.CreateItemAsync(document, new Microsoft.Azure.Cosmos.PartitionKey(userId));
+            blockIds.Add(document.Id);
+            writtenBlockIds?.Add(document.Id);
+        }
+
+        return blockIds;
+    }
+
+    private async Task<List<string>> WriteBinaryContentAsync(string userId, string chatId, string ownerId, byte[] bytes, byte[]? key, ICollection<string>? writtenBlockIds = null)
+    {
+        if (_contentContainer == null)
+        {
+            throw new InvalidOperationException("Content container is not initialized.");
+        }
+
+        if (bytes.Length == 0)
+        {
+            return new List<string>();
+        }
+
+        var base64Payload = Convert.ToBase64String(bytes);
+        var chunks = SplitBinaryPayload(base64Payload);
+        var blockIds = new List<string>(chunks.Count);
+
+        for (var index = 0; index < chunks.Count; index++)
+        {
+            var document = new ContentBlockDocument
+            {
+                Id = Guid.NewGuid().ToString(),
+                UserId = userId,
+                ChatId = chatId,
+                OwnerId = ownerId,
+                ContentType = StoredContentType.Binary,
+                ChunkIndex = index,
+                IsEncrypted = key != null,
+                Payload = key == null ? chunks[index] : ChatContentCipher.Encrypt(key, Convert.FromBase64String(chunks[index]))
             };
 
             await _contentContainer.CreateItemAsync(document, new Microsoft.Azure.Cosmos.PartitionKey(userId));
@@ -351,6 +398,24 @@ public partial class DatabaseService
         if (builder.Length > 0)
         {
             chunks.Add(builder.ToString());
+        }
+
+        return chunks;
+    }
+
+    private List<string> SplitBinaryPayload(string base64Payload)
+    {
+        if (string.IsNullOrEmpty(base64Payload))
+        {
+            return new List<string>();
+        }
+
+        var chunkSize = MaxBinaryPayloadCharacters;
+        var chunks = new List<string>();
+
+        for (var index = 0; index < base64Payload.Length; index += chunkSize)
+        {
+            chunks.Add(base64Payload.Substring(index, Math.Min(chunkSize, base64Payload.Length - index)));
         }
 
         return chunks;

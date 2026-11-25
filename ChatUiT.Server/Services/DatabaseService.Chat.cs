@@ -277,16 +277,52 @@ public partial class DatabaseService
     {
         await EnsureInitializedAsync();
 
-        return await ChangeMessageFilesAsync(userId, chatId, messageId, (message, files) =>
+        var key = await GetContentKeyAsync(userId, chatId);
+
+        // The file's content blocks are written before the file is added to the message. When
+        // the file is not added, the blocks are deleted.
+        var writtenBlockIds = new List<string>();
+        try
         {
-            if (message.Status != AiChatStatus.New)
+            var storedFile = new StoredFileDocument { Id = file.Id, SourceFilename = file.SourceFilename };
+            foreach (var chunk in file.Chunks)
             {
-                return false;
+                var storedChunk = new StoredFileChunkDocument { Id = chunk.Id, Type = chunk.Type, Format = chunk.IsImage ? null : chunk.Format };
+                if (chunk.IsText)
+                {
+                    storedChunk.ContentBlockIds = await WriteTextContentAsync(userId, chatId, storedChunk.Id, chunk.Text, key, writtenBlockIds);
+                }
+                else if (chunk.IsImage)
+                {
+                    storedChunk.ContentBlockIds = await WriteBinaryContentAsync(userId, chatId, storedChunk.Id, chunk.Data ?? [], key, writtenBlockIds);
+                }
+
+                storedFile.Chunks.Add(storedChunk);
             }
 
-            files.Add(ToStoredFile(file));
-            return true;
-        }, touch: true);
+            var added = await ChangeMessageFilesAsync(userId, chatId, messageId, (message, files) =>
+            {
+                if (message.Status != AiChatStatus.New)
+                {
+                    return false;
+                }
+
+                files.Add(storedFile);
+                return true;
+            }, touch: true);
+
+            if (!added)
+            {
+                await DeleteContentBlocksAsync(userId, writtenBlockIds);
+            }
+
+            return added;
+        }
+        catch
+        {
+            await DeleteContentBlocksAsync(userId, writtenBlockIds);
+            throw;
+        }
     }
 
     public async Task<bool> MarkMessageSentAsync(string userId, string chatId, string messageId, DateTime timestamp)

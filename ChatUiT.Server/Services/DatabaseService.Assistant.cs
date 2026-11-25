@@ -96,6 +96,50 @@ public partial class DatabaseService
     {
         await EnsureInitializedAsync();
 
+        // The file's content blocks are written before the file is added to the assistant. When
+        // the file is not added, the blocks are deleted.
+        var writtenBlockIds = new List<string>();
+        try
+        {
+            var storedFile = new StoredAssistantFileDocument
+            {
+                Id = file.Id,
+                SourceFilename = file.SourceFilename,
+                Category = file.Category,
+                Description = file.Description
+            };
+            foreach (var chunk in file.Chunks)
+            {
+                var storedChunk = new StoredFileChunkDocument { Id = chunk.Id, Type = chunk.Type, Format = chunk.IsImage ? null : chunk.Format };
+                if (chunk.IsText)
+                {
+                    storedChunk.ContentBlockIds = await WriteAssistantTextContentAsync(assistantId, storedChunk.Id, chunk.Text, writtenBlockIds);
+                }
+                else if (chunk.IsImage)
+                {
+                    storedChunk.ContentBlockIds = await WriteAssistantBinaryContentAsync(assistantId, storedChunk.Id, chunk.Data ?? [], writtenBlockIds);
+                }
+
+                storedFile.Chunks.Add(storedChunk);
+            }
+
+            var added = await AddStoredAssistantFileAsync(assistantId, storedFile);
+            if (!added)
+            {
+                await DeleteAssistantContentBlocksAsync(assistantId, writtenBlockIds);
+            }
+
+            return added;
+        }
+        catch
+        {
+            await DeleteAssistantContentBlocksAsync(assistantId, writtenBlockIds);
+            throw;
+        }
+    }
+
+    private async Task<bool> AddStoredAssistantFileAsync(string assistantId, StoredAssistantFileDocument storedFile)
+    {
         while (true)
         {
             ItemResponse<AssistantDocument> response;
@@ -109,7 +153,7 @@ public partial class DatabaseService
             }
 
             var files = response.Resource.Files;
-            files.Add(ToStoredAssistantFile(file));
+            files.Add(storedFile);
 
             try
             {
