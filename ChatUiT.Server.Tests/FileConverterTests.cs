@@ -81,15 +81,15 @@ public class FileConverterTests
     }
 
     [Theory]
-    [InlineData("notes.txt", "plain")]
-    [InlineData("data.csv", "plain")]
-    [InlineData("data.json", "plain")]
-    [InlineData("readme.md", "markdown")]
-    public async Task Text_files_become_one_text_part(string fileName, string format)
+    [InlineData("notes.txt")]
+    [InlineData("data.csv")]
+    [InlineData("data.json")]
+    [InlineData("readme.md")]
+    public async Task Text_files_become_one_text_part(string fileName)
     {
         var parts = await ConvertAsync(fileName, Encoding.UTF8.GetBytes("Blåbær, 1\nline two"));
 
-        Assert.Equal([new ConvertedText("Blåbær, 1\nline two", format)], parts);
+        Assert.Equal([new ConvertedText("Blåbær, 1\nline two")], parts);
     }
 
     [Fact]
@@ -155,7 +155,7 @@ public class FileConverterTests
 
         var parts = await ConvertAsync("paper.pdf", pdf);
 
-        Assert.Equal([new ConvertedText("First line\nSecond line right\n\nPage two\n\n", "plain")], parts);
+        Assert.Equal([new ConvertedText("First line\nSecond line right\n\nPage two\n\n")], parts);
     }
 
     [Fact]
@@ -171,7 +171,7 @@ public class FileConverterTests
         var parts = await ConvertAsync("paper.pdf", pdf);
 
         Assert.Equal(2, parts.Count);
-        Assert.Equal(new ConvertedText("Figure 1\n\n", "plain"), parts[0]);
+        Assert.Equal(new ConvertedText("Figure 1\n\n"), parts[0]);
         Assert.Equal((1024, 1449), SizeOf(Assert.IsType<ConvertedImage>(parts[1])));
     }
 
@@ -201,7 +201,7 @@ public class FileConverterTests
 
         var parts = await ConvertAsync("paper.pdf", pdf);
 
-        Assert.Equal([new ConvertedText("Page 1\n\nPage 2\n\nPage 3\n\n", "plain")], parts);
+        Assert.Equal([new ConvertedText("Page 1\n\nPage 2\n\nPage 3\n\n")], parts);
     }
 
     [Fact]
@@ -261,9 +261,9 @@ public class FileConverterTests
         var parts = await ConvertAsync("paper.docx", Docx());
 
         Assert.Equal(3, parts.Count);
-        Assert.Equal(new ConvertedText("# Title\n\nSome body text.\n\n- An item\n\n", "markdown"), parts[0]);
+        Assert.Equal(new ConvertedText("# Title\n\nSome body text.\n\n- An item\n\n"), parts[0]);
         Assert.Equal((300, 200), SizeOf(Assert.IsType<ConvertedImage>(parts[1])));
-        Assert.Equal(new ConvertedText("| Name | Value |\n| --- | --- |\n| a\\|b | 2 |\n\nThe end\n\n", "markdown"), parts[2]);
+        Assert.Equal(new ConvertedText("| Name | Value |\n| --- | --- |\n| a\\|b | 2 |\n\nThe end\n\n"), parts[2]);
     }
 
     [Fact]
@@ -326,9 +326,9 @@ public class FileConverterTests
         var parts = await ConvertAsync("slides.pptx", Pptx());
 
         Assert.Equal(3, parts.Count);
-        Assert.Equal(new ConvertedText("Slide one\n\n- A point\n\n", "markdown"), parts[0]);
+        Assert.Equal(new ConvertedText("Slide one\n\n- A point\n\n"), parts[0]);
         Assert.Equal((300, 200), SizeOf(Assert.IsType<ConvertedImage>(parts[1])));
-        Assert.Equal(new ConvertedText("In a group\n\n| H1 | H2 |\n| --- | --- |\n| 1 | 2 |\n\n", "markdown"), parts[2]);
+        Assert.Equal(new ConvertedText("In a group\n\n| H1 | H2 |\n| --- | --- |\n| 1 | 2 |\n\n"), parts[2]);
     }
 
     [Fact]
@@ -392,7 +392,7 @@ public class FileConverterTests
         var expected =
             "| Name | When |  | Total |\n| --- | --- | --- | --- |\n| Rich text | 2024-01-01T00:00:00.000Z |  | 1.5 |\n| true | a\\|b |  |  |\n\n" +
             "| Other sheet |\n| --- |\n\n";
-        Assert.Equal([new ConvertedText(expected, "markdown")], parts);
+        Assert.Equal([new ConvertedText(expected)], parts);
     }
 
     [Fact]

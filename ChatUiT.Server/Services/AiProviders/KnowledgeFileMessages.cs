@@ -1,4 +1,5 @@
 using ChatUiT.Server.Models;
+using ChatUiT.Server.Services.Files;
 
 namespace ChatUiT.Server.Services.AiProviders;
 
@@ -60,7 +61,7 @@ public static class KnowledgeFileMessages
 
     /// <summary>Whether the file has any text or image. Known without its content for a file in Blob Storage.</summary>
     public static bool HasContent(AssistantFile file)
-        => file.IsInBlobStorage
+        => FileStorage.IsInBlobStorage(file)
             ? file.Chunks.Count > 0
             : file.Chunks.Any(chunk =>
                 (chunk.IsText && !string.IsNullOrWhiteSpace(chunk.Text)) ||

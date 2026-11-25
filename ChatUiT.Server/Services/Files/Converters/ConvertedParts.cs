@@ -6,7 +6,7 @@ namespace ChatUiT.Server.Services.Files.Converters;
 /// <summary>Helpers the converters share.</summary>
 internal static class ConvertedParts
 {
-    /// <summary>Joins neighbouring text parts of the same format and drops empty text.</summary>
+    /// <summary>Joins neighbouring text parts and drops empty text.</summary>
     public static List<ConvertedPart> Clean(IEnumerable<ConvertedPart> parts)
     {
         var merged = new List<ConvertedPart>();
@@ -17,7 +17,7 @@ internal static class ConvertedParts
                 continue;
             }
 
-            if (part is ConvertedText text && merged.Count > 0 && merged[^1] is ConvertedText previous && previous.Format == text.Format)
+            if (part is ConvertedText text && merged.Count > 0 && merged[^1] is ConvertedText previous)
             {
                 merged[^1] = previous with { Text = previous.Text + text.Text };
                 continue;

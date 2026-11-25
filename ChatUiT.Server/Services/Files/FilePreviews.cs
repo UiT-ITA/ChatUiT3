@@ -18,12 +18,12 @@ public static class FilePreviews
 
     /// <summary>
     /// PDF, image and text files preview inline. Word, PowerPoint and Excel files are download
-    /// only. A file stored in Cosmos previews as text when its content is only text, and as an
-    /// image when its content is one image. Other files stored in Cosmos have no preview.
+    /// only. A file in the database previews as text when its content is only text, and as an
+    /// image when its content is one image. Other files in the database have no preview.
     /// </summary>
     public static string KindOf(ChatFile file)
     {
-        if (file.IsInBlobStorage)
+        if (FileStorage.IsInBlobStorage(file))
         {
             return FileKinds.Resolve(file.SourceFilename, file.ContentType) switch
             {
@@ -42,7 +42,7 @@ public static class FilePreviews
 
         if (file.Chunks.Count > 0 && file.Chunks.All(chunk => chunk.IsText))
         {
-            return file.Chunks.All(chunk => chunk.Format == "markdown") ? Markdown : Text;
+            return FileKinds.Resolve(file.SourceFilename, null) == FileKind.Markdown ? Markdown : Text;
         }
 
         return Unavailable;

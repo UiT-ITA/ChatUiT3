@@ -1,51 +1,78 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using Newtonsoft.Json;
 
 namespace ChatUiT.Server.Models;
 
-/// <summary>One part of a file's content: text, or an image as bytes.</summary>
-public class ChatFileChunk
-{
-    public string Id { get; set; } = Guid.NewGuid().ToString();
-    public string Type { get; set; } = string.Empty;
-    public string? Text { get; set; }
-    public string? Format { get; set; }
-    public byte[]? Data { get; set; }
-
-    public bool IsText => Type.Equals("text", StringComparison.OrdinalIgnoreCase);
-
-    public bool IsImage => Type.Equals("image", StringComparison.OrdinalIgnoreCase);
-}
-
 /// <summary>
-/// A file on a message or an assistant. A file uploaded since Blob Storage has its original and
-/// its converted content there (<see cref="IsInBlobStorage"/>). An older file has its content in
-/// Cosmos. <see cref="Chunks"/> always lists the file's parts, with the text and image bytes only
-/// when the content is loaded.
+/// A file on a message or an assistant, stored as it is in the message's or assistant's
+/// <c>files</c> list. The file lies in Blob Storage under <see cref="SourceFilename"/>.
 /// </summary>
 public class ChatFile
 {
+    [JsonProperty("id")]
     public string Id { get; set; } = Guid.NewGuid().ToString();
 
-    /// <summary>The file name. For a file in Blob Storage this is also the name it is stored under.</summary>
+    /// <summary>The name in Blob Storage.</summary>
+    [JsonProperty("sourceFilename")]
     public string SourceFilename { get; set; } = string.Empty;
 
-    public bool IsInBlobStorage { get; set; }
-
-    /// <summary>The size of the original in bytes. 0 for a file stored in Cosmos.</summary>
+    /// <summary>The size of the original in bytes.</summary>
+    [JsonProperty("size")]
     public long Size { get; set; }
 
+    /// <summary>The MIME type of the original.</summary>
+    [JsonProperty("contentType")]
     public string ContentType { get; set; } = string.Empty;
 
-    /// <summary>Whether the blobs were written encrypted with the chat owner's key.</summary>
+    /// <summary>The file is encrypted with the owner's key.</summary>
+    [JsonProperty("isEncrypted")]
     public bool IsEncrypted { get; set; }
 
-    /// <summary>Token counting scheme id → tokens the file adds to the message that carries it. Set at upload.</summary>
+    [JsonProperty("tokenCounts")]
     public Dictionary<string, int> TokenCounts { get; set; } = new();
 
-    public List<ChatFileChunk> Chunks { get; set; } = new List<ChatFileChunk>();
+    /// <summary>The parts in reading order.</summary>
+    [JsonProperty("chunks")]
+    public List<ChatFileChunk> Chunks { get; set; } = new();
 
-    /// <summary>Whether <see cref="Chunks"/> holds the file's whole content.</summary>
+    [JsonIgnore]
     public bool IsContentLoaded => Chunks.All(chunk => chunk.Text != null || chunk.Data != null);
+}
+
+public class ChatFileChunk
+{
+    [JsonProperty("id")]
+    public string Id { get; set; } = Guid.NewGuid().ToString();
+
+    /// <summary>"text" or "image".</summary>
+    [JsonProperty("type")]
+    public string Type { get; set; } = string.Empty;
+
+    /// <summary>Images only: "image/jpeg" for every file.</summary>
+    [JsonProperty("mediaType")]
+    public string? MediaType { get; set; }
+
+    /// <summary>Images only, in pixels.</summary>
+    [JsonProperty("width")]
+    public int Width { get; set; }
+
+    /// <summary>Images only, in pixels.</summary>
+    [JsonProperty("height")]
+    public int Height { get; set; }
+
+    /// <summary>Content, loaded from Blob Storage, never stored in the database.</summary>
+    [JsonIgnore]
+    public string? Text { get; set; }
+
+    /// <summary>Content, loaded from Blob Storage, never stored in the database.</summary>
+    [JsonIgnore]
+    public byte[]? Data { get; set; }
+
+    [JsonIgnore]
+    public bool IsText => Type == "text";
+
+    [JsonIgnore]
+    public bool IsImage => Type == "image";
 }

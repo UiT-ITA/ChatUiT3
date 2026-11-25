@@ -63,7 +63,7 @@ public static class MessageParts
                     continue;
                 }
 
-                parts.Add(new ImagePart(chunk.Data, ResolveMediaType(chunk.Format)));
+                parts.Add(new ImagePart(chunk.Data, ResolveMediaType(chunk.MediaType)));
                 parts.Add(new TextPart("\n"));
             }
         }

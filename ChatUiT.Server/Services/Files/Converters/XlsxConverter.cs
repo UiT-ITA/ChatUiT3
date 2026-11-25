@@ -86,7 +86,7 @@ internal static partial class XlsxConverter
         var padded = cells
             .Select(row => (IReadOnlyList<string>)row.Concat(Enumerable.Repeat(string.Empty, width - row.Count)).Select(ConvertedParts.EscapeTableCell).ToList())
             .ToList();
-        parts.Add(new ConvertedText($"{ConvertedParts.MarkdownTable(padded)}\n\n", "markdown"));
+        parts.Add(new ConvertedText($"{ConvertedParts.MarkdownTable(padded)}\n\n"));
     }
 
     private static List<string> SharedStrings(WorkbookPart workbookPart)

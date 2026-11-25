@@ -49,7 +49,7 @@ internal static class PdfConverter
             var text = string.Join("\n", scan.Lines).Trim();
             if (text.Length > 0)
             {
-                parts.Add(new ConvertedText($"{text}\n\n", "plain"));
+                parts.Add(new ConvertedText($"{text}\n\n"));
             }
 
             if (NeedsRender(scan, repeated) && Render(bytes, index, scan) is { } image)
@@ -84,8 +84,8 @@ internal static class PdfConverter
 
         var images = page.GetImages()
             .Select(image => (
-                Key: $"image:{RoundedKey(image.Bounds.Width, image.Bounds.Height, image.Bounds.Left, image.Bounds.Bottom)}",
-                AreaFraction: image.Bounds.Width * image.Bounds.Height / pageArea))
+                Key: $"image:{RoundedKey(image.BoundingBox.Width, image.BoundingBox.Height, image.BoundingBox.Left, image.BoundingBox.Bottom)}",
+                AreaFraction: image.BoundingBox.Width * image.BoundingBox.Height / pageArea))
             .ToList();
 
         var pathKeys = new List<string>();

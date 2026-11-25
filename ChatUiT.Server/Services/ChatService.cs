@@ -110,7 +110,7 @@ public class ChatService : IChatService
 
         if (includeFileContent)
         {
-            await _fileService.LoadChatFileContentAsync(userId, chatId, chat.RedEnabled, chat.Messages.SelectMany(m => m.Files));
+            await _fileService.LoadChatFileContentAsync(userId, chatId, chat.Messages.SelectMany(m => m.Files));
         }
 
         // A message left in Generating (e.g. after a server restart mid-stream) would
@@ -188,15 +188,16 @@ public class ChatService : IChatService
 
     private async Task DeleteMessageWithFilesAsync(string userId, string chatId, Models.ChatMessage message)
     {
-        await _databaseService.DeleteMessageAsync(userId, chatId, message.Id);
-        await _fileService.DeleteFilesAsync(chatId, message.Files);
+        var blobFiles = await _databaseService.DeleteMessageAsync(userId, chatId, message.Id);
+        await _fileService.DeleteFilesAsync(chatId, blobFiles);
     }
 
     // Counts are stored per message so a model switch is a key lookup on the client. Messages
     // lacking a count for an active scheme are counted on first read and written back, so each
-    // message is counted at most once per scheme. A file in Blob Storage is priced from the count
-    // stored on it. When it has none for a scheme, the message is counted on a read that loads
-    // every file's content, which a send does, and never by downloading blobs for this.
+    // message is counted at most once per scheme. A file is priced from the count stored on it.
+    // A file in the database has none: its content is read from the database. A file in Blob
+    // Storage without a count for a scheme is counted on a read that loads every file's content,
+    // which a send does, and never by downloading blobs for this.
     private async Task BackfillTokenCountsAsync(string userId, string chatId, Chat chat, bool includeFileContent)
     {
         var schemes = await _tokenCounting.GetActiveSchemeIdsAsync();
@@ -214,10 +215,10 @@ public class ChatService : IChatService
             return;
         }
 
-        // Files stored in Cosmos dominate the count and are absent from a metadata-only load.
+        // Files in the database dominate the count and are absent from a metadata-only load.
         // One content load for the whole chat beats one fetch per file.
         IReadOnlyDictionary<string, Models.ChatMessage> countingSource;
-        if (!includeFileContent && needingCounts.Any(m => m.Files.Any(f => !f.IsInBlobStorage)))
+        if (!includeFileContent && needingCounts.Any(m => m.Files.Any(f => !FileStorage.IsInBlobStorage(f))))
         {
             var fullChat = await _databaseService.GetChatByIdAsync(userId, chatId, includeFileContent: true);
             countingSource = (fullChat?.Messages ?? new List<Models.ChatMessage>()).ToDictionary(m => m.Id);
@@ -300,6 +301,9 @@ public class ChatService : IChatService
 
     public async Task EnableRedAsync(string userId, string chatId, string? assistantId)
     {
+        // Encrypts the chat's files in Blob Storage, then sets the chat as red, then encrypts the
+        // files added during the switch.
+        await _fileService.EncryptChatFilesAsync(userId, chatId);
         await _databaseService.EnableRedAsync(userId, chatId, assistantId);
         await _fileService.EncryptChatFilesAsync(userId, chatId);
         NotifyChatListUpdated(userId);

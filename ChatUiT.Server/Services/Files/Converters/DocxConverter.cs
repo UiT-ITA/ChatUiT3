@@ -49,7 +49,7 @@ internal static partial class DocxConverter
                     var table = Table(child);
                     if (table.Length > 0)
                     {
-                        parts.Add(new ConvertedText($"{table}\n\n", "markdown"));
+                        parts.Add(new ConvertedText($"{table}\n\n"));
                     }
                 }
             }
@@ -82,7 +82,7 @@ internal static partial class DocxConverter
                 return;
             }
 
-            parts.Add(new ConvertedText($"{(prefixUsed ? string.Empty : prefix)}{normalized}\n\n", "markdown"));
+            parts.Add(new ConvertedText($"{(prefixUsed ? string.Empty : prefix)}{normalized}\n\n"));
             prefixUsed = true;
         }
 

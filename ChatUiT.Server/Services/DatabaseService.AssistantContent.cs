@@ -1,119 +1,44 @@
 using ChatUiT.Server.Models;
 using Microsoft.Azure.Cosmos;
+using Newtonsoft.Json.Linq;
 
 namespace ChatUiT.Server.Services;
 
 public partial class DatabaseService
 {
-    private async Task<List<string>> WriteAssistantTextContentAsync(string assistantId, string ownerId, string? content, ICollection<string>? writtenBlockIds = null)
-    {
-        if (_assistantContentContainer == null)
-        {
-            throw new InvalidOperationException("Assistant content container is not initialized.");
-        }
-
-        var chunks = SplitTextPayload(content ?? string.Empty);
-        if (chunks.Count == 0)
-        {
-            return new List<string>();
-        }
-
-        var blockIds = new List<string>(chunks.Count);
-        for (var index = 0; index < chunks.Count; index++)
-        {
-            var document = new AssistantContentBlockDocument
-            {
-                Id = Guid.NewGuid().ToString(),
-                AssistantId = assistantId,
-                OwnerId = ownerId,
-                ContentType = StoredContentType.Text,
-                ChunkIndex = index,
-                IsEncrypted = false,
-                Payload = chunks[index]
-            };
-
-            await _assistantContentContainer.CreateItemAsync(document, new PartitionKey(assistantId));
-            blockIds.Add(document.Id);
-            writtenBlockIds?.Add(document.Id);
-        }
-
-        return blockIds;
-    }
-
-    private async Task<List<string>> WriteAssistantBinaryContentAsync(string assistantId, string ownerId, byte[] bytes, ICollection<string>? writtenBlockIds = null)
-    {
-        if (_assistantContentContainer == null)
-        {
-            throw new InvalidOperationException("Assistant content container is not initialized.");
-        }
-
-        if (bytes.Length == 0)
-        {
-            return new List<string>();
-        }
-
-        var base64Payload = Convert.ToBase64String(bytes);
-        var chunks = SplitBinaryPayload(base64Payload);
-        var blockIds = new List<string>(chunks.Count);
-
-        for (var index = 0; index < chunks.Count; index++)
-        {
-            var document = new AssistantContentBlockDocument
-            {
-                Id = Guid.NewGuid().ToString(),
-                AssistantId = assistantId,
-                OwnerId = ownerId,
-                ContentType = StoredContentType.Binary,
-                ChunkIndex = index,
-                IsEncrypted = false,
-                Payload = chunks[index]
-            };
-
-            await _assistantContentContainer.CreateItemAsync(document, new PartitionKey(assistantId));
-            blockIds.Add(document.Id);
-            writtenBlockIds?.Add(document.Id);
-        }
-
-        return blockIds;
-    }
-
+    /// <summary>The files of an assistant. A file in the database gets its content when <paramref name="includeDatabaseContent"/>.</summary>
     private List<AssistantFile> ReadAssistantFiles(
-        IReadOnlyCollection<StoredAssistantFileDocument>? files,
+        IReadOnlyCollection<JObject>? entries,
         IReadOnlyDictionary<string, ContentBlockDocument> contentBlocksById,
-        bool includeCosmosContent)
+        bool includeDatabaseContent)
     {
-        if (files == null || files.Count == 0)
+        if (entries == null || entries.Count == 0)
         {
             return new List<AssistantFile>();
         }
 
-        var assistantFiles = new List<AssistantFile>(files.Count);
-        foreach (var file in files)
+        var files = new List<AssistantFile>(entries.Count);
+        foreach (var entry in entries)
         {
-            var assistantFile = new AssistantFile
+            if (!IsDatabaseFile(entry))
             {
-                Id = file.Id,
-                SourceFilename = file.SourceFilename,
-                Category = file.Category,
-                Description = file.Description
-            };
-            ApplyBlob(assistantFile, file.Blob);
-            assistantFile.Chunks = ReadChunks(file.Chunks, contentBlocksById, includeCosmosContent, key: null);
-            assistantFiles.Add(assistantFile);
+                files.Add(entry.ToObject<AssistantFile>()!);
+                continue;
+            }
+
+            var stored = entry.ToObject<StoredAssistantFileDocument>()!;
+            files.Add(new AssistantFile
+            {
+                Id = stored.Id,
+                SourceFilename = stored.SourceFilename,
+                Category = stored.Category,
+                Description = stored.Description,
+                Chunks = ReadChunks(stored.Chunks, contentBlocksById, includeDatabaseContent, key: null)
+            });
         }
 
-        return assistantFiles;
+        return files;
     }
-
-    private static StoredAssistantFileDocument ToStoredAssistantFile(AssistantFile file) => new()
-    {
-        Id = file.Id,
-        SourceFilename = file.SourceFilename,
-        Category = file.Category,
-        Description = file.Description,
-        Chunks = ToStoredChunks(file),
-        Blob = ToBlobDocument(file)
-    };
 
     private async Task<Dictionary<string, ContentBlockDocument>> ReadAssistantContentBlockMapAsync(string assistantId)
     {
@@ -174,10 +99,10 @@ public partial class DatabaseService
             assistantId);
     }
 
-    private static List<string> CollectAssistantFileContentBlockIds(IEnumerable<StoredAssistantFileDocument> files)
+    private static List<string> CollectAssistantFileContentBlockIds(IEnumerable<JObject> files)
     {
         var blockIds = new List<string>();
-        foreach (var file in files)
+        foreach (var file in files.Where(IsDatabaseFile).Select(entry => entry.ToObject<StoredAssistantFileDocument>()!))
         {
             foreach (var chunk in file.Chunks)
             {

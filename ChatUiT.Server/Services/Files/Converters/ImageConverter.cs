@@ -116,7 +116,7 @@ internal static class ImageConverter
             SKEncodedOrigin.LeftBottom => new SKMatrix(0, 1, 0, -1, 0, w, 0, 0, 1),
             _ => SKMatrix.Identity
         });
-        canvas.DrawBitmap(bitmap, 0, 0);
+        canvas.DrawBitmap(bitmap, 0, 0, SKSamplingOptions.Default);
         return result;
     }
 }

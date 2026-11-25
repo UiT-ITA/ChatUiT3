@@ -176,8 +176,8 @@ public class InsightsTests
         var builder = WebApplication.CreateBuilder();
         builder.WebHost.UseTestServer();
         builder.Services.AddControllers().AddApplicationPart(typeof(InsightsController).Assembly);
-        builder.Services.AddAuthentication(TestAuthHandler.Scheme)
-            .AddScheme<AuthenticationSchemeOptions, TestAuthHandler>(TestAuthHandler.Scheme, null);
+        builder.Services.AddAuthentication(TestAuthHandler.SchemeName)
+            .AddScheme<AuthenticationSchemeOptions, TestAuthHandler>(TestAuthHandler.SchemeName, null);
         builder.Services.AddAuthorization();
         builder.Services.AddSingleton<IInsightsService>(new InsightsService(new CountingRunner(), new MemoryCache(new MemoryCacheOptions()), TimeProvider.System));
 
@@ -223,7 +223,7 @@ public class InsightsTests
     private sealed class TestAuthHandler(IOptionsMonitor<AuthenticationSchemeOptions> options, ILoggerFactory logger, UrlEncoder encoder)
         : AuthenticationHandler<AuthenticationSchemeOptions>(options, logger, encoder)
     {
-        public const string Scheme = "Test";
+        public const string SchemeName = "Test";
         public const string RoleHeader = "X-Test-Role";
         public const string NoRole = "none";
 
@@ -240,8 +240,8 @@ public class InsightsTests
                 claims.Add(new Claim(ClaimTypes.Role, role!));
             }
 
-            var principal = new ClaimsPrincipal(new ClaimsIdentity(claims, Scheme));
-            return Task.FromResult(AuthenticateResult.Success(new AuthenticationTicket(principal, Scheme)));
+            var principal = new ClaimsPrincipal(new ClaimsIdentity(claims, SchemeName));
+            return Task.FromResult(AuthenticateResult.Success(new AuthenticationTicket(principal, SchemeName)));
         }
     }
 }

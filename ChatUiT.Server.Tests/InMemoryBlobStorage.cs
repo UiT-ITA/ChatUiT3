@@ -6,9 +6,9 @@ namespace ChatUiT.Server.Tests;
 /// <summary>Blob storage held in memory.</summary>
 public sealed class InMemoryBlobStorage : IBlobStorage
 {
-    public Dictionary<string, Dictionary<string, (byte[] Data, Dictionary<string, string> Metadata)>> Containers { get; } = new();
+    public Dictionary<string, Dictionary<string, byte[]>> Containers { get; } = new();
 
-    public byte[] Data(string container, string name) => Containers[container][name].Data;
+    public byte[] Data(string container, string name) => Containers[container][name];
 
     public IEnumerable<string> Names(string container)
         => Containers.TryGetValue(container, out var blobs) ? blobs.Keys.Order(StringComparer.Ordinal) : [];
@@ -20,17 +20,20 @@ public sealed class InMemoryBlobStorage : IBlobStorage
     }
 
     public Task<bool> TryCreateEmptyAsync(string container, string name, CancellationToken cancellationToken)
-        => Task.FromResult(Containers[container].TryAdd(name, ([], new())));
+        => Task.FromResult(Containers[container].TryAdd(name, []));
 
-    public Task<Stream> OpenWriteAsync(string container, string name, IDictionary<string, string> metadata, CancellationToken cancellationToken)
-        => Task.FromResult<Stream>(new CommitStream(data => Containers[container][name] = (data, new(metadata))));
+    public Task<bool> ExistsAsync(string container, string name, CancellationToken cancellationToken)
+        => Task.FromResult(Containers.TryGetValue(container, out var blobs) && blobs.ContainsKey(name));
 
-    public Task<BlobContent?> OpenReadAsync(string container, string name, CancellationToken cancellationToken)
-        => Task.FromResult(Containers.TryGetValue(container, out var blobs) && blobs.TryGetValue(name, out var blob)
-            ? new BlobContent(new MemoryStream(blob.Data), blob.Metadata, blob.Data.Length)
+    public Task<Stream> OpenWriteAsync(string container, string name, CancellationToken cancellationToken)
+        => Task.FromResult<Stream>(new CommitStream(data => Containers[container][name] = data));
+
+    public Task<Stream?> OpenReadAsync(string container, string name, CancellationToken cancellationToken)
+        => Task.FromResult<Stream?>(Containers.TryGetValue(container, out var blobs) && blobs.TryGetValue(name, out var data)
+            ? new MemoryStream(data)
             : null);
 
-    public async IAsyncEnumerable<BlobEntry> ListAsync(string container, string prefix, [EnumeratorCancellation] CancellationToken cancellationToken)
+    public async IAsyncEnumerable<string> ListAsync(string container, string prefix, [EnumeratorCancellation] CancellationToken cancellationToken)
     {
         await Task.CompletedTask;
         if (!Containers.TryGetValue(container, out var blobs))
@@ -38,9 +41,9 @@ public sealed class InMemoryBlobStorage : IBlobStorage
             yield break;
         }
 
-        foreach (var (name, blob) in blobs.Where(pair => pair.Key.StartsWith(prefix, StringComparison.Ordinal)).ToList())
+        foreach (var name in blobs.Keys.Where(name => name.StartsWith(prefix, StringComparison.Ordinal)).ToList())
         {
-            yield return new BlobEntry(name, blob.Metadata);
+            yield return name;
         }
     }
 

@@ -33,8 +33,7 @@ public sealed class FileConversionService
             var parts = kind switch
             {
                 FileKind.Image => ImageConverter.Convert(content),
-                FileKind.Text => TextConverter.Convert(content, "plain"),
-                FileKind.Markdown => TextConverter.Convert(content, "markdown"),
+                FileKind.Text or FileKind.Markdown => TextConverter.Convert(content),
                 FileKind.Pdf => PdfConverter.Convert(content, cancellationToken),
                 FileKind.Docx => DocxConverter.Convert(content),
                 FileKind.Pptx => PptxConverter.Convert(content),

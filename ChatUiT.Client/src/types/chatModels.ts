@@ -22,7 +22,6 @@ export type AiContentType = "Text" | "Image" | "Mixed";
 export interface ChatFileChunkDto {
   type: 'text' | 'image';
   text?: string;
-  format?: string;
   base64?: string;
 }
 
