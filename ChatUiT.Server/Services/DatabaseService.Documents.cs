@@ -12,13 +12,6 @@ public partial class DatabaseService
         public string Id { get; set; } = string.Empty;
     }
 
-    [JsonConverter(typeof(StringEnumConverter))]
-    private enum StoredContentType
-    {
-        Text,
-        Binary
-    }
-
     private sealed class CosmosChatStorageOptions
     {
         /// <summary>The account URI. When set, the app connects with its Entra identity and <see cref="ConnectionString"/> is ignored.</summary>
@@ -205,9 +198,6 @@ public partial class DatabaseService
 
         [JsonProperty("ownerId")]
         public string OwnerId { get; set; } = string.Empty;
-
-        [JsonProperty("contentType")]
-        public StoredContentType ContentType { get; set; }
 
         [JsonProperty("chunkIndex")]
         public int ChunkIndex { get; set; }
