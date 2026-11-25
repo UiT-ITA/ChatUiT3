@@ -16,13 +16,13 @@ public interface IDatabaseService
     Task<List<ChatHeader>> GetChatListAsync(string userId);
     /// <summary>The chat without its messages.</summary>
     Task<ChatHeader?> GetChatHeaderAsync(string userId, string chatId);
-    /// <summary>With <paramref name="includeFileContent"/>, a file in the database comes with its content. A file in Blob Storage never does.</summary>
-    Task<Chat?> GetChatByIdAsync(string userId, string chatId, bool includeFileContent = true);
-    /// <summary>A file on a message of the chat. A file in the database comes with its content, a file in Blob Storage without.</summary>
+    /// <summary>The chat with its messages. The files come without their content.</summary>
+    Task<Chat?> GetChatByIdAsync(string userId, string chatId);
+    /// <summary>A file on a message of the chat, without its content.</summary>
     Task<ChatFile?> GetChatFileAsync(string userId, string chatId, string fileId);
-    /// <summary>The chat's files in Blob Storage, each with the id of its message.</summary>
-    Task<List<MessageFile>> GetChatBlobFilesAsync(string userId, string chatId);
-    /// <summary>Sets IsEncrypted on a file in Blob Storage on a message. False when the message has no such file.</summary>
+    /// <summary>The chat's files, each with the id of its message.</summary>
+    Task<List<MessageFile>> GetChatFilesAsync(string userId, string chatId);
+    /// <summary>Sets IsEncrypted on a file on a message. False when the message has no such file.</summary>
     Task<bool> MarkChatFileEncryptedAsync(string userId, string chatId, string messageId, string fileId);
     Task AddChatAsync(string userId, Chat chat);
     Task DeleteChatAsync(string userId, string chatId);
@@ -44,10 +44,10 @@ public interface IDatabaseService
     /// no such message with status New, so only one caller gets true for a message.
     /// </summary>
     Task<bool> MarkMessageSentAsync(string userId, string chatId, string messageId, DateTime timestamp);
-    /// <summary>Adds a file in Blob Storage to a message with status New, and sets the message's timestamp to now. False when the chat has no such message.</summary>
+    /// <summary>Adds a file to a message with status New, and sets the message's timestamp to now. False when the chat has no such message.</summary>
     Task<bool> AddMessageFileAsync(string userId, string chatId, string messageId, ChatFile file);
     Task UpdateMessageAsync(string userId, string chatId, ChatMessage message);
-    /// <summary>Deletes the message with its content in the database. Returns its files in Blob Storage, whose blobs are not deleted.</summary>
+    /// <summary>Deletes the message with its content in the database. Returns its files, whose blobs are not deleted.</summary>
     Task<List<ChatFile>> DeleteMessageAsync(string userId, string chatId, string messageId);
     Task SetMessageTokenCountsAsync(string userId, string chatId, string messageId, IReadOnlyDictionary<string, int> tokenCounts, IReadOnlyDictionary<string, int> fileTokenCounts);
 
@@ -82,20 +82,20 @@ public interface IDatabaseService
     Task<List<Assistant>> GetAssistantsByOwnerAsync(string ownerId);
     Task<List<Assistant>> GetSystemAssistantsAsync();
     Task<List<Assistant>> GetAssistantsByIdsAsync(List<string> assistantIds);
-    /// <summary>With <paramref name="includeFileContent"/>, a file in the database comes with its content. A file in Blob Storage never does.</summary>
-    Task<Assistant?> GetAssistantByIdAsync(string assistantId, bool includeFileContent = false);
-    /// <summary>A file of the assistant. A file in the database comes with its content, a file in Blob Storage without.</summary>
+    /// <summary>The assistant. The files come without their content.</summary>
+    Task<Assistant?> GetAssistantByIdAsync(string assistantId);
+    /// <summary>A file of the assistant, without its content.</summary>
     Task<AssistantFile?> GetAssistantFileAsync(string assistantId, string fileId);
-    /// <summary>Adds a file in Blob Storage to the assistant. False when the assistant does not exist.</summary>
+    /// <summary>Adds a file to the assistant. False when the assistant does not exist.</summary>
     Task<bool> AddAssistantFileAsync(string assistantId, AssistantFile file);
     Task<Assistant> CreateAssistantAsync(Assistant assistant);
-    /// <summary>Saves the assistant. Its files must be files it already has. Files it no longer has are deleted from the database, not from Blob Storage.</summary>
+    /// <summary>Saves the assistant. Its files must be files it already has. Files it no longer has are removed from it, and their blobs are not deleted.</summary>
     Task<AssistantUpdate?> UpdateAssistantAsync(Assistant assistant);
     Task<bool> DeleteAssistantAsync(string assistantId);
 }
 
-/// <summary>A saved assistant, and the files it no longer has that are in Blob Storage.</summary>
-public sealed record AssistantUpdate(Assistant Assistant, List<AssistantFile> RemovedBlobFiles);
+/// <summary>A saved assistant, and the files it no longer has.</summary>
+public sealed record AssistantUpdate(Assistant Assistant, List<AssistantFile> RemovedFiles);
 
 /// <summary>A file and the id of the message it is on.</summary>
 public sealed record MessageFile(string MessageId, ChatFile File);

@@ -63,15 +63,11 @@ public class ChatFileDto
     public string SourceFilename { get; set; } = string.Empty;
     public List<ChatFileChunkDto> Chunks { get; set; } = new List<ChatFileChunkDto>();
 
-    // Switched off in stage 1: how the original is shown. See FilePreviews.
-    // public string Preview { get; set; } = string.Empty;
-
     public static ChatFileDto From(ChatFile file, bool includeContent) => new()
     {
         Id = file.Id,
         SourceFilename = file.SourceFilename,
         Chunks = file.Chunks.Select(chunk => ChunkFrom(chunk, includeContent)).ToList()
-        // Preview = Services.Files.FilePreviews.KindOf(file)
     };
 
     public static ChatFileChunkDto ChunkFrom(ChatFileChunk chunk, bool includeContent) => new()

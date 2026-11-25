@@ -1,8 +1,6 @@
 using ChatUiT.Server.Models;
 using ChatUiT.Server.Services.Encryption;
-using ChatUiT.Server.Services.TokenCounting;
 using Microsoft.Azure.Cosmos;
-using Newtonsoft.Json.Linq;
 using System.Security.Cryptography;
 using System.Text;
 
@@ -47,83 +45,6 @@ public partial class DatabaseService
         return blockIds;
     }
 
-    /// <summary>
-    /// Whether a stored file entry is a file in the database: its chunks have content blocks, or
-    /// it has no content type, as a file in the database without chunks. Every other entry is a
-    /// <see cref="ChatFile"/> in Blob Storage.
-    /// </summary>
-    private static bool IsDatabaseFile(JObject entry)
-        => (entry["chunks"] is JArray chunks && chunks.OfType<JObject>().Any(chunk => chunk.ContainsKey("contentBlockIds")))
-            || string.IsNullOrEmpty((string?)entry["contentType"]);
-
-    /// <summary>The files of a message. A file in the database gets its content when <paramref name="includeDatabaseContent"/>.</summary>
-    private List<ChatFile> ReadFiles(
-        IReadOnlyCollection<JObject>? entries,
-        IReadOnlyDictionary<string, ContentBlockDocument> contentBlocksById,
-        bool includeDatabaseContent,
-        byte[]? key)
-    {
-        if (entries == null || entries.Count == 0)
-        {
-            return new List<ChatFile>();
-        }
-
-        var files = new List<ChatFile>(entries.Count);
-        foreach (var entry in entries)
-        {
-            if (!IsDatabaseFile(entry))
-            {
-                files.Add(entry.ToObject<ChatFile>()!);
-                continue;
-            }
-
-            var stored = entry.ToObject<StoredFileDocument>()!;
-            files.Add(new ChatFile
-            {
-                Id = stored.Id,
-                SourceFilename = stored.SourceFilename,
-                Chunks = ReadChunks(stored.Chunks, contentBlocksById, includeDatabaseContent, key)
-            });
-        }
-
-        return files;
-    }
-
-    /// <summary>The parts of a file in the database. A part gets its text or image bytes when <paramref name="includeContent"/>.</summary>
-    private List<ChatFileChunk> ReadChunks(
-        IReadOnlyCollection<StoredFileChunkDocument> chunks,
-        IReadOnlyDictionary<string, ContentBlockDocument> contentBlocksById,
-        bool includeContent,
-        byte[]? key)
-    {
-        var result = new List<ChatFileChunk>(chunks.Count);
-        foreach (var chunk in chunks)
-        {
-            var chatChunk = new ChatFileChunk { Id = chunk.Id, Type = chunk.Type };
-            if (chatChunk.IsImage)
-            {
-                chatChunk.MediaType = MessageParts.ResolveMediaType(chunk.Format);
-            }
-
-            if (includeContent && chatChunk.IsText)
-            {
-                chatChunk.Text = ReadTextContent(chunk.ContentBlockIds, contentBlocksById, key);
-            }
-            else if (includeContent && chatChunk.IsImage)
-            {
-                chatChunk.Data = ReadBinaryContent(chunk.ContentBlockIds, contentBlocksById, key);
-            }
-
-            result.Add(chatChunk);
-        }
-
-        return result;
-    }
-
-    /// <summary>The files among <paramref name="entries"/> that are in Blob Storage.</summary>
-    private static List<T> BlobFiles<T>(IEnumerable<JObject> entries) where T : ChatFile
-        => entries.Where(entry => !IsDatabaseFile(entry)).Select(entry => entry.ToObject<T>()!).ToList();
-
     private string ReadTextContent(
         IReadOnlyCollection<string> contentBlockIds,
         IReadOnlyDictionary<string, ContentBlockDocument> contentBlocksById,
@@ -161,46 +82,7 @@ public partial class DatabaseService
         return string.Concat(parts);
     }
 
-    private byte[] ReadBinaryContent(
-        IReadOnlyCollection<string> contentBlockIds,
-        IReadOnlyDictionary<string, ContentBlockDocument> contentBlocksById,
-        byte[]? key = null)
-    {
-        if (contentBlockIds.Count == 0)
-        {
-            return Array.Empty<byte>();
-        }
-
-        var documents = GetOrderedContentBlocks(contentBlockIds, contentBlocksById);
-        if (documents.Count == 0)
-        {
-            return Array.Empty<byte>();
-        }
-
-        var parts = new List<byte[]>(documents.Count);
-        foreach (var document in documents)
-        {
-            var bytes = document.IsEncrypted ? TryDecrypt(document, key) : Convert.FromBase64String(document.Payload);
-            if (bytes == null)
-            {
-                return Array.Empty<byte>();
-            }
-
-            parts.Add(bytes);
-        }
-
-        var result = new byte[parts.Sum(part => part.Length)];
-        var offset = 0;
-        foreach (var part in parts)
-        {
-            part.CopyTo(result, offset);
-            offset += part.Length;
-        }
-
-        return result;
-    }
-
-    // Null when the block does not decrypt; the text or image it belongs to then reads as empty.
+    // Null when the block does not decrypt; the text it belongs to then reads as empty.
     private byte[]? TryDecrypt(ContentBlockDocument block, byte[]? key)
     {
         if (key == null)
@@ -275,23 +157,6 @@ public partial class DatabaseService
         }
 
         return documents;
-    }
-
-    private async Task<Dictionary<string, ContentBlockDocument>> ReadContentBlockMapByChatAsync(string userId, string chatId)
-    {
-        if (_contentContainer == null)
-        {
-            return new Dictionary<string, ContentBlockDocument>();
-        }
-
-        var documents = await QueryItemsAsync<ContentBlockDocument>(
-            _contentContainer,
-            new QueryDefinition("SELECT * FROM c WHERE c.userId = @userId AND c.chatId = @chatId")
-                .WithParameter("@userId", userId)
-                .WithParameter("@chatId", chatId),
-            userId);
-
-        return documents.ToDictionary(document => document.Id, document => document);
     }
 
     private async Task<Dictionary<string, ContentBlockDocument>> ReadContentBlockMapByOwnersAsync(
@@ -398,40 +263,5 @@ public partial class DatabaseService
                 .WithParameter("@chatId", chatId)
                 .WithParameter("@ownerId", ownerId),
             userId);
-    }
-
-    private async Task DeleteFileContentAsync(string userId, string contentOwnerChatId, IReadOnlyCollection<JObject>? files)
-    {
-        if (_contentContainer == null || files == null || files.Count == 0)
-        {
-            return;
-        }
-
-        var ownerIds = new HashSet<string>();
-        CollectFileOwnerIds(files, ownerIds);
-
-        if (ownerIds.Count == 0)
-        {
-            return;
-        }
-
-        foreach (var ownerId in ownerIds)
-        {
-            await DeleteOwnedContentAsync(userId, contentOwnerChatId, ownerId);
-        }
-    }
-
-    private static void CollectFileOwnerIds(IReadOnlyCollection<JObject> files, ISet<string> ownerIds)
-    {
-        foreach (var file in files.Where(IsDatabaseFile).Select(entry => entry.ToObject<StoredFileDocument>()!))
-        {
-            foreach (var chunk in file.Chunks)
-            {
-                if (!string.IsNullOrWhiteSpace(chunk.Id))
-                {
-                    ownerIds.Add(chunk.Id);
-                }
-            }
-        }
     }
 }

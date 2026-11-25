@@ -432,7 +432,6 @@
     "uploadFailed": "Filen kunne ikke lastes opp.",
     "loadFailed": "Filen kunne ikke lastes inn.",
     "download": "Last ned",
-    "downloadOnly": "Denne filtypen kan ikke forhåndsvises. Last ned filen for å åpne den.",
     "previewNotAvailable": "Forhåndsvisning er ikke tilgjengelig",
     "upload": {
       "waiting": "Venter",

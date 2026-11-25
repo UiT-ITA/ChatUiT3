@@ -1,6 +1,5 @@
 using ChatUiT.Server.Models;
 using Microsoft.Azure.Cosmos;
-using Newtonsoft.Json.Linq;
 
 namespace ChatUiT.Server.Services;
 
@@ -17,7 +16,7 @@ public partial class DatabaseService
                 .WithParameter("@ownerId", ownerId),
             ConfigurationPartitionKey);
 
-        return await MapAssistantsAsync(documents);
+        return MapAssistants(documents);
     }
 
     public async Task<List<Assistant>> GetSystemAssistantsAsync()
@@ -31,7 +30,7 @@ public partial class DatabaseService
                 .WithParameter("@ownerId", "System"),
             ConfigurationPartitionKey);
 
-        return await MapAssistantsAsync(documents);
+        return MapAssistants(documents);
     }
 
     public async Task<List<Assistant>> GetAssistantsByIdsAsync(List<string> assistantIds)
@@ -53,14 +52,14 @@ public partial class DatabaseService
 
             if (document != null)
             {
-                assistants.Add(await MapAssistantAsync(document));
+                assistants.Add(MapAssistant(document));
             }
         }
 
         return assistants;
     }
 
-    public async Task<Assistant?> GetAssistantByIdAsync(string assistantId, bool includeFileContent = false)
+    public async Task<Assistant?> GetAssistantByIdAsync(string assistantId)
     {
         await EnsureInitializedAsync();
 
@@ -69,7 +68,7 @@ public partial class DatabaseService
             assistantId,
             ConfigurationPartitionKey);
 
-        return document == null ? null : await MapAssistantAsync(document, includeFileContent);
+        return document == null ? null : MapAssistant(document);
     }
 
     public async Task<AssistantFile?> GetAssistantFileAsync(string assistantId, string fileId)
@@ -81,16 +80,7 @@ public partial class DatabaseService
             assistantId,
             ConfigurationPartitionKey);
 
-        var entry = document?.Files.FirstOrDefault(f => (string?)f["id"] == fileId);
-        if (entry == null)
-        {
-            return null;
-        }
-
-        var contentBlocksById = IsDatabaseFile(entry)
-            ? await ReadAssistantContentBlockMapAsync(assistantId)
-            : new Dictionary<string, ContentBlockDocument>();
-        return ReadAssistantFiles(new[] { entry }, contentBlocksById, includeDatabaseContent: true).Single();
+        return document?.Files.FirstOrDefault(f => f.Id == fileId);
     }
 
     public async Task<bool> AddAssistantFileAsync(string assistantId, AssistantFile file)
@@ -110,7 +100,7 @@ public partial class DatabaseService
             }
 
             var files = response.Resource.Files;
-            files.Add(JObject.FromObject(file));
+            files.Add(file);
 
             try
             {
@@ -140,7 +130,7 @@ public partial class DatabaseService
         await _assistantContainer!.CreateItemAsync(document, new PartitionKey(ConfigurationPartitionKey));
 
         assistant.Id = assistantId;
-        return await MapAssistantAsync(document);
+        return MapAssistant(document);
     }
 
     public async Task<AssistantUpdate?> UpdateAssistantAsync(Assistant assistant)
@@ -162,12 +152,11 @@ public partial class DatabaseService
             return null;
         }
 
-        var existingFilesById = existingDocument.Files.ToDictionary(f => (string)f["id"]!, f => f);
+        var existingFilesById = existingDocument.Files.ToDictionary(f => f.Id);
         var document = MapAssistantDocument(assistant, assistant.Id);
 
         // assistant.Files is the full desired list. Each file is one the assistant already
-        // has. The content blocks of the files it no longer has are only deleted after the
-        // document is safely replaced.
+        // has, with its category and description changed.
         foreach (var file in assistant.Files)
         {
             if (!existingFilesById.TryGetValue(file.Id, out var stored))
@@ -175,19 +164,17 @@ public partial class DatabaseService
                 throw new InvalidOperationException($"File {file.Id} is not a file of assistant {assistant.Id}.");
             }
 
-            var entry = (JObject)stored.DeepClone();
-            entry["category"] = file.Category;
-            entry["description"] = file.Description;
-            document.Files.Add(entry);
+            stored.Category = file.Category;
+            stored.Description = file.Description;
+            document.Files.Add(stored);
         }
 
         await _assistantContainer!.ReplaceItemAsync(document, document.Id, new PartitionKey(ConfigurationPartitionKey));
 
-        var keptFileIds = document.Files.Select(f => (string?)f["id"]).ToHashSet();
-        var obsoleteFiles = existingDocument.Files.Where(f => !keptFileIds.Contains((string?)f["id"])).ToList();
-        await DeleteAssistantContentBlocksAsync(assistant.Id, CollectAssistantFileContentBlockIds(obsoleteFiles));
+        var keptFileIds = document.Files.Select(f => f.Id).ToHashSet();
+        var removedFiles = existingDocument.Files.Where(f => !keptFileIds.Contains(f.Id)).ToList();
 
-        return new AssistantUpdate(await MapAssistantAsync(document), BlobFiles<AssistantFile>(obsoleteFiles));
+        return new AssistantUpdate(MapAssistant(document), removedFiles);
     }
 
     public async Task<bool> DeleteAssistantAsync(string assistantId)
@@ -204,33 +191,18 @@ public partial class DatabaseService
             return false;
         }
 
-        await DeleteAssistantContentAsync(assistantId);
         await _assistantContainer!.DeleteItemAsync<AssistantDocument>(assistantId, new PartitionKey(ConfigurationPartitionKey));
         return true;
     }
 
-    private async Task<List<Assistant>> MapAssistantsAsync(List<AssistantDocument> documents)
-    {
-        var assistants = new List<Assistant>(documents.Count);
+    private static List<Assistant> MapAssistants(List<AssistantDocument> documents)
+        => documents.Select(MapAssistant).ToList();
 
-        foreach (var document in documents)
-        {
-            assistants.Add(await MapAssistantAsync(document));
-        }
-
-        return assistants;
-    }
-
-    private async Task<Assistant> MapAssistantAsync(AssistantDocument document, bool includeFileContent = false)
+    private static Assistant MapAssistant(AssistantDocument document)
     {
         var model = string.IsNullOrWhiteSpace(document.ChatSettings.ModelId)
             ? new LanguageModel()
             : new LanguageModel { Id = document.ChatSettings.ModelId };
-
-        var includeDatabaseContent = includeFileContent && document.Files.Any(IsDatabaseFile);
-        var contentBlocksById = includeDatabaseContent
-            ? await ReadAssistantContentBlockMapAsync(document.Id)
-            : new Dictionary<string, ContentBlockDocument>();
 
         return new Assistant
         {
@@ -246,7 +218,7 @@ public partial class DatabaseService
                 AvailableToolIds = document.ChatSettings.AvailableToolIds,
                 PromptSnippets = document.ChatSettings.PromptSnippets
             },
-            Files = ReadAssistantFiles(document.Files, contentBlocksById, includeDatabaseContent),
+            Files = document.Files,
             KnowledgeSourceIds = document.KnowledgeSourceIds ?? new List<string>(),
             OwnerId = document.OwnerId,
             UpdatedAt = document.UpdatedAt,

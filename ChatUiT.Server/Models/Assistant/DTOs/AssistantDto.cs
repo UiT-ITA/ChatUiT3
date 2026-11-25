@@ -78,14 +78,8 @@ public class AssistantFileDto
     public string Category { get; set; } = AssistantFileCategories.AlwaysLoaded;
     public string? Description { get; set; }
 
-    /// <summary>
-    /// The file's parts. An assistant carries them without their text and image data. The file's
-    /// own endpoint gives them with it.
-    /// </summary>
+    /// <summary>The file's parts, without their text and image data.</summary>
     public List<ChatFileChunkDto> Chunks { get; set; } = new List<ChatFileChunkDto>();
-
-    // Switched off in stage 1: how the original is shown. See FilePreviews.
-    // public string Preview { get; set; } = string.Empty;
 
     /// <summary>Per scheme: what the file costs as the message that carries it.</summary>
     public Dictionary<string, int> TokenCounts { get; set; } = new();

@@ -1,7 +1,6 @@
 using ChatUiT.Server.Models;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Converters;
-using Newtonsoft.Json.Linq;
 
 namespace ChatUiT.Server.Services;
 
@@ -35,7 +34,6 @@ public partial class DatabaseService
         public CosmosContainerOptions Models { get; set; } = new CosmosContainerOptions { Name = "Models", PartitionKeyPath = "/partitionKey" };
         public CosmosContainerOptions ModelEndpoints { get; set; } = new CosmosContainerOptions { Name = "ModelEndpoints", PartitionKeyPath = "/partitionKey" };
         public CosmosContainerOptions Assistants { get; set; } = new CosmosContainerOptions { Name = "Assistants", PartitionKeyPath = "/partitionKey" };
-        public CosmosContainerOptions AssistantContent { get; set; } = new CosmosContainerOptions { Name = "AssistantContent", PartitionKeyPath = "/assistantId" };
         public CosmosContainerOptions AppSettings { get; set; } = new CosmosContainerOptions { Name = "AppSettings", PartitionKeyPath = "/partitionKey" };
         public CosmosContainerOptions ToolPolicies { get; set; } = new CosmosContainerOptions { Name = "ToolPolicies", PartitionKeyPath = "/partitionKey" };
         public CosmosContainerOptions InternalAgents { get; set; } = new CosmosContainerOptions { Name = "InternalAgents", PartitionKeyPath = "/partitionKey" };
@@ -173,9 +171,8 @@ public partial class DatabaseService
         [JsonProperty("transcriptBlockIds")]
         public List<string> TranscriptBlockIds { get; set; } = new();
 
-        // Each entry is a ChatFile, or a file in the database (see IsDatabaseFile).
         [JsonProperty("files")]
-        public List<JObject> Files { get; set; } = new();
+        public List<ChatFile> Files { get; set; } = new();
 
         // May be absent in stored documents; an empty value means "fall back to the chat's
         // assistant" rather than "no assistant".
@@ -193,34 +190,6 @@ public partial class DatabaseService
         // The attachment share of tokenCounts; empty for messages without files.
         [JsonProperty("fileTokenCounts")]
         public Dictionary<string, int> FileTokenCounts { get; set; } = new();
-    }
-
-    /// <summary>A file in the database: its content is in content blocks.</summary>
-    private sealed class StoredFileDocument
-    {
-        [JsonProperty("id")]
-        public string Id { get; set; } = string.Empty;
-
-        [JsonProperty("sourceFilename")]
-        public string SourceFilename { get; set; } = string.Empty;
-
-        [JsonProperty("chunks")]
-        public List<StoredFileChunkDocument> Chunks { get; set; } = new();
-    }
-
-    private sealed class StoredFileChunkDocument
-    {
-        [JsonProperty("id")]
-        public string Id { get; set; } = string.Empty;
-
-        [JsonProperty("type")]
-        public string Type { get; set; } = string.Empty;
-
-        [JsonProperty("format")]
-        public string? Format { get; set; }
-
-        [JsonProperty("contentBlockIds")]
-        public List<string> ContentBlockIds { get; set; } = new();
     }
 
     private sealed class ContentBlockDocument
@@ -504,9 +473,8 @@ public partial class DatabaseService
         [JsonProperty("chatSettings")]
         public AssistantChatSettingsDocument ChatSettings { get; set; } = new();
 
-        // Each entry is an AssistantFile, or a file in the database (see IsDatabaseFile).
         [JsonProperty("files")]
-        public List<JObject> Files { get; set; } = new();
+        public List<AssistantFile> Files { get; set; } = new();
 
         // Absent on rows written before knowledge sources existed.
         [JsonProperty("knowledgeSourceIds")]
@@ -530,49 +498,6 @@ public partial class DatabaseService
 
         [JsonProperty("allowedGroupIds")]
         public List<string> AllowedGroupIds { get; set; } = new();
-    }
-
-    /// <summary>An assistant file in the database: its content is in assistant content blocks.</summary>
-    private sealed class StoredAssistantFileDocument
-    {
-        [JsonProperty("id")]
-        public string Id { get; set; } = string.Empty;
-
-        [JsonProperty("sourceFilename")]
-        public string SourceFilename { get; set; } = string.Empty;
-
-        [JsonProperty("category")]
-        public string Category { get; set; } = AssistantFileCategories.AlwaysLoaded;
-
-        [JsonProperty("description")]
-        public string? Description { get; set; }
-
-        [JsonProperty("chunks")]
-        public List<StoredFileChunkDocument> Chunks { get; set; } = new();
-    }
-
-    private sealed class AssistantContentBlockDocument
-    {
-        [JsonProperty("id")]
-        public string Id { get; set; } = string.Empty;
-
-        [JsonProperty("assistantId")]
-        public string AssistantId { get; set; } = string.Empty;
-
-        [JsonProperty("ownerId")]
-        public string OwnerId { get; set; } = string.Empty;
-
-        [JsonProperty("contentType")]
-        public StoredContentType ContentType { get; set; }
-
-        [JsonProperty("chunkIndex")]
-        public int ChunkIndex { get; set; }
-
-        [JsonProperty("isEncrypted")]
-        public bool IsEncrypted { get; set; }
-
-        [JsonProperty("payload")]
-        public string Payload { get; set; } = string.Empty;
     }
 
     private sealed class AssistantChatSettingsDocument

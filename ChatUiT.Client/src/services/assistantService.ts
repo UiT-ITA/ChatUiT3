@@ -2,22 +2,6 @@ import { signal, Signal, computed } from "@preact/signals-react";
 import type { AssistantDto, AssistantFileDto, AssistantFileCategory, CreateAssistantDto, UpdateAssistantDto, AssistantListDto } from "../types/assistantModels";
 import apiService from "./apiService";
 
-// Assistant file content is loaded on demand (assistants carry file metadata only).
-const assistantFileCache = new Map<string, Promise<AssistantFileDto>>();
-
-export function fetchAssistantFile(assistantId: string, fileId: string): Promise<AssistantFileDto> {
-    const cacheKey = `${assistantId}/${fileId}`;
-    let pending = assistantFileCache.get(cacheKey);
-
-    if (!pending) {
-        pending = apiService<AssistantFileDto>(`/api/Assistants/${assistantId}/files/${fileId}`);
-        assistantFileCache.set(cacheKey, pending);
-        pending.catch(() => assistantFileCache.delete(cacheKey));
-    }
-
-    return pending;
-}
-
 /**
  * Uploads a file to an assistant, which adds it to the assistant's files. Resolves once the
  * server has stored and converted it. The server refuses an always loaded file that does not

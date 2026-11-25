@@ -45,31 +45,23 @@ export function uploadMessageFile(chatId: string, messageId: string, file: File,
   return apiService.uploadFile<ChatFileDto>(`/api/Chats/${chatId}/messages/${messageId}/files`, file, onProgress);
 }
 
-// Switched off in stage 1: everything below fetches, saves and classifies a file's original
-// for the original-file preview (OriginalFilePreviewModal). Nothing calls it.
+/** Where a chat's files are. */
+export const chatFilesEndpoint = (chatId: string) => `/api/Chats/${chatId}/files`;
+
+/** Where an assistant's files are. */
+export const assistantFilesEndpoint = (assistantId: string) => `/api/Assistants/${assistantId}/files`;
 
 /** Where a stored file's original is fetched from. */
 export const fileContentEndpoint = (filesEndpoint: string, fileId: string) => `${filesEndpoint}/${fileId}/content`;
 
-// Originals are fetched once and kept as object URLs.
-const originals = new Map<string, Promise<Blob>>();
-
 /** The original of a stored file. */
 export function fetchOriginal(contentEndpoint: string): Promise<Blob> {
-  let pending = originals.get(contentEndpoint);
-  if (!pending) {
-    pending = apiService.getBlob(contentEndpoint);
-    originals.set(contentEndpoint, pending);
-    pending.catch(() => originals.delete(contentEndpoint));
-  }
-  return pending;
+  return apiService.getBlob(contentEndpoint);
 }
 
-/** Forgets the fetched originals under an endpoint, such as the files of a deleted chat. */
-export function forgetOriginals(filesEndpoint: string): void {
-  for (const key of Array.from(originals.keys())) {
-    if (key.startsWith(`${filesEndpoint}/`)) originals.delete(key);
-  }
+/** Saves a stored file's original through the browser's download. */
+export async function downloadOriginal(contentEndpoint: string, fileName: string): Promise<void> {
+  saveBlob(await fetchOriginal(contentEndpoint), fileName);
 }
 
 /** Saves a blob as a file through the browser's download. */
@@ -90,13 +82,10 @@ const PREVIEW_BY_EXTENSION: Record<string, FilePreviewKind> = {
   txt: 'text', csv: 'text', json: 'text',
   md: 'markdown', markdown: 'markdown',
   docx: 'download', pptx: 'download', xlsx: 'download',
+  parts: 'none',
 };
 
-/** How a file that is not uploaded yet is shown. Mirrors FilePreviews.KindOf on the server. */
-export function previewKindOf(file: File): FilePreviewKind {
-  const byExtension = PREVIEW_BY_EXTENSION[getFileExtension(file.name)];
-  if (byExtension) return byExtension;
-  if (file.type.startsWith('image/')) return 'image';
-  if (file.type === 'text/markdown') return 'markdown';
-  return file.type.startsWith('text/') || file.type === 'application/json' ? 'text' : 'download';
+/** How a stored file's original is shown, chosen from its name. A name without a known extension is downloaded. */
+export function previewKindOf(fileName: string): FilePreviewKind {
+  return PREVIEW_BY_EXTENSION[getFileExtension(fileName)] ?? 'download';
 }

@@ -1,6 +1,6 @@
 ## Legg ved en fil
 
-Klikk bindersen i meldingsfeltet og velg én eller flere filer. De vises som miniatyrer over feltet. Klikk krysset på en miniatyr for å fjerne den. Skriv så spørsmålet og send som vanlig. I en sendt melding kan du klikke en fil for å se hva assistenten får.
+Klikk bindersen i meldingsfeltet og velg én eller flere filer. De vises som miniatyrer over feltet. Klikk krysset på en miniatyr for å fjerne den. Skriv så spørsmålet og send som vanlig. I en sendt melding kan du klikke en fil for å se originalen. Word-, PowerPoint- og Excel-filer lastes ned.
 
 ![Replace with screenshot featuring the composer with a PDF and an image attached](placeholder)
 

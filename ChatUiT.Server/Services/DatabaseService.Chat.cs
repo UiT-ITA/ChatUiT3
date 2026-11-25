@@ -1,6 +1,5 @@
 using ChatUiT.Server.Models;
 using Microsoft.Azure.Cosmos;
-using Newtonsoft.Json.Linq;
 
 namespace ChatUiT.Server.Services;
 
@@ -28,7 +27,7 @@ public partial class DatabaseService
         return chatDocument == null ? null : MapChatHeader(chatDocument);
     }
 
-    public async Task<Chat?> GetChatByIdAsync(string userId, string chatId, bool includeFileContent = true)
+    public async Task<Chat?> GetChatByIdAsync(string userId, string chatId)
     {
         await EnsureInitializedAsync();
 
@@ -51,12 +50,7 @@ public partial class DatabaseService
 
         var messageDocuments = await messageDocumentsTask;
 
-        // With file content the whole chat's blocks are needed; without it only the
-        // blocks holding message text (owned by the messages themselves) are fetched,
-        // so file payloads never leave the database.
-        var contentBlocksById = includeFileContent
-            ? await ReadContentBlockMapByChatAsync(userId, chatId)
-            : await ReadContentBlockMapByOwnersAsync(userId, chatId, messageDocuments.Select(m => m.Id).ToList());
+        var contentBlocksById = await ReadContentBlockMapByOwnersAsync(userId, chatId, messageDocuments.Select(m => m.Id).ToList());
 
         var key = await GetContentKeyAsync(userId, chatDocument);
         if (key != null)
@@ -67,7 +61,7 @@ public partial class DatabaseService
         var messages = new List<ChatMessage>(messageDocuments.Count);
         foreach (var messageDocument in messageDocuments)
         {
-            messages.Add(MapChatMessage(messageDocument, contentBlocksById, includeFileContent, key));
+            messages.Add(MapChatMessage(messageDocument, contentBlocksById, key));
         }
 
         return new Chat
@@ -89,36 +83,16 @@ public partial class DatabaseService
     {
         await EnsureInitializedAsync();
 
-        var fileDocuments = await QueryItemsAsync<ChatMessageDocument>(
+        var messageDocuments = await QueryItemsAsync<ChatMessageDocument>(
             _chatMessageContainer!,
             new QueryDefinition("SELECT * FROM c WHERE c.userId = @userId AND c.chatId = @chatId")
                 .WithParameter("@userId", userId)
                 .WithParameter("@chatId", chatId),
             userId);
 
-        var entry = fileDocuments
+        return messageDocuments
             .SelectMany(message => message.Files)
-            .FirstOrDefault(f => (string?)f["id"] == fileId);
-
-        if (entry == null)
-        {
-            return null;
-        }
-
-        if (!IsDatabaseFile(entry))
-        {
-            return entry.ToObject<ChatFile>();
-        }
-
-        var ownerIds = entry.ToObject<StoredFileDocument>()!.Chunks.Select(chunk => chunk.Id).ToList();
-        var contentBlocksById = await ReadContentBlockMapByOwnersAsync(userId, chatId, ownerIds);
-        var key = await GetContentKeyAsync(userId, chatId);
-        if (key != null)
-        {
-            await EncryptBlocksAsync(userId, contentBlocksById.Values, key);
-        }
-
-        return ReadFiles(new[] { entry }, contentBlocksById, includeDatabaseContent: true, key).FirstOrDefault();
+            .FirstOrDefault(file => file.Id == fileId);
     }
 
     public async Task AddChatAsync(string userId, Chat chat)
@@ -239,7 +213,7 @@ public partial class DatabaseService
         await EncryptChatContentAsync(userId, chatId, await _chatKeys.GetUserKeyAsync(userId));
     }
 
-    public async Task<List<MessageFile>> GetChatBlobFilesAsync(string userId, string chatId)
+    public async Task<List<MessageFile>> GetChatFilesAsync(string userId, string chatId)
     {
         await EnsureInitializedAsync();
 
@@ -251,7 +225,7 @@ public partial class DatabaseService
             userId);
 
         return messageDocuments
-            .SelectMany(message => BlobFiles<ChatFile>(message.Files).Select(file => new MessageFile(message.Id, file)))
+            .SelectMany(message => message.Files.Select(file => new MessageFile(message.Id, file)))
             .ToList();
     }
 
@@ -261,15 +235,13 @@ public partial class DatabaseService
 
         return await ChangeMessageFilesAsync(userId, chatId, messageId, (_, files) =>
         {
-            var index = files.FindIndex(entry => (string?)entry["id"] == fileId && !IsDatabaseFile(entry));
-            if (index < 0)
+            var file = files.FirstOrDefault(file => file.Id == fileId);
+            if (file == null)
             {
                 return false;
             }
 
-            var file = files[index].ToObject<ChatFile>()!;
             file.IsEncrypted = true;
-            files[index] = JObject.FromObject(file);
             return true;
         });
     }
@@ -286,7 +258,7 @@ public partial class DatabaseService
 
         var contentBlocksById = await ReadContentBlockMapByOwnersAsync(userId, chatId, new List<string> { messageId });
         var key = await GetContentKeyAsync(userId, chatId);
-        return MapChatMessage(messageDocument, contentBlocksById, includeDatabaseFileContent: false, key);
+        return MapChatMessage(messageDocument, contentBlocksById, key);
     }
 
     public async Task<bool> AddMessageFileAsync(string userId, string chatId, string messageId, ChatFile file)
@@ -300,7 +272,7 @@ public partial class DatabaseService
                 return false;
             }
 
-            files.Add(JObject.FromObject(file));
+            files.Add(file);
             return true;
         }, touch: true);
     }
@@ -351,7 +323,7 @@ public partial class DatabaseService
     /// in the chat or nothing was saved. With <paramref name="touch"/> the message's timestamp
     /// is set to now.
     /// </summary>
-    private async Task<bool> ChangeMessageFilesAsync(string userId, string chatId, string messageId, Func<ChatMessageDocument, List<JObject>, bool> change, bool touch = false)
+    private async Task<bool> ChangeMessageFilesAsync(string userId, string chatId, string messageId, Func<ChatMessageDocument, List<ChatFile>, bool> change, bool touch = false)
     {
         while (true)
         {
@@ -455,7 +427,7 @@ public partial class DatabaseService
                 ContentBlockIds = await WriteTextContentAsync(userId, chatId, messageId, message.Content, key, writtenBlockIds),
                 ActivityBlockIds = await WriteTextContentAsync(userId, chatId, messageId, SerializeActivity(message.Activity), key, writtenBlockIds),
                 TranscriptBlockIds = await WriteTextContentAsync(userId, chatId, messageId, SerializeTranscript(message.Transcript), key, writtenBlockIds),
-                Files = message.Files.Select(file => JObject.FromObject(file)).ToList(),
+                Files = message.Files,
                 AssistantId = message.AssistantId,
                 AssistantName = message.AssistantName,
                 TokenCounts = message.TokenCounts ?? new Dictionary<string, int>(),
@@ -587,10 +559,9 @@ public partial class DatabaseService
         await _chatMessageContainer!.DeleteItemAsync<ChatMessageDocument>(messageId, new PartitionKey(userId));
 
         await DeleteOwnedContentAsync(userId, chatId, messageId);
-        await DeleteFileContentAsync(userId, chatId, existingMessage.Files);
 
         await TouchChatAsync(userId, chatId, DateTime.UtcNow, null);
-        return BlobFiles<ChatFile>(existingMessage.Files);
+        return existingMessage.Files;
     }
 
     private static ChatHeader MapChatHeader(ChatDocument chatDocument)
@@ -654,7 +625,6 @@ public partial class DatabaseService
     private ChatMessage MapChatMessage(
         ChatMessageDocument messageDocument,
         IReadOnlyDictionary<string, ContentBlockDocument> contentBlocksById,
-        bool includeDatabaseFileContent,
         byte[]? key)
     {
         return new ChatMessage
@@ -666,7 +636,7 @@ public partial class DatabaseService
             Activity = DeserializeActivity(ReadTextContent(messageDocument.ActivityBlockIds, contentBlocksById, key)),
             Transcript = DeserializeTranscript(ReadTextContent(messageDocument.TranscriptBlockIds, contentBlocksById, key)),
             Status = messageDocument.Status,
-            Files = ReadFiles(messageDocument.Files, contentBlocksById, includeDatabaseFileContent, key),
+            Files = messageDocument.Files,
             AssistantId = messageDocument.AssistantId,
             AssistantName = messageDocument.AssistantName,
             TokenCounts = messageDocument.TokenCounts ?? new Dictionary<string, int>(),

@@ -97,7 +97,7 @@ public class ChatService : IChatService
 
     public async Task<Chat?> GetChatByIdAsync(string userId, string chatId, bool includeFileContent = true)
     {
-        var chat = await _databaseService.GetChatByIdAsync(userId, chatId, includeFileContent);
+        var chat = await _databaseService.GetChatByIdAsync(userId, chatId);
         if (chat == null)
         {
             return null;
@@ -150,7 +150,7 @@ public class ChatService : IChatService
             await _databaseService.UpdateMessageAsync(userId, chatId, fixedMessage);
         }
 
-        await BackfillTokenCountsAsync(userId, chatId, chat, includeFileContent);
+        await BackfillTokenCountsAsync(userId, chatId, chat);
 
         return chat;
     }
@@ -188,17 +188,16 @@ public class ChatService : IChatService
 
     private async Task DeleteMessageWithFilesAsync(string userId, string chatId, Models.ChatMessage message)
     {
-        var blobFiles = await _databaseService.DeleteMessageAsync(userId, chatId, message.Id);
-        await _fileService.DeleteFilesAsync(chatId, blobFiles);
+        var files = await _databaseService.DeleteMessageAsync(userId, chatId, message.Id);
+        await _fileService.DeleteFilesAsync(chatId, files);
     }
 
     // Counts are stored per message so a model switch is a key lookup on the client. Messages
     // lacking a count for an active scheme are counted on first read and written back, so each
     // message is counted at most once per scheme. A file is priced from the count stored on it.
-    // A file in the database has none: its content is read from the database. A file in Blob
-    // Storage without a count for a scheme is counted on a read that loads every file's content,
+    // A file without a count for a scheme is counted on a read that loads every file's content,
     // which a send does, and never by downloading blobs for this.
-    private async Task BackfillTokenCountsAsync(string userId, string chatId, Chat chat, bool includeFileContent)
+    private async Task BackfillTokenCountsAsync(string userId, string chatId, Chat chat)
     {
         var schemes = await _tokenCounting.GetActiveSchemeIdsAsync();
         if (schemes.Count == 0)
@@ -215,40 +214,10 @@ public class ChatService : IChatService
             return;
         }
 
-        // Files in the database dominate the count and are absent from a metadata-only load.
-        // One content load for the whole chat beats one fetch per file.
-        IReadOnlyDictionary<string, Models.ChatMessage> countingSource;
-        if (!includeFileContent && needingCounts.Any(m => m.Files.Any(f => !FileStorage.IsInBlobStorage(f))))
-        {
-            var fullChat = await _databaseService.GetChatByIdAsync(userId, chatId, includeFileContent: true);
-            countingSource = (fullChat?.Messages ?? new List<Models.ChatMessage>()).ToDictionary(m => m.Id);
-        }
-        else
-        {
-            countingSource = needingCounts.ToDictionary(m => m.Id);
-        }
-
         foreach (var message in needingCounts)
         {
-            if (!countingSource.TryGetValue(message.Id, out var source))
+            if (_tokenCounting.FillMissingMessageCounts(message, schemes))
             {
-                continue;
-            }
-
-            // Carry over what the source lacks so the fill only counts the missing keys.
-            foreach (var (schemeId, tokens) in message.TokenCounts)
-            {
-                source.TokenCounts.TryAdd(schemeId, tokens);
-            }
-            foreach (var (schemeId, tokens) in message.FileTokenCounts)
-            {
-                source.FileTokenCounts.TryAdd(schemeId, tokens);
-            }
-
-            if (_tokenCounting.FillMissingMessageCounts(source, schemes))
-            {
-                message.TokenCounts = source.TokenCounts;
-                message.FileTokenCounts = source.FileTokenCounts;
                 await _databaseService.SetMessageTokenCountsAsync(userId, chatId, message.Id, message.TokenCounts, message.FileTokenCounts);
             }
         }

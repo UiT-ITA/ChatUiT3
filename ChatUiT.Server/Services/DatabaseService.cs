@@ -32,7 +32,6 @@ public partial class DatabaseService : IDatabaseService
     private readonly Container? _modelContainer;
     private readonly Container? _modelEndpointContainer;
     private readonly Container? _assistantContainer;
-    private readonly Container? _assistantContentContainer;
     private readonly Container? _appSettingsContainer;
     private readonly Container? _toolPolicyContainer;
     private readonly Container? _internalAgentsContainer;
@@ -76,7 +75,6 @@ public partial class DatabaseService : IDatabaseService
         _modelContainer = _configurationDatabase.GetContainer(_options.Models.Name);
         _modelEndpointContainer = _configurationDatabase.GetContainer(_options.ModelEndpoints.Name);
         _assistantContainer = _configurationDatabase.GetContainer(_options.Assistants.Name);
-        _assistantContentContainer = _configurationDatabase.GetContainer(_options.AssistantContent.Name);
         _appSettingsContainer = _configurationDatabase.GetContainer(_options.AppSettings.Name);
         _toolPolicyContainer = _configurationDatabase.GetContainer(_options.ToolPolicies.Name);
         _internalAgentsContainer = _configurationDatabase.GetContainer(_options.InternalAgents.Name);
@@ -87,7 +85,7 @@ public partial class DatabaseService : IDatabaseService
     {
         if (_userDataDatabase == null || _configurationDatabase == null ||
             _userContainer == null || _chatContainer == null || _chatMessageContainer == null || _contentContainer == null ||
-            _modelContainer == null || _modelEndpointContainer == null || _assistantContainer == null || _assistantContentContainer == null ||
+            _modelContainer == null || _modelEndpointContainer == null || _assistantContainer == null ||
             _appSettingsContainer == null || _toolPolicyContainer == null || _internalAgentsContainer == null)
         {
             throw new InvalidOperationException("DatabaseService is not configured. Set CosmosNoSql:AccountEndpoint (managed identity), or a Cosmos NoSQL connection string under ConnectionStrings:CosmosDBConnection or CosmosNoSql:ConnectionString.");
@@ -131,7 +129,6 @@ public partial class DatabaseService : IDatabaseService
             (_configurationDatabase, _options.Models, false),
             (_configurationDatabase, _options.ModelEndpoints, false),
             (_configurationDatabase, _options.Assistants, false),
-            (_configurationDatabase, _options.AssistantContent, true),
             (_configurationDatabase, _options.AppSettings, false),
             (_configurationDatabase, _options.ToolPolicies, false),
             (_configurationDatabase, _options.InternalAgents, false)

@@ -12,10 +12,10 @@ import { searchAdminGroups, resolveAdminGroups } from '../../services/adminServi
 import { ALL_ROLES, CLIENT_TOOLS_POLICY_ID, type AdminToolDto, type ToolAccessPolicyDto } from '../../types/admin';
 import GroupPicker from '../common/GroupPicker';
 import type { UserLanguageModelDto } from '../../types/modelModels';
-import { createAssistant, updateAssistant, fetchAssistantFile, uploadAssistantFile, getAssistants } from '../../services/assistantService';
+import { createAssistant, updateAssistant, uploadAssistantFile, getAssistants } from '../../services/assistantService';
 import { addNotification } from '../../services/notificationService';
 import { ErrorCode } from '../../errors/errorCodes';
-import { fileErrorText } from '../../services/fileService';
+import { assistantFilesEndpoint, fileErrorText } from '../../services/fileService';
 import TagField from '../common/TagField';
 import ClassificationBadge from '../classification/ClassificationBadge';
 import { SelectChevron } from '../common/Select';
@@ -395,17 +395,6 @@ const AssistantForm: React.FC<AssistantFormProps> = ({
     return { files, allStored };
   };
 
-  /** A stored file with its content, for the preview. */
-  const loadStoredFile = async (item: KnowledgeFileItemData) => {
-    if (!assistantId || !item.fileId) return null;
-    try {
-      return await fetchAssistantFile(assistantId, item.fileId);
-    } catch (error) {
-      console.error(`Failed to load file ${item.fileId}:`, error);
-      return null;
-    }
-  };
-
   /** The stored files, as an update lists the files the assistant keeps. */
   const buildFileDtos = (files: Record<KnowledgeFileCategory, KnowledgeFileItemData[]>): AssistantFileRefDto[] => {
     return (Object.keys(files) as KnowledgeFileCategory[]).flatMap((category) =>
@@ -617,7 +606,7 @@ const AssistantForm: React.FC<AssistantFormProps> = ({
               emptyLabel={t('assistants.knowledge.noFilesAdded')}
               items={knowledgeFiles[category]}
               onFilesSelected={(files) => handleKnowledgeFilesSelected(category, files)}
-              onLoadFile={loadStoredFile}
+              filesEndpoint={assistantId ? assistantFilesEndpoint(assistantId) : undefined}
               disabled={loading}
               // Retrieval is not implemented on the server yet.
               unavailable={category === 'ragLoaded'}

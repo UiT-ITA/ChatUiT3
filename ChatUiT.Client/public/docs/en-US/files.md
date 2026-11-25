@@ -1,6 +1,6 @@
 ## Attach a file
 
-Click the paperclip in the message box and pick one or more files. They appear as thumbnails above the box. Click the cross on a thumbnail to remove it. Then write your question and send as usual. In a sent message, click a file to preview what the assistant sees.
+Click the paperclip in the message box and pick one or more files. They appear as thumbnails above the box. Click the cross on a thumbnail to remove it. Then write your question and send as usual. In a sent message, click a file to see the original. Word, PowerPoint and Excel files are downloaded.
 
 ![Replace with screenshot featuring the composer with a PDF and an image attached](placeholder)
 

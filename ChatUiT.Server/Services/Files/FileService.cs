@@ -1,4 +1,3 @@
-using System.Text;
 using ChatUiT.Server.Errors;
 using ChatUiT.Server.Models;
 using ChatUiT.Server.Services.Encryption;
@@ -13,8 +12,7 @@ public sealed record FileDownload(string FileName, string ContentType, long? Len
 /// <summary>
 /// The files of chats and assistants in Blob Storage. An upload stores the original, converts
 /// it, stores the converted content and counts its tokens. In a red chat everything is encrypted
-/// with the owner's key. Reads load the converted content into a file's chunks. Files in the
-/// database are read by the database service and left alone here.
+/// with the owner's key. Reads load the converted content into a file's chunks.
 /// </summary>
 public sealed class FileService
 {
@@ -89,7 +87,7 @@ public sealed class FileService
     public Task<AssistantFile> StoreAssistantFileAsync(string assistantId, string fileName, string? contentType, Stream content, CancellationToken cancellationToken)
         => StoreAsync(new AssistantFile(), assistantId, fileName, contentType, content, key: null, cancellationToken);
 
-    /// <summary>A file on a message of the chat with its content, read from the database or from Blob Storage. Null when the chat has no such file.</summary>
+    /// <summary>A file on a message of the chat with its content. Null when the chat has no such file.</summary>
     public async Task<ChatFile?> GetChatFileAsync(string userId, string chatId, string fileId)
     {
         var file = await _database.GetChatFileAsync(userId, chatId, fileId);
@@ -101,7 +99,7 @@ public sealed class FileService
         return file;
     }
 
-    /// <summary>A file of the assistant with its content, read from the database or from Blob Storage. Null when the assistant has no such file.</summary>
+    /// <summary>A file of the assistant with its content. Null when the assistant has no such file.</summary>
     public async Task<AssistantFile?> GetAssistantFileAsync(string assistantId, string fileId)
     {
         var file = await _database.GetAssistantFileAsync(assistantId, fileId);
@@ -113,11 +111,7 @@ public sealed class FileService
         return file;
     }
 
-    /// <summary>
-    /// Loads the converted content of the chat's files whose content is not loaded. Files read
-    /// from the database with their content are the files in the database, so the rest are in
-    /// Blob Storage.
-    /// </summary>
+    /// <summary>Loads the converted content of the chat's files whose content is not loaded.</summary>
     public async Task LoadChatFileContentAsync(string userId, string chatId, IEnumerable<ChatFile> files)
     {
         var unloaded = files.Where(file => !file.IsContentLoaded).ToList();
@@ -134,7 +128,7 @@ public sealed class FileService
     public Task LoadAssistantFileContentAsync(string assistantId, IEnumerable<ChatFile> files)
         => LoadContentAsync(assistantId, files.Where(file => !file.IsContentLoaded).ToList(), key: null);
 
-    /// <summary>Deletes the blobs of files in Blob Storage.</summary>
+    /// <summary>Deletes the blobs of the files.</summary>
     public async Task DeleteFilesAsync(string ownerId, IEnumerable<ChatFile> files)
     {
         foreach (var file in files)
@@ -147,12 +141,12 @@ public sealed class FileService
     public Task DeleteAllAsync(string ownerId) => _store.DeleteAllAsync(ownerId, CancellationToken.None);
 
     /// <summary>
-    /// Encrypts every file of the chat in Blob Storage that is not encrypted yet, and deletes the
+    /// Encrypts every file of the chat that is not encrypted yet, and deletes the
     /// unencrypted blobs an earlier run left behind for encrypted files.
     /// </summary>
     public async Task EncryptChatFilesAsync(string userId, string chatId)
     {
-        var files = await _database.GetChatBlobFilesAsync(userId, chatId);
+        var files = await _database.GetChatFilesAsync(userId, chatId);
         if (files.Count == 0)
         {
             return;
@@ -191,11 +185,8 @@ public sealed class FileService
         }
     }
 
-    // Switched off in stage 1: serving a file's original for preview and download. The
-    // endpoints that call these are commented out in ChatsController and AssistantsController.
-
     /// <summary>The original of a chat file. Null when the chat has no such file.</summary>
-    /// <exception cref="FileRequestException">The file is in the database and is neither only text nor a single image.</exception>
+    /// <exception cref="FileRequestException">The file has no original.</exception>
     public async Task<FileDownload?> OpenChatFileAsync(string userId, string chatId, string fileId)
     {
         var file = await _database.GetChatFileAsync(userId, chatId, fileId);
@@ -204,26 +195,16 @@ public sealed class FileService
             return null;
         }
 
-        if (!FileStorage.IsInBlobStorage(file))
-        {
-            return FromDatabaseContent(file);
-        }
-
         var key = file.IsEncrypted ? await _chatKeys.GetUserKeyAsync(userId) : null;
-        return FromBlob(chatId, file, key);
+        return await OpenOriginalAsync(chatId, file, key);
     }
 
     /// <summary>The original of an assistant file. Null when the assistant has no such file.</summary>
-    /// <exception cref="FileRequestException">The file is in the database and is neither only text nor a single image.</exception>
+    /// <exception cref="FileRequestException">The file has no original.</exception>
     public async Task<FileDownload?> OpenAssistantFileAsync(string assistantId, string fileId)
     {
         var file = await _database.GetAssistantFileAsync(assistantId, fileId);
-        if (file == null)
-        {
-            return null;
-        }
-
-        return FileStorage.IsInBlobStorage(file) ? FromBlob(assistantId, file, key: null) : FromDatabaseContent(file);
+        return file == null ? null : await OpenOriginalAsync(assistantId, file, key: null);
     }
 
     private async Task LoadContentAsync(string ownerId, IReadOnlyList<ChatFile> files, byte[]? key)
@@ -291,42 +272,23 @@ public sealed class FileService
         return file;
     }
 
-    private FileDownload FromBlob(string ownerId, ChatFile file, byte[]? key) => new(
-        file.SourceFilename,
-        file.ContentType,
-        file.Size,
-        async (destination, cancellationToken) =>
-        {
-            if (!await _store.CopyOriginalToAsync(ownerId, file, key, destination, cancellationToken))
-            {
-                throw new FileNotFoundException($"The original of file {file.Id} is missing in Blob Storage.");
-            }
-        });
-
-    /// <summary>A file in the database has no original: its text, or its single image, is served in its place.</summary>
-    private static FileDownload FromDatabaseContent(ChatFile file)
+    /// <exception cref="FileRequestException">The file has no original.</exception>
+    private async Task<FileDownload> OpenOriginalAsync(string ownerId, ChatFile file, byte[]? key)
     {
-        byte[] bytes;
-        string contentType;
-        string extension;
-        switch (FilePreviews.KindOf(file))
-        {
-            case FilePreviews.Text or FilePreviews.Markdown:
-                bytes = Encoding.UTF8.GetBytes(string.Concat(file.Chunks.Select(chunk => chunk.Text)));
-                contentType = "text/plain; charset=utf-8";
-                extension = ".txt";
-                break;
-            case FilePreviews.Image:
-                bytes = file.Chunks[0].Data ?? [];
-                contentType = MessageParts.ResolveMediaType(file.Chunks[0].MediaType);
-                extension = contentType == "image/png" ? ".png" : ".jpg";
-                break;
-            default:
-                throw new FileRequestException(ErrorCodes.FilePreviewNotAvailable, StatusCodes.Status404NotFound);
-        }
+        var original = await _store.OpenOriginalAsync(ownerId, file, CancellationToken.None)
+            ?? throw new FileRequestException(ErrorCodes.FilePreviewNotAvailable, StatusCodes.Status404NotFound);
 
-        var fileName = FilePreviews.ServedAsIs(file.SourceFilename, extension) ? file.SourceFilename : file.SourceFilename + extension;
-        return new FileDownload(fileName, contentType, bytes.Length, (destination, cancellationToken) => destination.WriteAsync(bytes, cancellationToken).AsTask());
+        return new FileDownload(
+            file.SourceFilename,
+            file.ContentType,
+            file.Size,
+            async (destination, cancellationToken) =>
+            {
+                await using (original)
+                {
+                    await BlobFileStore.CopyOriginalAsync(original, file, key, destination, cancellationToken);
+                }
+            });
     }
 
     /// <summary>Reads from a stream and writes everything read to another stream.</summary>

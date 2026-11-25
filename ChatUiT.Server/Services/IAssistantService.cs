@@ -5,10 +5,8 @@ namespace ChatUiT.Server.Services;
 public interface IAssistantService
 {
     Task<UserAssistantsResult> GetUserAssistantsAsync(string userId, UserAccess access);
-    /// <summary>With <paramref name="includeFileContent"/> every file has its content loaded, from Cosmos or from Blob Storage.</summary>
+    /// <summary>With <paramref name="includeFileContent"/> every file has its content loaded.</summary>
     Task<Assistant?> GetAssistantByIdAsync(string assistantId, bool includeFileContent = false);
-    /// <summary>A file of the assistant with its content: its text and images.</summary>
-    Task<AssistantFileDto?> GetAssistantFileDtoAsync(string assistantId, string fileId);
     /// <summary>
     /// Uploads a file to the assistant and adds it to the assistant's files. The caller has checked
     /// that the user may edit the assistant.

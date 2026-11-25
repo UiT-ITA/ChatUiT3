@@ -5,12 +5,13 @@ import FileChip from '../common/FileChip';
 import IconButton from '../common/IconButton';
 import { getFileExtension, isImageImportFile, toJpegDataUrl } from '../../utils/fileUtils';
 import { fetchChatFile } from '../../services/chatService';
-import FilePreviewModal from './FilePreviewModal';
+import { chatFilesEndpoint } from '../../services/fileService';
+import { useFilePreview } from './useFilePreview';
 
 interface FileThumbnailProps {
   /** A stored file, or a file on this device that is not sent yet. */
   file: ChatFileDto | File;
-  /** The chat the stored file belongs to, for fetching its content. */
+  /** The chat the stored file belongs to, for fetching its content and its original. */
   chatId?: string;
   // Shows a remove button that calls this
   onRemove?: () => void;
@@ -47,25 +48,17 @@ function useLocalImage(file: ChatFileDto | File): string {
 
 /**
  * A chip for an attached file. An image shows as a thumbnail. A click on a stored file opens its
- * preview. A file that is not sent yet has no preview.
+ * original. A file that is not sent yet has no preview.
  */
 const FileThumbnail = ({ file, chatId, onRemove }: FileThumbnailProps) => {
   const { t } = useTranslation();
-  const [selectedFile, setSelectedFile] = useState<ChatFileDto | null>(null);
   const [loadedFile, setLoadedFile] = useState<ChatFileDto | null>(null);
   const localImage = useLocalImage(file);
+  const preview = useFilePreview();
 
   // A stored file without its content fetches the content on demand
   const storedFile = file instanceof File ? undefined : (loadedFile ?? file);
   const needsFetch = storedFile !== undefined && !hasFullContent(storedFile);
-
-  // Opens the preview, with the content of the stored file fetched first
-  const handleFileClick = async () => {
-    if (!storedFile) return;
-    const fetched = needsFetch && chatId ? await loadStoredFile(chatId, storedFile.id) : undefined;
-    if (fetched) setLoadedFile(fetched);
-    setSelectedFile(fetched ?? storedFile);
-  };
 
   const filename = (file instanceof File ? file.name : file.sourceFilename) || t('files.unknownFile');
   const extension = getFileExtension(filename).toUpperCase() || 'FILE';
@@ -78,6 +71,7 @@ const FileThumbnail = ({ file, chatId, onRemove }: FileThumbnailProps) => {
   const imageBase64 = isStoredImage ? singleChunk.base64 : undefined;
   const imageSource = imageBase64 ? toJpegDataUrl(imageBase64) : localImage;
   const storedFileId = storedFile?.id;
+  const openOriginal = storedFile && chatId ? preview.open(filename, chatFilesEndpoint(chatId), storedFile.id) : undefined;
 
   // An image thumbnail of a stored file fetches its content to show it
   useEffect(() => {
@@ -98,7 +92,7 @@ const FileThumbnail = ({ file, chatId, onRemove }: FileThumbnailProps) => {
         name={baseName}
         title={filename}
         extension={extension}
-        onClick={storedFile ? () => void handleFileClick() : undefined}
+        onClick={openOriginal}
         removeAction={onRemove && (
           <IconButton
             icon="close"
@@ -114,7 +108,7 @@ const FileThumbnail = ({ file, chatId, onRemove }: FileThumbnailProps) => {
         )}
       />
 
-      <FilePreviewModal file={selectedFile} onClose={() => setSelectedFile(null)} />
+      {preview.dialog}
     </>
   );
 };

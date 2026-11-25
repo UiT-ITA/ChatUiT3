@@ -1,11 +1,10 @@
-import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { FileInput, FileInputTrigger } from '@ui-sdk/react/file-input';
 import { SUPPORTED_IMPORT_ACCEPT, formatFileSize, isValidFileType } from '../../utils/fileUtils';
 import { MAX_FILE_BYTES } from '../../services/fileService';
 import { addNotification } from '../../services/notificationService';
 import { ErrorCode, formatError } from '../../errors/errorCodes';
-import FilePreviewModal, { type PreviewedFile } from '../chat/FilePreviewModal';
+import { useFilePreview } from '../chat/useFilePreview';
 import Button from '../common/Button';
 import KnowledgeFileItem, { type KnowledgeFileItemData } from './KnowledgeFileItem';
 import PanelSection from '../common/PanelSection';
@@ -20,8 +19,8 @@ interface KnowledgeFileListProps {
   emptyLabel: string;
   /** Called with the picked files that are of a supported type and within the size limit. */
   onFilesSelected: (files: File[]) => void;
-  /** Loads a stored file with its content, for the preview. Null when it cannot be loaded. */
-  onLoadFile?: (item: KnowledgeFileItemData) => Promise<PreviewedFile | null>;
+  /** Where the stored files are, for opening their originals. Without it a file does not open. */
+  filesEndpoint?: string;
   items?: KnowledgeFileItemData[];
   disabled?: boolean;
   /** Marks the category as not implemented yet: disables it and shows a badge. */
@@ -43,7 +42,7 @@ const KnowledgeFileList = ({
   description,
   emptyLabel,
   onFilesSelected,
-  onLoadFile,
+  filesEndpoint,
   items = [],
   disabled = false,
   unavailable = false,
@@ -55,7 +54,7 @@ const KnowledgeFileList = ({
   status
 }: KnowledgeFileListProps) => {
   const { t } = useTranslation();
-  const [previewFile, setPreviewFile] = useState<PreviewedFile | null>(null);
+  const preview = useFilePreview();
 
   const isDisabled = disabled || unavailable;
 
@@ -71,11 +70,6 @@ const KnowledgeFileList = ({
       }
     }
     if (accepted.length > 0) onFilesSelected(accepted);
-  };
-
-  const handlePreview = async (item: KnowledgeFileItemData) => {
-    const file = await onLoadFile?.(item);
-    if (file) setPreviewFile(file);
   };
 
   return (
@@ -103,7 +97,7 @@ const KnowledgeFileList = ({
           <KnowledgeFileItem
             key={item.id}
             item={item}
-            onPreview={onLoadFile && item.fileId ? () => void handlePreview(item) : undefined}
+            onPreview={filesEndpoint && item.fileId ? preview.open(item.name, filesEndpoint, item.fileId) : undefined}
             onRemove={onItemRemove ? () => onItemRemove(item.id) : undefined}
             allowDescription={allowItemDescription}
             descriptionPlaceholder={itemDescriptionPlaceholder}
@@ -116,7 +110,7 @@ const KnowledgeFileList = ({
         )}
       </PanelSection>
 
-      <FilePreviewModal file={previewFile} onClose={() => setPreviewFile(null)} />
+      {preview.dialog}
     </>
   );
 };

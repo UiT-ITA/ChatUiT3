@@ -432,7 +432,6 @@
     "uploadFailed": "The file could not be uploaded.",
     "loadFailed": "The file could not be loaded.",
     "download": "Download",
-    "downloadOnly": "This file type cannot be previewed. Download the file to open it.",
     "previewNotAvailable": "Preview not available",
     "upload": {
       "waiting": "Waiting",
