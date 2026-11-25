@@ -112,7 +112,6 @@ public static class ImageLimit
             {
                 Id = file.Id,
                 SourceFilename = file.SourceFilename,
-                IsInBlobStorage = file.IsInBlobStorage,
                 Size = file.Size,
                 ContentType = file.ContentType,
                 IsEncrypted = file.IsEncrypted,

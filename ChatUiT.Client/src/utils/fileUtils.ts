@@ -3,6 +3,11 @@ export const getFileExtension = (filename: string): string => {
     return lastDot === -1 ? '' : filename.slice(lastDot + 1).toLowerCase();
 };
 
+const MARKDOWN_PREVIEW_EXTENSIONS = ['md', 'markdown', 'docx', 'pptx', 'xlsx'];
+
+/** Whether a file's converted text is shown as markdown, chosen from its name. */
+export const isMarkdownPreview = (filename: string): boolean => MARKDOWN_PREVIEW_EXTENSIONS.includes(getFileExtension(filename));
+
 export const SUPPORTED_IMAGE_IMPORT_MIME_TYPES = [
     'image/jpeg',
     'image/png',

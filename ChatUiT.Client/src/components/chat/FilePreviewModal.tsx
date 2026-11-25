@@ -7,7 +7,7 @@ import { Dialog } from '../common/Dialog';
 import { FilePreview, FilePreviewImage, FilePreviewText } from '../common/FilePreview';
 import RichText, { RichTextLink } from '../common/RichText';
 import type { ChatFileChunkDto } from '../../types/chatModels';
-import { toJpegDataUrl } from '../../utils/fileUtils';
+import { isMarkdownPreview, toJpegDataUrl } from '../../utils/fileUtils';
 
 /** A file with the content of its parts. */
 export interface PreviewedFile {
@@ -15,17 +15,18 @@ export interface PreviewedFile {
   chunks: ChatFileChunkDto[];
 }
 
-/** A dialog with a file's content: its images, markdown and text. Renders nothing without a file. */
+/** A dialog with a file's content: its images, and its text as markdown or as text by the file name. Renders nothing without a file. */
 const FilePreviewModal = ({ file, onClose }: { file: PreviewedFile | null; onClose: () => void }) => {
   const { t } = useTranslation();
   if (!file) return null;
+  const markdown = isMarkdownPreview(file.sourceFilename);
 
   return (
     <Dialog isOpen onClose={onClose} title={file.sourceFilename || t('files.unknownFile')} size="xl">
       <FilePreview>
         {file.chunks.map((chunk, index) => chunk.type === 'image' ? (
           <FilePreviewImage key={index} src={toJpegDataUrl(chunk.base64 ?? '')} alt={file.sourceFilename} />
-        ) : chunk.format === 'markdown' ? (
+        ) : markdown ? (
           <RichText key={index} framed>
             <ReactMarkdown
               remarkPlugins={[remarkGfm, remarkMath]}

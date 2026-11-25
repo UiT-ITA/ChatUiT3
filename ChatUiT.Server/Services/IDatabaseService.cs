@@ -16,12 +16,14 @@ public interface IDatabaseService
     Task<List<ChatHeader>> GetChatListAsync(string userId);
     /// <summary>The chat without its messages.</summary>
     Task<ChatHeader?> GetChatHeaderAsync(string userId, string chatId);
-    /// <summary>A file in Blob Storage comes with its parts listed, without their content.</summary>
+    /// <summary>With <paramref name="includeFileContent"/>, a file in the database comes with its content. A file in Blob Storage never does.</summary>
     Task<Chat?> GetChatByIdAsync(string userId, string chatId, bool includeFileContent = true);
-    /// <summary>A file on a message of the chat. A file stored in Cosmos comes with its content, a file in Blob Storage without.</summary>
+    /// <summary>A file on a message of the chat. A file in the database comes with its content, a file in Blob Storage without.</summary>
     Task<ChatFile?> GetChatFileAsync(string userId, string chatId, string fileId);
-    /// <summary>Marks the chat's files in Blob Storage as encrypted.</summary>
-    Task MarkChatFilesEncryptedAsync(string userId, string chatId);
+    /// <summary>The chat's files in Blob Storage, each with the id of its message.</summary>
+    Task<List<MessageFile>> GetChatBlobFilesAsync(string userId, string chatId);
+    /// <summary>Sets IsEncrypted on a file in Blob Storage on a message. False when the message has no such file.</summary>
+    Task<bool> MarkChatFileEncryptedAsync(string userId, string chatId, string messageId, string fileId);
     Task AddChatAsync(string userId, Chat chat);
     Task DeleteChatAsync(string userId, string chatId);
     Task UpdateChatAsync(string userId, string chatId, string? newTitle, string? newAssistantId = null);
@@ -45,7 +47,8 @@ public interface IDatabaseService
     /// <summary>Adds a file in Blob Storage to a message with status New, and sets the message's timestamp to now. False when the chat has no such message.</summary>
     Task<bool> AddMessageFileAsync(string userId, string chatId, string messageId, ChatFile file);
     Task UpdateMessageAsync(string userId, string chatId, ChatMessage message);
-    Task DeleteMessageAsync(string userId, string chatId, string messageId);
+    /// <summary>Deletes the message with its content in the database. Returns its files in Blob Storage, whose blobs are not deleted.</summary>
+    Task<List<ChatFile>> DeleteMessageAsync(string userId, string chatId, string messageId);
     Task SetMessageTokenCountsAsync(string userId, string chatId, string messageId, IReadOnlyDictionary<string, int> tokenCounts, IReadOnlyDictionary<string, int> fileTokenCounts);
 
     // App settings
@@ -79,13 +82,20 @@ public interface IDatabaseService
     Task<List<Assistant>> GetAssistantsByOwnerAsync(string ownerId);
     Task<List<Assistant>> GetSystemAssistantsAsync();
     Task<List<Assistant>> GetAssistantsByIdsAsync(List<string> assistantIds);
-    /// <summary>A file in Blob Storage comes with its parts listed, without their content.</summary>
+    /// <summary>With <paramref name="includeFileContent"/>, a file in the database comes with its content. A file in Blob Storage never does.</summary>
     Task<Assistant?> GetAssistantByIdAsync(string assistantId, bool includeFileContent = false);
-    /// <summary>A file of the assistant. A file stored in Cosmos comes with its content, a file in Blob Storage without.</summary>
+    /// <summary>A file of the assistant. A file in the database comes with its content, a file in Blob Storage without.</summary>
     Task<AssistantFile?> GetAssistantFileAsync(string assistantId, string fileId);
     /// <summary>Adds a file in Blob Storage to the assistant. False when the assistant does not exist.</summary>
     Task<bool> AddAssistantFileAsync(string assistantId, AssistantFile file);
     Task<Assistant> CreateAssistantAsync(Assistant assistant);
-    Task<Assistant?> UpdateAssistantAsync(Assistant assistant);
+    /// <summary>Saves the assistant. Its files must be files it already has. Files it no longer has are deleted from the database, not from Blob Storage.</summary>
+    Task<AssistantUpdate?> UpdateAssistantAsync(Assistant assistant);
     Task<bool> DeleteAssistantAsync(string assistantId);
 }
+
+/// <summary>A saved assistant, and the files it no longer has that are in Blob Storage.</summary>
+public sealed record AssistantUpdate(Assistant Assistant, List<AssistantFile> RemovedBlobFiles);
+
+/// <summary>A file and the id of the message it is on.</summary>
+public sealed record MessageFile(string MessageId, ChatFile File);

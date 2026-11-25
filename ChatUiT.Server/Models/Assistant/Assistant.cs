@@ -96,7 +96,10 @@ public static class AlwaysLoadedFileLimit
 
 public class AssistantFile : ChatFile
 {
+    [Newtonsoft.Json.JsonProperty("category")]
     public string Category { get; set; } = AssistantFileCategories.AlwaysLoaded;
+
+    [Newtonsoft.Json.JsonProperty("description")]
     public string? Description { get; set; }
 }
 

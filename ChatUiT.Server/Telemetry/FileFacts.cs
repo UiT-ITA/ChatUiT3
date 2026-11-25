@@ -13,7 +13,7 @@ public static class FileFacts
     }
 
     /// <summary>The size of the original for a file in Blob Storage, else the size of the file's loaded chunks.</summary>
-    public static long BytesOf(ChatFile file) => file.IsInBlobStorage
+    public static long BytesOf(ChatFile file) => Services.Files.FileStorage.IsInBlobStorage(file)
         ? file.Size
         : file.Chunks.Sum(chunk => chunk.Data?.LongLength ?? System.Text.Encoding.UTF8.GetByteCount(chunk.Text ?? string.Empty));
 }

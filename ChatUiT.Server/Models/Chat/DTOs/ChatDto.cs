@@ -50,7 +50,6 @@ public class ChatFileChunkDto
 {
     public string Type { get; set; } = string.Empty;
     public string? Text { get; set; }
-    public string? Format { get; set; }
     public string? Base64 { get; set; }
 }
 
@@ -78,7 +77,6 @@ public class ChatFileDto
     public static ChatFileChunkDto ChunkFrom(ChatFileChunk chunk, bool includeContent) => new()
     {
         Type = chunk.Type,
-        Format = chunk.Format,
         Text = includeContent ? chunk.Text : null,
         Base64 = includeContent && chunk.Data != null ? Convert.ToBase64String(chunk.Data) : null
     };

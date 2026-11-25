@@ -1,5 +1,6 @@
 using ChatUiT.Server.Models;
 using Microsoft.Azure.Cosmos;
+using Newtonsoft.Json.Linq;
 
 namespace ChatUiT.Server.Services;
 
@@ -80,66 +81,22 @@ public partial class DatabaseService
             assistantId,
             ConfigurationPartitionKey);
 
-        var stored = document?.Files.FirstOrDefault(f => f.Id == fileId);
-        if (stored == null)
+        var entry = document?.Files.FirstOrDefault(f => (string?)f["id"] == fileId);
+        if (entry == null)
         {
             return null;
         }
 
-        var contentBlocksById = stored.Blob == null
+        var contentBlocksById = IsDatabaseFile(entry)
             ? await ReadAssistantContentBlockMapAsync(assistantId)
             : new Dictionary<string, ContentBlockDocument>();
-        return ReadAssistantFiles(new[] { stored }, contentBlocksById, includeCosmosContent: true).Single();
+        return ReadAssistantFiles(new[] { entry }, contentBlocksById, includeDatabaseContent: true).Single();
     }
 
     public async Task<bool> AddAssistantFileAsync(string assistantId, AssistantFile file)
     {
         await EnsureInitializedAsync();
 
-        // The file's content blocks are written before the file is added to the assistant. When
-        // the file is not added, the blocks are deleted.
-        var writtenBlockIds = new List<string>();
-        try
-        {
-            var storedFile = new StoredAssistantFileDocument
-            {
-                Id = file.Id,
-                SourceFilename = file.SourceFilename,
-                Category = file.Category,
-                Description = file.Description
-            };
-            foreach (var chunk in file.Chunks)
-            {
-                var storedChunk = new StoredFileChunkDocument { Id = chunk.Id, Type = chunk.Type, Format = chunk.IsImage ? null : chunk.Format };
-                if (chunk.IsText)
-                {
-                    storedChunk.ContentBlockIds = await WriteAssistantTextContentAsync(assistantId, storedChunk.Id, chunk.Text, writtenBlockIds);
-                }
-                else if (chunk.IsImage)
-                {
-                    storedChunk.ContentBlockIds = await WriteAssistantBinaryContentAsync(assistantId, storedChunk.Id, chunk.Data ?? [], writtenBlockIds);
-                }
-
-                storedFile.Chunks.Add(storedChunk);
-            }
-
-            var added = await AddStoredAssistantFileAsync(assistantId, storedFile);
-            if (!added)
-            {
-                await DeleteAssistantContentBlocksAsync(assistantId, writtenBlockIds);
-            }
-
-            return added;
-        }
-        catch
-        {
-            await DeleteAssistantContentBlocksAsync(assistantId, writtenBlockIds);
-            throw;
-        }
-    }
-
-    private async Task<bool> AddStoredAssistantFileAsync(string assistantId, StoredAssistantFileDocument storedFile)
-    {
         while (true)
         {
             ItemResponse<AssistantDocument> response;
@@ -153,7 +110,7 @@ public partial class DatabaseService
             }
 
             var files = response.Resource.Files;
-            files.Add(storedFile);
+            files.Add(JObject.FromObject(file));
 
             try
             {
@@ -186,7 +143,7 @@ public partial class DatabaseService
         return await MapAssistantAsync(document);
     }
 
-    public async Task<Assistant?> UpdateAssistantAsync(Assistant assistant)
+    public async Task<AssistantUpdate?> UpdateAssistantAsync(Assistant assistant)
     {
         await EnsureInitializedAsync();
 
@@ -205,7 +162,7 @@ public partial class DatabaseService
             return null;
         }
 
-        var existingFilesById = existingDocument.Files.ToDictionary(f => f.Id, f => f);
+        var existingFilesById = existingDocument.Files.ToDictionary(f => (string)f["id"]!, f => f);
         var document = MapAssistantDocument(assistant, assistant.Id);
 
         // assistant.Files is the full desired list. Each file is one the assistant already
@@ -218,18 +175,19 @@ public partial class DatabaseService
                 throw new InvalidOperationException($"File {file.Id} is not a file of assistant {assistant.Id}.");
             }
 
-            stored.Category = file.Category;
-            stored.Description = file.Description;
-            document.Files.Add(stored);
+            var entry = (JObject)stored.DeepClone();
+            entry["category"] = file.Category;
+            entry["description"] = file.Description;
+            document.Files.Add(entry);
         }
 
         await _assistantContainer!.ReplaceItemAsync(document, document.Id, new PartitionKey(ConfigurationPartitionKey));
 
-        var keptFileIds = document.Files.Select(f => f.Id).ToHashSet();
-        var obsoleteFiles = existingDocument.Files.Where(f => !keptFileIds.Contains(f.Id)).ToList();
+        var keptFileIds = document.Files.Select(f => (string?)f["id"]).ToHashSet();
+        var obsoleteFiles = existingDocument.Files.Where(f => !keptFileIds.Contains((string?)f["id"])).ToList();
         await DeleteAssistantContentBlocksAsync(assistant.Id, CollectAssistantFileContentBlockIds(obsoleteFiles));
 
-        return await MapAssistantAsync(document);
+        return new AssistantUpdate(await MapAssistantAsync(document), BlobFiles<AssistantFile>(obsoleteFiles));
     }
 
     public async Task<bool> DeleteAssistantAsync(string assistantId)
@@ -269,8 +227,8 @@ public partial class DatabaseService
             ? new LanguageModel()
             : new LanguageModel { Id = document.ChatSettings.ModelId };
 
-        var includeCosmosContent = includeFileContent && document.Files.Any(f => f.Blob == null);
-        var contentBlocksById = includeCosmosContent
+        var includeDatabaseContent = includeFileContent && document.Files.Any(IsDatabaseFile);
+        var contentBlocksById = includeDatabaseContent
             ? await ReadAssistantContentBlockMapAsync(document.Id)
             : new Dictionary<string, ContentBlockDocument>();
 
@@ -288,7 +246,7 @@ public partial class DatabaseService
                 AvailableToolIds = document.ChatSettings.AvailableToolIds,
                 PromptSnippets = document.ChatSettings.PromptSnippets
             },
-            Files = ReadAssistantFiles(document.Files, contentBlocksById, includeCosmosContent),
+            Files = ReadAssistantFiles(document.Files, contentBlocksById, includeDatabaseContent),
             KnowledgeSourceIds = document.KnowledgeSourceIds ?? new List<string>(),
             OwnerId = document.OwnerId,
             UpdatedAt = document.UpdatedAt,

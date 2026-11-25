@@ -38,7 +38,7 @@ public sealed class LogsQueryRunner : IInsightsQueryRunner
 
     public async Task<InsightsTableDto> RunAsync(string query, TimeSpan duration, CancellationToken cancellationToken)
     {
-        if (_resourceId == null)
+        if (_resourceId is null)
         {
             return InsightsTableDto.Failed(InsightsErrors.NotConfigured);
         }

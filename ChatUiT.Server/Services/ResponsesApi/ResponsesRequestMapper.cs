@@ -802,7 +802,7 @@ public sealed class ResponsesRequestMapper
                     break;
                 case "input_image":
                     var image = ParseImage(chunk, chunkParam);
-                    file.Chunks.Add(new ChatFileChunk { Type = "image", Data = image.Data, Format = image.MediaType });
+                    file.Chunks.Add(new ChatFileChunk { Type = "image", MediaType = image.MediaType, Data = image.Data });
                     break;
                 default:
                     throw ResponsesApiException.BadRequest(ErrorCodes.ResponsesChunkTypeNotSupported, $"{chunkParam}: chunk of type '{type}' is not supported.", $"{chunkParam}.type", "unsupported_value");

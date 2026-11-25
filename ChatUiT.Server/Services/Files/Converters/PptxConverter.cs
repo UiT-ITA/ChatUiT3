@@ -55,7 +55,7 @@ internal static partial class PptxConverter
                     var markdown = ShapeMarkdown(child);
                     if (markdown.Length > 0)
                     {
-                        parts.Add(new ConvertedText($"{markdown}\n\n", "markdown"));
+                        parts.Add(new ConvertedText($"{markdown}\n\n"));
                     }
                     break;
                 case "pic":

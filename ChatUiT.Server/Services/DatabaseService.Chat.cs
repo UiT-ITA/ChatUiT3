@@ -1,5 +1,6 @@
 using ChatUiT.Server.Models;
 using Microsoft.Azure.Cosmos;
+using Newtonsoft.Json.Linq;
 
 namespace ChatUiT.Server.Services;
 
@@ -95,16 +96,21 @@ public partial class DatabaseService
                 .WithParameter("@chatId", chatId),
             userId);
 
-        var file = fileDocuments
+        var entry = fileDocuments
             .SelectMany(message => message.Files)
-            .FirstOrDefault(f => f.Id == fileId);
+            .FirstOrDefault(f => (string?)f["id"] == fileId);
 
-        if (file == null)
+        if (entry == null)
         {
             return null;
         }
 
-        var ownerIds = file.Chunks.Select(chunk => chunk.Id).ToList();
+        if (!IsDatabaseFile(entry))
+        {
+            return entry.ToObject<ChatFile>();
+        }
+
+        var ownerIds = entry.ToObject<StoredFileDocument>()!.Chunks.Select(chunk => chunk.Id).ToList();
         var contentBlocksById = await ReadContentBlockMapByOwnersAsync(userId, chatId, ownerIds);
         var key = await GetContentKeyAsync(userId, chatId);
         if (key != null)
@@ -112,7 +118,7 @@ public partial class DatabaseService
             await EncryptBlocksAsync(userId, contentBlocksById.Values, key);
         }
 
-        return ReadFiles(new[] { file }, contentBlocksById, includeCosmosContent: true, key).FirstOrDefault();
+        return ReadFiles(new[] { entry }, contentBlocksById, includeDatabaseContent: true, key).FirstOrDefault();
     }
 
     public async Task AddChatAsync(string userId, Chat chat)
@@ -233,7 +239,7 @@ public partial class DatabaseService
         await EncryptChatContentAsync(userId, chatId, await _chatKeys.GetUserKeyAsync(userId));
     }
 
-    public async Task MarkChatFilesEncryptedAsync(string userId, string chatId)
+    public async Task<List<MessageFile>> GetChatBlobFilesAsync(string userId, string chatId)
     {
         await EnsureInitializedAsync();
 
@@ -244,18 +250,28 @@ public partial class DatabaseService
                 .WithParameter("@chatId", chatId),
             userId);
 
-        foreach (var messageDocument in messageDocuments.Where(m => m.Files.Any(f => f.Blob is { Encrypted: false })))
-        {
-            await ChangeMessageFilesAsync(userId, chatId, messageDocument.Id, (_, files) =>
-            {
-                foreach (var file in files.Where(f => f.Blob != null))
-                {
-                    file.Blob!.Encrypted = true;
-                }
+        return messageDocuments
+            .SelectMany(message => BlobFiles<ChatFile>(message.Files).Select(file => new MessageFile(message.Id, file)))
+            .ToList();
+    }
 
-                return true;
-            });
-        }
+    public async Task<bool> MarkChatFileEncryptedAsync(string userId, string chatId, string messageId, string fileId)
+    {
+        await EnsureInitializedAsync();
+
+        return await ChangeMessageFilesAsync(userId, chatId, messageId, (_, files) =>
+        {
+            var index = files.FindIndex(entry => (string?)entry["id"] == fileId && !IsDatabaseFile(entry));
+            if (index < 0)
+            {
+                return false;
+            }
+
+            var file = files[index].ToObject<ChatFile>()!;
+            file.IsEncrypted = true;
+            files[index] = JObject.FromObject(file);
+            return true;
+        });
     }
 
     public async Task<ChatMessage?> GetMessageAsync(string userId, string chatId, string messageId)
@@ -270,59 +286,23 @@ public partial class DatabaseService
 
         var contentBlocksById = await ReadContentBlockMapByOwnersAsync(userId, chatId, new List<string> { messageId });
         var key = await GetContentKeyAsync(userId, chatId);
-        return MapChatMessage(messageDocument, contentBlocksById, includeCosmosFileContent: false, key);
+        return MapChatMessage(messageDocument, contentBlocksById, includeDatabaseFileContent: false, key);
     }
 
     public async Task<bool> AddMessageFileAsync(string userId, string chatId, string messageId, ChatFile file)
     {
         await EnsureInitializedAsync();
 
-        var key = await GetContentKeyAsync(userId, chatId);
-
-        // The file's content blocks are written before the file is added to the message. When
-        // the file is not added, the blocks are deleted.
-        var writtenBlockIds = new List<string>();
-        try
+        return await ChangeMessageFilesAsync(userId, chatId, messageId, (message, files) =>
         {
-            var storedFile = new StoredFileDocument { Id = file.Id, SourceFilename = file.SourceFilename };
-            foreach (var chunk in file.Chunks)
+            if (message.Status != AiChatStatus.New)
             {
-                var storedChunk = new StoredFileChunkDocument { Id = chunk.Id, Type = chunk.Type, Format = chunk.IsImage ? null : chunk.Format };
-                if (chunk.IsText)
-                {
-                    storedChunk.ContentBlockIds = await WriteTextContentAsync(userId, chatId, storedChunk.Id, chunk.Text, key, writtenBlockIds);
-                }
-                else if (chunk.IsImage)
-                {
-                    storedChunk.ContentBlockIds = await WriteBinaryContentAsync(userId, chatId, storedChunk.Id, chunk.Data ?? [], key, writtenBlockIds);
-                }
-
-                storedFile.Chunks.Add(storedChunk);
+                return false;
             }
 
-            var added = await ChangeMessageFilesAsync(userId, chatId, messageId, (message, files) =>
-            {
-                if (message.Status != AiChatStatus.New)
-                {
-                    return false;
-                }
-
-                files.Add(storedFile);
-                return true;
-            }, touch: true);
-
-            if (!added)
-            {
-                await DeleteContentBlocksAsync(userId, writtenBlockIds);
-            }
-
-            return added;
-        }
-        catch
-        {
-            await DeleteContentBlocksAsync(userId, writtenBlockIds);
-            throw;
-        }
+            files.Add(JObject.FromObject(file));
+            return true;
+        }, touch: true);
     }
 
     public async Task<bool> MarkMessageSentAsync(string userId, string chatId, string messageId, DateTime timestamp)
@@ -371,7 +351,7 @@ public partial class DatabaseService
     /// in the chat or nothing was saved. With <paramref name="touch"/> the message's timestamp
     /// is set to now.
     /// </summary>
-    private async Task<bool> ChangeMessageFilesAsync(string userId, string chatId, string messageId, Func<ChatMessageDocument, List<StoredFileDocument>, bool> change, bool touch = false)
+    private async Task<bool> ChangeMessageFilesAsync(string userId, string chatId, string messageId, Func<ChatMessageDocument, List<JObject>, bool> change, bool touch = false)
     {
         while (true)
         {
@@ -475,7 +455,7 @@ public partial class DatabaseService
                 ContentBlockIds = await WriteTextContentAsync(userId, chatId, messageId, message.Content, key, writtenBlockIds),
                 ActivityBlockIds = await WriteTextContentAsync(userId, chatId, messageId, SerializeActivity(message.Activity), key, writtenBlockIds),
                 TranscriptBlockIds = await WriteTextContentAsync(userId, chatId, messageId, SerializeTranscript(message.Transcript), key, writtenBlockIds),
-                Files = message.Files.Select(ToMessageFile).ToList(),
+                Files = message.Files.Select(file => JObject.FromObject(file)).ToList(),
                 AssistantId = message.AssistantId,
                 AssistantName = message.AssistantName,
                 TokenCounts = message.TokenCounts ?? new Dictionary<string, int>(),
@@ -593,7 +573,7 @@ public partial class DatabaseService
         }
     }
 
-    public async Task DeleteMessageAsync(string userId, string chatId, string messageId)
+    public async Task<List<ChatFile>> DeleteMessageAsync(string userId, string chatId, string messageId)
     {
         await EnsureInitializedAsync();
 
@@ -601,7 +581,7 @@ public partial class DatabaseService
 
         if (existingMessage == null || existingMessage.ChatId != chatId)
         {
-            return;
+            return new List<ChatFile>();
         }
 
         await _chatMessageContainer!.DeleteItemAsync<ChatMessageDocument>(messageId, new PartitionKey(userId));
@@ -610,6 +590,7 @@ public partial class DatabaseService
         await DeleteFileContentAsync(userId, chatId, existingMessage.Files);
 
         await TouchChatAsync(userId, chatId, DateTime.UtcNow, null);
+        return BlobFiles<ChatFile>(existingMessage.Files);
     }
 
     private static ChatHeader MapChatHeader(ChatDocument chatDocument)
@@ -673,7 +654,7 @@ public partial class DatabaseService
     private ChatMessage MapChatMessage(
         ChatMessageDocument messageDocument,
         IReadOnlyDictionary<string, ContentBlockDocument> contentBlocksById,
-        bool includeCosmosFileContent,
+        bool includeDatabaseFileContent,
         byte[]? key)
     {
         return new ChatMessage
@@ -685,19 +666,13 @@ public partial class DatabaseService
             Activity = DeserializeActivity(ReadTextContent(messageDocument.ActivityBlockIds, contentBlocksById, key)),
             Transcript = DeserializeTranscript(ReadTextContent(messageDocument.TranscriptBlockIds, contentBlocksById, key)),
             Status = messageDocument.Status,
-            Files = ReadFiles(messageDocument.Files, contentBlocksById, includeCosmosFileContent, key),
+            Files = ReadFiles(messageDocument.Files, contentBlocksById, includeDatabaseFileContent, key),
             AssistantId = messageDocument.AssistantId,
             AssistantName = messageDocument.AssistantName,
             TokenCounts = messageDocument.TokenCounts ?? new Dictionary<string, int>(),
             FileTokenCounts = messageDocument.FileTokenCounts ?? new Dictionary<string, int>()
         };
     }
-
-    /// <summary>A file as it is stored on a message. Only files in Blob Storage can be added to a message.</summary>
-    private static StoredFileDocument ToMessageFile(ChatFile file)
-        => file.IsInBlobStorage
-            ? ToStoredFile(file)
-            : throw new InvalidOperationException($"File {file.Id} is not in Blob Storage and cannot be stored on a message.");
 
     private static readonly System.Text.Json.JsonSerializerOptions ActivityJsonOptions =
         new(System.Text.Json.JsonSerializerDefaults.Web);

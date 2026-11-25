@@ -44,19 +44,18 @@ public sealed class AzureBlobStorage : IBlobStorage
         }
     }
 
-    public async Task<Stream> OpenWriteAsync(string container, string name, IDictionary<string, string> metadata, CancellationToken cancellationToken)
-        => await Container(container).GetBlockBlobClient(name).OpenWriteAsync(
-            overwrite: true,
-            new BlockBlobOpenWriteOptions { Metadata = metadata },
-            cancellationToken);
+    public async Task<bool> ExistsAsync(string container, string name, CancellationToken cancellationToken)
+        => await Container(container).GetBlobClient(name).ExistsAsync(cancellationToken);
 
-    public async Task<BlobContent?> OpenReadAsync(string container, string name, CancellationToken cancellationToken)
+    public async Task<Stream> OpenWriteAsync(string container, string name, CancellationToken cancellationToken)
+        => await Container(container).GetBlockBlobClient(name).OpenWriteAsync(overwrite: true, cancellationToken: cancellationToken);
+
+    public async Task<Stream?> OpenReadAsync(string container, string name, CancellationToken cancellationToken)
     {
         try
         {
             var response = await Container(container).GetBlobClient(name).DownloadStreamingAsync(cancellationToken: cancellationToken);
-            var details = response.Value.Details;
-            return new BlobContent(response.Value.Content, new Dictionary<string, string>(details.Metadata), details.ContentLength);
+            return response.Value.Content;
         }
         catch (RequestFailedException ex) when (ex.Status == 404)
         {
@@ -64,9 +63,9 @@ public sealed class AzureBlobStorage : IBlobStorage
         }
     }
 
-    public async IAsyncEnumerable<BlobEntry> ListAsync(string container, string prefix, [EnumeratorCancellation] CancellationToken cancellationToken)
+    public async IAsyncEnumerable<string> ListAsync(string container, string prefix, [EnumeratorCancellation] CancellationToken cancellationToken)
     {
-        var blobs = Container(container).GetBlobsAsync(new GetBlobsOptions { Traits = BlobTraits.Metadata, Prefix = prefix }, cancellationToken);
+        var blobs = Container(container).GetBlobsAsync(new GetBlobsOptions { Prefix = prefix }, cancellationToken);
         await using var enumerator = blobs.GetAsyncEnumerator(cancellationToken);
         while (true)
         {
@@ -82,7 +81,7 @@ public sealed class AzureBlobStorage : IBlobStorage
                 yield break;
             }
 
-            yield return new BlobEntry(enumerator.Current.Name, new Dictionary<string, string>(enumerator.Current.Metadata ?? new Dictionary<string, string>()));
+            yield return enumerator.Current.Name;
         }
     }
 

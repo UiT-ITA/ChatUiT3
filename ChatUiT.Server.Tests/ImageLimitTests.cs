@@ -62,7 +62,7 @@ public class ImageLimitTests
     private static AiInputItem.ToolResult Result(string id, int images)
         => new(id, "text", false, Enumerable.Range(1, images).Select(i => new ImagePart(Encoding.UTF8.GetBytes($"{id}{i}"), "image/png")).ToList());
 
-    private static ChatFileChunk Image(string data) => new() { Type = "image", Data = Encoding.UTF8.GetBytes(data), Format = "png" };
+    private static ChatFileChunk Image(string data) => new() { Type = "image", MediaType = "image/png", Data = Encoding.UTF8.GetBytes(data) };
 
     private static ChatFileChunk Text(string text) => new() { Type = "text", Text = text };
 

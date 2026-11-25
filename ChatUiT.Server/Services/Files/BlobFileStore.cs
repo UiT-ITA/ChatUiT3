@@ -1,7 +1,7 @@
 using System.Security.Cryptography;
-using System.Text;
 using System.Text.Json;
 using System.Text.RegularExpressions;
+using ChatUiT.Server.Models;
 using ChatUiT.Server.Services.Encryption;
 
 namespace ChatUiT.Server.Services.Files;
@@ -12,22 +12,21 @@ public sealed class FileTooLargeException() : Exception("The file is larger than
 /// <summary>
 /// The files of one chat or assistant in its own blob container, named after its id. An original
 /// is stored at <c>input/{name}</c>. Its converted content is stored under <c>converted/{name}/</c>:
-/// a manifest that lists the text and image parts in order, and one blob per image. Blobs written
-/// with a key are encrypted with <see cref="SegmentedCipher"/> and carry the metadata
-/// <c>encrypted=true</c>.
+/// <c>manifest.json</c>, which lists the parts in order, and <c>image-{n}.jpg</c> for each image.
+/// Every blob of an encrypted file has <c>.enc</c> added to its name and is encrypted with
+/// <see cref="SegmentedCipher"/>. Blobs carry no metadata: what a file is lies in its
+/// <see cref="ChatFile"/>.
 /// </summary>
 public sealed partial class BlobFileStore
 {
     private const string InputPrefix = "input/";
     private const string ConvertedPrefix = "converted/";
     private const string ManifestName = "manifest.json";
-    private const string EncryptedKey = "encrypted";
+    private const string EncryptedEnding = ".enc";
     private const int MaxNameLength = 200;
 
     /// <summary>How many names an original is tried under before the upload fails.</summary>
     private const int MaxNameTries = 1000;
-
-    private static readonly JsonSerializerOptions ManifestJson = new(JsonSerializerDefaults.Web);
 
     private readonly IBlobStorage _blobs;
 
@@ -44,98 +43,123 @@ public sealed partial class BlobFileStore
 
     /// <summary>
     /// Stores an original under the first free name: <paramref name="fileName"/>, else the name with
-    /// " (2)", " (3)" and so on before the extension, up to <see cref="MaxNameTries"/> names.
-    /// Returns the name used and the size.
+    /// " (2)", " (3)" and so on before the extension, up to <see cref="MaxNameTries"/> names. With a
+    /// key the original is encrypted. Returns the name used and the size.
     /// </summary>
     /// <exception cref="FileTooLargeException">The content is longer than <paramref name="maxBytes"/>. Nothing is kept.</exception>
     public async Task<(string Name, long Size)> WriteOriginalAsync(string ownerId, string fileName, Stream content, long maxBytes, byte[]? key, CancellationToken cancellationToken)
     {
         var container = Container(ownerId);
         await _blobs.EnsureContainerAsync(container, cancellationToken);
-        var name = await ReserveNameAsync(container, CleanName(fileName), cancellationToken);
+        var encrypted = key != null;
+        var name = await ReserveNameAsync(container, CleanName(fileName), encrypted, cancellationToken);
+        var blob = BlobName(InputPrefix + name, encrypted);
 
         var limited = new LimitedReadStream(content, maxBytes);
         try
         {
-            await WriteAsync(container, InputPrefix + name, limited, key, cancellationToken);
+            await WriteAsync(container, blob, limited, key, cancellationToken);
         }
         catch
         {
-            await _blobs.DeleteAsync(container, InputPrefix + name, CancellationToken.None);
+            await _blobs.DeleteAsync(container, blob, CancellationToken.None);
             throw;
         }
 
         return (name, limited.BytesRead);
     }
 
-    /// <summary>Writes the original to <paramref name="destination"/>. False when it does not exist.</summary>
-    public Task<bool> CopyOriginalToAsync(string ownerId, string name, byte[]? key, Stream destination, CancellationToken cancellationToken)
-        => CopyToAsync(Container(ownerId), InputPrefix + name, key, destination, cancellationToken);
+    /// <summary>Writes the original of <paramref name="file"/> to <paramref name="destination"/>. False when it does not exist.</summary>
+    public async Task<bool> CopyOriginalToAsync(string ownerId, ChatFile file, byte[]? key, Stream destination, CancellationToken cancellationToken)
+    {
+        await using var content = await _blobs.OpenReadAsync(Container(ownerId), BlobName(InputPrefix + file.SourceFilename, file.IsEncrypted), cancellationToken);
+        if (content == null)
+        {
+            return false;
+        }
 
-    public async Task WriteConvertedAsync(string ownerId, string name, ConvertedFile converted, byte[]? key, CancellationToken cancellationToken)
+        if (!file.IsEncrypted)
+        {
+            await content.CopyToAsync(destination, cancellationToken);
+            return true;
+        }
+
+        if (key == null)
+        {
+            throw new CryptographicException("An encrypted file was read without the owner's key.");
+        }
+
+        await SegmentedCipher.DecryptAsync(key, content, destination, cancellationToken);
+        return true;
+    }
+
+    /// <summary>
+    /// Stores the content of <paramref name="file"/>'s chunks as its converted content. With a key
+    /// every blob is encrypted.
+    /// </summary>
+    public async Task WriteConvertedAsync(string ownerId, ChatFile file, byte[]? key, CancellationToken cancellationToken)
     {
         var container = Container(ownerId);
-        var folder = ConvertedFolder(name);
-        var parts = new List<ManifestPart>(converted.Parts.Count);
+        var folder = ConvertedFolder(file.SourceFilename);
+        var encrypted = key != null;
+        var manifest = new List<string>(file.Chunks.Count);
         var imageNumber = 0;
 
-        foreach (var part in converted.Parts)
+        foreach (var chunk in file.Chunks)
         {
-            switch (part)
+            if (chunk.IsImage)
             {
-                case ConvertedText text:
-                    parts.Add(new ManifestPart { Type = "text", Text = text.Text, Format = text.Format });
-                    break;
-                case ConvertedImage image:
-                    var blob = $"image-{++imageNumber}{Extension(image.MediaType)}";
-                    await WriteAsync(container, folder + blob, new MemoryStream(image.Data), key, cancellationToken);
-                    parts.Add(new ManifestPart { Type = "image", Blob = blob, MediaType = image.MediaType, Width = image.Width, Height = image.Height });
-                    break;
+                var image = ImageName(++imageNumber);
+                await WriteAsync(container, BlobName(folder + image, encrypted), new MemoryStream(chunk.Data ?? []), key, cancellationToken);
+                manifest.Add(image);
+            }
+            else
+            {
+                manifest.Add(chunk.Text ?? string.Empty);
             }
         }
 
-        var manifest = JsonSerializer.SerializeToUtf8Bytes(new Manifest { Parts = parts }, ManifestJson);
-        await WriteAsync(container, folder + ManifestName, new MemoryStream(manifest), key, cancellationToken);
+        await WriteAsync(container, BlobName(folder + ManifestName, encrypted), new MemoryStream(JsonSerializer.SerializeToUtf8Bytes(manifest)), key, cancellationToken);
     }
 
-    /// <summary>Null when the file has no converted content.</summary>
-    public async Task<ConvertedFile?> ReadConvertedAsync(string ownerId, string name, byte[]? key, CancellationToken cancellationToken)
+    /// <summary>
+    /// Loads the converted content into <paramref name="file"/>'s chunks: the text of each text
+    /// chunk and the bytes of each image chunk. A chunk whose content is missing reads as empty.
+    /// </summary>
+    public async Task ReadConvertedAsync(string ownerId, ChatFile file, byte[]? key, CancellationToken cancellationToken)
     {
         var container = Container(ownerId);
-        var folder = ConvertedFolder(name);
-        var manifestBytes = await ReadAsync(container, folder + ManifestName, key, cancellationToken);
-        if (manifestBytes == null)
+        var folder = ConvertedFolder(file.SourceFilename);
+        var manifestBytes = await ReadAsync(container, BlobName(folder + ManifestName, file.IsEncrypted), key, cancellationToken);
+        var manifest = manifestBytes == null ? [] : JsonSerializer.Deserialize<List<string>>(manifestBytes) ?? [];
+        if (manifest.Count != file.Chunks.Count)
         {
-            return null;
+            manifest = [];
         }
 
-        var manifest = JsonSerializer.Deserialize<Manifest>(manifestBytes, ManifestJson) ?? new Manifest();
-        var parts = new List<ConvertedPart>(manifest.Parts.Count);
-        foreach (var part in manifest.Parts)
+        for (var index = 0; index < file.Chunks.Count; index++)
         {
-            if (part.Type == "text")
+            var chunk = file.Chunks[index];
+            var part = index < manifest.Count ? manifest[index] : null;
+            if (chunk.IsImage)
             {
-                parts.Add(new ConvertedText(part.Text ?? string.Empty, part.Format ?? "plain"));
+                chunk.Data = (part == null ? null : await ReadAsync(container, BlobName(folder + part, file.IsEncrypted), key, cancellationToken)) ?? [];
             }
-            else if (part.Type == "image" && part.Blob != null)
+            else
             {
-                var data = await ReadAsync(container, folder + part.Blob, key, cancellationToken)
-                    ?? throw new InvalidOperationException($"Converted image {part.Blob} of {name} is missing.");
-                parts.Add(new ConvertedImage(data, part.MediaType ?? "image/jpeg", part.Width, part.Height));
+                chunk.Text = part ?? string.Empty;
             }
         }
-
-        return new ConvertedFile(parts);
     }
 
-    /// <summary>Deletes the original and its converted content.</summary>
+    /// <summary>Deletes the original and the converted content, encrypted or not.</summary>
     public async Task DeleteFileAsync(string ownerId, string name, CancellationToken cancellationToken)
     {
         var container = Container(ownerId);
         var converted = new List<string>();
         await foreach (var blob in _blobs.ListAsync(container, ConvertedFolder(name), cancellationToken))
         {
-            converted.Add(blob.Name);
+            converted.Add(blob);
         }
 
         foreach (var blob in converted)
@@ -144,37 +168,71 @@ public sealed partial class BlobFileStore
         }
 
         await _blobs.DeleteAsync(container, InputPrefix + name, cancellationToken);
+        await _blobs.DeleteAsync(container, InputPrefix + name + EncryptedEnding, cancellationToken);
     }
 
     /// <summary>Deletes the container with everything in it.</summary>
     public Task DeleteAllAsync(string ownerId, CancellationToken cancellationToken)
         => IsValidOwnerId(ownerId) ? _blobs.DeleteContainerAsync(ownerId, cancellationToken) : Task.CompletedTask;
 
-    /// <summary>Encrypts every blob of the container that is not encrypted yet.</summary>
-    public async Task EncryptAllAsync(string ownerId, byte[] key, CancellationToken cancellationToken)
+    /// <summary>
+    /// Writes an encrypted copy of each unencrypted blob of the file, under its name with
+    /// <c>.enc</c> added. Returns the names of the copies written.
+    /// </summary>
+    public async Task<List<string>> WriteEncryptedCopiesAsync(string ownerId, string name, byte[] key, CancellationToken cancellationToken)
     {
-        if (!IsValidOwnerId(ownerId))
+        var container = Container(ownerId);
+        var written = new List<string>();
+        foreach (var blob in await UnencryptedBlobsAsync(container, name, cancellationToken))
         {
-            return;
-        }
-
-        var plain = new List<string>();
-        await foreach (var blob in _blobs.ListAsync(ownerId, string.Empty, cancellationToken))
-        {
-            if (!IsEncrypted(blob.Metadata))
+            await using var content = await _blobs.OpenReadAsync(container, blob, cancellationToken);
+            if (content != null)
             {
-                plain.Add(blob.Name);
+                await WriteAsync(container, blob + EncryptedEnding, content, key, cancellationToken);
+                written.Add(blob + EncryptedEnding);
             }
         }
 
-        foreach (var name in plain)
+        return written;
+    }
+
+    /// <summary>Deletes the named blobs.</summary>
+    public async Task DeleteBlobsAsync(string ownerId, IEnumerable<string> names, CancellationToken cancellationToken)
+    {
+        var container = Container(ownerId);
+        foreach (var name in names)
         {
-            await using var content = await _blobs.OpenReadAsync(ownerId, name, cancellationToken);
-            if (content != null && !IsEncrypted(content.Metadata))
+            await _blobs.DeleteAsync(container, name, cancellationToken);
+        }
+    }
+
+    /// <summary>Deletes the unencrypted blobs of the file.</summary>
+    public async Task DeleteUnencryptedAsync(string ownerId, string name, CancellationToken cancellationToken)
+    {
+        var container = Container(ownerId);
+        foreach (var blob in await UnencryptedBlobsAsync(container, name, cancellationToken))
+        {
+            await _blobs.DeleteAsync(container, blob, cancellationToken);
+        }
+    }
+
+    private async Task<List<string>> UnencryptedBlobsAsync(string container, string name, CancellationToken cancellationToken)
+    {
+        var blobs = new List<string>();
+        if (await _blobs.ExistsAsync(container, InputPrefix + name, cancellationToken))
+        {
+            blobs.Add(InputPrefix + name);
+        }
+
+        await foreach (var blob in _blobs.ListAsync(container, ConvertedFolder(name), cancellationToken))
+        {
+            if (!blob.EndsWith(EncryptedEnding, StringComparison.Ordinal))
             {
-                await WriteAsync(ownerId, name, content.Stream, key, cancellationToken);
+                blobs.Add(blob);
             }
         }
+
+        return blobs;
     }
 
     private static string Container(string ownerId)
@@ -182,16 +240,9 @@ public sealed partial class BlobFileStore
 
     private static string ConvertedFolder(string name) => $"{ConvertedPrefix}{name}/";
 
-    private static bool IsEncrypted(IReadOnlyDictionary<string, string> metadata)
-        => metadata.TryGetValue(EncryptedKey, out var value) && value == "true";
+    private static string ImageName(int number) => $"image-{number}.jpg";
 
-    private static string Extension(string mediaType) => mediaType switch
-    {
-        "image/png" => ".png",
-        "image/gif" => ".gif",
-        "image/webp" => ".webp",
-        _ => ".jpg"
-    };
+    private static string BlobName(string name, bool encrypted) => encrypted ? name + EncryptedEnding : name;
 
     /// <summary>The file name without folders or control characters, and at most <see cref="MaxNameLength"/> characters.</summary>
     private static string CleanName(string fileName)
@@ -214,17 +265,31 @@ public sealed partial class BlobFileStore
         return name;
     }
 
-    private async Task<string> ReserveNameAsync(string container, string name, CancellationToken cancellationToken)
+    /// <summary>
+    /// Takes the first name that is free both unencrypted and encrypted, by creating an empty
+    /// original under the name the file is written to.
+    /// </summary>
+    private async Task<string> ReserveNameAsync(string container, string name, bool encrypted, CancellationToken cancellationToken)
     {
         var extension = Path.GetExtension(name);
         var stem = name[..(name.Length - extension.Length)];
         for (var number = 1; number <= MaxNameTries; number++)
         {
             var candidate = number == 1 ? name : $"{stem} ({number}){extension}";
-            if (await _blobs.TryCreateEmptyAsync(container, InputPrefix + candidate, cancellationToken))
+            var reserved = BlobName(InputPrefix + candidate, encrypted);
+            var other = BlobName(InputPrefix + candidate, !encrypted);
+            if (await _blobs.ExistsAsync(container, other, cancellationToken)
+                || !await _blobs.TryCreateEmptyAsync(container, reserved, cancellationToken))
+            {
+                continue;
+            }
+
+            if (!await _blobs.ExistsAsync(container, other, cancellationToken))
             {
                 return candidate;
             }
+
+            await _blobs.DeleteAsync(container, reserved, cancellationToken);
         }
 
         throw new InvalidOperationException($"No free name for '{name}' after {MaxNameTries} tries.");
@@ -232,13 +297,7 @@ public sealed partial class BlobFileStore
 
     private async Task WriteAsync(string container, string blobName, Stream content, byte[]? key, CancellationToken cancellationToken)
     {
-        var metadata = new Dictionary<string, string>();
-        if (key != null)
-        {
-            metadata[EncryptedKey] = "true";
-        }
-
-        await using var output = await _blobs.OpenWriteAsync(container, blobName, metadata, cancellationToken);
+        await using var output = await _blobs.OpenWriteAsync(container, blobName, cancellationToken);
         if (key == null)
         {
             await content.CopyToAsync(output, cancellationToken);
@@ -249,18 +308,20 @@ public sealed partial class BlobFileStore
         }
     }
 
-    private async Task<bool> CopyToAsync(string container, string blobName, byte[]? key, Stream destination, CancellationToken cancellationToken)
+    /// <summary>Null when the blob does not exist. A name ending in <c>.enc</c> is decrypted with the key.</summary>
+    private async Task<byte[]?> ReadAsync(string container, string blobName, byte[]? key, CancellationToken cancellationToken)
     {
         await using var content = await _blobs.OpenReadAsync(container, blobName, cancellationToken);
         if (content == null)
         {
-            return false;
+            return null;
         }
 
-        if (!IsEncrypted(content.Metadata))
+        var buffer = new MemoryStream();
+        if (!blobName.EndsWith(EncryptedEnding, StringComparison.Ordinal))
         {
-            await content.Stream.CopyToAsync(destination, cancellationToken);
-            return true;
+            await content.CopyToAsync(buffer, cancellationToken);
+            return buffer.ToArray();
         }
 
         if (key == null)
@@ -268,31 +329,8 @@ public sealed partial class BlobFileStore
             throw new CryptographicException("An encrypted file was read without the owner's key.");
         }
 
-        await SegmentedCipher.DecryptAsync(key, content.Stream, destination, cancellationToken);
-        return true;
-    }
-
-    private async Task<byte[]?> ReadAsync(string container, string blobName, byte[]? key, CancellationToken cancellationToken)
-    {
-        var buffer = new MemoryStream();
-        return await CopyToAsync(container, blobName, key, buffer, cancellationToken) ? buffer.ToArray() : null;
-    }
-
-    private sealed class Manifest
-    {
-        public int Version { get; set; } = 1;
-        public List<ManifestPart> Parts { get; set; } = new();
-    }
-
-    private sealed class ManifestPart
-    {
-        public string Type { get; set; } = string.Empty;
-        public string? Text { get; set; }
-        public string? Format { get; set; }
-        public string? Blob { get; set; }
-        public string? MediaType { get; set; }
-        public int Width { get; set; }
-        public int Height { get; set; }
+        await SegmentedCipher.DecryptAsync(key, content, buffer, cancellationToken);
+        return buffer.ToArray();
     }
 
     /// <summary>Reads from a stream and throws <see cref="FileTooLargeException"/> past the limit.</summary>

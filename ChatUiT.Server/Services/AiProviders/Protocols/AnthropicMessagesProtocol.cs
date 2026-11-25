@@ -333,7 +333,7 @@ public sealed class AnthropicMessagesProtocol : IApiProtocol
                         Source = new Base64ImageSource
                         {
                             Data = Convert.ToBase64String(chunk.Data),
-                            MediaType = ResolveMediaType(chunk.Format)
+                            MediaType = ResolveMediaType(chunk.MediaType)
                         }
                     });
                 }

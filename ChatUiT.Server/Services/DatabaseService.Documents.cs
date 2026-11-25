@@ -1,6 +1,7 @@
 using ChatUiT.Server.Models;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Converters;
+using Newtonsoft.Json.Linq;
 
 namespace ChatUiT.Server.Services;
 
@@ -27,7 +28,6 @@ public partial class DatabaseService
         public string DatabaseName { get; set; } = "UserData";
         public string ConfigurationDatabaseName { get; set; } = "Configuration";
         public int MaxTextChunkUtf8Bytes { get; set; } = 500_000;
-        public int MaxBinaryPayloadCharacters { get; set; } = 900_000;
         public CosmosContainerOptions Users { get; set; } = new CosmosContainerOptions { Name = "Users", PartitionKeyPath = "/userId" };
         public CosmosContainerOptions Chats { get; set; } = new CosmosContainerOptions { Name = "Chats", PartitionKeyPath = "/userId" };
         public CosmosContainerOptions ChatMessages { get; set; } = new CosmosContainerOptions { Name = "ChatMessages", PartitionKeyPath = "/userId" };
@@ -173,8 +173,9 @@ public partial class DatabaseService
         [JsonProperty("transcriptBlockIds")]
         public List<string> TranscriptBlockIds { get; set; } = new();
 
+        // Each entry is a ChatFile, or a file in the database (see IsDatabaseFile).
         [JsonProperty("files")]
-        public List<StoredFileDocument> Files { get; set; } = new();
+        public List<JObject> Files { get; set; } = new();
 
         // May be absent in stored documents; an empty value means "fall back to the chat's
         // assistant" rather than "no assistant".
@@ -194,6 +195,7 @@ public partial class DatabaseService
         public Dictionary<string, int> FileTokenCounts { get; set; } = new();
     }
 
+    /// <summary>A file in the database: its content is in content blocks.</summary>
     private sealed class StoredFileDocument
     {
         [JsonProperty("id")]
@@ -202,36 +204,8 @@ public partial class DatabaseService
         [JsonProperty("sourceFilename")]
         public string SourceFilename { get; set; } = string.Empty;
 
-        // The file's parts. A part of a file in Blob Storage has no content blocks.
         [JsonProperty("chunks")]
         public List<StoredFileChunkDocument> Chunks { get; set; } = new();
-
-        // Set for a file in Blob Storage. Absent on files stored in Cosmos.
-        [JsonProperty("blob", NullValueHandling = NullValueHandling.Ignore)]
-        public StoredBlobFileDocument? Blob { get; set; }
-    }
-
-    /// <summary>A file in Blob Storage, in the container of its chat or assistant, stored under the file's name.</summary>
-    private sealed class StoredBlobFileDocument
-    {
-        [JsonProperty("original")]
-        public string Original { get; set; } = string.Empty;
-
-        [JsonProperty("converted")]
-        public string Converted { get; set; } = string.Empty;
-
-        [JsonProperty("size")]
-        public long Size { get; set; }
-
-        [JsonProperty("contentType")]
-        public string ContentType { get; set; } = string.Empty;
-
-        [JsonProperty("encrypted")]
-        public bool Encrypted { get; set; }
-
-        // Scheme id → tokens the file adds to the message that carries it.
-        [JsonProperty("tokenCounts")]
-        public Dictionary<string, int> TokenCounts { get; set; } = new();
     }
 
     private sealed class StoredFileChunkDocument
@@ -530,8 +504,9 @@ public partial class DatabaseService
         [JsonProperty("chatSettings")]
         public AssistantChatSettingsDocument ChatSettings { get; set; } = new();
 
+        // Each entry is an AssistantFile, or a file in the database (see IsDatabaseFile).
         [JsonProperty("files")]
-        public List<StoredAssistantFileDocument> Files { get; set; } = new();
+        public List<JObject> Files { get; set; } = new();
 
         // Absent on rows written before knowledge sources existed.
         [JsonProperty("knowledgeSourceIds")]
@@ -557,6 +532,7 @@ public partial class DatabaseService
         public List<string> AllowedGroupIds { get; set; } = new();
     }
 
+    /// <summary>An assistant file in the database: its content is in assistant content blocks.</summary>
     private sealed class StoredAssistantFileDocument
     {
         [JsonProperty("id")]
@@ -571,13 +547,8 @@ public partial class DatabaseService
         [JsonProperty("description")]
         public string? Description { get; set; }
 
-        // The file's parts. A part of a file in Blob Storage has no content blocks.
         [JsonProperty("chunks")]
         public List<StoredFileChunkDocument> Chunks { get; set; } = new();
-
-        // Set for a file in Blob Storage. Absent on files stored in Cosmos.
-        [JsonProperty("blob", NullValueHandling = NullValueHandling.Ignore)]
-        public StoredBlobFileDocument? Blob { get; set; }
     }
 
     private sealed class AssistantContentBlockDocument

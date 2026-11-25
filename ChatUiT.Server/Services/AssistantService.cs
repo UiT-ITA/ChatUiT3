@@ -133,9 +133,9 @@ namespace ChatUiT.Server.Services
             return counts;
         }
 
-        // Per file id, per scheme. A file in Blob Storage is priced from the counts stored on it.
-        // File content is read only on a cache miss, and then only when a file is stored in
-        // Cosmos or has no stored count for a scheme.
+        // Per file id, per scheme. A file is priced from the counts stored on it. File content is
+        // read only on a cache miss, and then only when a file has no stored count for a scheme,
+        // which a file in the database never has.
         private async Task<Dictionary<string, Dictionary<string, int>>> GetFileTokenCountsAsync(
             Assistant assistant,
             IReadOnlyList<string> schemes,
@@ -149,16 +149,11 @@ namespace ChatUiT.Server.Services
             }
 
             var files = assistant.Files;
-            var unloaded = files.Where(f => !f.IsContentLoaded).ToList();
-            var needsBlobContent = unloaded.Any(f => f.IsInBlobStorage && schemes.Any(scheme => !f.TokenCounts.ContainsKey(scheme)));
-            if (needsBlobContent || unloaded.Any(f => !f.IsInBlobStorage))
+            if (files.Any(f => !f.IsContentLoaded && schemes.Any(scheme => !f.TokenCounts.ContainsKey(scheme))))
             {
                 var loaded = await _databaseService.GetAssistantByIdAsync(assistant.Id, includeFileContent: true);
                 files = loaded?.Files ?? files;
-                if (needsBlobContent)
-                {
-                    await _fileService.LoadAssistantFileContentAsync(assistant.Id, files);
-                }
+                await _fileService.LoadAssistantFileContentAsync(assistant.Id, files.Where(f => schemes.Any(scheme => !f.TokenCounts.ContainsKey(scheme))));
             }
 
             var counts = files.ToDictionary(
@@ -452,9 +447,9 @@ namespace ChatUiT.Server.Services
             if (!updated) return false;
             EnsureAlwaysLoadedFits(assistant, previousFiles, storedCounts, assistant.ChatSettings.Model.Id != previousModelId);
 
-            var updatedAssistant = await _databaseService.UpdateAssistantAsync(assistant);
-            if (updatedAssistant == null) return false;
-            await _fileService.DeleteFilesAsync(assistant.Id, previousFiles.Where(previous => assistant.Files.All(kept => kept.Id != previous.Id)));
+            var update = await _databaseService.UpdateAssistantAsync(assistant);
+            if (update == null) return false;
+            await _fileService.DeleteFilesAsync(assistant.Id, update.RemovedBlobFiles);
             var diff = TelemetryDiff.Compute(before, TelemetryView(assistant), ValuelessPaths, includeOld: false);
             _telemetry.AssistantChanged("updated", await TelemetrySummaryAsync(assistant), diff.Changed, diff.Changes);
             _promptTokenCache.TryRemove(assistant.Id, out _);
@@ -774,12 +769,13 @@ namespace ChatUiT.Server.Services
             }
             EnsureAlwaysLoadedFits(assistant, previousFiles, storedCounts, assistant.ChatSettings.Model.Id != previousModelId);
 
-            var savedAssistant = await _databaseService.UpdateAssistantAsync(assistant);
-            if (savedAssistant == null)
+            var update = await _databaseService.UpdateAssistantAsync(assistant);
+            if (update == null)
             {
                 return null;
             }
-            await _fileService.DeleteFilesAsync(assistant.Id, previousFiles.Where(previous => assistant.Files.All(kept => kept.Id != previous.Id)));
+            var savedAssistant = update.Assistant;
+            await _fileService.DeleteFilesAsync(assistant.Id, update.RemovedBlobFiles);
 
             var diff = TelemetryDiff.Compute(before, TelemetryView(assistant), ValuelessPaths);
             _telemetry.AdminChanged("system_assistant", assistantId, "updated", diff.Changed, diff.Changes);
@@ -1017,14 +1013,13 @@ namespace ChatUiT.Server.Services
         private static List<string> NormalizeIds(List<string>? ids)
             => (ids ?? new List<string>()).Where(id => !string.IsNullOrWhiteSpace(id)).Select(id => id.Trim()).Distinct().ToList();
 
-        /// <summary>The files as they are before a save changes their category: what the limit check and the blob cleanup compare against.</summary>
+        /// <summary>The files as they are before a save changes their category: what the limit check compares against.</summary>
         private static List<AssistantFile> SnapshotFiles(IEnumerable<AssistantFile> files)
             => files.Select(file => new AssistantFile
             {
                 Id = file.Id,
                 SourceFilename = file.SourceFilename,
-                Category = file.Category,
-                IsInBlobStorage = file.IsInBlobStorage
+                Category = file.Category
             }).ToList();
 
         /// <summary>
