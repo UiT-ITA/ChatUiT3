@@ -106,10 +106,7 @@ public partial class DatabaseService
     {
         foreach (var block in blocks.Where(b => !b.IsEncrypted).ToList())
         {
-            var plaintext = block.ContentType == StoredContentType.Text
-                ? Encoding.UTF8.GetBytes(block.Payload)
-                : Convert.FromBase64String(block.Payload);
-            block.Payload = ChatContentCipher.Encrypt(key, plaintext);
+            block.Payload = ChatContentCipher.Encrypt(key, Encoding.UTF8.GetBytes(block.Payload));
             block.IsEncrypted = true;
 
             try
