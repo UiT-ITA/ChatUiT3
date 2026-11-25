@@ -11,9 +11,9 @@ namespace ChatUiT.Server.Services.Files;
 public sealed record FileDownload(string FileName, string ContentType, long? Length, Func<Stream, CancellationToken, Task> WriteToAsync);
 
 /// <summary>
-/// The files of chats and assistants in Blob Storage. An upload stores the original, converts
-/// it, stores the converted content and counts its tokens. In a red chat everything is encrypted
-/// with the owner's key. Reads load the converted content into a file's parts.
+/// The files of chats and assistants. An upload is converted in memory and its tokens counted.
+/// The database stores the converted content. Reads load the converted content of files in Blob
+/// Storage into a file's parts.
 /// </summary>
 public sealed class FileService
 {
@@ -55,27 +55,16 @@ public sealed class FileService
             throw new FileRequestException(ErrorCodes.MessageNotWaitingForFiles, StatusCodes.Status404NotFound);
         }
 
-        var key = chat.RedEnabled ? await _chatKeys.GetUserKeyAsync(userId) : null;
-        var file = await StoreAsync(new ChatFile(), chatId, fileName, contentType, content, key, cancellationToken);
-        try
+        var file = await StoreAsync(new ChatFile(), chatId, fileName, contentType, content, cancellationToken);
+        if (!await _database.AddMessageFileAsync(userId, chatId, messageId, file))
         {
-            if (!await _database.AddMessageFileAsync(userId, chatId, messageId, file))
-            {
-                throw new FileRequestException(ErrorCodes.MessageNotWaitingForFiles, StatusCodes.Status404NotFound);
-            }
-        }
-        catch
-        {
-            // A file that is not added to the message leaves no blobs behind.
-            await _store.DeleteFileAsync(chatId, file.SourceFilename, CancellationToken.None);
-            throw;
+            throw new FileRequestException(ErrorCodes.MessageNotWaitingForFiles, StatusCodes.Status404NotFound);
         }
 
         // The chat may have been switched to red while the file was written without a key.
-        if (key == null && await _database.GetChatHeaderAsync(userId, chatId) is { RedEnabled: true })
+        if (!chat.RedEnabled && await _database.GetChatHeaderAsync(userId, chatId) is { RedEnabled: true })
         {
-            await EncryptChatFilesAsync(userId, chatId);
-            file.IsEncrypted = true;
+            await _database.EnableRedAsync(userId, chatId, null);
         }
 
         return file;
@@ -87,7 +76,7 @@ public sealed class FileService
     /// </summary>
     /// <exception cref="FileRequestException">The file is refused or cannot be converted.</exception>
     public Task<AssistantFile> StoreAssistantFileAsync(string assistantId, string fileName, string? contentType, Stream content, CancellationToken cancellationToken)
-        => StoreAsync(new AssistantFile(), assistantId, fileName, contentType, content, key: null, cancellationToken);
+        => StoreAsync(new AssistantFile(), assistantId, fileName, contentType, content, cancellationToken);
 
     /// <summary>A file on a message of the chat with its content, read from Cosmos or from Blob Storage. Null when the chat has no such file.</summary>
     public async Task<ChatFile?> GetChatFileAsync(string userId, string chatId, string fileId)
@@ -196,7 +185,7 @@ public sealed class FileService
         }));
     }
 
-    private async Task<T> StoreAsync<T>(T file, string ownerId, string fileName, string? contentType, Stream content, byte[]? key, CancellationToken cancellationToken)
+    private async Task<T> StoreAsync<T>(T file, string ownerId, string fileName, string? contentType, Stream content, CancellationToken cancellationToken)
         where T : ChatFile
     {
         var kind = FileKinds.Resolve(fileName, contentType)
@@ -209,7 +198,7 @@ public sealed class FileService
         await _uploadSlots.WaitAsync(cancellationToken);
         try
         {
-            return await StoreInSlotAsync(file, ownerId, kind, fileName, contentType, content, key, cancellationToken);
+            return await StoreInSlotAsync(file, kind, fileName, content, cancellationToken);
         }
         finally
         {
@@ -217,21 +206,20 @@ public sealed class FileService
         }
     }
 
-    private async Task<T> StoreInSlotAsync<T>(T file, string ownerId, FileKind kind, string fileName, string? contentType, Stream content, byte[]? key, CancellationToken cancellationToken)
+    private async Task<T> StoreInSlotAsync<T>(T file, FileKind kind, string fileName, Stream content, CancellationToken cancellationToken)
         where T : ChatFile
     {
-        // The upload is written to Blob Storage and kept in memory at once. The converter reads it from memory.
         using var local = new MemoryStream();
+        var buffer = new byte[81_920];
+        int read;
+        while ((read = await content.ReadAsync(buffer, cancellationToken)) > 0)
+        {
+            if (local.Length + read > FileKinds.MaxFileBytes)
+            {
+                throw new FileRequestException(ErrorCodes.FileTooLarge, StatusCodes.Status413PayloadTooLarge);
+            }
 
-        string name;
-        long size;
-        try
-        {
-            (name, size) = await _store.WriteOriginalAsync(ownerId, fileName, new CopyingReadStream(content, local), FileKinds.MaxFileBytes, key, cancellationToken);
-        }
-        catch (FileTooLargeException ex)
-        {
-            throw new FileRequestException(ErrorCodes.FileTooLarge, StatusCodes.Status413PayloadTooLarge, ex);
+            local.Write(buffer, 0, read);
         }
 
         ConvertedFile converted;
@@ -239,19 +227,13 @@ public sealed class FileService
         {
             local.Position = 0;
             converted = await _converter.ConvertAsync(kind, local, cancellationToken);
-            await _store.WriteConvertedAsync(ownerId, name, converted, key, cancellationToken);
         }
-        catch (Exception ex)
+        catch (FileConversionException ex)
         {
-            await _store.DeleteFileAsync(ownerId, name, CancellationToken.None);
-            throw ex is FileConversionException conversion ? new FileRequestException(conversion.Error, innerException: ex) : ex;
+            throw new FileRequestException(ex.Error, innerException: ex);
         }
 
-        file.SourceFilename = name;
-        file.IsInBlobStorage = true;
-        file.Size = size;
-        file.ContentType = FileKinds.ContentTypeOf(name, contentType);
-        file.IsEncrypted = key != null;
+        file.SourceFilename = fileName;
         file.Chunks = converted.ToChunks();
         file.TokenCounts = _tokenCounting.CountFile(file, await _tokenCounting.GetActiveSchemeIdsAsync());
         return file;
@@ -293,37 +275,5 @@ public sealed class FileService
 
         var fileName = FilePreviews.ServedAsIs(file.SourceFilename, extension) ? file.SourceFilename : file.SourceFilename + extension;
         return new FileDownload(fileName, contentType, bytes.Length, (destination, cancellationToken) => destination.WriteAsync(bytes, cancellationToken).AsTask());
-    }
-
-    /// <summary>Reads from a stream and writes everything read to another stream.</summary>
-    private sealed class CopyingReadStream(Stream inner, Stream copy) : Stream
-    {
-        public override bool CanRead => true;
-        public override bool CanSeek => false;
-        public override bool CanWrite => false;
-        public override long Length => throw new NotSupportedException();
-        public override long Position { get => throw new NotSupportedException(); set => throw new NotSupportedException(); }
-
-        public override async ValueTask<int> ReadAsync(Memory<byte> buffer, CancellationToken cancellationToken = default)
-        {
-            var read = await inner.ReadAsync(buffer, cancellationToken);
-            await copy.WriteAsync(buffer[..read], cancellationToken);
-            return read;
-        }
-
-        public override Task<int> ReadAsync(byte[] buffer, int offset, int count, CancellationToken cancellationToken)
-            => ReadAsync(buffer.AsMemory(offset, count), cancellationToken).AsTask();
-
-        public override int Read(byte[] buffer, int offset, int count)
-        {
-            var read = inner.Read(buffer, offset, count);
-            copy.Write(buffer, offset, read);
-            return read;
-        }
-
-        public override void Flush() { }
-        public override long Seek(long offset, SeekOrigin origin) => throw new NotSupportedException();
-        public override void SetLength(long value) => throw new NotSupportedException();
-        public override void Write(byte[] buffer, int offset, int count) => throw new NotSupportedException();
     }
 }

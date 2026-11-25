@@ -27,6 +27,7 @@ public partial class DatabaseService
         public string DatabaseName { get; set; } = "UserData";
         public string ConfigurationDatabaseName { get; set; } = "Configuration";
         public int MaxTextChunkUtf8Bytes { get; set; } = 500_000;
+        public int MaxBinaryPayloadCharacters { get; set; } = 900_000;
         public CosmosContainerOptions Users { get; set; } = new CosmosContainerOptions { Name = "Users", PartitionKeyPath = "/userId" };
         public CosmosContainerOptions Chats { get; set; } = new CosmosContainerOptions { Name = "Chats", PartitionKeyPath = "/userId" };
         public CosmosContainerOptions ChatMessages { get; set; } = new CosmosContainerOptions { Name = "ChatMessages", PartitionKeyPath = "/userId" };
